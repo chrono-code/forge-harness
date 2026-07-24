@@ -23,6 +23,14 @@ is HITL — the diagnostic **proposes**, never auto-edits.
 | **Verdict/gate degrade** | `scripts/degrade_direction_scan.sh` | a field verdict/gate helper that degrades toward permissive (advisory pre-screen) |
 | **Loop-readiness** (황민호 loop-eng 5-question lens, 2026-07-10 — detail home: `loop_engineering.md`, incl. the FH loop inventory + design-time discipline) | *Loop-runtime axis — net-new vs Structure* (harness-doctor scans static form; this scans whether the path closes a loop). **Mechanical grep**: `/goal-quench`·`/loop` wiring present · check-class token declared. **Judged**: is the persisted state (card/handoff/memory) actually reloaded · is the declared check-class anchored, not judged-only · does the path halt. Done-When *presence* → see Structure row (no double-grep). **Adversarial pair** (for the judged sub-checks — decorrelated, behavior-vs-checklist): a target-tier blind sim that *runs* the path and observes whether it halts + persists, rather than re-checklisting it (the harness litmus shares this lens's axis, so it is a co-lens, not the adversary). | an agent path that *runs but doesn't loop*: no completion criterion (Done-When absent), judged-only validation with no anchor, no halt/budget guard (runaway/cost), or no state carried to the next run — the 5 questions (initiate · complete · validate · halt · persist) with 0 answers |
 
+> **Considered-and-held, 7th-lens candidate (2026-07-24)**: the context-quality 7-criteria rubric
+> (arXiv:2607.14275 — role clarity · guardrail coverage · instruction consistency · tool schema ·
+> grounding sufficiency · injection hardening · token efficiency) is **not** adopted as a lens: its
+> shipped scoring is ProofAgent-Harness multi-juror consensus — judge-only, failing the measured bar
+> this table holds. Re-check triggers: ⓐ a deterministic scoring rubric ships upstream, or ⓑ the
+> token-efficiency / tool-schema subset proves mechanically scoreable on a known pair. Do not
+> re-propose without one of the two. Cross-audit: `tracks/_audit/session_2026_07_24_grace-context-rubric.md` (operator-local record).
+
 ## Output
 
 One ranked list, `M` (must-fix) / `S` (should-fix) / `R` (recommended) — same tiering as

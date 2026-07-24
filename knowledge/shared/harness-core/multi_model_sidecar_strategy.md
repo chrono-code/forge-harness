@@ -136,6 +136,11 @@ FH is a **multi-runtime harness with explicit runtime authority**, not Claude-on
 
 A sidecar is recruited where it adds *decorrelated* value; its ceiling is still set by the governor — the
 harness lifts a model to its own ceiling, it does not move it ([[feedback_harness_ceiling_principle]]).
+External causal anchor for *why* the ceiling sits in the weights (wsff.md, HumanLayer
+`advanced-context-engineering-for-coding-agents` repo, Dex 2026, triaged 2026-07-24): RL rewards are pass/fail in seconds while architectural-decay costs surface over
+weeks — *"maintainability has no fast oracle, so we can't reward for it during RL"* — hence the
+human-review floor is structural, not a transitional patch. (Its Faros AI numbers are correlation-only;
+the author's own caveat travels with any citation.)
 "Aggressive" Codex/Gemini use is bounded by the fit task-class above, never a blanket main-seat swap.
 
 ### Vendor-native harness — the main layer stays multi-CLI, never Copilot-consolidated

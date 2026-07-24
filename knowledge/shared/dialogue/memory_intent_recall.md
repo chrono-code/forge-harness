@@ -207,3 +207,4 @@ constellations + the convergent/divergent split — all at prose scale, no new s
 - `memory-hygiene` (skill) — staleness pass; link-evolution (A-MEM) and the §D.8 store-side injection filter live here
 - `plugins/fh-meta/agents/persona-innovator` (the fh-meta agent) — the divergent-mode consumer this substrate unlocks
 - `knowledge/shared/rules/operational_adaptation.md` — the UAP is itself intent-recalled; shared tier-dependence rationale
+- GRACE (arXiv:2607.09175) — external sister, *update-side* counterpart to this doc's recall-side 1-hop traversal: maintains agent instructions as a typed semantic graph and verifies edits **only within the modified node's local typed neighborhood** (instruction-graph substrate — mechanism-level analogy, not this memory graph). Mechanism anchor only (no code shipped); cross-audit: `tracks/_audit/session_2026_07_24_grace-context-rubric.md` (operator-local record)
