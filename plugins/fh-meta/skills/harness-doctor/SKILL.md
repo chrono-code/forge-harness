@@ -49,6 +49,12 @@ coverage lens** — not the paper's scoring model. A **coverage checklist, not a
 harness needs all seven (a read-only doc harness needs no Execution or Governance). For each layer ask
 "is there an asset covering it?"; surface gaps, let the human judge if each is real for *this* harness.
 
+> **Orthogonal-sister ledger (same adoption rule — anchor only, no scoring model imported)**:
+> GRACE (arXiv:2607.09175, cross-audit `tracks/_audit/session_2026_07_24_grace-context-rubric.md`,
+> operator-local record) — typed-semantic-graph **scoped verification** for the **C (Context) layer's
+> maintenance path**: edits validated only within the modified node's local typed neighborhood. Cite
+> when a C-layer gap involves *how context updates are verified*, not just whether context assets exist.
+
 | Layer | Covers | Typical FH asset | If the gap is judged real → priority hint |
 |---|---|---|---|
 | **E** Execution | isolated/reproducible env, bounded autonomy | Agent-dispatch isolation · goal-quench budget | advisory |

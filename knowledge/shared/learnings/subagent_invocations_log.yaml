@@ -339,3 +339,20 @@
   outcome: accepted
   finding: "R1 HIGH 2(비-.py 단일 지정 무음 exit0 · test_ 이름만 면제로 page.py core 메서드 통과) MED 2 LOW 2 → 수리. R2 NEW 1(pytestmark 구식 술어가 test_*.py 접두 미검사 = PASS 방향 누락) → 수리. R3 CONVERGED — codex 자체 재실행으로 42 passed·실표면 13건/exit1 재확인."
   note: "codex 제안 술어(_RE_TEST_FILE)가 실FP 파일을 못 덮는 것을 known-pair 로 확인 후 넓혀 적용 — challenger-verify-before-act 양방향(제안도 검증)."
+
+- date: 2026-07-24
+  agent: fh-commons:quench-challenger
+  caller: fh-hub session (Mode D, 4-axis Axis 2)
+  task: "sister-links+digest-fixes 브랜치 diff 적대 리뷰 (5파일 +30/-1)"
+  dispatch_type: background Agent
+  model: claude-fable-5
+  outcome: accepted
+  note: "HIGH 0 MED 2 LOW 3 — MED 2·LOW 2 즉시 수리, 공격실패 5축 클린. 동시편집 감지(스테이징 전 워크트리 리뷰로 자체 보정)까지 정확"
+- date: 2026-07-24
+  agent: claude (generic, model=sonnet pin)
+  caller: fh-hub session (Mode D, target-tier sim)
+  task: "frontier-digest Angle rule 블라인드 known-pair sim (이중각도 Bun vs 단일각도 Nvidia)"
+  dispatch_type: background Agent
+  model: claude-sonnet-5
+  outcome: accepted
+  note: "분리 성공 — 방법론각도 표면화 + 비강요. 경미 일탈(폐기 사유 출력) → 문구 조임 반영"

@@ -26,7 +26,10 @@ Collection criteria: score > 10, keyword-relevant items only. Max 15 items.
 ### arxiv
 
 ```bash
-for Q in "multi-agent LLM" "AI software testing" "context engineering agents"; do
+# query refresh 2026-07-24: "AI software testing" (exact-phrase) went stale — newest hit was Sept 2024
+# (07-24 run instrument note). Replaced with "LLM agent evaluation"; refresh again when a query's
+# newest hit is >6 months old two runs in a row.
+for Q in "multi-agent LLM" "LLM agent evaluation" "context engineering agents"; do
   curl -s --max-time 8 \
     "https://export.arxiv.org/api/query?search_query=all:${Q// /+}&max_results=2&sortBy=submittedDate&sortOrder=descending"
 done
@@ -75,6 +78,10 @@ Resolve a *video-harvest* capability via the Sidecar Engine Resolution Protocol 
 
 ## §Synthesis-Prompt
 
+> Angle-rule provenance: added 2026-07-24 (fh_signal 07-24 #3 — Bun-Rust methodology-angle silent
+> drop; scope limited to collection-filtered items per Axis-2 challenger cost finding). Provenance
+> lives here, outside the fenced prompt — the synthesis model gets only the bare rule.
+
 ### With Anthropic API
 
 ```
@@ -90,6 +97,12 @@ FH Context:
                      self-check gate, frontier cross-diagnosis
 
 [Insert collected data]
+
+Angle rule: an item you reject on its primary angle (e.g. substrate/model/runtime news),
+if it passed collection filtering, gets ONE explicit second look before discarding: does it
+carry a separate methodology/harness angle (orchestration pattern, workflow scale,
+operational practice)? If yes, judge that angle on its own merits; if no, discard silently —
+no output line about the discard, and never force an angle that isn't there.
 
 Output format:
 ## This Week's Frontier Highlights (max 3)
