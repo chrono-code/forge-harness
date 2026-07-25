@@ -434,3 +434,23 @@
   outcome: accepted
   finding: "HIGH 0 MED 2 LOW 1 — assert가 python -O에서 증발(직접 재현) · 인덱스 합성의 무음 순서드리프트 · ⊃ 방향 오기 → 3/3 수리(-O 회귀테스트 동반). codex가 자체 구/신 비교 하네스 + 풀스위트 실행으로 행동보존 독립 확인"
   note: "게이트 exit 계약(0/1/2/3)·fail-closed 성질은 공격 실패(보존 확인). 브랜치 feat/mobile-rules-split 푸시"
+
+- date: 2026-07-25
+  agent: claude (generic, model=sonnet pin) ×2
+  caller: fh-hub session (qasp Matrix Benchmark v0 — blind/matrix probe pair)
+  task: "동일 결함세트(4+함정2) 3자 귀속 — 채널 접근만 차등(관측+스펙 vs +FE소스+BE상태)"
+  dispatch_type: background Agent ×2 병렬 (playwright headless, 격리)
+  model: claude-sonnet-5
+  outcome: accepted
+  finding: "검출 4/4 동률 · 귀속 블라인드 2/4 vs 매트릭스 4/4 · 함정 0/0. 오귀속 2건이 정확히 §3-b 칸(B1·C1 '컬럼 없음' 동일증상) + 스펙-낙관 방향 쏠림. 블라인드가 '채널 부족' 자기신고 → 에스컬레이션 훅 후보 발굴"
+  note: "n=1/조건 탐색 라벨 · C1 지시-유발 할인 명시. qasp-dev #27 머지. 티어 고정으로 구조 델타만 측정(티어 불변식)"
+
+- date: 2026-07-25
+  agent: claude (generic, model=sonnet pin)
+  caller: fh-hub session (qasp Matrix Bench v1 갈래2 — web-e2e-generator 절차 재현)
+  task: "치유된 admin-surrogate + 기획서 v2로 3채널 E2E 생성 (SKILL 정본 준수, BE유도 단언 의무)"
+  dispatch_type: background Agent (playwright headless + node @playwright/test 셋업)
+  model: claude-sonnet-5
+  outcome: accepted
+  finding: "12/12 pass(10s)·web_rules 0/6 첫 패스·BE유도 단언 3(승인합 54,980,000 양페이지 불변·max date 상단행·12행 카운트)·뷰포트 조항 테스트·§8 UNVERIFIED 라벨 자기 명시. governor 독립 재실행 12/12(6.3s) 재확인"
+  note: "corp-env 실측 패턴(22/22 3채널)의 로컬 재현 성립 — 대리표면만으로 corp-env 실측 구조 반복 가능 입증. qasp-dev #28"
