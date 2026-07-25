@@ -37,8 +37,8 @@ When unsure where to place a new asset or skill:
 
 1. Request full file path from user (or accept natural language description)
 2. Load asset content via `Read` (if path provided)
-2.5. Step 0.5 mechanical overlap pre-scan (grounds criterion ④ before the judged pass)
-3. Evaluate Step 1 4-criteria in order (LLM makes the judgment, ④ gated on the Step 0.5 scan)
+2.5. Step 0.5 mechanical overlap pre-scan (grounds criterion ④) + Step 0.6 official-corpora check (grounds criterion ③)
+3. Evaluate Step 1 4-criteria in order (LLM makes the judgment, ④ gated on the Step 0.5 scan, ③ informed by Step 0.6)
 4. ① + ④ both pass + at least one of ②③ passes → output **"FH suitable"**
    Otherwise, proceed to Step 2 local assessment → if fails, output **"Project-local agent or no asset needed"**
 
@@ -65,7 +65,7 @@ Immediately after trigger, acquire asset content in the following order.
    > **Which asset should I evaluate?**
    > Enter a file path (e.g., `.claude/agents/jira-create.md`) or a description.
 
-After acquiring the asset content, run Step 0.5 (mechanical overlap pre-scan) **before** the judged Step 1.
+After acquiring the asset content, run Step 0.5 (mechanical overlap pre-scan) and Step 0.6 (official-corpora check) **before** the judged Step 1.
 
 ## Step 0.5. Mechanical Overlap Pre-Scan (grounds criterion ④)
 
@@ -92,6 +92,17 @@ both the judge (cutoff) and the grep (literal); that residual leans on the judge
 enumerated descriptions above** (grounded comparison, not pure memory), not on full mechanization. A
 shared common word is a judged-review flag, **not** a hard fail.
 
+## Step 0.6. Tier-0/1 Official-Corpora Check (grounds criterion ③)
+
+Besides the FH roster (Step 0.5), check the proposal against the official corpora: platform
+built-ins, `claude-plugins-official`, and the **Claude Cookbook pattern list**
+(platform.claude.com/cookbook — agent patterns · tools · RAG · evals · skills). A hit here is a
+**judged ③ flag, not an automatic ③ fail**: it obliges the proposal to state its governance
+increment over the official pattern (no-reinvention rule — an official pattern that fully covers
+the need outranks a net-new build; a pattern the proposal governs *on top of* does not fail ③).
+Offline fallback: note `cookbook: unchecked` **in the Step 3 routing output** rather than silently
+skipping. (Provenance: `tracks/_audit/session_2026_07_25_claude5-context-rules-sister.md`.)
+
 ## Done When
 
 ```
@@ -108,7 +119,7 @@ All steps 0–3 completed
 |:-:|---|---|
 | ① | Cross-project value | Is this asset equally useful in other projects without depending on a specific project? |
 | ② | Orchestration / judgment layer | Is it just a list of MCP/Bash calls, or a judgment layer that synthesizes multiple signals? |
-| ③ | Not replaceable by built-ins | Can this be equally achieved with direct MCP calls or basic bash? (If yes, fails this criterion) |
+| ③ | Not replaceable by built-ins | Can this be equally achieved with direct MCP calls or basic bash? (If yes, fails this criterion.) A Step 0.6 official-pattern hit is a judged flag: fails ③ only if the pattern fully covers the need with no governance increment |
 | ④ | No overlap with existing FH skills | Step 0.5 mechanical scan = 0 name/trigger collision **AND** judged ≤90% overlap. Non-zero collision → hard fail. |
 
 **FH suitable** → ① + ④ both pass + at least one of ②③ passes.
