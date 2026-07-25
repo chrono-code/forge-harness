@@ -356,3 +356,61 @@
   model: claude-sonnet-5
   outcome: accepted
   note: "분리 성공 — 방법론각도 표면화 + 비강요. 경미 일탈(폐기 사유 출력) → 문구 조임 반영"
+
+- date: 2026-07-25
+  agent: codex (gpt-5.5, cross-family sidecar)
+  caller: fh-hub session (Mode D, 최우선-0 탈상관 독트린 자기적용 감사)
+  task: "'탈상관=생성 원리' 명제+따름정리 적대 감사 (명제 자체가 탈상관 0 대화 출신 → cross-family 필수 건)"
+  dispatch_type: background bash (stdin form, in-repo)
+  model: gpt-5.5
+  outcome: accepted
+  finding: "(a) 핵심명제 NARROWED — '못 미더워서 아니라' 거짓대비 기각, 증분=조기 same-family 합의는 설계탐색의 나쁜 정지조건. (b) 따름정리 NARROWED — divergence-then-selection 구조 한정, 고레버리지·미결정·경로설정 결정에만, no voting. 실패케이스=always-branch 의례화(수렴 공격)."
+  note: "codex가 repo 파일 3건 라인 인용 — governor 소스 확인 통과. 독트린화는 보류 유지, 착지 문구 기본판만 확정."
+
+- date: 2026-07-25
+  agent: claude (generic, model=sonnet pin)
+  caller: fh-hub session (Mode D, target-tier sim)
+  task: "asset-placement-gate Cookbook Tier-0 등재 + context-doctor built-in-/doctor-first 앵커 — 블라인드 실행 sim"
+  dispatch_type: background Agent
+  model: claude-sonnet-5
+  outcome: accepted
+  note: "PASS — 3대 코퍼스(built-ins/plugins-official/Cookbook) 전부 호명 + offline 'unchecked' 폴백 사용 + 더미제안 ③fail→Drop 정상판정. context-doctor는 built-in 먼저+증분 3축 정확."
+
+- date: 2026-07-25
+  agent: fh-commons:quench-challenger
+  caller: fh-hub session (Mode D, 4-axis Axis 2)
+  task: "asset-placement-gate Cookbook 등재 + context-doctor sister 앵커 diff 적대 리뷰"
+  dispatch_type: background Agent
+  model: claude-fable-5
+  outcome: accepted
+  finding: "HIGH 0 MED 3 LOW 3 — ④섹션 혼입(→Step 0.6 분리)·③ 판정강도 모순(→judged flag)·증분 과소기술(→.claudeignore·/clear 추가)·unchecked 착지면·stale 날짜클레임·URL 누락. 외부 클레임 2건 라이브 재검증까지 수행(섹션명·/doctor 원문)."
+  note: "6/6 수리. fail-open/fail-closed 방향은 공격 실패(가역 라우팅 표면=advisory 정방향 확인)."
+
+- date: 2026-07-25
+  agent: fh-meta:persona-innovator
+  caller: fh-hub session (Mode D, event-bound Mode F — 운영자 승인)
+  task: "신규 스킬 네이밍 7후보 + divergence-then-selection 외부 프레임 대조 + 갭 스캔"
+  dispatch_type: background Agent
+  model: claude-fable-5
+  outcome: accepted
+  finding: "top pick dialogue-harvest 채택(패밀리 그리드 정합). 프레임 대조 4건(BVSR·DoubleDiamond·QD/MAP-Elites·Best-of-N) 전부 FH 2조항 부재 → 코이니지 유지+sister-link 권고. 갭 2건(라이브 provenance·induced 다운스트림) 기록만."
+  note: "T1 소스 URL 동반, H3 준수(권고만). 로스터 dedup-grep 자체 수행."
+
+- date: 2026-07-25
+  agent: claude (generic, model=sonnet pin)
+  caller: fh-hub session (Mode D, dialogue-harvest 블라인드 캘리브레이션)
+  task: "정답표 미노출 known-pair 실행 — EN 대화 4유저턴 분리"
+  dispatch_type: background Agent
+  model: claude-sonnet-5
+  outcome: accepted
+  note: "완전 분리 — 독립/유도(최초출현 추적)/드롭 카운트/회계 항등식 전건 재현 + 유도명제 전파금지 제안 자발 생성. verification-status 컬럼만 granularity 차이 → 정답표에서 pass 기준 제외로 명시"
+
+- date: 2026-07-25
+  agent: fh-commons:quench-challenger
+  caller: fh-hub session (Mode D, 4-axis Axis 2 — 신규 스킬)
+  task: "dialogue-harvest SKILL.md + calibration_pair.md 적대 리뷰 (6공격각)"
+  dispatch_type: background Agent
+  model: claude-fable-5
+  outcome: accepted
+  finding: "HIGH 1(EN-only 캘리브레이션 vacuous-pass — 자기인용 선례 재현) MED 3(회계 항등식 다중명제 붕괴·judged 위장·harvest-loop 경계) LOW 3 → 7/7 수리"
+  note: "캘리브레이션 기대답 자체가 스킬 규칙에서 올바로 도출됨을 별도 확인(계기의 계기 검증)"

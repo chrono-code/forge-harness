@@ -24,6 +24,17 @@ Diagnoses the main causes of session token waste and prescribes immediate remedi
 
 **Standalone install** — this skill works normally with plugin install only, without cloning the full meta-harness.
 
+**Built-in `/doctor` first (sister anchor, 2026-07-25)**: since the Claude 5 generation, the official
+`/doctor` command claims skill/CLAUDE.md rightsizing ("The new rules of context engineering for Claude 5
+generation models" — https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models).
+Run the built-in first when available — its scope is skills + CLAUDE.md rightsizing only. This skill's
+increment over it = `.claudeignore` diagnosis/generation (Step 1), `/clear` timing guidance,
+command-output proxying (§Command-Output Reduction), hub-wide memory/CLAUDE.md audits, and the
+measurement discipline (resident footprint is measured only via a fresh top-level `/context`, and any
+diet is followed by a `prompt-regression` probe — the blog's own "no measurable loss" claim ships no
+method, so treat that number as a vendor claim). Triage record:
+`tracks/_audit/session_2026_07_25_claude5-context-rules-sister.md`.
+
 ## Execution Steps
 
 ### Step 1. `.claudeignore` Diagnosis + Generation
