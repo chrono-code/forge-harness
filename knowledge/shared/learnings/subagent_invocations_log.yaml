@@ -414,3 +414,23 @@
   outcome: accepted
   finding: "HIGH 1(EN-only 캘리브레이션 vacuous-pass — 자기인용 선례 재현) MED 3(회계 항등식 다중명제 붕괴·judged 위장·harvest-loop 경계) LOW 3 → 7/7 수리"
   note: "캘리브레이션 기대답 자체가 스킬 규칙에서 올바로 도출됨을 별도 확인(계기의 계기 검증)"
+
+- date: 2026-07-25
+  agent: codex (gpt-5.5, cross-family sidecar)
+  caller: fh-hub session (qasp 방향성 리뷰 — governance §8 반영안 적대 검증)
+  task: "qasp-dev 정체성 정본 §8(판정 독립) 신설 diff 적대 리뷰 (in-repo, 4공격각)"
+  dispatch_type: sync bash (stdin form, in-repo qasp-dev)
+  model: gpt-5.5
+  outcome: accepted
+  finding: "HIGH 3(UNVERIFIED 무이빨·동계열 PR리뷰 탈상관 연극·incumbent-exit 구멍) MED 5(§5 게이트표현 충돌·web_rules 산문라벨·같은주체<탈상관·§7 과광폭·앱트랙 미커버) → 8/8 반영"
+  note: "운영자 ⓐ 확정 + '존중 프레임' 정정을 8-1에 명문화. 브랜치 docs/governance-s8-verdict-independence 푸시, PR은 운영자 요청 대기"
+
+- date: 2026-07-25
+  agent: codex (gpt-5.5, cross-family sidecar)
+  caller: fh-hub session (qasp-dev mobile_rules 2층 분리 — Field-Harness Load-Bearing Change Gate)
+  task: "mate_rules→mobile_rules 분리 diff 적대 리뷰 (5공격각: 행동드리프트·게이트 exit계약·층결합·-O어설션·문서정확성)"
+  dispatch_type: sync bash (stdin form, in-repo qasp-dev)
+  model: gpt-5.5
+  outcome: accepted
+  finding: "HIGH 0 MED 2 LOW 1 — assert가 python -O에서 증발(직접 재현) · 인덱스 합성의 무음 순서드리프트 · ⊃ 방향 오기 → 3/3 수리(-O 회귀테스트 동반). codex가 자체 구/신 비교 하네스 + 풀스위트 실행으로 행동보존 독립 확인"
+  note: "게이트 exit 계약(0/1/2/3)·fail-closed 성질은 공격 실패(보존 확인). 브랜치 feat/mobile-rules-split 푸시"
