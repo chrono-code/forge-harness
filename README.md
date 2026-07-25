@@ -275,7 +275,7 @@ All four movements ship. Temper was named before it was built — deliberately (
 two more signatures keep it running: `harvest-loop` (each session's lessons become permanent skills) and
 `agent-composer` (orchestrate the dispatch). The other skills wait until you need them — full list below.
 
-## 38 skills · 8 agents
+## 39 skills · 8 agents
 
 > Count = non-deprecated skills (deprecated redirect stubs — kept only for old-name routing — excluded).
 
@@ -293,6 +293,7 @@ two more signatures keep it running: `harvest-loop` (each session's lessons beco
 | `harness-doctor` | Harness structure diagnosis | "Check my Claude setup" |
 | `pipeline-conductor` | 4-axis quality gate (backward/adversarial/forward/record) | "Run the quality gate" |
 | `field-harvest` | Back-propagate field patterns to hub | "I could reuse this" |
+| `dialogue-harvest` | Mine AI-dialogue logs: strip sycophancy, label induced vs independent | "What did I actually contribute in this thread?" |
 | `frontier-digest` | HN + arXiv → actionable insights | "AI trend digest" |
 | `hub-cc-pr-reviewer` | Automated PR review | "Review this PR" |
 | `verify-bidirectional` | Reverse-verify decisions | "Is that right?", "Double-check" |
