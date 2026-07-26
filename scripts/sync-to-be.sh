@@ -46,26 +46,138 @@ TOTAL=0   # files synced (rsync mode, countable)
 DIRTY=0   # cp-fallback mode can't count cheaply → mark work done, let git-diff gate decide
 
 # sync_dir SRC DST — append-only rsync (no --delete); skips silently if SRC missing.
+# ── Destination-newer guard (fail-closed) ─────────────────────────────────────
+# This transport is ONE-WAY: FH is canonical, the companion store is the mirror. rsync does not
+# ask whether the destination is newer — it just overwrites. That is a SILENT data-loss path, and
+# it fired twice: 2026-07-26, two consecutive sessions wrote a session card directly into the
+# companion store (the session-start rule says "pull the companion store and read INDEX first",
+# so the store is where an agent naturally starts reading — and therefore where it writes). The
+# next sync replaced card v9 (7,567 B) with the older FH v8 (5,299 B); v10 went the same way.
+# Neither loss was caught by a checker: the close-check reported "card-last violated", which is a
+# TIMESTAMP-ORDER complaint, not an overwrite complaint — it was measuring an adjacent symptom.
+# Discovery was accidental (someone noticed a byte count matching the old version).
+#
+# So: before overwriting, if the destination file is NEWER than its source, ABORT. Loss is
+# irreversible; an unclear case stops rather than proceeds (§Irreversibility Surface-Class
+# Degrade Invariant). Override channel matches the existing gates' shape: SYNC_OVERWRITE_OK=1,
+# explicit and logged.
+# SINGLE SOURCE for what this transport copies. The guard below and the rsync/tar calls MUST use
+# the same set: a guard that inspects files the sync never writes produces false aborts, and one
+# that misses files the sync does write produces false passes. (Measured on the first calibration
+# run of this very guard: `logs/` is excluded from the copy but was being scanned, so a normal
+# sync aborted on two launchd log files the transport never touches. Same divergence class the
+# gate pathspec hit earlier the same day — two lists describing one thing.)
+SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/')
+
+NEWER_HITS=""
+check_dest_newer() {   # $1 = src dir, $2 = dst dir
+  local src="$1" dst="$2" rel s d
+  [ -d "$dst" ] || return 0
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    rel="${s#$src/}"
+    d="$dst/$rel"
+    [ -f "$d" ] || continue
+    # newer destination = someone edited the mirror directly
+    if [ "$d" -nt "$s" ]; then
+      NEWER_HITS="$NEWER_HITS  $d  (newer than $s)
+"
+    fi
+    # shellcheck disable=SC2086
+    # NOTE: these three predicates ARE SYNC_EXCLUDES, spelled as find syntax. They cannot be
+    # array-expanded safely here, so they are duplicated — the one place this file tolerates it.
+    # Changing SYNC_EXCLUDES without changing this line reopens the false-abort/false-pass gap;
+    # scripts/sync_guard_check.sh asserts the two stay equivalent.
+  done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -path '*/logs/*' 2>/dev/null)
+}
+
+# ── Mirror banner (salience layer over the guard above) ───────────────────────
+# The guard stops the loss; this stops the *edit* that causes it. A directory-level README is too
+# weak — an agent opens a FILE, and nothing in the content says "this is a copy". So the banner
+# goes on line 1 of every mirrored markdown file, inserted mechanically at sync time (a
+# hand-maintained banner drifts).
+#
+# ⚠️ Interaction trap, found while writing this: injecting the banner updates the destination's
+# mtime, which would make the destination newer than its source — and the guard above would then
+# abort on this script's OWN output, every run after the first. So the mtime is restored from the
+# source after injection. A guard and a decorator that fight each other are worse than neither.
+BANNER='<!-- MIRROR COPY — synced from the forge-harness hub. Do NOT edit here; the next sync overwrites it. Edit the canonical file under the hub instead. -->'
+stamp_banner() {   # $1 = dst dir, $2 = src dir (for mtime restore)
+  local dst="$1" src="$2" f rel s
+  [ -d "$dst" ] || return 0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    head -1 "$f" 2>/dev/null | grep -q 'MIRROR COPY' && continue
+    rel="${f#$dst/}"; s="$src/$rel"
+    { printf '%s\n' "$BANNER"; cat "$f"; } > "$f.tmp$$" && mv "$f.tmp$$" "$f"
+    [ -f "$s" ] && touch -r "$s" "$f"   # keep the guard from firing on our own banner
+  done < <(find "$dst" -type f -name '*.md' ! -path '*/logs/*' 2>/dev/null)
+}
+
+# The banner makes the mirror's content differ from its source, so rsync would re-transfer every
+# banner-bearing file on EVERY run — measured on the first live run: 265 files reported "synced"
+# with nothing actually changed. That is not a loss, but it destroys the log as an instrument
+# (a real change becomes invisible inside the noise). Fix: strip before the compare, re-stamp
+# after. Content then matches on both sides and rsync moves only genuine changes.
+strip_banner() {   # $1 = dst dir
+  local dst="$1" f
+  [ -d "$dst" ] || return 0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    head -1 "$f" 2>/dev/null | grep -q 'MIRROR COPY' || continue
+    # mtime must survive the strip: rsync's quick-check is size+mtime, so a strip that bumps
+    # mtime to NOW makes every file look changed and the churn returns by another door.
+    tail -n +2 "$f" > "$f.tmp$$" && touch -r "$f" "$f.tmp$$" && mv "$f.tmp$$" "$f"
+  done < <(find "$dst" -type f -name '*.md' ! -path '*/logs/*' 2>/dev/null)
+}
+
 sync_dir() {
   local src="$1" dst="$2"
   [ -d "$src" ] || { log "skip (no source): $src"; return 0; }
   mkdir -p "$dst"
+  # Guard runs BEFORE this directory's rsync, so a directory holding a newer mirror file is never
+  # written. Directories already synced above it had no newer-destination files by definition, so
+  # an abort here leaves no partial loss — only a partial (lossless) mirror.
+  NEWER_HITS=""
+  check_dest_newer "$src" "$dst"
+  if [ -n "$NEWER_HITS" ]; then
+    if [ "${SYNC_OVERWRITE_OK:-0}" = "1" ]; then
+      log "⚠️  destination-newer OVERRIDE (SYNC_OVERWRITE_OK=1) — overwriting:"
+      printf '%s' "$NEWER_HITS" >&2
+      printf '%s\tSYNC_OVERWRITE_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$dst" \
+        >> "$BE/tracks-meta/.sync_overwrite_override_log" 2>/dev/null || true
+    else
+      echo "" >&2
+      echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
+      printf '%s' "$NEWER_HITS" >&2
+      echo "" >&2
+      echo "   This transport is ONE-WAY. The canonical copy is under forge-harness; the" >&2
+      echo "   companion store is a mirror. A newer file there means it was edited in the" >&2
+      echo "   MIRROR — continuing would overwrite it silently, and that loss is irreversible." >&2
+      echo "" >&2
+      echo "   Fix: move the edit back to the canonical path, then re-run." >&2
+      echo "   Deliberate overwrite (the mirror copy is genuinely stale): SYNC_OVERWRITE_OK=1 $0" >&2
+      echo "" >&2
+      exit 1
+    fi
+  fi
   if [ "$HAVE_RSYNC" -eq 1 ]; then
     local out n
     # capture separately so a no-match grep (exit 1) under pipefail can't kill the script
-    out=$(rsync -a --itemize-changes "$src/" "$dst/" \
-      --exclude='.gitkeep' \
-      --exclude='*.marker' \
-      --exclude='logs/') || true
+    strip_banner "$dst"   # compare like-for-like; banner is re-stamped after the transfer
+    local -a rex=(); local e
+    for e in "${SYNC_EXCLUDES[@]}"; do rex+=("--exclude=$e"); done
+    out=$(rsync -a --itemize-changes "$src/" "$dst/" "${rex[@]}") || true
     n=$(printf '%s\n' "$out" | grep -c '^[>c]' || true)
     TOTAL=$((TOTAL + n))
     [ "$n" -eq 0 ] || log "$n file(s) synced → $dst"
+    stamp_banner "$dst" "$src"
   else
     # rsync absent (default Windows git-bash): tar-pipe mirror with the same excludes,
     # no --delete (append-only). Source is canonical, so overwriting be's copy is correct.
     if ( cd "$src" && tar cf - --exclude='.gitkeep' --exclude='*.marker' --exclude='logs' . ) \
          | ( cd "$dst" && tar xf - ); then
-      DIRTY=1; log "mirrored (cp mode) → $dst"
+      DIRTY=1; log "mirrored (cp mode) → $dst"; stamp_banner "$dst" "$src"
     else
       log "mirror failed (cp mode) → $dst"
     fi
@@ -77,6 +189,26 @@ sync_file() {
   local src="$1" dstdir="$2"
   [ -f "$src" ] || { log "skip (no file): $src"; return 0; }
   mkdir -p "$dstdir"
+  # Same destination-newer guard as sync_dir. Added in the same pass, because the first cut
+  # guarded only sync_dir and left this path open — and this path carries CLAUDE.local.md, the
+  # operator's local bindings. A guard applied to some callers of a shared hazard is not a guard;
+  # it just relocates the hole. (Half-fix / propagation-boundary class.)
+  local dstf="$dstdir/$(basename "$src")"
+  if [ -f "$dstf" ] && [ "$dstf" -nt "$src" ]; then
+    if [ "${SYNC_OVERWRITE_OK:-0}" = "1" ]; then
+      log "⚠️  destination-newer OVERRIDE (SYNC_OVERWRITE_OK=1) — overwriting $dstf"
+      printf '%s\tSYNC_OVERWRITE_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$dstf" \
+        >> "$BE/tracks-meta/.sync_overwrite_override_log" 2>/dev/null || true
+    else
+      echo "" >&2
+      echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
+      echo "  $dstf  (newer than $src)" >&2
+      echo "   One-way transport: the hub copy is canonical. Move the edit back, then re-run." >&2
+      echo "   Deliberate overwrite: SYNC_OVERWRITE_OK=1 $0" >&2
+      echo "" >&2
+      exit 1
+    fi
+  fi
   if [ "$HAVE_RSYNC" -eq 1 ]; then
     local out n
     out=$(rsync -a --itemize-changes "$src" "$dstdir/") || true
