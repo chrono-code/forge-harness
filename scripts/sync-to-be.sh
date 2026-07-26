@@ -9,6 +9,31 @@
 # Runs from a CC Stop hook (throttled) or manually.
 # Override paths via env: HUB_DIR, BE_DIR.
 # Usage: bash scripts/sync-to-be.sh [--quiet]
+#
+# ── WHO TURNS THIS ON, AND ITS SIBLING ────────────────────────────────────────
+# This script is one of TWO one-way mirror modes. They differ by AUDIENCE, not mechanism, and
+# naming them that way is the point — a reader should be able to tell in one line whether it is
+# theirs:
+#
+#   sync-to-be   (this file) — for someone keeping a PERSONAL research wiki in separate storage.
+#                Direction: hub (canonical) → private companion store. Nothing here is shared;
+#                the store exists so the public repo + the private half together form one whole
+#                project, and so a machine reclaim does not take the private half with it.
+#
+#   sync-to-org  (sibling, per-org) — for someone syncing an ORGANIZATION-SHARED wiki.
+#                Direction: personal canonical → the shared surface the org reads. Same transport,
+#                different blast radius: a bad write is visible to other people, so the org mode
+#                additionally owes residency review of what crosses (format may cross; private
+#                notes and personal directory layout may not).
+#
+# **Both modes inherit the destination-newer guard below.** That guard is not personal-mode
+# housekeeping — it is the floor for one-way mirroring as such, and the org mode needs it MORE:
+# in personal mode a silent overwrite loses your own note, in org mode it can lose someone
+# else's. Any new mirror mode starts by inheriting it, not by re-deciding it.
+#
+# Choosing: personal store → this file. Org-shared surface → the org variant, and run a residency
+# pass on the crossing set first. Both → run both; they have different destinations and the guard
+# keeps them from fighting.
 
 set -euo pipefail
 
