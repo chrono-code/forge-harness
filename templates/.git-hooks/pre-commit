@@ -227,214 +227,85 @@ else
 fi
 
 # ── Confidentiality guard — public-surface scan on staged tracked content ─────
-# A commit to a PUBLIC repo is an effective PUBLISH of its content. The 4 axes above
-# verify STRUCTURAL integrity, not the confidentiality boundary — that is
-# public-surface-audit's job, and the prose trigger to run it was historically missed
-# on weaker-tier sessions (PR #109: a companion-store name + corp-context framing reached
-# a public PR; the Sonnet session's self-check trusted a PR comment over the file content).
-# This makes the confidentiality axis MECHANICAL *wherever the pattern source is configured*.
+# A commit to a PUBLIC repo is an effective PUBLISH of its content, so the confidentiality boundary is
+# checked here as well as at push/publish. Pattern loading and matching come from
+# scripts/psa_scan_lib.sh — the single implementation shared with pre-push and the publish scanner.
+# (Three near-duplicate copies used to exist; every confidentiality defect found in the 2026-07-26
+# cross-family audit was a divergence between them, so the duplication was removed rather than
+# repaired a fourth time.)
 #
-# Two-layer, mirroring public-surface-audit's own design: operator-private LITERALS live ONLY
-# in the GITIGNORED override; THIS SCRIPT NAMES NONE OF THEM. A COMMITTED *.defaults file carries
-# only universal, non-private patterns (absolute home paths) so the gate is NEVER fully blind even
-# before the operator populates the override. Scans the ADDED lines of staged TRACKED files
-# (gitignored paths are never staged → the public surface is exactly what is scanned).
-#
-# Honest scope: plaintext added lines only — encoded/obfuscated tokens are out of scope (weekly-audit
-# + operator residual). HIGH/MED substring patterns match WITHOUT word boundaries — author the gitignored
-# source with specific phrases to avoid in-word false matches. The '+++ b/<path>' diff header degrades to
-# '++ b/<path>' and is kept in the scanned body on purpose (also catches a leak in a new FILENAME).
+# DEGRADE DIRECTION HERE IS DELIBERATELY GENTLER THAN AT PUSH — do not "unify" it:
+#   • no usable patterns at all, or unusable rows → FAIL (an instrument that cannot run cannot certify)
+#   • operator override merely ABSENT            → WARN only. It is gitignored, so it is absent on
+#     every fresh clone and CI runner by construction; blocking each of their first commits would
+#     train PUBLIC_SURFACE_OK into a reflex and disarm the same channel the publish gate depends on.
+#     The push-time gate blocks that state instead, which is the boundary that actually publishes.
 echo "[Confidentiality] public-surface scan (staged tracked content)..."
-PSA_DEFAULTS="$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults"        # committed, universal
-PSA_OVERRIDE="${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}" # gitignored, operator literals
-# Placeholder/example shapes — incl. path-embedded (documented example paths must pass, not block).
-PSA_PLACEHOLDER='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxxx|/Users/(EXAMPLE|yourname|\{[a-z_]+\}|<[a-z0-9_-]+>)/|AKIAIOSFODNN7EXAMPLE)$'
-psa_low_allowlisted() {  # files that legitimately name companion/wiring tokens (LOW only; HIGH/MED still block)
-  case "$1" in
-    .gitignore|scripts/sync-to-be.sh|.claude/rules/local_fh_context.md|templates/local_fh_context.md|templates/.claude/rules/*|templates/.git-hooks/*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-# Active patterns = committed defaults + gitignored override (if present).
-#
-# DIVERGENT-LENIENCY REPAIR (2026-07-26, cross-family audit): this block used to be the LENIENT twin
-# of the same logic in scripts/public_surface_scan_files.sh. That copy was hardened on 2026-06-27
-# (readable-and-non-empty override check + fail-CLOSED when no patterns load); THIS copy never
-# received the same fix, so three states that BLOCK at publish time passed silently at commit time:
-#   (a) override exists but is empty/unreadable → counted as present, contributed nothing
-#   (b) no patterns loaded at all → printed "gate INACTIVE" and PASSED
-#   (c) a malformed regex → grep exits 2, the error is swallowed, that detector silently does nothing
-# A commit to a public repo IS a publish of its content, so the two copies must degrade the same way.
-# Same defect shape as the confidentiality-scope hole above: the fix landed on one surface only.
-PSA_BAD=0
-PSA_STREAM=""
-PSA_DEFAULTS_OK=0
-if [ -f "$PSA_DEFAULTS" ] && [ -r "$PSA_DEFAULTS" ]; then
-  PSA_STREAM=$(cat "$PSA_DEFAULTS" 2>/dev/null || true)
-  [ -n "$(printf '%s' "$PSA_STREAM" | grep -vE '^[[:space:]]*(#|$)' || true)" ] && PSA_DEFAULTS_OK=1
-fi
-if [ "$PSA_DEFAULTS_OK" -eq 0 ]; then
-  # The defaults file is COMMITTED — its absence is not a configuration choice, it is a broken
-  # instrument. Previously a present-but-unrelated override masked this: the universal home-path and
-  # credential-shape patterns silently vanished while the gate reported a clean full scan (R3 audit,
-  # 2026-07-26). A partial pattern set must never certify a clean surface.
-  echo "  ❌ committed pattern defaults missing/unreadable/empty — universal patterns NOT loaded."
-  echo "     Expected: $PSA_DEFAULTS"
-  PSA_BAD=1
-fi
-PSA_OVERRIDE_PRESENT=0
-if [ -f "$PSA_OVERRIDE" ]; then
-  if [ -r "$PSA_OVERRIDE" ]; then
-    _psa_ov="$(cat "$PSA_OVERRIDE" 2>/dev/null || true)"
-    # Only count the override as PRESENT when a readable, non-empty read actually contributed
-    # patterns — an empty file must not masquerade as a configured gate.
-    if [ -n "$(printf '%s' "$_psa_ov" | grep -vE '^[[:space:]]*(#|$)' || true)" ]; then
-      PSA_STREAM="$PSA_STREAM"$'\n'"$_psa_ov"
-      PSA_OVERRIDE_PRESENT=1
-    else
-      echo "  ⚠️  operator pattern override is EMPTY — treated as absent."
-    fi
-  else
-    echo "  ⚠️  operator pattern override exists but is UNREADABLE — treated as absent."
-  fi
-fi
-if [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
-  # INTENTIONAL ASYMMETRY vs scripts/public_surface_scan_files.sh — do NOT "fix" this to match.
-  # There, an absent override BLOCKS; here it only warns. The two surfaces are not the same surface:
-  # `npm publish` is rare, deliberate, and irreversible outward, so an incomplete instrument must
-  # stop it. A commit happens constantly, and the override is gitignored — so it is absent on EVERY
-  # fresh clone and CI runner by construction. Blocking here would block every such environment on
-  # its first commit and train PUBLIC_SURFACE_OK into a reflex, which disarms the override channel
-  # for the publish gate too. The defaults still load, so the gate is ARMED (home paths + credential
-  # shapes); what is missing is operator literals, which a fresh clone cannot have anyway.
-  # (Raised as a leniency divergence by a cross-family audit R3, 2026-07-26, and REFUTED on these
-  # grounds. Recorded here so the next audit reads the reasoning instead of re-raising it — and so
-  # nobody closes it in the over-blocking direction.)
-  echo "  ⚠️  operator pattern override absent — only committed defaults active (home paths)."
-  echo "     Populate .claude/rules/.public-surface-patterns (gitignored) for company-specific tokens"
-  echo "     (esp. the company env, where company-origin public PRs are authored)."
-fi
-# Regex validity — a pattern grep cannot compile is a detector that silently does NOTHING. grep exits
-# >=2 on an invalid ERE; that error was previously swallowed by `|| true` downstream, so a single typo
-# in the gitignored override disabled its detector with no signal. Drop invalid patterns loudly and
-# treat their presence as an instrument fault (fail-closed below), never as a clean scan.
-PSA_VALID=""
-while IFS= read -r _psa_line; do
-  _psa_line="${_psa_line%$'\r'}"   # CRLF: a trailing CR welds onto the regex and it matches nothing
-  case "$_psa_line" in ''|\#*) continue;; esac
-  _psa_re="${_psa_line#*$'\t'}"
-  if [ "$_psa_re" = "$_psa_line" ]; then
-    # No TAB → this row is not a pattern at all. It used to be skipped SILENTLY, so writing
-    # "HIGH zzz" with a space instead of a tab produced a detector that never existed and a scan
-    # that reported clean (cross-family audit R2, 2026-07-26). A row the author believes is
-    # protecting them, that protects nothing, is the worst state of the three — louder than absent.
-    echo "  ❌ unusable pattern row (no TAB between severity and regex):"
-    echo "       ${_psa_line}"
-    PSA_BAD=1
-    continue
-  fi
-  # grep exit codes: 0 = matched, 1 = no match (both mean the regex COMPILED), >=2 = usage/regex error.
-  # Checked against empty input so only compilability is under test, never content.
-  printf '' | grep -E "$_psa_re" >/dev/null 2>&1
-  _psa_rc=$?
-  if [ "$_psa_rc" -lt 2 ]; then
-    PSA_VALID="$PSA_VALID"$'\n'"$_psa_line"
-  else
-    echo "  ❌ unusable pattern (invalid regex) — this detector would silently match nothing:"
-    echo "       ${_psa_line%%$'\t'*}<TAB>${_psa_re}"
-    PSA_BAD=1
-  fi
-done <<PSA_VALID_EOF
-$PSA_STREAM
-PSA_VALID_EOF
-PSA_STREAM="$PSA_VALID"
-if [ -z "$(printf '%s' "$PSA_STREAM" | grep -vE '^[[:space:]]*(#|$)' || true)" ] || [ "$PSA_BAD" -eq 1 ]; then
-  # FAIL-CLOSED. Per CLAUDE.md §Irreversibility Gates — Surface-Class Degrade Invariant, an
-  # applicable check whose instrument is unavailable BLOCKS on a publish surface; it never
-  # degrades to a printed warning plus PASS. Escape hatch is the same explicit, logged channel
-  # used everywhere else — never a silent proceed.
-  if [ "$PSA_BAD" -eq 1 ]; then
-    echo "  ❌ confidentiality gate INCOMPLETE — at least one pattern row is unusable (see above)."
-  else
-    echo "  ❌ confidentiality gate INACTIVE — no usable patterns loaded in this env."
-    echo "     Expected: $PSA_DEFAULTS (committed) and/or the gitignored override."
-  fi
-  if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
-    echo "  ⚠️  proceeding with an INACTIVE/INCOMPLETE gate by PUBLIC_SURFACE_OK=1 (conscious)"
-    echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — gate inactive/incomplete" \
-      >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
-  else
-    echo "     Restore the pattern source, or PUBLIC_SURFACE_OK=1 git commit … to proceed unscanned."
-    FAILED=1
-  fi
+PSA_LIB="$REPO_ROOT/scripts/psa_scan_lib.sh"
+if [ ! -r "$PSA_LIB" ]; then
+  echo "  ❌ FAIL — scripts/psa_scan_lib.sh missing; the confidentiality scanner cannot run."
+  FAILED=1
 else
-  PSA_LEAK=0
-  while IFS= read -r -d '' f; do
-    [ -z "$f" ] && continue
-    added=$(git diff --cached -- "$f" 2>/dev/null | grep -E '^\+' | sed 's/^\+//' || true)
-    [ -z "$added" ] && continue
-    # Split-token backstop: TIGHT-join (no separator) so a token wrapped mid-word across added
-    # lines (e.g. "fh-\nbe" → "fh-be") is caught. Accepted residual (verified, not a missed fix):
-    # two whitespace-separated words can RARELY fuse into a spurious match — safe-direction (over-block)
-    # + PUBLIC_SURFACE_OK escape. A sentinel separator would close that fusion but RE-OPEN the split-catch
-    # (the more important case: real literals have no internal whitespace), so tight-join is deliberate.
-    joined=$(printf '%s' "$added" | tr -d '\n\r')
-    while IFS=$'\t' read -r sev regex; do
-      [ -z "$regex" ] && continue
-      case "$sev" in \#*) continue;; esac
-      per_line_hit=0
-      while IFS= read -r h; do
-        [ -z "$h" ] && continue
-        # EVERY match on the line, not just the first (propagation sweep, R7 audit 2026-07-26).
-        # `head -1` meant a documented placeholder earlier on a line SHIELDED a real token later on
-        # the same line: the first match was exempt, the loop moved on, and the line scanned clean.
-        # The same defect was fixed in the pre-push copy first and NOT propagated here — the exact
-        # half-fix-propagation class this session kept re-finding, committed once more while
-        # documenting it. The sweep that caught it: grep for `grep -oiE` across all three copies.
-        while IFS= read -r tok; do
-          [ -z "$tok" ] && continue
-          printf '%s' "$tok" | grep -qiE "$PSA_PLACEHOLDER" && continue
-          if [ "$sev" = "LOW" ] && psa_low_allowlisted "$f"; then continue; fi
-          echo "  ❌ $sev leak — $f: '$tok' on the public surface"
-          PSA_LEAK=1; per_line_hit=1
-        done <<PSATOK
-$(printf '%s' "$h" | grep -oiE "$regex" 2>/dev/null || true)
-PSATOK
-      done <<< "$(printf '%s\n' "$added" | grep -nIE "$regex" 2>/dev/null || true)"
-      # Split-token backstop: catch a token line-wrapped across added lines — only if the per-line
-      # pass found nothing for this pattern (avoids double-reporting the common single-line case).
-      if [ "$per_line_hit" -eq 0 ]; then
-        jtok=$(printf '%s' "$joined" | grep -oiE "$regex" 2>/dev/null | head -1 || true)
-        if [ -n "$jtok" ] && ! printf '%s' "$jtok" | grep -qiE "$PSA_PLACEHOLDER" \
-           && ! { [ "$sev" = "LOW" ] && psa_low_allowlisted "$f"; }; then
-          echo "  ❌ $sev leak (line-split) — $f: '$jtok' on the public surface"
-          PSA_LEAK=1
-        fi
-      fi
-    done <<< "$PSA_STREAM"
-  # NUL-delimited (R3, 2026-07-26): `core.quotePath=false` stops git quoting NON-ASCII names, but a
-  # path holding a backslash or a newline is STILL C-quoted, and a newline in a name breaks a
-  # line-oriented read outright. `-z` emits raw bytes with a NUL separator, which no filename can
-  # contain — the only spelling of a path that is always exact. Process substitution keeps the loop
-  # in THIS shell so PSA_LEAK survives it (a pipe would run the loop in a subshell and lose the flag,
-  # which would be a fail-open).
-  done < <(git -c core.quotePath=false diff --cached --name-only --no-renames --diff-filter=ACMR -z 2>/dev/null || true)
-  if [ "$PSA_LEAK" -eq 1 ]; then
+  . "$PSA_LIB"
+  psa_load "$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults" \
+           "${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
+  if [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
+    echo "  ⚠️  operator pattern override absent — only committed defaults active (home paths)."
+    echo "     Populate .claude/rules/.public-surface-patterns (gitignored) for company-specific tokens."
+  fi
+  if [ "$PSA_DEFAULTS_OK" -eq 0 ] || [ "$PSA_BAD_ROWS" -gt 0 ] \
+     || [ -z "$(printf '%s' "$PSA_STREAM" | grep -vE '^[[:space:]]*(#|$)' || true)" ]; then
+    echo "  ❌ confidentiality gate INACTIVE/INCOMPLETE — cannot certify a clean surface."
     if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
-      echo "  ⚠️  public-surface hit(s) allowed by PUBLIC_SURFACE_OK=1 (conscious, reviewed intent)"
-      # Audit trail (parity with below-floor-ack): record the override event (NOT the token) so the
-      # weekly audit can re-queue it. Gitignored log → no token re-leak into committed history.
-      echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — review suppressed hit(s) above" \
+      echo "  ⚠️  proceeding with an incomplete gate by PUBLIC_SURFACE_OK=1 (conscious)"
+      echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — gate inactive/incomplete" \
         >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
     else
-      echo "  Operator-private token reached the public surface. Generalize it"
-      echo "  (companion-store name → 'a private companion store'; corp-context → 'restricted/corp env';"
-      echo "   absolute home path → '~' or '{project}'), or PUBLIC_SURFACE_OK=1 git commit … for a"
-      echo "  deliberate, reviewed mention. Literal mapping lives in the gitignored pattern source."
       FAILED=1
     fi
   else
-    echo "  ✅ PASS"
+    PSA_LEAK=0
+    # NUL-delimited (regression caught by the refactor's own cross-family review): the pre-refactor
+    # loop read this list with `read -r -d ''`, and the rewrite dropped back to a line-oriented read.
+    # `core.quotePath=false` stops git quoting NON-ASCII names, but a path holding a backslash or a
+    # newline is still C-quoted or unsplittable, and the quoted spelling matches no real file — so the
+    # file scanned clean. Exactly the hole R5 closed, reopened by a refactor that claimed to change no
+    # behavior. This is why the refactor got its own adversarial pass instead of riding the earlier one.
+    while IFS= read -r -d '' f; do
+      [ -z "$f" ] && continue
+      added=$(git diff --cached -- "$f" 2>/dev/null | grep -E '^\+' | sed 's/^\+//' || true)
+      [ -z "$added" ] && continue
+      # Per-line pass, path-tagged so the LOW file allowlist applies.
+      if ! printf '%s\n' "$added" | sed "s|^|$f	|" | psa_scan_tagged; then PSA_LEAK=1; fi
+      # Split-token backstop (pre-commit ONLY — this surface is a DIFF, so a literal can be wrapped
+      # mid-word across two added lines and neither line matches). TIGHT-join, no separator, so
+      # "fh-\nbe" becomes "fh-be". Accepted residual, verified not a missed fix: two whitespace-
+      # separated words can RARELY fuse into a spurious match — safe direction (over-block) with the
+      # PUBLIC_SURFACE_OK escape. A sentinel separator would close the fusion but RE-OPEN the split
+      # catch, which is the more important case since real literals have no internal whitespace.
+      joined=$(printf '%s' "$added" | tr -d '\n\r')
+      if ! printf '%s\t%s\n' "$f" "$joined" | psa_scan_tagged >/dev/null 2>&1; then
+        # Only report if the per-line pass did not already flag this file, to avoid double-reporting.
+        if ! printf '%s\n' "$added" | sed "s|^|$f	|" | psa_scan_tagged >/dev/null 2>&1; then :; else
+          printf '%s\t%s\n' "$f" "$joined" | psa_scan_tagged | sed 's/leak —/leak (line-split) —/'
+          PSA_LEAK=1
+        fi
+      fi
+    done < <(git -c core.quotePath=false diff --cached --name-only --no-renames --diff-filter=ACMR -z 2>/dev/null || true)
+    if [ "$PSA_LEAK" -eq 1 ]; then
+      if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
+        echo "  ⚠️  public-surface hit(s) allowed by PUBLIC_SURFACE_OK=1 (conscious, reviewed intent)"
+        echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — review suppressed hit(s) above" \
+          >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+      else
+        echo "  Operator-private token reached the public surface. Generalize it (companion-store name"
+        echo "  → 'a private companion store'; corp-context → 'restricted/corp env'; absolute home path"
+        echo "  → '~' or '{project}'), or PUBLIC_SURFACE_OK=1 git commit … for a reviewed mention."
+        FAILED=1
+      fi
+    else
+      echo "  ✅ PASS"
+    fi
   fi
 fi
 }

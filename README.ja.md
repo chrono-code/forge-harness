@@ -198,7 +198,7 @@ FH_BACKEND=auto npx --package @chrono-meta/fh-gate fh-gate "src/foo.ts" full
 # → FH_GATE_VERDICT: PASS | PENDING | BLOCKED | ESCALATE
 ```
 
-`fh-gate` は両ランタイムに同じ FH ガバナンスプロンプトを使います。`FH_BACKEND=claude` は `claude --print` を、`FH_BACKEND=codex` は `codex exec` を実行し、`FH_BACKEND=auto` は両 CLI が揃っていれば Codex を優先します。
+`fh-gate` は両ランタイムに同じ FH ガバナンスプロンプトを使います。`FH_BACKEND=claude` は `claude --print` を、`FH_BACKEND=codex` は `codex exec` を実行し、`FH_BACKEND=auto` は両 CLI が揃っていれば Codex を優先します — ただし `auto` はフォールバック*選択*であり、レグは 1 つだけ走ります。`FH_BACKEND=cross` は両ファミリーを走らせて findings を union します(一方だけが見つけた指摘も指摘なので、投票ではなく union)。判定はレグ中で最も重いものです。コストは約 2 倍なので既定ではなく、判定・ゲート・不可逆な面の変更に使います。出力は実際に走ったレグを常に明示します(`FH_GATE_LEGS:`、`FH_GATE_DECORRELATED:`) — 片方のファミリーしかない環境では単一レグに縮退し、その事実を明記します。
 
 Claude Code の外でスキルやエージェントを直接実行するには `fh-run` を使います:
 

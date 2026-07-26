@@ -34,7 +34,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 cat >/dev/null   # consume the prompt on stdin
-[ -n "$out" ] && printf '%s' "$FAKE_PAYLOAD" > "$out"
+[ -n "$out" ] && printf '%s' "${FAKE_PAYLOAD_CODEX:-$FAKE_PAYLOAD}" > "$out"
 exit 0
 FAKE
 chmod +x "$FAKEBIN/codex"
@@ -47,7 +47,7 @@ cat > "$FAKEBIN/claude" <<'FAKE'
 #!/usr/bin/env bash
 cat >/dev/null   # consume the prompt on stdin
 if [ -n "${FAKE_ENVELOPE:-}" ]; then printf '%s\n' "$FAKE_ENVELOPE"; exit 0; fi
-printf '{"is_error":false,"subtype":"success","structured_output":%s}\n' "$FAKE_PAYLOAD"
+printf '{"is_error":false,"subtype":"success","structured_output":%s}\n' "${FAKE_PAYLOAD_CLAUDE:-$FAKE_PAYLOAD}"
 exit 0
 FAKE
 chmod +x "$FAKEBIN/claude"
@@ -200,6 +200,50 @@ printf '#!/usr/bin/env bash\nexit 1\n' > "$NOENT/openssl"; chmod +x "$NOENT/open
 printf '#!/usr/bin/env bash\nexit 1\n' > "$NOENT/od";      chmod +x "$NOENT/od"
 check "no CSPRNG (openssl+od stubbed to fail) → fails closed" 10 \
   env PATH="$NOENT:$PATH" FH_DRY_RUN=1 bash "$GATE" "package.json" quick test
+
+echo
+echo "── FH_BACKEND=cross (decorrelated review) ──"
+# cross runs BOTH families and UNIONs. `auto` is fallback SELECTION and runs one leg; conflating the
+# two would let a single-family verdict read as decorrelated, which is the defect class this mode
+# exists to remove. These pairs pin: the union verdict, the leg accounting, and — most importantly —
+# that a degraded (single-leg) run says so in machine-readable form.
+CROSS_PASS='{"status":"SUCCESS","verdict":"PASS","findings_count":0,"findings_a":0,"findings_b":0,"findings":[]}'
+CROSS_BLOCK='{"status":"SUCCESS","verdict":"BLOCKED","findings_count":1,"findings_a":1,"findings_b":0,"findings":[{"grade":"A","location":"x:1","title":"t","evidence":"e","fix":"f"}]}'
+
+check_out() {  # <name> <expected-exit> <grep-ere that MUST appear> -- <cmd...>
+  local name="$1" expect="$2" want="$3"; shift 3
+  local got
+  "$@" >"$TMPROOT/out" 2>"$TMPROOT/err"; got=$?
+  if [ "$got" -eq "$expect" ] && grep -qE "$want" "$TMPROOT/out"; then
+    printf 'PASS  %-58s (exit %s)\n' "$name" "$got"; pass=$((pass + 1))
+  else
+    printf 'FAIL  %-58s expected %s + /%s/, got %s\n' "$name" "$expect" "$want" "$got"
+    sed 's/^/        /' "$TMPROOT/out" | head -4; sed 's/^/        /' "$TMPROOT/err" | head -2
+    fail=$((fail + 1))
+  fi
+}
+run_cross() {  # <claude-payload> <codex-payload>
+  env PATH="$FAKEBIN:$PATH" FH_BACKEND=cross FH_MODEL=fake \
+      FAKE_PAYLOAD_CLAUDE="$1" FAKE_PAYLOAD_CODEX="$2" FAKE_PAYLOAD="$1" \
+      bash "$GATE" "package.json" quick test
+}
+
+check_out "cross: both PASS → PASS, decorrelated" 0 'FH_GATE_DECORRELATED: yes' \
+  run_cross "$CROSS_PASS" "$CROSS_PASS"
+# UNION, not vote: one leg blocking is enough. A majority rule would discard precisely the finding
+# only the other family saw, which is the entire point of running two.
+check_out "cross: one leg BLOCKED → union BLOCKED" 2 'FH_GATE_VERDICT: BLOCKED' \
+  run_cross "$CROSS_PASS" "$CROSS_BLOCK"
+check_out "cross: both legs' findings survive the union" 2 'FH_GATE_LEGS: claude,codex' \
+  run_cross "$CROSS_BLOCK" "$CROSS_BLOCK"
+# A machine with only one family is the COMMON case, not an edge case. It must not be silent.
+ONELEG="$TMPROOT/oneleg"; mkdir -p "$ONELEG"; cp "$FAKEBIN/claude" "$ONELEG/claude"
+check_out "cross: codex absent → single leg, DECORRELATED: no" 0 'FH_GATE_DECORRELATED: no' \
+  env PATH="$ONELEG:/usr/bin:/bin" FH_BACKEND=cross FH_MODEL=fake \
+      FAKE_PAYLOAD_CLAUDE="$CROSS_PASS" FAKE_PAYLOAD="$CROSS_PASS" \
+      bash "$GATE" "package.json" quick test
+check "cross: no family available → fails closed" 10 \
+  env PATH="/usr/bin:/bin" FH_BACKEND=cross bash "$GATE" "package.json" quick test
 
 echo
 echo "────────────────────────────────────────────────────────────────────"

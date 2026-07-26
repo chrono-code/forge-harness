@@ -57,6 +57,8 @@ newrepo() {  # echoes a fresh repo path with the pattern layers in place and one
   printf '.claude/rules/.public-surface-patterns\n' > "$d/.gitignore"
   printf 'HIGH\tzzsynthoperator\n' > "$d/.claude/rules/.public-surface-patterns"
   cp "$HOOK" "$d/templates/.git-hooks/pre-push"
+  mkdir -p "$d/scripts"
+  cp "$REPO_ROOT/scripts/psa_scan_lib.sh" "$d/scripts/psa_scan_lib.sh"
   ( cd "$d" && git init -q -b main && git config user.email t@example.com && git config user.name t \
     && git add -A >/dev/null 2>&1 && git commit -qm base >/dev/null 2>&1 ) || return 1
   printf '%s' "$d"
@@ -77,8 +79,19 @@ check() {
   # A hook killed by a signal, or one that dies printing nothing, produces no fault TEXT — the grep
   # above cannot see it, and rc alone would score it as a pass (R7 audit, 2026-07-26). So a `pass`
   # additionally requires the leg's own marker line: proof it ran to the point of making a claim.
+  # "It blocked" is not the same as "it blocked correctly". A missing dependency, an unreadable
+  # file, or any harness error also exits non-zero — and every BLOCK pair would score green while
+  # the gate was actually broken. (Observed: after the scan logic moved into a shared library, the
+  # sandbox repos lacked it, so 6 of 8 BLOCK pairs still "passed" — for the wrong reason.) A block
+  # therefore has to name a confidentiality cause.
   if [ "$rc" -ne 0 ]; then
-    got=block
+    if printf '%s' "$out" | grep -qE '(leak —|leak in pushed|incomplete confidentiality instrument|unusable pattern)'; then
+      got=block
+    else
+      echo "  ❌ $name — blocked, but for a HARNESS reason, not a confidentiality finding"
+      printf '%s\n' "$out" | sed 's/^/       | /' | head -6
+      FAILED=1; return
+    fi
   elif printf '%s' "$out" | grep -qF 'FH Pre-Publish'; then
     got=pass
   else
