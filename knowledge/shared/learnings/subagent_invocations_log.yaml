@@ -510,3 +510,11 @@
   findings: "NOT-CONVERGED, 40건. 앞 두 레그 미검출 3건: ①Step 4 산술 기준선 혼용(+3,218 오류→+2,687) ②P-2의 실제 근거=leak-gate.sh:80 `2>/dev/null || true` 에러삼킴(깨진 정규식→PASS, 실험 재현) ③'exit code뿐'은 오독(core/20이 판단기반 평가 요구)"
   verdict_holder: governor (3건 모두 재계산·실험·소스로 독립 확인 후 수용)
   note: "1·2차 실패=MCP auth stall / DNS 없는 샌드박스의 웹페치 반복. 인라인 후 3레그 중 최강 결과 — 품질이 티어가 아니라 증거접근에 지배됨. 단 조건이 달라 모델비교 아님"
+- date: 2026-07-26
+  agent: codex sidecar (gpt-5.6-sol, exec stdin)
+  caller: fh-governor (4축 Axis 2 — SKILL_detail 게이트 수리 diff 적대 검토, leg 2)
+  task: 게이트 diff 5벡터 공격(불완전성·회귀·앵커견고성·fail-open·자기무력화)
+  outcome: partial
+  findings: "형식 findings 0건(미착지). 다만 탐색 중 dialogue-harvest/calibration_pair.md 를 **독립 발견** — governor 의 열거 스윕이 잡은 동일 파일이며, 수리 방향(이름목록→디렉토리 스코프)의 독립 확증"
+  verdict_holder: governor (Axis 2 는 agy 레그로 성립, codex 미착지를 마커에 잔여 명시)
+  note: "hang 아님 — mtime 69초 전·내용 진행형(detail 17개 frontmatter 순차 열람) 확인 후 판정. 실제 문제는 **과탐색**: ~7분간 findings 0. 증거접근을 준 것이 이번엔 역효과(레포를 읽을 수 있으니 계속 읽음). 운영자 판단으로 kill. 교훈: 사이드카에 소스 접근을 줄 때는 **탐색 예산**도 같이 줘야 한다 — 접근권만 주면 수렴 압력이 없다"
