@@ -116,8 +116,25 @@ done
 # instrument BLOCKS here, whereas the same state only warns at commit time (a commit is local and
 # re-committable, and the operator override is gitignored — absent on every fresh clone by
 # construction, so blocking there would train the override into a reflex).
+# APPLICABILITY FIRST, before anything is required to exist. The mechanical test for "is this an FH
+# checkout at all" is the COMMITTED pattern source; a bare repo with this hook copied into it (this
+# repo's own selfcheck fixture is exactly that) has neither the patterns nor the library, and demanding
+# them there is over-blocking, not fail-closed. Deleting the defaults to reach this state is not a free
+# bypass — it is a commit against a .claude/rules/ path, which the commit gate treats as HEAVY and
+# universal_guard_check pins in both directions.
 PSA_LIB="$REPO_ROOT/scripts/psa_scan_lib.sh"
-if [ ! -r "$PSA_LIB" ]; then
+_PP_APPLICABLE=1
+if [ ! -e "$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults" ]; then
+  _PP_APPLICABLE=0
+fi
+if [ "$_PP_APPLICABLE" -eq 0 ]; then
+  # An inapplicable check must SAY it is inapplicable. A silent skip is indistinguishable from a
+  # check that aborted, and "skipped" reading as "passed" is the defect class this whole gate exists
+  # to remove — including when the skip is correct.
+  echo "  ⏭️  FH Pre-Publish: N/A — no committed pattern source in this repo (not an FH checkout)"
+elif [ ! -r "$PSA_LIB" ]; then
+  # The pattern source IS here, so this IS an FH checkout — a missing library is then a broken
+  # instrument on a publish surface, not an inapplicable one.
   echo "  ❌ scripts/psa_scan_lib.sh missing — the confidentiality scanner cannot run."
   [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] || { echo "     Fail-closed on the publish boundary."; exit 1; }
 else
@@ -125,11 +142,31 @@ else
   psa_load "$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults" \
            "${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
 
-  # Instrument completeness. Three distinct incomplete states, all blocking here.
+  # Instrument completeness — and a CORRECTION to how this was first written (2026-07-26).
+  #
+  # The first version blocked on an absent operator override. Two things then showed that was wrong:
+  # this repo's own selfcheck flagged it as over-blocking (T7: a feature-branch push blocked → "guard
+  # over-fires; that trains the override"), and the reasoning did not survive re-examination. The
+  # override holds THIS operator's literals. Another environment lacking it is not thereby unprotected
+  # against ITS OWN leaks — those literals were never in the file. The earlier argument (npm publish is
+  # not a backstop for a public git push) was right about the gap and wrong about the fix: the thing
+  # that actually protects a fresh clone is GENERIC credential shapes in the COMMITTED layer, which is
+  # exactly what was added to the defaults in the same session. So:
+  #   override absent  → WARN (a per-operator configuration a fresh clone legitimately lacks)
+  #   defaults broken  → BLOCK (the shipped universal patterns are gone; that affects everyone)
+  #
+  # Applicability is mechanical, not self-judged (CLAUDE.md §Surface-Class Degrade Invariant): if the
+  # COMMITTED defaults file does not exist at all, this is not an FH repo and the confidentiality legs
+  # do not apply — a bare repo with this hook copied in is not a publish surface this gate knows how to
+  # reason about. Deleting the file to reach that state is not a free bypass: it is a commit against a
+  # .claude/rules/ path, which the commit gate treats as HEAVY and universal_guard_check pins.
   _pp_why=""
-  [ "$PSA_DEFAULTS_OK" -eq 0 ]      && _pp_why="committed pattern defaults missing/unreadable/empty"
-  [ "$PSA_BAD_ROWS" -gt 0 ]         && _pp_why="${_pp_why:+$_pp_why; }$PSA_BAD_ROWS unusable pattern row(s)"
-  [ "$PSA_OVERRIDE_PRESENT" -eq 0 ] && _pp_why="${_pp_why:+$_pp_why; }operator-literal override absent/empty (HIGH company/companion literals unscanned)"
+  [ "$_PP_APPLICABLE" -eq 1 ] && [ "$PSA_DEFAULTS_OK" -eq 0 ] && _pp_why="committed pattern defaults unreadable/empty"
+  [ "$_PP_APPLICABLE" -eq 1 ] && [ "$PSA_BAD_ROWS" -gt 0 ]    && _pp_why="${_pp_why:+$_pp_why; }$PSA_BAD_ROWS unusable pattern row(s)"
+  if [ "$_PP_APPLICABLE" -eq 1 ] && [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
+    echo "  ⚠️  operator-literal override absent — only the committed defaults (home paths + credential"
+    echo "     shapes) are active. Populate .claude/rules/.public-surface-patterns for company literals."
+  fi
   if [ -n "$_pp_why" ]; then
     if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
       echo "  ⚠️  FH Pre-Publish: INCOMPLETE confidentiality instrument allowed by PUBLIC_SURFACE_OK=1"
@@ -157,7 +194,7 @@ else
   # diff: a token added and later removed still ships inside the pushed history. Lines are tagged
   # with their path so the LOW file allowlist can apply (flattening them is what made this leg block
   # its own first real push on a companion-store name inside the sync script itself).
-  if [ -n "$PUSH_RANGES" ]; then
+  if [ -n "$PUSH_RANGES" ] && [ "$_PP_APPLICABLE" -eq 1 ]; then
     _pp_count=0; _pp_added=""; _pp_err=0
     while IFS= read -r _rg; do
       [ -z "$_rg" ] && continue
@@ -223,7 +260,10 @@ LBR
 _LB_FILES=$(printf '%s\n' "$_LB_RAW" \
   | grep -E '(templates/\.git-hooks/|scripts/(fh-gate|degrade_direction_scan|universal_guard_check|public_surface_scan_files|gate_pathspec_check|predelete_check)\.sh|\.claude/rules/\.public-surface-patterns)' \
   | sort -u || true)
-if [ -n "$PUSH_RANGES" ] && [ -n "$_LB_FILES" ]; then
+# Also FH-dev-scoped: the marker this requires lives in tracks/_meta, which only an FH checkout has.
+# An outside contributor pushing a gate file cannot produce an FH marker, and blocking them would make
+# the repo hostile to contribution while protecting nothing they could act on.
+if [ -n "$PUSH_RANGES" ] && [ -n "$_LB_FILES" ] && [ -d "$REPO_ROOT/tracks/_meta" ]; then
   _cf_marker=$(ls -t "$REPO_ROOT"/tracks/_meta/.axes_23_passed_*.marker 2>/dev/null | head -1)
   _cf_line=$(grep -m1 -E '^[[:space:]]*crossfamily:[[:space:]]*[^[:space:]]' "$_cf_marker" 2>/dev/null || true)
   if [ -z "$_cf_line" ]; then
