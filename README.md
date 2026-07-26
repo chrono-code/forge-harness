@@ -209,7 +209,7 @@ FH_BACKEND=auto npx --package @chrono-meta/fh-gate fh-gate "src/foo.ts" full
 # → FH_GATE_VERDICT: PASS | PENDING | BLOCKED | ESCALATE
 ```
 
-`fh-gate` uses the same FH governance prompt for both runtimes. `FH_BACKEND=claude` runs `claude --print`; `FH_BACKEND=codex` runs `codex exec`; `FH_BACKEND=auto` prefers Codex when both CLIs are present.
+`fh-gate` uses the same FH governance prompt for both runtimes. `FH_BACKEND=claude` runs `claude --print`; `FH_BACKEND=codex` runs `codex exec`; `FH_BACKEND=auto` prefers Codex when both CLIs are present — note that `auto` is fallback *selection*: it runs ONE leg. `FH_BACKEND=cross` runs BOTH families and unions their findings (a finding only one family saw is still a finding, so it unions rather than votes); the verdict is the most severe across legs. It costs ~2x, so it is for load-bearing verdict/gate/irreversible-surface changes, not a default. The output always declares which legs actually ran (`FH_GATE_LEGS:`, `FH_GATE_DECORRELATED:`) — on a machine with only one family, `cross` degrades to that single leg and says so, because a single-family result that reads as cross-checked is worse than an honest one.
 
 For direct skill or agent execution outside Claude Code, use `fh-run`:
 

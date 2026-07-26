@@ -73,8 +73,13 @@ DEFAULTS="$SANDBOX/.defaults-under-test"
 git -C "$SANDBOX" init -q 2>/dev/null
 git -C "$SANDBOX" config user.email "test@example.com"
 git -C "$SANDBOX" config user.name "test"
-mkdir -p "$SANDBOX/.claude/rules"
+mkdir -p "$SANDBOX/.claude/rules" "$SANDBOX/scripts"
 cp "$DEFAULTS" "$SANDBOX/.claude/rules/.public-surface-patterns.defaults"
+# The hook now sources the shared scan library, so the sandbox needs it too. When it was missing,
+# the gate correctly failed closed — and 3 of the "clean" pairs still scored PASS because the oracle
+# below did not recognise "scanner cannot run" as a not-armed state. Both were fixed together.
+cp "$REPO_ROOT/scripts/psa_scan_lib.sh" "$SANDBOX/scripts/psa_scan_lib.sh" 2>/dev/null \
+  || { echo "❌ FAIL — scripts/psa_scan_lib.sh missing — fail-closed."; exit 1; }
 # An initial commit so the hook's staged-vs-HEAD steps have a HEAD to diff against. Without it
 # they emit "fatal: ambiguous argument 'HEAD'" — harmless to the verdicts here, but noise in a
 # check whose whole job is to make a real signal legible.
@@ -108,7 +113,7 @@ run_case() {
     # hook to have actually blocked.
     if [ "$rc" -ne 0 ]; then hasleak=leak; else hasleak=leak-printed-but-NOT-blocked; fi
   elif printf '%s' "$out" | grep -qF '[Confidentiality] public-surface scan'; then
-    if printf '%s' "$out" | grep -qE '(INACTIVE|INCOMPLETE|unusable pattern)'; then
+    if printf '%s' "$out" | grep -qE '(INACTIVE|INCOMPLETE|unusable pattern|cannot run|scanner cannot)'; then
       hasleak=inconclusive-gate-not-armed
     else
       hasleak=clean
@@ -228,6 +233,14 @@ run_case "non-ASCII filename, credential  → BLOCK" \
          "유출.md" "aws = $AWS_FIXTURE" "leak"
 run_case "non-ASCII filename, clean       → PASS " \
          "유출.md" "평범한 문서, 비밀 없음" "clean"
+
+# ── Pair 8-b: a C-QUOTED path (backslash in the name). `core.quotePath=false` handles non-ASCII,
+# but git still C-quotes a backslash, and a quoted spelling matches no real file — so the file was
+# never scanned. R5 closed this with NUL-delimited iteration; a later refactor silently reverted the
+# loop to a line-oriented read and reopened it, which its own cross-family pass caught. Pinned so the
+# next refactor cannot revert it quietly.
+run_case "backslash in filename, credential → BLOCK" \
+         'back\slash.md' "aws = $AWS_FIXTURE" "leak"
 
 # ── Pair 9: rename-AWAY of the protected file. `git mv`-ing the hook out of its gated path used to
 # report only the DESTINATION, so the classifier saw no gate edit and the anchor fell back to the

@@ -59,12 +59,86 @@ FH_TASK_DESCRIPTION="${FH_TASK_DESCRIPTION:-}"
 FH_DIFF_PATH="${FH_DIFF_PATH:-}"
 
 case "$FH_BACKEND" in
-  claude|codex|auto) ;;
+  claude|codex|auto|cross) ;;
   *)
-    echo "ERROR: FH_BACKEND must be 'claude', 'codex', or 'auto' (got: $FH_BACKEND)" >&2
+    echo "ERROR: FH_BACKEND must be 'claude', 'codex', 'auto', or 'cross' (got: $FH_BACKEND)" >&2
     exit $EXIT_ARG_ERROR
     ;;
 esac
+
+# ── FH_BACKEND=cross — decorrelated review (2026-07-26) ───────────────────────────────────────
+# `auto` is a FALLBACK: it picks codex if present, else claude, and runs ONE leg. That is backend
+# SELECTION, not decorrelation. A same-family reviewer shares the author's optimistic reading, which
+# is the failure mode the FH load-bearing gate exists to catch — and a 7-round cross-family audit of
+# that gate found 30 issues an in-family pass had not.
+#
+# `cross` runs BOTH families and UNIONs their findings. Union, not vote: detection is the task, and a
+# finding only one leg saw is still a finding (majority voting would discard exactly the decorrelated
+# signal this mode is for). The verdict is the most severe across legs.
+#
+# THE INVARIANT THAT MATTERS MOST: the output declares WHICH LEGS ACTUALLY RAN (`FH_GATE_LEGS:`).
+# `cross` is a REQUEST, not a guarantee — a machine may have only one family installed. When a leg is
+# unavailable or errors, this degrades to the surviving leg and SAYS SO, loudly, in both the human and
+# the machine-readable output. A single-leg result that reads as if it were cross-checked is the same
+# class of defect as a check that did not run reading as PASS.
+#
+# COST: cross is ~2x. It is deliberately NOT a default — [[feedback_decorrelation_not_fanout_cost_boundary]]
+# says match the parallelisation axis to the failure mode rather than multiply. Callers should request
+# it for load-bearing verdict/gate/irreversible-surface changes, which is exactly the trigger the
+# pre-commit load-bearing leg already computes.
+if [[ "$FH_BACKEND" == "cross" ]]; then
+  _CROSS_LEGS=""; _CROSS_OUT=""; _CROSS_WORST="PASS"; _CROSS_RAN=0; _CROSS_ERR=""
+  _sev_rank() { case "$1" in PASS) echo 0 ;; PENDING) echo 1 ;; ESCALATE) echo 2 ;; BLOCKED) echo 3 ;; *) echo -1 ;; esac; }
+  for _leg in claude codex; do
+    command -v "$_leg" >/dev/null 2>&1 || { _CROSS_ERR="${_CROSS_ERR}${_CROSS_ERR:+, }$_leg (not installed)"; continue; }
+    # `set -e` is on: an assignment from a command substitution carries the child's exit status, and
+    # this child EXITS NON-ZERO BY DESIGN for every non-PASS verdict (PENDING 1 / BLOCKED 2 /
+    # ESCALATE 3). Written bare, the first leg that found anything would kill the whole cross run —
+    # i.e. cross would work only when there was nothing to find. `|| _legrc=$?` keeps the status
+    # without letting it abort. Verified against a BLOCKED leg, not assumed.
+    _legrc=0
+    _legout=$(FH_BACKEND="$_leg" "$0" "$@" 2>/dev/null) || _legrc=$?
+    if [ "$_legrc" -ge 10 ]; then
+      _CROSS_ERR="${_CROSS_ERR}${_CROSS_ERR:+, }$_leg (harness error $_legrc)"; continue
+    fi
+    _legverdict=$(printf '%s' "$_legout" | grep -m1 '^FH_GATE_VERDICT:' | awk '{print $2}')
+    [ -z "$_legverdict" ] && { _CROSS_ERR="${_CROSS_ERR}${_CROSS_ERR:+, }$_leg (no verdict line)"; continue; }
+    _CROSS_RAN=$((_CROSS_RAN+1))
+    _CROSS_LEGS="${_CROSS_LEGS}${_CROSS_LEGS:+,}$_leg"
+    [ "$(_sev_rank "$_legverdict")" -gt "$(_sev_rank "$_CROSS_WORST")" ] && _CROSS_WORST="$_legverdict"
+    _CROSS_OUT="${_CROSS_OUT}
+# ── leg: $_leg (verdict $_legverdict) ──
+$(printf '%s' "$_legout" | sed -n '/^---$/,$p')"
+  done
+
+  if [ "$_CROSS_RAN" -eq 0 ]; then
+    echo "ERROR: FH_BACKEND=cross — no leg produced a verdict (${_CROSS_ERR:-none available}). Failing closed." >&2
+    exit $EXIT_HARNESS_ERROR
+  fi
+
+  printf 'FH_STATUS: SUCCESS\n'
+  printf 'FH_GATE_VERDICT: %s\n' "$_CROSS_WORST"
+  printf 'FH_GATE_MODE: cross\n'
+  printf 'FH_GATE_LEGS: %s\n' "$_CROSS_LEGS"
+  if [ "$_CROSS_RAN" -lt 2 ]; then
+    # Degraded, and it must be impossible to mistake this for a two-family result.
+    printf 'FH_GATE_DECORRELATED: no\n'
+    printf 'FH_GATE_DEGRADED: %s\n' "$_CROSS_ERR"
+    echo "WARN: FH_BACKEND=cross ran a SINGLE leg ($_CROSS_LEGS) — $_CROSS_ERR." >&2
+    echo "      This verdict is NOT decorrelated. Treat it as $_CROSS_LEGS alone." >&2
+  else
+    printf 'FH_GATE_DECORRELATED: yes\n'
+  fi
+  printf '%s\n' "$_CROSS_OUT"
+  echo "→ fh-gate: cross mode — legs [$_CROSS_LEGS], union verdict $_CROSS_WORST" >&2
+  case "$_CROSS_WORST" in
+    PASS)     exit $EXIT_PASS ;;
+    PENDING)  exit $EXIT_PENDING ;;
+    BLOCKED)  exit $EXIT_BLOCKED ;;
+    ESCALATE) exit $EXIT_ESCALATE ;;
+    *)        exit $EXIT_HARNESS_ERROR ;;
+  esac
+fi
 
 # FH_TIMEOUT lands in command position via the unquoted ${_TIMEOUT_CMD} idiom below.
 # `timeout DURATION COMMAND [ARG]...` treats the word after the duration as the command,
