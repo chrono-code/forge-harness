@@ -1,6 +1,6 @@
 ---
 name: salience-splitter
-description: Splits an over-loaded always-loaded context asset — a SKILL.md, CLAUDE.md, or memory index — into a lean always-loaded layer + an on-demand layer, using a governance-semantic criterion (not length, but when the content is needed), connected by imperative pointers. Based on paper §9.5 Protocol-Priority Split pattern. Diagnoses, classifies, splits, and verifies in one pass. Renamed from skill-splitter (old name still routes here). Triggers: "SKILL.md too large", "split this skill", "skill is bloated", "skill file too long", "CLAUDE.md 너무 커".
+description: 'Splits an over-loaded always-loaded context asset — a SKILL.md, CLAUDE.md, or memory index — into a lean always-loaded layer + an on-demand layer, using a governance-semantic criterion (not length, but when the content is needed), connected by imperative pointers. Based on paper §9.5 Protocol-Priority Split pattern. Diagnoses, classifies, splits, and verifies in one pass. Renamed from skill-splitter (old name still routes here). Triggers: "SKILL.md too large", "split this skill", "skill is bloated", "skill file too long", "CLAUDE.md 너무 커".'
 user-invocable: true
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: sonnet

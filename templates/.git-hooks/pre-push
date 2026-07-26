@@ -41,6 +41,7 @@ set -uo pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -z "$REPO_ROOT" ] && { echo "  ❌ pre-push: not in a git repo — fail-closed (block)"; exit 1; }
 ZERO="0000000000000000000000000000000000000000"
+PUSH_REMOTE="${1:-origin}"   # git passes the remote NAME as $1; ranges are scoped to it (see below)
 BASE="${FH_DESTRUCTIVE_BASE:-origin/main}"
 # All ancestry/reachability checks below must ignore local `git replace`/graft objects — a graft can
 # falsify merge-base/rev-list/ls-tree to make a divergent force look fast-forward or an unmerged branch
@@ -53,6 +54,10 @@ DEL_OTHER=""      # refs/tags/* refs/notes/* etc. being deleted
 FORCED_REFS=""
 UNCLASSIFIED=""   # force-check impossible (remote tip not fetched)
 DIRECT_MAIN=""    # non-delete update pushed straight at the integration branch (PR-only policy)
+SEP=$'\n'   # ranges are newline-separated and evaluated ONE REF AT A TIME: concatenating
+            # them into one arg string let `--not` from ref A flip polarity for ref B, so a
+            # multi-ref push could return an empty or wrong commit set (R6 audit 2026-07-26).
+PUSH_RANGES=""    # rev-list args for exactly the commits this push would publish (R5 audit 2026-07-26)
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -z "${remote_ref:-}" ] && continue
@@ -85,9 +90,257 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     case "$remote_ref" in
       refs/heads/main|refs/heads/master) DIRECT_MAIN="$DIRECT_MAIN $remote_ref" ;;
     esac
+    # The EXACT set of commits this push publishes. Previously the load-bearing check guessed with
+    # HEAD~1..HEAD, which missed a multi-commit first push whose gate edit was not the tip (R5 audit).
+    # New branch (remote_sha ZERO) → everything not already on some remote, not the whole history.
+    if [ "${remote_sha:-$ZERO}" = "$ZERO" ]; then
+      # Scope the exclusion to the remote being pushed TO. `--not --remotes` excludes commits
+      # reachable from ANY remote, so a new branch whose commits already sit on a DIFFERENT remote
+      # (a fork, a mirror, a company GHE alongside the public origin) produced an EMPTY range —
+      # nothing scanned, clean line printed, and the push published them here for the first time
+      # (R7 audit, 2026-07-26). $1 is the remote name git passes to this hook.
+      PUSH_RANGES="${PUSH_RANGES}${PUSH_RANGES:+$SEP}$local_sha --not --remotes=${PUSH_REMOTE}"
+    else
+      PUSH_RANGES="${PUSH_RANGES}${PUSH_RANGES:+$SEP}${remote_sha}..${local_sha}"
+    fi
   fi
   # remote_sha == ZERO → creating a new branch (not destructive) → ignore
 done
+
+# ── Confidentiality instrument completeness — at the PUBLISH boundary ─────────────
+# WHY HERE AND NOT AT COMMIT (cross-family audit R4, 2026-07-26 — a REFUTATION that was itself
+# refuted, and the correction is the interesting part):
+#   The pre-commit confidentiality scan only WARNS when the gitignored operator-literal override is
+#   absent, while the npm publish scan BLOCKS on the same state. That asymmetry was defended on the
+#   grounds that the override is absent on every fresh clone and CI runner by construction, so
+#   blocking at commit would block every such environment's first commit and train the override
+#   into a reflex. That part still holds. What the defence MISSED: it named `npm publish` as the
+#   backstop, but this repo is PUBLIC — `git push` is the moment content becomes public, and the
+#   npm gate never sees it. So a contributor with their own private tokens and no override could
+#   push a HIGH literal to a public repo with nothing downstream to catch it.
+#   The resolution is neither "warn forever" nor "block every commit": put the fail-closed at the
+#   boundary that actually publishes. A push is rare and deliberate; a commit is constant and local.
+# Scope honesty: this checks the INSTRUMENT is complete, not that the content is clean — the content
+# scan itself runs per-commit. An incomplete instrument cannot certify a clean surface.
+PSA_DEFAULTS_PP="$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults"
+PSA_OVERRIDE_PP="${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
+_pp_ok=1
+if [ ! -r "$PSA_DEFAULTS_PP" ] \
+   || [ -z "$(grep -vE '^[[:space:]]*(#|$)' "$PSA_DEFAULTS_PP" 2>/dev/null || true)" ]; then
+  _pp_ok=0; _pp_why="committed pattern defaults missing/unreadable/empty"
+elif [ ! -r "$PSA_OVERRIDE_PP" ] \
+   || [ -z "$(grep -vE '^[[:space:]]*(#|$)' "$PSA_OVERRIDE_PP" 2>/dev/null || true)" ]; then
+  _pp_ok=0; _pp_why="operator-literal override absent/empty (HIGH company/companion literals unscanned)"
+fi
+if [ "$_pp_ok" -eq 0 ]; then
+  if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
+    echo "  ⚠️  FH Pre-Publish: pushing with an INCOMPLETE confidentiality instrument by PUBLIC_SURFACE_OK=1"
+    echo "      ($_pp_why)"
+    printf '%s PUBLIC_SURFACE_OK override (git push, incomplete instrument: %s)\n' \
+      "$(date +%Y-%m-%dT%H:%M:%S)" "$_pp_why" \
+      >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+  else
+    echo ""
+    echo "══════════════════════════════════════════════"
+    echo " ⛔ FH Pre-Publish Gate (pre-push) — incomplete confidentiality instrument"
+    echo "══════════════════════════════════════════════"
+    echo "  $_pp_why"
+    echo ""
+    echo "  A push makes content public. The per-commit scan only WARNED about this state, and the"
+    echo "  npm publish scan never sees a git push — so this is the boundary that must hold."
+    echo ""
+    echo "  Populate .claude/rules/.public-surface-patterns (gitignored, operator literals),"
+    echo "  or push consciously:  PUBLIC_SURFACE_OK=1 git push …"
+    echo "══════════════════════════════════════════════"
+    exit 1
+  fi
+fi
+
+# ── Confidentiality CONTENT scan on exactly what this push publishes ──────────────
+# The block above verifies the INSTRUMENT is complete. It does not look at the content, and the
+# per-commit scan is not a backstop for a push: pre-commit may never have been installed, may have
+# been bypassed with --no-verify, or the commits may predate the scan entirely. Measured (R5 audit,
+# 2026-07-26): a `ghp_…` committed into README.md pushed to a new public branch exited 0 with both
+# pattern layers present. The commit gate is per-commit; the PUSH is the act that publishes, so the
+# content check has to exist here too — the same reasoning that moved the instrument check here.
+# Scans ADDED lines of every commit this push would publish (not the net diff: a token added and
+# later removed still ships in the pushed history).
+if [ -n "$PUSH_RANGES" ] && [ "$_pp_ok" -eq 1 ]; then
+  _pp_stream=$(cat "$PSA_DEFAULTS_PP" 2>/dev/null; cat "$PSA_OVERRIDE_PP" 2>/dev/null)
+  _pp_placeholder='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxxx|/Users/(EXAMPLE|yourname|\{[a-z_]+\}|<[a-z0-9_-]+>)/|AKIAIOSFODNN7EXAMPLE)$'
+  # ONE REF AT A TIME. Passing every range as one flat arg list let `--not` from ref A flip polarity
+  # for ref B, so `git push origin a b` could return an empty or wrong commit set (R6 audit). Newline-
+  # separating them is not enough on its own — the consumer has to iterate, or word-splitting folds
+  # them straight back into one arg list. Counts and diffs are accumulated per range.
+  _pp_count=0; _pp_added=""; _pp_err=0
+  while IFS= read -r _rg; do
+    [ -z "$_rg" ] && continue
+    _c=$(git rev-list --count $_rg 2>/dev/null) || { _pp_err=1; continue; }
+    _pp_count=$(( _pp_count + ${_c:-0} ))
+    _d=$(git -c core.quotePath=false log --format= --unified=0 $_rg 2>/dev/null) || { _pp_err=1; continue; }
+    _pp_added="$_pp_added$SEP$_d"
+  done <<PPRANGES
+$PUSH_RANGES
+PPRANGES
+  if [ "$_pp_err" -eq 1 ]; then
+    echo "  ❌ could not read part of the push range — refusing to certify unscanned history."
+    [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] || exit 1
+  fi
+  if [ "${_pp_count:-0}" -gt 0 ]; then
+    # RANGES, not an expanded commit list. The first version ran `git show $(git rev-list …)`, which
+    # expands every SHA into argv — on a large first push that hits ARG_MAX, git dies, the capture is
+    # empty, and an empty capture reads as "no hits" → a printed PASS. Self-caught before shipping;
+    # it is the same degrade-toward-PASS shape this whole gate exists to stop, authored into the gate
+    # itself. `git log` takes the range directly, so nothing is expanded and there is no size ceiling.
+    # rc is checked explicitly: a git failure must not be readable as a clean scan.
+    # Keep FILE CONTEXT: the added lines are prefixed with the path they came from, so the LOW
+    # allowlist can be applied per file. Without it this leg had no file context at all and could
+    # only ever treat every hit as unexempt — which is exactly how it blocked its own first real
+    # push on `fh-be` inside scripts/sync-to-be.sh, a file that names the companion store BY DESIGN
+    # and is LOW-allowlisted in the pre-commit copy. Seven adversarial rounds did not find this;
+    # the first genuine `git push` did. (2026-07-26)
+    _pp_added=$(printf '%s\n' "$_pp_added" | awk '
+      /^\+\+\+ b\// { f = substr($0, 7); next }
+      /^\+/            { print f "\t" substr($0, 2) }
+    ' || true)
+    _pp_hit=0
+    while IFS= read -r _row; do
+      _row="${_row%$'\r'}"
+      case "$_row" in ''|\#*) continue;; esac
+      _re="${_row#*$'\t'}"
+      if [ "$_re" = "$_row" ]; then
+        # No TAB → the row defines no detector. Silently skipping it (what this copy did until the
+        # R7 propagation sweep) means the author believes a pattern is protecting them while the
+        # scanner never had it, and the push is certified clean. pre-commit and the publish scanner
+        # were already fail-closed here; this copy was missed when that fix was written.
+        echo "  ❌ unusable pattern row (no TAB between severity and regex) — cannot certify clean."
+        [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] || exit 1
+        continue
+      fi
+      _sev="${_row%%$'\t'*}"
+      # A row that cannot compile disables its own detector. Skipping it silently would let the scan
+      # certify clean on a surface it never actually examined — fail closed, same as pre-commit.
+      printf '' | grep -E "$_re" >/dev/null 2>&1
+      if [ "$?" -ge 2 ]; then
+        echo "  ❌ unusable pattern (invalid regex) — detector disabled: [$_sev]"
+        [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] || exit 1
+        continue
+      fi
+      # EVERY match on EVERY matching line (R6 audit, 2026-07-26). The first version took only the
+      # FIRST match per line and only the first 20 matching lines, so twenty documented example keys
+      # ahead of one real key — or a placeholder earlier on the same line — produced zero hits and a
+      # printed "no operator-private token". A gate that truncates its own evidence and then makes an
+      # affirmative clean claim is worse than one that does not scan: it is wrong out loud.
+      # Display is capped separately from DETECTION: _pp_hit is set by any match, the cap only limits
+      # how many lines are echoed.
+      _shown=0
+      while IFS= read -r _h; do
+        [ -z "$_h" ] && continue
+        _pf="${_h%%$'\t'*}"
+        while IFS= read -r _tok; do
+          [ -z "$_tok" ] && continue
+          printf '%s' "$_tok" | grep -qiE "$_pp_placeholder" && continue
+          # LOW allowlist by file — same list as the pre-commit copy. These files name the wiring
+          # tokens as part of doing their job; HIGH/MED still block everywhere.
+          if [ "$_sev" = "LOW" ]; then
+            case "$_pf" in
+              .gitignore|scripts/sync-to-be.sh|.claude/rules/local_fh_context.md|templates/local_fh_context.md|templates/.claude/rules/*|templates/.git-hooks/*) continue ;;
+            esac
+          fi
+          _pp_hit=1
+          if [ "$_shown" -lt 20 ]; then
+            echo "  ❌ $_sev leak in pushed history — $_pf: '$_tok'"
+            _shown=$((_shown+1))
+          fi
+        done <<PPTOK
+$(printf '%s' "${_h#*$'\t'}" | grep -oiE "$_re" 2>/dev/null || true)
+PPTOK
+      done <<PPEOF
+$(printf '%s\n' "$_pp_added" | grep -iE "$_re" 2>/dev/null || true)
+PPEOF
+    done <<PPROWS
+$_pp_stream
+PPROWS
+    if [ "$_pp_hit" -eq 1 ]; then
+      if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
+        echo "  ⚠️  pushing a flagged token by PUBLIC_SURFACE_OK=1 (conscious, reviewed)"
+        printf '%s PUBLIC_SURFACE_OK override (git push, content hit in pushed history)\n' \
+          "$(date +%Y-%m-%dT%H:%M:%S)" >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+      else
+        echo ""
+        echo "══════════════════════════════════════════════"
+        echo " ⛔ FH Pre-Publish Gate (pre-push) — token in the history being pushed"
+        echo "══════════════════════════════════════════════"
+        echo "  A push publishes every commit in the range, not just the tip. Rewrite the offending"
+        echo "  commit(s) (git rebase -i / filter-repo) — removing the line in a NEW commit does not"
+        echo "  un-publish it once pushed."
+        echo "  Deliberate mention:  PUBLIC_SURFACE_OK=1 git push …  (logged)"
+        echo "══════════════════════════════════════════════"
+        exit 1
+      fi
+    else
+      # SCOPE-HONEST success line. Named residuals this leg does NOT cover (R6 audit, 2026-07-26,
+      # accepted as residuals rather than silently implied away):
+      #   • annotated TAG object messages — a tag-only push whose commits are already remote yields
+      #     an empty commit range, so a token in the tag message is unscanned.
+      #   • BINARY blobs — `git log -p` emits no textual added lines for them, so an ASCII token
+      #     inside a binary file is invisible here.
+      # The claim below is therefore about TEXT in commits, and says so. It is not "this push is clean".
+      echo "  ✅ FH Pre-Publish: no operator-private token in the TEXT added by ${_pp_count} commit(s)"
+      echo "     (not covered: annotated-tag messages · binary blobs — named residuals)"
+    fi
+  fi
+fi
+
+# ── Load-bearing change: the cross-family leg must have RUN, not just been stated ─────────────
+# The commit hook requires a `crossfamily:` line to EXIST (it blocks silence, not a 'none'), because
+# a commit is local and reversible. A push is where the change leaves this machine and becomes
+# something another party will review — and the review that currently catches this defect class is
+# not a human reading a diff, it is someone RUNNING A HARNESS over the PR. That catch is real and it
+# is what this leg pulls forward: if a different-family auditor is going to find it anyway, it should
+# find it before the PR exists, not after, so the fix and the skill-strengthening land in the same
+# breath instead of as a follow-up round.
+# Same escalation shape as the confidentiality instrument above: WARN at commit, REQUIRE at the
+# boundary that publishes. `none` is still an acceptable answer here — but it must be a REASON, not
+# an empty field, and the push is where that answer stops being free.
+_LB_RAW=""
+while IFS= read -r _r; do
+  [ -z "$_r" ] && continue
+  _LB_RAW="$_LB_RAW$SEP$(git -c core.quotePath=false log --name-only --format= $_r 2>/dev/null || true)"
+done <<LBR
+$PUSH_RANGES
+LBR
+_LB_FILES=$(printf '%s\n' "$_LB_RAW" \
+  | grep -E '(templates/\.git-hooks/|scripts/(fh-gate|degrade_direction_scan|universal_guard_check|public_surface_scan_files|gate_pathspec_check|predelete_check)\.sh|\.claude/rules/\.public-surface-patterns)' \
+  | sort -u || true)
+if [ -n "$PUSH_RANGES" ] && [ -n "$_LB_FILES" ]; then
+  _cf_marker=$(ls -t "$REPO_ROOT"/tracks/_meta/.axes_23_passed_*.marker 2>/dev/null | head -1)
+  _cf_line=$(grep -m1 -E '^[[:space:]]*crossfamily:[[:space:]]*[^[:space:]]' "$_cf_marker" 2>/dev/null || true)
+  if [ -z "$_cf_line" ]; then
+    echo ""
+    echo "══════════════════════════════════════════════"
+    echo " ⛔ FH Load-Bearing Change Gate (pre-push) — no cross-family leg recorded"
+    echo "══════════════════════════════════════════════"
+    echo "  This push carries gate / verdict / irreversible-surface code, and no marker records"
+    echo "  whether a DIFFERENT-family auditor saw it."
+    echo ""
+    echo "  A same-family reviewer shares the author's optimistic reading; that is the whole reason"
+    echo "  this gate exists. The catch usually happens anyway — later, when someone runs a harness"
+    echo "  over the PR. Running it now is the same work, one round earlier."
+    echo ""
+    echo "  Record the answer in the Axes 2-3 marker, then push:"
+    echo "      crossfamily: <engine/model> — <rounds, findings, verdict>"
+    echo "      crossfamily: none — <why none was reachable or needed>"
+    echo "  Conscious exception:  PUBLIC_SURFACE_OK=1 git push …  (logged)"
+    echo "══════════════════════════════════════════════"
+    if [ "${PUBLIC_SURFACE_OK:-0}" != "1" ]; then exit 1; fi
+    echo "  ⚠️  proceeding without a recorded cross-family leg by PUBLIC_SURFACE_OK=1"
+    printf '%s PUBLIC_SURFACE_OK override (git push, no cross-family leg recorded)\n' \
+      "$(date +%Y-%m-%dT%H:%M:%S)" >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+  else
+    echo "  ✅ FH Load-Bearing Change Gate: $(printf '%s' "$_cf_line" | cut -c1-88)"
+  fi
+fi
 
 # ── PR-only policy for the integration branch (operator decision 2026-07-20) ──────
 # WHY THIS EXISTS LOCALLY: it is the SHIFT-LEFT half of a two-layer floor.
