@@ -4,6 +4,34 @@ AI reads this file first when searching past work. Open individual files for det
 
 ---
 
+## 2026-07-26 — Confidentiality gate: scope decoupled from the 4-axis classifier (gate-locality N=5)
+
+- **Origin**: source-reading a cross-audited sister asset (`PromptPartner/agentsmith`, `leak-gate.sh`).
+  Its `SCOPE=()` comment — *"an excluded file is a hole a real leak can sit in"* — asked of this repo
+  surfaced a different shape of the same hole: the pre-commit confidentiality scan sat below
+  `exit 0  # No FH assets staged`, so its trigger silently inherited the 4-axis asset pathspec. A commit
+  staging only non-asset paths skipped it entirely. Known-pair measured, both directions: the identical
+  leak line blocks in `CATALOG.md` and passes unseen in `README.md` alone. Surface: 46/241 tracked files
+  (19.1%) unscannable that way, 32 of them also outside npm `files[]`.
+- **Repair**: the confidentiality/privacy guards moved into `run_universal_guards()`, invoked before the
+  early exit — they guard the publish boundary, not FH asset structure. Credential SHAPES imported from
+  the sister asset (the scan previously matched only operator-private identity tokens, so a live AWS/GitHub/
+  Anthropic key scanned clean), live-calibrated over the whole tree: one false positive, closed by an
+  exact-literal exemption. A push-time content scan was added over the commits a push actually publishes.
+- **Verification**: 7 cross-family adversarial rounds (codex/gpt-5.5). 30 findings; 2 accepted as named
+  residuals with the success line narrowed to claim only what it checks, the rest fixed. One author
+  refutation withdrawn when the auditor showed `npm publish` is not a backstop for a public git repo.
+  Anchors: `scripts/universal_guard_check.sh` (pre-commit) and `scripts/prepush_guard_check.sh` (pre-push),
+  both testing the STAGED blob and scoring a hook runtime fault as its own failure class.
+- **Also**: `validate_yaml.sh` was found to be the defect rather than the file it flagged (it grepped for
+  `': '` without checking whether the value was quoted, and its `--fix` folded quotes into an already-correct
+  string) — rewritten parse-first with an `UNCALIBRATED` degrade. `sync-to-be.sh` returned the status of its
+  last loop iteration, so a successful sync reported failure, the Stop-hook cooldown stamp was never written,
+  and the companion store went uncommitted for ~3.7h; introduced by the same-day patch that added mirror banners.
+- **Residual**: three near-duplicate scan implementations remain; single-sourcing them is the next PR and the
+  real convergence — every leniency divergence found here was a propagation miss between those copies.
+- Tags: `gate-locality` `confidentiality` `cross-family` `known-pair` `sister-asset` `publish-boundary`
+
 ## Sessions
 
 <!-- Add entries in reverse date order (newest at top) -->

@@ -28,7 +28,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 PSA_DEFAULTS="$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults"
 PSA_OVERRIDE="${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
 # Placeholder/example shapes that must PASS (documented example paths, not real literals).
-PSA_PLACEHOLDER='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxxx|/Users/(EXAMPLE|yourname|\{[a-z_]+\}|<[a-z0-9_-]+>)/)$'
+PSA_PLACEHOLDER='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxxx|/Users/(EXAMPLE|yourname|\{[a-z_]+\}|<[a-z0-9_-]+>)/|AKIAIOSFODNN7EXAMPLE)$'
 
 # LOW-severity allowlist by file (HIGH/MED still block). For the PUBLISH scan this is nearly vacuous:
 # a published file should carry NO operator-private token at all. Deliberately names no operator-private
@@ -46,7 +46,23 @@ echo "[Pre-Publish] public-surface scan (npm-published file content)..."
 
 # ── Load patterns (single source, shared with pre-commit) ──
 PSA_STREAM=""
-[ -f "$PSA_DEFAULTS" ] && PSA_STREAM=$(cat "$PSA_DEFAULTS")
+# The defaults file is COMMITTED — missing/unreadable/empty is a BROKEN INSTRUMENT, not a config
+# choice. Without this, a valid operator override masked its absence and the scan reported a clean
+# "full pattern set" while every universal home-path and credential-shape pattern was silently gone
+# (cross-family audit R3, 2026-07-26 — same hole in both copies, found and fixed in both at once).
+PSA_DEFAULTS_OK=0
+if [ -f "$PSA_DEFAULTS" ] && [ -r "$PSA_DEFAULTS" ]; then
+  PSA_STREAM=$(cat "$PSA_DEFAULTS" 2>/dev/null || true)
+  [ -n "$(printf '%s' "$PSA_STREAM" | grep -vE '^[[:space:]]*(#|$)' || true)" ] && PSA_DEFAULTS_OK=1
+fi
+if [ "$PSA_DEFAULTS_OK" -eq 0 ]; then
+  echo "  ❌ committed pattern defaults missing/unreadable/empty — universal patterns NOT loaded."
+  echo "     Expected: $PSA_DEFAULTS"
+  [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] && echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1 (partial pattern set)" || {
+    echo "     Fail-closed: a partial pattern set cannot certify a clean surface."
+    exit 1
+  }
+fi
 OVERRIDE_PRESENT=0
 if [ -f "$PSA_OVERRIDE" ]; then
   # Fail-OPEN guard (cross-family audit 2026-06-27): an override that EXISTS but is unreadable, or reads
@@ -122,8 +138,18 @@ fi
 # silent no-hit — that detector is then disabled and LEAK stays 0 (fail-OPEN). On an irreversible surface
 # a broken detector is NOT "clean": fail-closed unless explicitly overridden.
 while IFS=$'\t' read -r sev regex; do
-  [ -z "$regex" ] && continue
-  case "$sev" in \#*) continue;; esac
+  sev="${sev%$'\r'}"; regex="${regex%$'\r'}"   # CRLF: a trailing CR welds onto the regex → matches nothing
+  case "$sev" in \#*|'') continue;; esac
+  if [ -z "$regex" ]; then
+    # A row with no TAB puts the whole line in $sev and leaves $regex empty. This used to `continue`
+    # SILENTLY — so `HIGH zzz` (space instead of tab) was a detector the author believed in and the
+    # scanner never had, and the publish scan certified clean. Same hole as the commit-time copy;
+    # fixed in both at once, because these two are the pair whose leniency already diverged once.
+    echo "  ❌ unusable pattern row (no TAB between severity and regex): '$sev'"
+    [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] && { echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1 (a row is unusable)"; break; }
+    echo "     Fail-closed: a row that defines no detector cannot certify clean."
+    exit 1
+  fi
   printf '' | grep -aoiE "$regex" >/dev/null 2>&1
   if [ "$?" -ge 2 ]; then
     echo "  ❌ invalid pattern (regex error) — detector disabled: [$sev] '$regex'"

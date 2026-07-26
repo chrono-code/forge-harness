@@ -137,6 +137,14 @@ stamp_banner() {   # $1 = dst dir, $2 = src dir (for mtime restore)
     { printf '%s\n' "$BANNER"; cat "$f"; } > "$f.tmp$$" && mv "$f.tmp$$" "$f"
     [ -f "$s" ] && touch -r "$s" "$f"   # keep the guard from firing on our own banner
   done < <(find "$dst" -type f -name '*.md' ! -path '*/logs/*' 2>/dev/null)
+  # A `while` loop returns the status of the LAST command run in its body. The line above is a
+  # bare test, so a final iteration whose source file no longer exists in the hub (a mirror file
+  # with no hub counterpart — normal, not an error) made this function return 1. That leaked all
+  # the way out as the SCRIPT's exit status, so a fully successful sync reported failure — and
+  # because the Stop hook runs it as `sync-to-be.sh --quiet && echo $NOW > $FLAG`, the cooldown
+  # stamp was never written and the sync re-ran on EVERY Stop, each time reporting a hook failure
+  # with no stderr. Banner stamping is best-effort by design; say so explicitly. (2026-07-26)
+  return 0
 }
 
 # The banner makes the mirror's content differ from its source, so rsync would re-transfer every
@@ -154,6 +162,7 @@ strip_banner() {   # $1 = dst dir
     # mtime to NOW makes every file look changed and the churn returns by another door.
     tail -n +2 "$f" > "$f.tmp$$" && touch -r "$f" "$f.tmp$$" && mv "$f.tmp$$" "$f"
   done < <(find "$dst" -type f -name '*.md' ! -path '*/logs/*' 2>/dev/null)
+  return 0   # same status-leak shape as stamp_banner above — best-effort, never the script's verdict
 }
 
 sync_dir() {

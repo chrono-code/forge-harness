@@ -8,3 +8,37 @@
 MED	/Users/[a-z0-9_-]+/
 # Tailscale CGNAT (2nd octet 64-127) — operator node / private network topology (a Tailscale-served sidecar box)
 MED	100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]{1,3}\.[0-9]{1,3}
+#
+# ── Credential SHAPES (added 2026-07-26) ─────────────────────────────────────
+# Until now this file carried only OPERATOR-PRIVATE tokens (home paths, node IPs), so the gate
+# saw an identity leak but was blind to a live CREDENTIAL: a staged AWS key / GitHub PAT /
+# Anthropic key scanned clean (measured known-pair, 2026-07-26 — Case D). These patterns match
+# SHAPES, never values, so they are safe to publish here. Imported from the cross-audited sister
+# asset PromptPartner/agentsmith (`scripts/secret-scan.sh`) — see
+# tracks/_audit/session_2026_07_26_agentsmith-sister.md.
+# Self-match safe: every pattern's own literal text has a '[' where the pattern needs a class
+# member, so none matches itself (verified mechanically before commit).
+# Live-calibrated over the whole tracked tree before shipping: exactly ONE false positive, the AWS
+# documentation key AKIAIOSFODNN7EXAMPLE, closed via the PSA_PLACEHOLDER exemption (both copies).
+# NAMED RESIDUAL — deliberately NOT imported: agentsmith's generic assigned-literal pattern
+# (password|token|api_key)=«8+ chars». In a docs-heavy repo it fires on every documented
+# `export GH_TOKEN=…` placeholder; over-blocking trains PUBLIC_SURFACE_OK into muscle memory and
+# disarms the gate. Un-imported on purpose, not overlooked.
+#
+# MODERN VARIANTS (added in the same session, after a cross-family audit showed the imported set
+# only covered LEGACY token formats): agentsmith's list predates GitHub's fine-grained PATs
+# (`github_pat_`), Slack app-level tokens (`xapp-`), and OpenAI's project/service-account keys
+# (`sk-proj-` / `sk-svcacct-`). All three scanned CLEAN against the first import — verified by
+# staging each shape and watching the gate pass. The alnum-only `sk-…` class cannot consume a
+# hyphenated prefix, which is why `sk-proj-…` needs its own row rather than a widened class.
+HIGH	BEGIN [A-Z ]*PRIVATE KEY
+HIGH	AKIA[0-9A-Z]{16}
+HIGH	ASIA[0-9A-Z]{16}
+HIGH	gh[pousr]_[A-Za-z0-9]{20,}
+HIGH	github_pat_[A-Za-z0-9_]{30,}
+HIGH	xox[baprs]-[A-Za-z0-9-]{10,}
+HIGH	xapp-[0-9]-[A-Za-z0-9-]{10,}
+HIGH	sk-[A-Za-z0-9]{20,}
+HIGH	sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{20,}
+HIGH	sk-ant-[A-Za-z0-9_-]{20,}
+HIGH	AIza[0-9A-Za-z_-]{35}
