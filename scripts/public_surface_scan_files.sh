@@ -27,14 +27,36 @@ set -uo pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 PSA_DEFAULTS="$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults"
 PSA_OVERRIDE="${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
-# Placeholder/example shapes that must PASS (documented example paths, not real literals).
-PSA_PLACEHOLDER='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxxx|/Users/(EXAMPLE|yourname|\{[a-z_]+\}|<[a-z0-9_-]+>)/|AKIAIOSFODNN7EXAMPLE)$'
+# PSA_PLACEHOLDER and the default psa_low_allowlisted now come from scripts/psa_scan_lib.sh.
+# A second copy here is exactly the divergence this refactor removed; do not reintroduce one.
 
 # LOW-severity allowlist by file (HIGH/MED still block). For the PUBLISH scan this is nearly vacuous:
 # a published file should carry NO operator-private token at all. Deliberately names no operator-private
 # file literal here (the pre-commit copy of this list does, but it lives in a git-hooks-allowlisted path;
 # THIS script is public-tracked, so hardcoding e.g. a companion-script name would itself be a LOW leak —
 # caught by the pre-commit confidentiality scan, 2026-06-27). Generic template paths only.
+
+echo "[Pre-Publish] public-surface scan (npm-published file content)..."
+
+# ── Load patterns via the shared library (scripts/psa_scan_lib.sh) ──
+# One implementation of loading + row validation + exemption decisions, shared with pre-commit and
+# pre-push. What this file KEEPS for itself, deliberately:
+#   • the file-level `grep -a` scan. It forces every published file to be read as TEXT; the library's
+#     line-stream interface would drop back to text-only handling and re-open the hole a challenger
+#     found earlier — a token inside an SVG / null-byte file (docs/pillars.svg ships) scanning clean.
+#   • a STRICTER LOW allowlist (below). A published artifact should carry no operator-private token
+#     at all, so the commit-time list of files that legitimately name wiring tokens does not apply.
+#     Sourcing the library and then redefining the function is how that difference stays visible
+#     instead of being buried as a divergence.
+PSA_LIB="$REPO_ROOT/scripts/psa_scan_lib.sh"
+if [ ! -r "$PSA_LIB" ]; then
+  echo "  ❌ scripts/psa_scan_lib.sh missing — the confidentiality scanner cannot run."
+  [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] || { echo "     Fail-closed on the publish boundary."; exit 1; }
+else
+  . "$PSA_LIB"
+fi
+
+# Stricter than the library default — see the note above. Named here so the difference is legible.
 psa_low_allowlisted() {
   case "$1" in
     templates/*) return 0 ;;
@@ -42,71 +64,27 @@ psa_low_allowlisted() {
   esac
 }
 
-echo "[Pre-Publish] public-surface scan (npm-published file content)..."
+psa_load "$PSA_DEFAULTS" "$PSA_OVERRIDE"
 
-# ── Load patterns (single source, shared with pre-commit) ──
-PSA_STREAM=""
-# The defaults file is COMMITTED — missing/unreadable/empty is a BROKEN INSTRUMENT, not a config
-# choice. Without this, a valid operator override masked its absence and the scan reported a clean
-# "full pattern set" while every universal home-path and credential-shape pattern was silently gone
-# (cross-family audit R3, 2026-07-26 — same hole in both copies, found and fixed in both at once).
-PSA_DEFAULTS_OK=0
-if [ -f "$PSA_DEFAULTS" ] && [ -r "$PSA_DEFAULTS" ]; then
-  PSA_STREAM=$(cat "$PSA_DEFAULTS" 2>/dev/null || true)
-  [ -n "$(printf '%s' "$PSA_STREAM" | grep -vE '^[[:space:]]*(#|$)' || true)" ] && PSA_DEFAULTS_OK=1
-fi
-if [ "$PSA_DEFAULTS_OK" -eq 0 ]; then
-  echo "  ❌ committed pattern defaults missing/unreadable/empty — universal patterns NOT loaded."
-  echo "     Expected: $PSA_DEFAULTS"
-  [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] && echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1 (partial pattern set)" || {
-    echo "     Fail-closed: a partial pattern set cannot certify a clean surface."
-    exit 1
-  }
-fi
-OVERRIDE_PRESENT=0
-if [ -f "$PSA_OVERRIDE" ]; then
-  # Fail-OPEN guard (cross-family audit 2026-06-27): an override that EXISTS but is unreadable, or reads
-  # empty, must NOT set OVERRIDE_PRESENT=1 — otherwise the absent-override fail-closed block below is
-  # skipped while cat contributed nothing, and HIGH operator literals scan clean. Only count the override
-  # as present when a readable, non-empty read actually contributed patterns.
-  if [ -r "$PSA_OVERRIDE" ]; then
-    _ov="$(cat "$PSA_OVERRIDE" 2>/dev/null || true)"
-    if [ -n "$(printf '%s' "$_ov" | grep -vE '^[[:space:]]*(#|$)' || true)" ]; then
-      PSA_STREAM="$PSA_STREAM"$'\n'"$_ov"
-      OVERRIDE_PRESENT=1
-    fi
-  else
-    echo "  ⚠️  override exists but is UNREADABLE — treated as absent (fail-closed below)."
-  fi
-fi
-if [ -z "$(printf '%s' "$PSA_STREAM" | grep -vE '^[[:space:]]*(#|$)' || true)" ]; then
-  # No patterns at all on an irreversible surface → fail-closed (unless override).
-  echo "  ❌ no public-surface patterns loaded — confidentiality gate cannot run."
+# Publish is an irreversible surface: EVERY incomplete-instrument state blocks, including the merely
+# absent operator override (which only warns at commit time — see the library header for why the two
+# surfaces degrade differently).
+_psa_why=""
+[ "$PSA_DEFAULTS_OK" -eq 0 ]      && _psa_why="committed pattern defaults missing/unreadable/empty"
+[ "$PSA_BAD_ROWS" -gt 0 ]         && _psa_why="${_psa_why:+$_psa_why; }$PSA_BAD_ROWS unusable pattern row(s)"
+[ "$PSA_OVERRIDE_PRESENT" -eq 0 ] && _psa_why="${_psa_why:+$_psa_why; }operator-literal override absent/empty (HIGH company/companion literals NOT scanned)"
+if [ -n "$_psa_why" ]; then
+  echo "  ❌ incomplete confidentiality instrument — $_psa_why"
   if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
-    echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1 (no scan performed — conscious override)"
-    exit 0
-  fi
-  echo "     Populate .claude/rules/.public-surface-patterns.defaults (or the gitignored override),"
-  echo "     or publish with PUBLIC_SURFACE_OK=1 to override. Fail-closed on an irreversible surface."
-  exit 1
-fi
-# Override absent = INCOMPLETE INSTRUMENT on an irreversible surface (challenger S5): the gitignored
-# operator-literal patterns (HIGH company/companion names) are absent — true on EVERY fresh clone / CI
-# runner by construction. The committed .defaults only carries the universal home-path pattern, so a
-# HIGH company-name leak would scan-clean and print a green PASS. Per the Surface-Class Degrade
-# Invariant (irreversible → fail-CLOSED), an incomplete instrument BLOCKS rather than prints PASS.
-if [ "$OVERRIDE_PRESENT" -eq 0 ]; then
-  echo "  ❌ operator-literal pattern override absent (.claude/rules/.public-surface-patterns)."
-  echo "     Only the committed home-path defaults are active — HIGH company/companion literals are NOT scanned."
-  if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
-    echo "  ⚠️  proceeding DEFAULTS-ONLY by PUBLIC_SURFACE_OK=1 (conscious — HIGH literals unscanned)"
-    echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override (npm publish, DEFAULTS-ONLY scan)" \
+    echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1 (conscious — the scan is incomplete)"
+    echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override (npm publish, incomplete instrument)" \
       >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
   else
-    echo "     Fail-closed on an irreversible surface: populate the override, or PUBLIC_SURFACE_OK=1 to publish defaults-only."
+    echo "     Fail-closed on an irreversible surface: an incomplete instrument cannot certify clean."
     exit 1
   fi
 fi
+
 
 # Named residual (cross-family audit 2026-06-27, deferred): this scans the WORKING-TREE content of the
 # packed file list, not the final tarball bytes. A content-generating publish lifecycle (prepack/prepare
@@ -123,6 +101,7 @@ if [ -z "$FILES" ]; then
   echo "     Fail-closed on an irreversible surface. Fix npm pack or override with PUBLIC_SURFACE_OK=1."
   exit 1
 fi
+
 # Wrong-set guard (challenger M6): a future npm --json shape change could yield a NON-empty but PARTIAL
 # file list (forEach iterates a renamed/nested structure without throwing) → files silently unscanned.
 # npm always ships package.json in the tarball; its absence means the parse got a wrong set → fail-closed.
@@ -132,32 +111,6 @@ if ! printf '%s\n' "$FILES" | grep -qx "package.json"; then
   echo "     Fail-closed (possible npm --json shape change). Verify npm pack output or PUBLIC_SURFACE_OK=1."
   exit 1
 fi
-
-# ── Validate every regex BEFORE scanning (cross-family audit 2026-06-27) ──
-# A malformed ERE makes `grep -E` exit ≥2 (error), which the scan's `2>/dev/null || true` swallows as a
-# silent no-hit — that detector is then disabled and LEAK stays 0 (fail-OPEN). On an irreversible surface
-# a broken detector is NOT "clean": fail-closed unless explicitly overridden.
-while IFS=$'\t' read -r sev regex; do
-  sev="${sev%$'\r'}"; regex="${regex%$'\r'}"   # CRLF: a trailing CR welds onto the regex → matches nothing
-  case "$sev" in \#*|'') continue;; esac
-  if [ -z "$regex" ]; then
-    # A row with no TAB puts the whole line in $sev and leaves $regex empty. This used to `continue`
-    # SILENTLY — so `HIGH zzz` (space instead of tab) was a detector the author believed in and the
-    # scanner never had, and the publish scan certified clean. Same hole as the commit-time copy;
-    # fixed in both at once, because these two are the pair whose leniency already diverged once.
-    echo "  ❌ unusable pattern row (no TAB between severity and regex): '$sev'"
-    [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] && { echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1 (a row is unusable)"; break; }
-    echo "     Fail-closed: a row that defines no detector cannot certify clean."
-    exit 1
-  fi
-  printf '' | grep -aoiE "$regex" >/dev/null 2>&1
-  if [ "$?" -ge 2 ]; then
-    echo "  ❌ invalid pattern (regex error) — detector disabled: [$sev] '$regex'"
-    [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] && { echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1 (a detector is broken)"; break; }
-    echo "     Fail-closed: a broken detector cannot certify clean. Fix the pattern or PUBLIC_SURFACE_OK=1."
-    exit 1
-  fi
-done <<< "$PSA_STREAM"
 
 # ── Scan full content of each published file ──
 LEAK=0
@@ -192,7 +145,9 @@ if [ "$LEAK" -eq 1 ]; then
   exit 1
 fi
 
-if [ "$OVERRIDE_PRESENT" -eq 0 ]; then
+# Renamed with the refactor: the flag is PSA_OVERRIDE_PRESENT, set by psa_load. The bare name was a
+# leftover that referenced nothing under `set -u` and aborted the scan at its final line.
+if [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
   echo "  ⚠️  PASS (DEFAULTS-ONLY) — no home-path leak, but HIGH operator literals were NOT scanned (override absent)."
 else
   echo "  ✅ PASS — no operator-private token in the published file set (full pattern set)."
