@@ -75,7 +75,7 @@
   task: steel-quench Axis 2 on 🐿️ fold-in + 6/15 billing amendment + below_floor_scan.sh consumer + operations.md wiring
   trigger: 4-axis auto-gate Axis 2 (FH asset modified)
   outcome: accepted
-  note: "PASS 0S+3B — marker-append/hook-collision CLEAN (replicated validate_marker_floor), P9 check verdict 'builds the control, not paper-over'; B1 scanner-autoinvoke implication fixed, B2 signal status update routed to fh-be, B3 opus hardcode accepted (matches hook convention)"
+  note: "PASS 0S+3B — marker-append/hook-collision CLEAN (replicated validate_marker_floor), P9 check verdict 'builds the control, not paper-over'; B1 scanner-autoinvoke implication fixed, B2 signal status update routed to the private companion store, B3 opus hardcode accepted (matches hook convention)"
 - date: 2026-06-11
   agent: claude (background, frontier-digest skill execution)
   task: cadence-overdue frontier-digest run (16d+ since 2026-05-26) — WebSearch mode, incremental-only
@@ -119,7 +119,7 @@
   agent: fh-meta:persona-innovator (inherit opus, v0.3 H1-b)
   self_contained_prompt: yes
   outcome: accepted
-  note: "3 naming candidates (Contested-Ground Ceiling / Flip-as-FLAG / Counter-Voice Pairing) + 5 external signals tiered T1/T2/T3. Anchor-tier: 2 T1-live / 2 T1venue-T2grounded / 1 T3-BARRED (bar fired on tempting 76%/91% vendor stat). KEY: tier ⊥ grounded-this-run. Self-floors H1/H1-b/H2/H3/H4 run as declared steps. Signal: fh-be paper-signals/h1b_pilot_anchor_tier_thebible_2026-06-27.md"
+  note: "3 naming candidates (Contested-Ground Ceiling / Flip-as-FLAG / Counter-Voice Pairing) + 5 external signals tiered T1/T2/T3. Anchor-tier: 2 T1-live / 2 T1venue-T2grounded / 1 T3-BARRED (bar fired on tempting 76%/91% vendor stat). KEY: tier ⊥ grounded-this-run. Self-floors H1/H1-b/H2/H3/H4 run as declared steps. Signal: companion store paper-signals/h1b_pilot_anchor_tier_thebible_2026-06-27.md"
 - date: 2026-06-27
   task: "challenger adversarial gate on innovator the-bible outputs (no-judge-only-path closure on 3 highest-value claims)"
   agent: fh-meta:challenger (inherit opus)
@@ -257,7 +257,7 @@
   context: "operator: 'fh pmh qasp dev 모두 닥터와 하네스클러스터기능으로 감사돌려주고 온보딩 미들 고수 등 여러페르소나로 사용성과 의도기반으로 풀오케스트레이션 잘 돌리는지... 프런티어급으로 개선해줘'"
   target: "3-harness cluster structure + usability (intent-based orchestration, friendliness)"
   outcome: accepted
-  note: "All 18 completed. Cross-cutting chorus: routing tables narrower than real daily utterances in ALL three harnesses (FH product-verify / pmh close-chain ambiguity / qasp act1.5+3). Cluster = two opposite halves (qasp discoverable-ungated, pmh gated-undiscoverable). Fixes applied same-session: FH c25aeb9 (pushed) + pmh b866c94 + qasp 2b3499a (local branches). Fixer honesty highlights: qasp fixer verified-then-skipped a false typo claim (케크=jargon); pmh fixer passed pmh's own pre-commit gate properly instead of bypassing. Canonical report: fh-be/tracks/fh/multi_harness_usability_audit_2026-07-17.md. Deferred M3/S8/R4 backlog ranked there."
+  note: "All 18 completed. Cross-cutting chorus: routing tables narrower than real daily utterances in ALL three harnesses (FH product-verify / pmh close-chain ambiguity / qasp act1.5+3). Cluster = two opposite halves (qasp discoverable-ungated, pmh gated-undiscoverable). Fixes applied same-session: FH c25aeb9 (pushed) + pmh b866c94 + qasp 2b3499a (local branches). Fixer honesty highlights: qasp fixer verified-then-skipped a false typo claim (케크=jargon); pmh fixer passed pmh's own pre-commit gate properly instead of bypassing. Canonical report: companion store, tracks/fh/multi_harness_usability_audit_2026-07-17.md. Deferred M3/S8/R4 backlog ranked there."
 
 - date: 2026-07-21
   agent: fh-meta:beginner

@@ -60,7 +60,7 @@ not duplicate vocabulary.
 
 ## What this pattern's value actually IS (honest, from the R9 experiment arc)
 
-Established by controlled experiment (`fh-be RESULT9`, codex, capability-controlled, 2026-06-06):
+Established by controlled experiment (companion-store `RESULT9`, codex, capability-controlled, 2026-06-06):
 
 - **It is NOT de-biasing.** Ownership had ≈ zero effect (a model self-reviewing blunt = an outsider
   blunt). It is NOT "seeing what the author structurally can't": when explicitly asked, an author finds
