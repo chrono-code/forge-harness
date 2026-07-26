@@ -518,3 +518,27 @@
   findings: "형식 findings 0건(미착지). 다만 탐색 중 dialogue-harvest/calibration_pair.md 를 **독립 발견** — governor 의 열거 스윕이 잡은 동일 파일이며, 수리 방향(이름목록→디렉토리 스코프)의 독립 확증"
   verdict_holder: governor (Axis 2 는 agy 레그로 성립, codex 미착지를 마커에 잔여 명시)
   note: "hang 아님 — mtime 69초 전·내용 진행형(detail 17개 frontmatter 순차 열람) 확인 후 판정. 실제 문제는 **과탐색**: ~7분간 findings 0. 증거접근을 준 것이 이번엔 역효과(레포를 읽을 수 있으니 계속 읽음). 운영자 판단으로 kill. 교훈: 사이드카에 소스 접근을 줄 때는 **탐색 예산**도 같이 줘야 한다 — 접근권만 주면 수렴 압력이 없다"
+- date: 2026-07-26
+  agent: local-4090 sidecar (qwen3-coder:30b via ollama, Tailscale)
+  caller: fh-governor (qasp-dev mate_rules load-bearing gate — diff 앵커·P0 위양성 수리)
+  task: cross-family 적대 검증 R1~R2 — verdict/exit code 변경분 fail-open 감사
+  outcome: partial
+  findings: "R1 4건 중 #3(malformed hunk header) 수용·수리. #1/#2/#4 는 실체 하나(multi-line 시그니처 미검출)이며 변경 전 코드로 동일 입력 재현 → 선재 갭 확정(3/531=0.6%). R2 CONVERGED"
+  verdict_holder: governor (소스 대조 + 변경 전 코드 실행으로 귀속 확정)
+  note: "residency 판단으로 codex 대신 로컬 4090 선택(회사 심볼명 포함 diff, 머신 밖 미전송). qasp-dev PR#30"
+- date: 2026-07-26
+  agent: local-4090 sidecar (qwen3-coder:30b)
+  caller: fh-governor (qasp §8-2 탈상관 판정 레그 — 실운영 1호)
+  task: "admin-surrogate e2e 생성물(producer=claude) 터미널 판정 — 생성자와 다른 계열 리뷰어로서 회귀 검출력 감사"
+  outcome: accepted
+  findings: "FINAL: CHANGES-REQUIRED (4개 blocking). 일부는 벤치 맥락(고정 픽스처·planted defect 앵커) 미인지 지적 — 소스 대조 후 수용/기각 예정"
+  verdict_holder: verdict_manifest 게이트 (exit 1 = UNVERIFIED). 항목별 채택은 governor 보류
+  note: "§8-2 첫 실측. 이 실행이 verdict_manifest 초판의 설계 결함(리뷰 존재≠통과)을 노출 — 적대 검증 5문항이 놓친 것을 첫 실사용이 잡음"
+- date: 2026-07-26
+  agent: local-4090 sidecar (qwen3-coder:30b)
+  caller: fh-governor (verdict_manifest load-bearing 게이트)
+  task: cross-family 적대 검증 R1~R2 — 판정 게이트 fail-open/우회 감사
+  outcome: partial
+  findings: "R1 5문항 중 #5(유니코드 표기 변형으로 같은-계열 차단 우회) 수용·수리(NFKC+Cf 제거, 앵커 5종). #1 소스 실행으로 기각(자기모순), #2~#4 사이드카 자인 no-finding. R2 CONVERGED"
+  verdict_holder: governor (소스 실행 대조)
+  note: "적대 검증이 실사용을 대체 못 함 — 5문항이 못 잡은 '리뷰 존재≠통과' 구멍은 실운영 1호가 잡았다. qasp-dev PR#32"
