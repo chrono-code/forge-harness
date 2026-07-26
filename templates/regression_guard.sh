@@ -91,8 +91,23 @@ fi
 # `✅ PASS` 로 렌더됐다 = 검사 안 함이 통과로 보고되는 fail-open.
 # 새 경로를 추가할 때는 반드시 fh_4axis_gate.md §48 과 대조할 것 — 두 목록이 갈리면
 # 갈린 쪽이 조용히 무검사 구간이 된다.
+# 2026-07-26 수리 (2차 — 이름 열거에서 디렉토리 스코프로): 처음엔 `SKILL_detail.md` 를 이름으로
+# 추가했으나, Axis-2 적대 패스가 "이름을 하나씩 막는 방식은 원리적으로 이 클래스를 못 닫는다"고
+# 지적했고 맞다. 그래서 scripts/gate_pathspec_check.sh 에 **열거 스윕**(plugins/*/skills/ 밑 실제
+# .md 를 전부 세어 미커버를 찾는 검사)을 넣었더니 첫 실행에서 실물을 잡았다 —
+# `dialogue-harvest/calibration_pair.md`(known-pair 캘리브레이션 코퍼스, 07-25 출하). 이름 목록엔
+# 영영 안 올랐을 파일이다. 결론: 스킬 디렉토리의 **모든 .md** 를 덮는다. 새 동반파일 관례가
+# 생겨도 자동 커버되고, 열거 스윕이 그걸 도입 시점에 확인한다.
+#
+# (1차 기록) SKILL_detail.md 가 여기 없어서 **양쪽 게이트 모두** 이 파일을 못 봤다.
+# 원인은 리터럴이다 — 게이트는 `SKILL.md` 를 찾는데 `SKILL_detail.md` 라는 문자열엔 `SKILL.md` 가
+# 들어있지 않다(밑줄이 끊는다). 실측: detail 17파일 208,710B = 스킬 명세 표면의 27.7%,
+# 16/17 이 펜스 코드블록 보유. 실제 누출 2건(371c04f · e661931 — 둘 다 단일파일
+# phantom-quench/SKILL_detail.md, 4축 0회). 이 구멍은 salience-splitter 가 상주층을 줄이려
+# SKILL.md → SKILL_detail.md 로 컨텐츠를 옮길 때마다 **넓어졌다** — 다이어트가 진행될수록
+# 커버리지가 줄어드는 구조였다(gate-locality).
 GUARD_PATHSPEC=(
-  'plugins/*/skills/*/SKILL.md'
+  'plugins/*/skills/*/*.md'
   '.claude/rules/*.md'
   'knowledge/shared/rules/*.md'
   'knowledge/*.md'
@@ -199,8 +214,14 @@ for f in $CHANGED; do
   echo
   echo "=== $f ==="
 
-  # F1. Frontmatter integrity (SKILL.md only)
-  if echo "$f" | grep -q "SKILL.md$"; then
+  # F1. Frontmatter integrity — SKILL.md ONLY, deliberately.
+  # `name:`/`description:` are the skill's ROUTING surface; a detail file is referenced, never
+  # routed, so the contract does not apply to it. Before 2026-07-26 this exclusion was ACCIDENTAL
+  # (detail files simply were not in the pathspec, and this regex never matched them); it is now
+  # explicit. Observation, NOT gated: 16 of 17 detail files carry frontmatter anyway as convention —
+  # the lone exception is phantom-quench/SKILL_detail.md. Gating that convention would M-TIER a
+  # working file for a contract it does not owe, so it stays an observation.
+  if echo "$f" | grep -qE "(^|/)SKILL\.md$"; then
     fm_check=$(read_after "$f" | python3 -c "
 import sys
 c = sys.stdin.read()
@@ -228,10 +249,17 @@ print('OK')
 
   before_content=$(read_before "$f")
   after_content=$(read_after "$f")
+  # Sibling lookup — content that MOVED between the pair is not content LOST.
+  # Must be SYMMETRIC (2026-07-26): before this file was gated, only SKILL.md was ever the checked
+  # file, so a one-way lookup (SKILL.md → its detail) sufficed. Now that SKILL_detail.md is gated
+  # too, the reverse consolidation (detail → SKILL.md, e.g. un-splitting a skill) would otherwise
+  # read as content loss in the detail file and fire a false positive on exactly the refactor
+  # salience-splitter is designed to reverse.
   detail_content=""
-  if echo "$f" | grep -q "SKILL\.md$"; then
-    detail_content=$(read_after "$(dirname "$f")/SKILL_detail.md")
-  fi
+  case "$f" in
+    */SKILL.md)        detail_content=$(read_after "$(dirname "$f")/SKILL_detail.md") ;;
+    */SKILL_detail.md) detail_content=$(read_after "$(dirname "$f")/SKILL.md") ;;
+  esac
 
   # Deprecation/tombstone exemption (stub-shaped): a file soft-deleted into a small pointer
   # stub. Content loss is the INTENT (mirrors the file-deletion skip above), so content-

@@ -263,7 +263,7 @@ Every new `SKILL.md` must clear a **6-item bar** (role-duplication via `/asset-p
 
 ## FH Improvement 4-Axis Auto-Gate (Self-Verification Orchestrator)
 
-**FH 자산을 수정하면**(SKILL.md · `.claude/rules/*.md` · `knowledge/shared/rules/*.md` · `templates/` · `CLAUDE.md` · substantive `knowledge/`·`docs/*.md` · `AGENTS.md`) **4축 검증 체인이 그 세션 첫 커밋 전에 자동 실행된다.** 사용자 요청 불요 — 제안이 아니라 의무 단계다.
+**FH 자산을 수정하면**(SKILL.md · **SKILL_detail.md** · `.claude/rules/*.md` · `knowledge/shared/rules/*.md` · `templates/` · `CLAUDE.md` · substantive `knowledge/`·`docs/*.md` · `AGENTS.md`) **4축 검증 체인이 그 세션 첫 커밋 전에 자동 실행된다.** 사용자 요청 불요 — 제안이 아니라 의무 단계다.
 
 **기계 floor**: `git commit` 은 `templates/.git-hooks/pre-commit` 이 **하드 차단**한다. 축이 전부 PASS 할 때까지 커밋 자체가 안 된다. 아래 상세가 로드되지 않아도 **훅이 막는다** — 이 산문은 훅 위의 살리언스 층이지 유일 floor 가 아니다.
 

@@ -26,16 +26,33 @@ Collection criteria: score > 10, keyword-relevant items only. Max 15 items.
 ### arxiv
 
 ```bash
-# query refresh 2026-07-24: "AI software testing" (exact-phrase) went stale — newest hit was Sept 2024
-# (07-24 run instrument note). Replaced with "LLM agent evaluation"; refresh again when a query's
-# newest hit is >6 months old two runs in a row.
-for Q in "multi-agent LLM" "LLM agent evaluation" "context engineering agents"; do
+# Category-scoped since 2026-07-26. Unscoped `all:` full-text matching drifted off-axis: the 07-26 run
+# returned 6/6 fresh-but-irrelevant papers (diffusion world models, embodied QA, medical-education
+# gamification, RF fingerprinting). Freshness was fine; relevance was not — so the staleness rule below
+# could not catch it.
+for Q in "LLM agent" "agent harness" "context engineering"; do
   curl -s --max-time 8 \
-    "https://export.arxiv.org/api/query?search_query=all:${Q// /+}&max_results=2&sortBy=submittedDate&sortOrder=descending"
+    "https://export.arxiv.org/api/query?search_query=cat:cs.SE+AND+all:%22${Q// /+}%22&max_results=2&sortBy=submittedDate&sortOrder=descending"
 done
 ```
 
 Max 6 items.
+
+**Refresh rule — two independent triggers (both required, neither sufficient alone):**
+- **Staleness**: a query's newest hit is >6 months old, two runs in a row → replace the query.
+- **Relevance** (added 2026-07-26): ≥4 of 6 returned items are off-axis (not about LLM agents /
+  harnesses / agent evaluation / context engineering) → the query is drifting even though it is fresh.
+  Staleness and relevance fail independently; a fresh-but-irrelevant query passes the staleness check.
+
+**Before adopting a replacement query, calibrate it on a known pair** (`measurement-integrity-checklist.md
+§Instrument-Calibration`): pick one paper FH would clearly want and one it clearly would not, and confirm
+the new query returns the first and excludes the second. A query that cannot separate a pair you already
+know the answer to is not filtering — it is generating.
+
+> Calibration on record (2026-07-26, for the `cat:cs.SE` scoping above):
+> **positive** = *"Understanding Agent-Reactive Bugs at the Model-Harness Boundary"* → `cs.SE`, returned.
+> **negative** = *"MedGame: Storytelling Gamification … Medical Education"* → `cs.CL`/`cs.HC`, excluded.
+> `cat:cs.MA` was tested against the same pair and **rejected** — it kept roughly half the off-axis items.
 
 ### TLDR AI (RSS)
 
@@ -48,8 +65,14 @@ Parse `<item>` → title + link. Max 5 items.
 ### The Batch — deeplearning.ai (HTML scraping)
 
 ```bash
-curl -s --max-time 10 -L "https://www.deeplearning.ai/the-batch/"
+curl -s --max-time 10 -L "https://www.deeplearning.ai/the-batch"
 ```
+
+⚠️ **No trailing slash.** `…/the-batch/` returns **HTTP 308** redirecting to the slash-less path (verified
+2026-07-26); the 07-26 automated run read that 308 as a dead endpoint and skipped the leg. The slash-less
+URL returns 200 directly, so the leg no longer depends on redirect-following at all — which matters
+because the fetch path is not always `curl -L` (a WebFetch-based run does not follow redirects the same
+way). Second collection endpoint to churn, after GeekNews `/rss/news` (2026-06-20).
 
 Extract `"title":"..."` + `"slug":"issue-\d+"` pattern → URL: `https://www.deeplearning.ai/the-batch/{slug}/`. Max 5 items.
 

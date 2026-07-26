@@ -101,8 +101,18 @@ STAGED=$(git diff --cached --name-only 2>/dev/null || true)
 # which carve out pure-prose edits). N=3 of the gate-locality class (scripts/ 06-26, AGENTS.md
 # inheritance #111/#117). If pure-doc agent .md edits over-friction in practice, add a substantive
 # carve-out like CARVEOUT below.
+# seam #4 (2026-07-26): SKILL_detail.md. The term above was `SKILL\.md`, and the string
+# "SKILL_detail.md" does NOT contain "SKILL.md" — the underscore breaks it — so every detail file
+# matched NOTHING here and nothing in regression_guard's pathspec either. Measured: 17 files /
+# 208,710 B = 27.7% of the skill-spec surface, 16 of 17 carrying fenced code blocks. It LEAKED
+# twice for real (371c04f, e661931 — both single-file edits to phantom-quench/SKILL_detail.md,
+# i.e. a gate skill's own behavioral spec changed with zero 4-axis coverage). N=4 of the
+# gate-locality class. Worst property: salience-splitter WIDENS this hole every time it moves
+# content out of SKILL.md to lean the resident layer — coverage shrank as the diet progressed.
+# Over-firing measured before shipping: of the last 60 commits, 28 touched a detail file and 26
+# already tripped HEAVY via a companion file, so this adds a heavy path to ~7% of them.
 HEAVY=$(echo "$STAGED" \
-  | grep -E "(SKILL\.md|\.claude/rules/|^knowledge/shared/rules/|templates/|CLAUDE\.md|^scripts/.*\.sh$|^plugins/[^/]+/agents/.*\.md$|^\.claude/agents/.*\.md$)" || true)
+  | grep -E "(SKILL(_detail)?\.md|^plugins/[^/]+/skills/[^/]+/.*\.md$|\.claude/rules/|^knowledge/shared/rules/|templates/|CLAUDE\.md|^scripts/.*\.sh$|^plugins/[^/]+/agents/.*\.md$|^\.claude/agents/.*\.md$)" || true)
 
 # Carve-out candidates: knowledge/ docs, docs/*.md, AGENTS.md. Heavy only if substantive.
 CARVEOUT=$(echo "$STAGED" \
@@ -159,7 +169,7 @@ echo ""
 # script changes are doc-neutral; the warning makes the *decision* conscious.
 EXEC_STAGED=$(echo "$STAGED" | grep -E '^(bin/|scripts/).*' || true)
 DOC_STAGED=$(echo "$STAGED" \
-  | grep -E '(README\.md|CHEATSHEET\.md|CLAUDE\.md|AGENTS\.md|^docs/|^knowledge/|SKILL\.md|^\.claude/regression/)' || true)
+  | grep -E '(README\.md|CHEATSHEET\.md|CLAUDE\.md|AGENTS\.md|^docs/|^knowledge/|SKILL(_detail)?\.md|^\.claude/regression/)' || true)
 if [ -n "$EXEC_STAGED" ] && [ -z "$DOC_STAGED" ]; then
   echo ""
   echo "⚠️  DOC-CODE COUPLING (measured — commit allowed)"
@@ -569,6 +579,36 @@ fi
 # Gated so ordinary commits stay cheap; reuses scripts/count_check.sh (same logic selfcheck
 # uses — single source, no reinvention). NOT the whole of selfcheck (that is a broad
 # publish-readiness check; keep the hook light).
+# ── Gate path-coverage anchor (mandatory-pass — blocks) ───────────────────────
+# Runs when a gate implementation or its canonical rule is staged. The gate-locality class has
+# recurred 4x; each time a path term silently stopped covering a declared asset class, and the miss
+# rendered as PASS. This anchor is calibrated on known pairs (reopening the 07-26 hole makes it FAIL,
+# verified) so the fix cannot be un-done unnoticed. Blocks, because a gate that no longer gates is
+# not a reversible-surface concern — it disables the commit gate itself.
+GATE_IMPL=$(echo "$STAGED" \
+  | grep -E '(templates/\.git-hooks/pre-commit|templates/regression_guard\.sh|\.claude/rules/fh_4axis_gate\.md|scripts/gate_pathspec_check\.sh)' || true)
+if [ -n "$GATE_IMPL" ]; then
+  echo "[Gate] gate implementation staged — path-coverage known-pair anchor..."
+  PSCHECK="$REPO_ROOT/scripts/gate_pathspec_check.sh"
+  if [ ! -f "$PSCHECK" ]; then
+    echo "  ❌ FAIL — scripts/gate_pathspec_check.sh missing while a gate file is being changed."
+    echo "     The anchor is the only mechanical guard on gate path coverage; its absence during a"
+    echo "     gate edit is fail-closed, not a skip."
+    FAILED=1
+  elif bash "$PSCHECK" >/dev/null 2>&1; then
+    echo "  ✅ PASS (all known pairs hold)"
+  else
+    echo "  ❌ FAIL — a gate path term stopped covering a declared asset class:"
+    bash "$PSCHECK" 2>&1 | grep -E '^\s+❌' | sed 's/^/    /'
+    echo "     (run: bash scripts/gate_pathspec_check.sh)"
+    FAILED=1
+  fi
+fi
+
+# SKILL.md ONLY here, deliberately (2026-07-26): the 07-26 sweep widened `SKILL\.md` →
+# `SKILL(_detail)?\.md` in the HEAVY and doc-coupling terms above, but NOT here. This slice asks
+# "did the number of SKILLS change?" — a detail file is a referenced companion, not a skill, so
+# adding one must not trip a skill-count check. Do not "fix" this for consistency with the others.
 SKILL_CHANGE=$(git diff --cached --name-status --diff-filter=ADR 2>/dev/null \
   | grep -E 'plugins/[^/]+/skills/[^/]+/SKILL\.md' || true)
 if [ -n "$SKILL_CHANGE" ]; then
