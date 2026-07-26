@@ -45,9 +45,21 @@ paths:
 
 ## FH Improvement 4-Axis Auto-Gate (Self-Verification Orchestrator)
 
-**Whenever the AI modifies FH assets** (SKILL.md · `.claude/rules/*.md` · `knowledge/shared/rules/*.md` (relocated protocol rules — always full-gate, NOT under the knowledge carve-out) · `templates/` · `CLAUDE.md` · substantive `knowledge/` docs · substantive `docs/*.md` · `AGENTS.md` — see Substantive carve-out below),
+**Whenever the AI modifies FH assets** (SKILL.md · **`SKILL_detail.md`** · `.claude/rules/*.md` · `knowledge/shared/rules/*.md` (relocated protocol rules — always full-gate, NOT under the knowledge carve-out) · `templates/` · `CLAUDE.md` · substantive `knowledge/` docs · substantive `docs/*.md` · `AGENTS.md` — see Substantive carve-out below),
 the 4-axis verification chain runs **automatically before the first commit** of that session.
 No user request is needed — this is a mandatory autonomous step, not a proposal.
+
+> **`SKILL_detail.md` added 2026-07-26.** It was absent from this list *and* from both gate
+> implementations because the matching term was the literal `SKILL\.md`, which the string
+> `SKILL_detail.md` does not contain (the underscore breaks it). Measured at the time: 17 files /
+> 208,710 B = **27.7% of the skill-spec surface**, 16 of 17 carrying fenced code blocks — i.e. real
+> executable content, precisely what the Substantive carve-out below says must be gated *wherever it
+> lives*. It leaked twice for real (`371c04f`, `e661931` — both single-file edits to
+> `phantom-quench/SKILL_detail.md`, a gate skill's own behavioral spec, with zero 4-axis coverage).
+> **The structural lesson outlives the fix**: `salience-splitter` *widens* a hole of this shape every
+> time it relocates content to lean the resident layer, so **every split must re-ask whether the
+> destination path is inside the gate** — coverage otherwise shrinks as the diet succeeds.
+> Mechanical anchor: `scripts/gate_pathspec_check.sh` (known-pair, wired into pre-commit).
 
 **Commit gate**: `git commit` on FH asset changes is hard-blocked by `templates/.git-hooks/pre-commit` until all required axes PASS. Hook installation (one-time): `git config core.hooksPath templates/.git-hooks && chmod +x templates/.git-hooks/pre-commit templates/.git-hooks/pre-push` (the same `core.hooksPath` also activates the **pre-push** Destructive-Op gate — see that section below).
 

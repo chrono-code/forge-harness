@@ -93,6 +93,79 @@ For each proposition, find the **first occurrence** of its core frame/key terms 
 Counterpart-authored content the user *selected* as valuable is listed separately, marked
 "selection, not authorship" — selection is a real act but must not be recorded as the user's claim.
 
+## Step 4-b. Cross-Corpus Provenance — the single-author mode (measured need, 2026-07-26)
+
+Step 4 asks *"who first said this — the user or the counterpart?"* On a **single-author corpus**
+(a video transcript, an article, a talk) there is no counterpart, so every proposition is stamped
+`independent` **for free** and the differentiator does not fire at all. The first real-corpus run
+measured exactly that: 12 propositions, 12 free labels, zero discrimination.
+
+On a single-author corpus the load-bearing provenance axis is not *within* the document — it is
+**between the corpus and the assets that were supposed to consume it**:
+
+> *Which of these propositions reached our own assets, and which did we hold and never use?*
+
+**Run it when** the corpus is single-author AND a downstream asset on the same topic exists.
+Skip (and say so) when there is no plausible consumer — the question is meaningless without one.
+
+1. **Name the consumer asset(s)** explicitly in the output header. Guessing is not allowed;
+   an unnamed consumer makes every verdict unfalsifiable.
+2. **Grep locates candidates; the label is assigned by reading them.** A hit count is never a
+   verdict — a consumer that says *"we do not use kill switches"* matches the same pattern as one
+   that adopts them. So:
+   - **absorbed** — requires **quoting the supporting span** from the consumer. No quote, no
+     `absorbed`. (A count-only `absorbed` is the same defect as a whole-file parity grep going
+     green on a line that says "excluded" — measured in this repo the same day.)
+   - **held-unused** — absent from the consumer though the corpus has been in-house since {date}.
+     Before writing it, **try at least two term variants** (synonym / abbreviation / the concept
+     re-said in the consumer's own vocabulary). Concepts get absorbed under different words; a
+     literal-match zero is weak evidence of absence.
+   - **declined** — absent *because a named asset records a decision against it*. Cite the decision.
+     This tier is mandatory and load-bearing: without it, a re-proposal reopens a settled call
+     as if it were an oversight. (First run hit this immediately — stagnation-triggered stopping
+     was `held-unused` by grep and `declined` in fact, recorded in `hub_maturity_roadmap.md`.)
+   **Automation is prohibited here**: the first run produced 2 false positives out of 12, both
+   caught only by opening the matched line.
+3. **Report the ingestion-to-citation gap** — corpus in-house date vs first citation by any asset.
+   A corpus with **zero citations** is the finding, not a null result.
+
+**Instrument discipline (mandatory-pass, learned on the first run — four failures in one session):**
+a **known-positive control** runs beside every measurement and its result is printed. A bare zero is
+not publishable.
+
+⚠️ **The control must be a separate search, not an alternation bolted onto the target pattern.**
+`grep -E "core_term|title"` satisfies "a control ran" while proving nothing: `title` matches, the
+command exits 0, and a malformed `core_term` still silently matches nothing. That is a vacuous pass.
+The control's job is to prove **this pattern form, on this target, through this shell** can return a
+hit at all — so run the *same pattern shape* against something you know contains it, as its own
+command, and print both numbers. The four measured failure modes:
+BRE `\|` inside an ERE pattern · unquoted `$VAR` under zsh (no word-splitting) · a stale `cd` making
+paths unresolvable · substring collision (`install` contains `stall`). Each produced a *confident,
+wrong* zero; each was caught only by the control. Do not redirect stderr away — three of the four
+announced themselves there.
+
+**Degrade direction — and the skip/degrade boundary, which must not be a matter of taste.**
+`skip (N/A)` and `UNCALIBRATED` are **different states with different triggers**, and the boundary is
+mechanical because otherwise the cheaper exit wins under time pressure:
+
+| Situation | State | Why |
+|---|---|---|
+| Corpus is multi-speaker | **N/A** | Step 4 already answered provenance; 4-b's question does not arise |
+| A consumer search was **run and recorded**, and no asset on the topic exists | **N/A**, quoting the search | A real negative, not a failure |
+| A consumer is **named but does not resolve** (bad path, missing file) | **UNCALIBRATED** | Never N/A — a broken pointer is a tooling failure wearing absence's clothes |
+| The known-positive control returns zero | **UNCALIBRATED** | The instrument is not measuring |
+| No search was run | **UNCALIBRATED** | "I didn't look" is not "nothing is there" |
+
+Under `UNCALIBRATED` the step emits **no** absorbed/held-unused/declined labels at all — a provenance
+verdict is a claim about what an organization did with knowledge, and an uncalibrated one is worse
+than none. Under `N/A` the step states the reason **and the search that established it**.
+
+⚠️ **Known weakness, stated rather than papered over**: a hurried session's natural pull is to grep a
+nearby-but-plausible file and report against it without flagging the substitution. The Sonnet
+floor-sim of this step reached `UNCALIBRATED` correctly *and* named that same failure as the more
+likely one in practice. The forcing function is the control returning zero alongside the
+measurement — which is why the control is mandatory-pass and not advice.
+
 ## Step 5. Verification-Status Column
 
 Each proposition gets a status: mechanically checkable / falsifiable-but-untested /
@@ -133,6 +206,12 @@ Routing is **proposal-only**: this skill writes nothing outside its output block
   pair first** — re-running an existing-language pair for a new language is a vacuous pass, not a
   measurement (check-class: **measured**; declare the result in the output header
   `calibration:` field).
+- **Single-author corpus with a named consumer ran Step 4-b** — each proposition carries
+  absorbed / held-unused / declined, the consumer asset is named, and the ingestion-to-citation gap
+  is reported; every grep in the step shows its known-positive control result inline, or the step
+  reports `UNCALIBRATED` and emits no labels (check-class: **mandatory-pass** — the control result
+  is either printed or the labels are absent; N/A when the corpus is multi-speaker or no consumer
+  asset exists, and the N/A must be stated).
 - **Propositions are faithful to source spans** — no meaning drift (check-class: **judged**;
   adversarial pairing: `phantom-quench` back-trace of each proposition to its source ref — a
   proposition whose source span does not support it is an Unsupported finding).

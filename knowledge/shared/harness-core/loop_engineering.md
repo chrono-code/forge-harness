@@ -71,7 +71,33 @@ instrument: the next slip finds its leg pre-diagnosed.
 | harvest-loop Step 0-b/0-c evidence check | a harvest run misses completed items despite `fh_completed_*` existing |
 | goal-quench mid-run checkpoint files (70/85/95%) | a /goal run blows through a threshold unnoticed |
 | ~~Substrate-jump detector~~ | **BUILT 2026-07-10** (`scripts/substrate_jump_detector.sh`, SessionStart-wired) — same operator instruction; structure-enforcing class (out-of-context drift), permanent per the durable-mechanization criterion |
-| Quarterly maturity checker (`quarterly_maturity_check.sh` — criterion status + §6.1 BLOCKED emit) | a quarterly re-diagnosis is missed >90d or a phase transition skips the simplification checklist |
+| Quarterly maturity checker (`quarterly_maturity_check.sh`) — **still unbuilt, correctly so** | ⚠️ **TRIGGER WAS UNFIRING — condition rewritten 2026-07-26** (the row stays live; strikethrough in this table means BUILT and must not be used for anything else). Its condition was *"a quarterly re-diagnosis is missed >90d"*, which needs a **last-diagnosis date to measure from, and none exists**: `hub_maturity_roadmap.md` is still the shipped **template** (its own header says *"in actual hub operation… write an operating copy"*), no operating copy was ever created, §5's six indicators still hold their template descriptions rather than counters, and no quarterly diagnosis artifact exists in either store. A backlog row whose trigger cannot fire is not deferred — it is **dead**, and it reads as deferred. **New trigger (observable): the first quarterly re-diagnosis is actually run and dated.** Until an instance-zero exists there is nothing for a checker to check; building the checker first would be the checker-for-a-loop-that-never-ran. |
+| **Tested kill switch for any FH path that runs unattended** — documented one-move stop, *actually exercised once*, recorded | FH runs a genuinely unattended loop. Today the only candidate is the launchd `frontier-digest` (09:00 daily); the moment a second one ships, or that one gains write authority beyond its digest file, this fires |
+
+### On the kill-switch row — provenance and the boundary of what is being proposed
+
+Added 2026-07-26 with **two independent sources naming the same gap**, which is why it is on the
+backlog rather than in a signal:
+1. **External transcript already in-house since 2026-06-27** (a private companion store's
+   cross-audit shelf, `raw_2026-06-27_loop-engineering-transcript.txt` — single-author, 44 KB)
+   — *"실수도 무인으로 쌓이기 때문에 브레이크가 필요하다"* · iteration cap ·
+   stop-on-stall · budget guard. **This corpus was never cited by any FH asset** (whole-repo grep, 0
+   references) — it sat unmined for 13 days while this very file was authored from a different sister.
+   Surfaced by the first real-corpus `dialogue-harvest` run.
+2. **`agentsmith/profiles/autonomous-loops.md`** (2026-07-16) — *"a documented one-move stop you have
+   actually tested. No budget, no cap, no L3."* Cross-audit `session_2026_07_26_agentsmith-sister.md §I-4`.
+
+**Measured absence, instrument-calibrated**: `kill switch` · `emergency stop` · `abort the run/loop` ·
+`정지 스위치` · `tested stop` → **0 hits** repo-wide, with known-positive controls in the same run.
+
+⚠️ **What is deliberately NOT proposed — do not relitigate**: the same two sources also teach
+*stagnation-triggered stopping* ("stop when the number does not improve twice"). FH already
+**considered and declined** that class — `hub_maturity_roadmap.md §(c) Trigger-based`: *"Stagnation
+detection criteria + auto-alerts + trigger tags all require new infra. Simplification principle
+violation risk."* That declination stands; reopening it needs new evidence about **that** decision,
+not a fresh citation of the same idea. Separately, FH **already has** stall detection where it
+measurably mattered — `auto-decorrelation` §sidecar liveness, built on a production miss.
+The kill-switch row is narrower than either source's full prescription, on purpose.
 
 ## Done When (for a new/changed autonomous path)
 

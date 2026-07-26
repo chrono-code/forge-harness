@@ -75,7 +75,7 @@
   task: steel-quench Axis 2 on 🐿️ fold-in + 6/15 billing amendment + below_floor_scan.sh consumer + operations.md wiring
   trigger: 4-axis auto-gate Axis 2 (FH asset modified)
   outcome: accepted
-  note: "PASS 0S+3B — marker-append/hook-collision CLEAN (replicated validate_marker_floor), P9 check verdict 'builds the control, not paper-over'; B1 scanner-autoinvoke implication fixed, B2 signal status update routed to fh-be, B3 opus hardcode accepted (matches hook convention)"
+  note: "PASS 0S+3B — marker-append/hook-collision CLEAN (replicated validate_marker_floor), P9 check verdict 'builds the control, not paper-over'; B1 scanner-autoinvoke implication fixed, B2 signal status update routed to the private companion store, B3 opus hardcode accepted (matches hook convention)"
 - date: 2026-06-11
   agent: claude (background, frontier-digest skill execution)
   task: cadence-overdue frontier-digest run (16d+ since 2026-05-26) — WebSearch mode, incremental-only
@@ -119,7 +119,7 @@
   agent: fh-meta:persona-innovator (inherit opus, v0.3 H1-b)
   self_contained_prompt: yes
   outcome: accepted
-  note: "3 naming candidates (Contested-Ground Ceiling / Flip-as-FLAG / Counter-Voice Pairing) + 5 external signals tiered T1/T2/T3. Anchor-tier: 2 T1-live / 2 T1venue-T2grounded / 1 T3-BARRED (bar fired on tempting 76%/91% vendor stat). KEY: tier ⊥ grounded-this-run. Self-floors H1/H1-b/H2/H3/H4 run as declared steps. Signal: fh-be paper-signals/h1b_pilot_anchor_tier_thebible_2026-06-27.md"
+  note: "3 naming candidates (Contested-Ground Ceiling / Flip-as-FLAG / Counter-Voice Pairing) + 5 external signals tiered T1/T2/T3. Anchor-tier: 2 T1-live / 2 T1venue-T2grounded / 1 T3-BARRED (bar fired on tempting 76%/91% vendor stat). KEY: tier ⊥ grounded-this-run. Self-floors H1/H1-b/H2/H3/H4 run as declared steps. Signal: companion store paper-signals/h1b_pilot_anchor_tier_thebible_2026-06-27.md"
 - date: 2026-06-27
   task: "challenger adversarial gate on innovator the-bible outputs (no-judge-only-path closure on 3 highest-value claims)"
   agent: fh-meta:challenger (inherit opus)
@@ -257,7 +257,7 @@
   context: "operator: 'fh pmh qasp dev 모두 닥터와 하네스클러스터기능으로 감사돌려주고 온보딩 미들 고수 등 여러페르소나로 사용성과 의도기반으로 풀오케스트레이션 잘 돌리는지... 프런티어급으로 개선해줘'"
   target: "3-harness cluster structure + usability (intent-based orchestration, friendliness)"
   outcome: accepted
-  note: "All 18 completed. Cross-cutting chorus: routing tables narrower than real daily utterances in ALL three harnesses (FH product-verify / pmh close-chain ambiguity / qasp act1.5+3). Cluster = two opposite halves (qasp discoverable-ungated, pmh gated-undiscoverable). Fixes applied same-session: FH c25aeb9 (pushed) + pmh b866c94 + qasp 2b3499a (local branches). Fixer honesty highlights: qasp fixer verified-then-skipped a false typo claim (케크=jargon); pmh fixer passed pmh's own pre-commit gate properly instead of bypassing. Canonical report: fh-be/tracks/fh/multi_harness_usability_audit_2026-07-17.md. Deferred M3/S8/R4 backlog ranked there."
+  note: "All 18 completed. Cross-cutting chorus: routing tables narrower than real daily utterances in ALL three harnesses (FH product-verify / pmh close-chain ambiguity / qasp act1.5+3). Cluster = two opposite halves (qasp discoverable-ungated, pmh gated-undiscoverable). Fixes applied same-session: FH c25aeb9 (pushed) + pmh b866c94 + qasp 2b3499a (local branches). Fixer honesty highlights: qasp fixer verified-then-skipped a false typo claim (케크=jargon); pmh fixer passed pmh's own pre-commit gate properly instead of bypassing. Canonical report: companion store, tracks/fh/multi_harness_usability_audit_2026-07-17.md. Deferred M3/S8/R4 backlog ranked there."
 
 - date: 2026-07-21
   agent: fh-meta:beginner
@@ -454,3 +454,91 @@
   outcome: accepted
   finding: "12/12 pass(10s)·web_rules 0/6 첫 패스·BE유도 단언 3(승인합 54,980,000 양페이지 불변·max date 상단행·12행 카운트)·뷰포트 조항 테스트·§8 UNVERIFIED 라벨 자기 명시. governor 독립 재실행 12/12(6.3s) 재확인"
   note: "corp-env 실측 패턴(22/22 3채널)의 로컬 재현 성립 — 대리표면만으로 corp-env 실측 구조 반복 가능 입증. qasp-dev #28"
+- date: 2026-07-25
+  agent: codex-sidecar (gpt-5.5, exec stdin)
+  caller: fh-governor (qasp-dev pull_anchor load-bearing gate)
+  task: cross-family adversarial review R1~R3 — 신규 verdict 모듈(PullVerdict) fail-open 감사
+  outcome: accepted
+  findings: "R1 7건(High 3=false-ABSENT fail-open) 전부 소스 확인 유효 → 수리+회귀앵커 21tests → R3 CONVERGED"
+  verdict_holder: governor (source-grounded 후 수용, 거버너 유지 판단 2건 별도)
+  tokens_est: ~3 calls
+- date: 2026-07-25
+  agent: probe-fleet (9x sonnet, isolated)
+  caller: fh-governor (matrix bench 갈래3)
+  task: 3조건(지팡이/눈/에스컬레이션)×3reps 검출·귀속 벤치
+  outcome: accepted
+  findings: "검출 44/45 · 귀속 A64/B100/C80% · C 프로토콜 위반 0 · E4 계기 크라우딩 3/3"
+  verdict_holder: governor (answer_key 대조 채점, self-score 금지 준수)
+  tokens_est: ~917k subagent total
+- date: 2026-07-26
+  agent: probe-fleet (3x general-purpose, isolated)
+  caller: fh-governor (matrix bench v2 — 툴링 known-pair baseline)
+  task: "계기 하한 없는 조건에서 admin-surrogate 컬럼 헤더 '전부' 관측 (숨은 display:none 컬럼이 기지 정답)"
+  outcome: accepted
+  findings: "숨은 컬럼 검출 2/3 (1기 미검출 — a11y 스냅샷 단독 신뢰) · 호출 10/13/10 · Bash 권한 차단 0건 · venv playwright 선택 0건(전원 MCP 자발 선택)"
+  verdict_holder: governor (기지 정답 대조)
+  note: "갈래3 각주2의 'Bash 권한 차단' 귀속이 이 조건에서 미재현 — 기각 아니라 미재현(조건 차이 미상). 실제 분산 축은 관측 계기 깊이로 재귀속"
+- date: 2026-07-26
+  agent: probe-fleet (3x general-purpose, isolated)
+  caller: fh-governor (matrix bench v2 — 툴링 known-pair 처치군)
+  task: "§계기 하한(DOM 기하 교차확인 의무 + 부재 주장 fail-closed) 조항 하에 동일 관측 과제"
+  outcome: accepted
+  findings: "숨은 컬럼 검출 3/3 · 호출 11/7/10(평균 11.0→9.3, 증가 없음) · 2기는 원인 룰(@media max-width:1280px)까지 확보 · 1기는 CSSOM CORS 차단으로 UNVERIFIED 정직 종결(fail-closed 절 작동)"
+  verdict_holder: governor (기지 정답 대조)
+  note: "known-pair 성립. 수리를 실행 경로 고정이 아니라 계기 하한으로 배선 → RUNNER_gal3 §계기 하한(v2 이후 적용). qasp-dev 231497e"
+- date: 2026-07-26
+  agent: agy sidecar (gemini-3.6-flash-high)
+  caller: fh-governor (agentsmith sister-asset cross-audit, auto-decorrelation leg 1)
+  task: 적대 감사 — sister 감사문서의 미근거·자기위주·범주오류 공격
+  outcome: accepted
+  findings: "NOT-CONVERGED, High 4/Med 3. 최대 지적=P-1/P-2 부재증명 오류(3파일 grep 무히트→개념부재 단정)"
+  verdict_holder: governor (소스 그라운딩 후 P-2 근거 기각·P-1 축소 — 동의로 수용 안 함)
+  note: "recorded 폼 갱신: agy models가 이제 슬러그 출력, 슬러그 핀 정상동작(identity probe 통과). 메모리의 '디스플레이명 필수' 규칙은 이 버전에서 stale"
+- date: 2026-07-26
+  agent: 4090 local (qwen3.6:27b, Tailscale ollama)
+  caller: fh-governor (동 감사, auto-decorrelation leg 2)
+  task: 동일 적대 감사 (3번째 패밀리, 무료)
+  outcome: accepted
+  findings: "NOT-CONVERGED, High 3/Med 2/Low 1. leg 1과 독립적으로 동일 4지점 지목. 신규=0.8% 갭의 로케일/인코딩 가설(메커니즘은 실재 확인, 단 이 갭은 커밋간 워킹트리 스냅샷이 설명)"
+  verdict_holder: governor (기지 데이터 대조)
+  note: "두 레그가 같은 4곳을 지목했으나 P-1/P-2 중 어느 쪽이 기각인지는 양쪽 다 못 갈랐다 — 소스 검증만이 갈랐다. 사이드카=어디를 파나, 판정 아님"
+- date: 2026-07-26
+  agent: codex sidecar (gpt-5.6-sol, exec stdin)
+  caller: fh-governor (동 감사, auto-decorrelation leg 3)
+  task: 동일 적대 감사 — 3차에 agentsmith 소스 5파일 stdin 인라인
+  outcome: accepted
+  findings: "NOT-CONVERGED, 40건. 앞 두 레그 미검출 3건: ①Step 4 산술 기준선 혼용(+3,218 오류→+2,687) ②P-2의 실제 근거=leak-gate.sh:80 `2>/dev/null || true` 에러삼킴(깨진 정규식→PASS, 실험 재현) ③'exit code뿐'은 오독(core/20이 판단기반 평가 요구)"
+  verdict_holder: governor (3건 모두 재계산·실험·소스로 독립 확인 후 수용)
+  note: "1·2차 실패=MCP auth stall / DNS 없는 샌드박스의 웹페치 반복. 인라인 후 3레그 중 최강 결과 — 품질이 티어가 아니라 증거접근에 지배됨. 단 조건이 달라 모델비교 아님"
+- date: 2026-07-26
+  agent: codex sidecar (gpt-5.6-sol, exec stdin)
+  caller: fh-governor (4축 Axis 2 — SKILL_detail 게이트 수리 diff 적대 검토, leg 2)
+  task: 게이트 diff 5벡터 공격(불완전성·회귀·앵커견고성·fail-open·자기무력화)
+  outcome: partial
+  findings: "형식 findings 0건(미착지). 다만 탐색 중 dialogue-harvest/calibration_pair.md 를 **독립 발견** — governor 의 열거 스윕이 잡은 동일 파일이며, 수리 방향(이름목록→디렉토리 스코프)의 독립 확증"
+  verdict_holder: governor (Axis 2 는 agy 레그로 성립, codex 미착지를 마커에 잔여 명시)
+  note: "hang 아님 — mtime 69초 전·내용 진행형(detail 17개 frontmatter 순차 열람) 확인 후 판정. 실제 문제는 **과탐색**: ~7분간 findings 0. 증거접근을 준 것이 이번엔 역효과(레포를 읽을 수 있으니 계속 읽음). 운영자 판단으로 kill. 교훈: 사이드카에 소스 접근을 줄 때는 **탐색 예산**도 같이 줘야 한다 — 접근권만 주면 수렴 압력이 없다"
+- date: 2026-07-26
+  agent: local-4090 sidecar (qwen3-coder:30b via ollama, Tailscale)
+  caller: fh-governor (qasp-dev mate_rules load-bearing gate — diff 앵커·P0 위양성 수리)
+  task: cross-family 적대 검증 R1~R2 — verdict/exit code 변경분 fail-open 감사
+  outcome: partial
+  findings: "R1 4건 중 #3(malformed hunk header) 수용·수리. #1/#2/#4 는 실체 하나(multi-line 시그니처 미검출)이며 변경 전 코드로 동일 입력 재현 → 선재 갭 확정(3/531=0.6%). R2 CONVERGED"
+  verdict_holder: governor (소스 대조 + 변경 전 코드 실행으로 귀속 확정)
+  note: "residency 판단으로 codex 대신 로컬 4090 선택(회사 심볼명 포함 diff, 머신 밖 미전송). qasp-dev PR#30"
+- date: 2026-07-26
+  agent: local-4090 sidecar (qwen3-coder:30b)
+  caller: fh-governor (qasp §8-2 탈상관 판정 레그 — 실운영 1호)
+  task: "admin-surrogate e2e 생성물(producer=claude) 터미널 판정 — 생성자와 다른 계열 리뷰어로서 회귀 검출력 감사"
+  outcome: accepted
+  findings: "FINAL: CHANGES-REQUIRED (4개 blocking). 일부는 벤치 맥락(고정 픽스처·planted defect 앵커) 미인지 지적 — 소스 대조 후 수용/기각 예정"
+  verdict_holder: verdict_manifest 게이트 (exit 1 = UNVERIFIED). 항목별 채택은 governor 보류
+  note: "§8-2 첫 실측. 이 실행이 verdict_manifest 초판의 설계 결함(리뷰 존재≠통과)을 노출 — 적대 검증 5문항이 놓친 것을 첫 실사용이 잡음"
+- date: 2026-07-26
+  agent: local-4090 sidecar (qwen3-coder:30b)
+  caller: fh-governor (verdict_manifest load-bearing 게이트)
+  task: cross-family 적대 검증 R1~R2 — 판정 게이트 fail-open/우회 감사
+  outcome: partial
+  findings: "R1 5문항 중 #5(유니코드 표기 변형으로 같은-계열 차단 우회) 수용·수리(NFKC+Cf 제거, 앵커 5종). #1 소스 실행으로 기각(자기모순), #2~#4 사이드카 자인 no-finding. R2 CONVERGED"
+  verdict_holder: governor (소스 실행 대조)
+  note: "적대 검증이 실사용을 대체 못 함 — 5문항이 못 잡은 '리뷰 존재≠통과' 구멍은 실운영 1호가 잡았다. qasp-dev PR#32"
