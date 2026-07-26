@@ -454,3 +454,35 @@
   outcome: accepted
   finding: "12/12 pass(10s)·web_rules 0/6 첫 패스·BE유도 단언 3(승인합 54,980,000 양페이지 불변·max date 상단행·12행 카운트)·뷰포트 조항 테스트·§8 UNVERIFIED 라벨 자기 명시. governor 독립 재실행 12/12(6.3s) 재확인"
   note: "corp-env 실측 패턴(22/22 3채널)의 로컬 재현 성립 — 대리표면만으로 corp-env 실측 구조 반복 가능 입증. qasp-dev #28"
+- date: 2026-07-25
+  agent: codex-sidecar (gpt-5.5, exec stdin)
+  caller: fh-governor (qasp-dev pull_anchor load-bearing gate)
+  task: cross-family adversarial review R1~R3 — 신규 verdict 모듈(PullVerdict) fail-open 감사
+  outcome: accepted
+  findings: "R1 7건(High 3=false-ABSENT fail-open) 전부 소스 확인 유효 → 수리+회귀앵커 21tests → R3 CONVERGED"
+  verdict_holder: governor (source-grounded 후 수용, 거버너 유지 판단 2건 별도)
+  tokens_est: ~3 calls
+- date: 2026-07-25
+  agent: probe-fleet (9x sonnet, isolated)
+  caller: fh-governor (matrix bench 갈래3)
+  task: 3조건(지팡이/눈/에스컬레이션)×3reps 검출·귀속 벤치
+  outcome: accepted
+  findings: "검출 44/45 · 귀속 A64/B100/C80% · C 프로토콜 위반 0 · E4 계기 크라우딩 3/3"
+  verdict_holder: governor (answer_key 대조 채점, self-score 금지 준수)
+  tokens_est: ~917k subagent total
+- date: 2026-07-26
+  agent: probe-fleet (3x general-purpose, isolated)
+  caller: fh-governor (matrix bench v2 — 툴링 known-pair baseline)
+  task: "계기 하한 없는 조건에서 admin-surrogate 컬럼 헤더 '전부' 관측 (숨은 display:none 컬럼이 기지 정답)"
+  outcome: accepted
+  findings: "숨은 컬럼 검출 2/3 (1기 미검출 — a11y 스냅샷 단독 신뢰) · 호출 10/13/10 · Bash 권한 차단 0건 · venv playwright 선택 0건(전원 MCP 자발 선택)"
+  verdict_holder: governor (기지 정답 대조)
+  note: "갈래3 각주2의 'Bash 권한 차단' 귀속이 이 조건에서 미재현 — 기각 아니라 미재현(조건 차이 미상). 실제 분산 축은 관측 계기 깊이로 재귀속"
+- date: 2026-07-26
+  agent: probe-fleet (3x general-purpose, isolated)
+  caller: fh-governor (matrix bench v2 — 툴링 known-pair 처치군)
+  task: "§계기 하한(DOM 기하 교차확인 의무 + 부재 주장 fail-closed) 조항 하에 동일 관측 과제"
+  outcome: accepted
+  findings: "숨은 컬럼 검출 3/3 · 호출 11/7/10(평균 11.0→9.3, 증가 없음) · 2기는 원인 룰(@media max-width:1280px)까지 확보 · 1기는 CSSOM CORS 차단으로 UNVERIFIED 정직 종결(fail-closed 절 작동)"
+  verdict_holder: governor (기지 정답 대조)
+  note: "known-pair 성립. 수리를 실행 경로 고정이 아니라 계기 하한으로 배선 → RUNNER_gal3 §계기 하한(v2 이후 적용). qasp-dev 231497e"
