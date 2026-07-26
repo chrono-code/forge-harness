@@ -153,11 +153,33 @@ check "multi-ref push, token on 2nd ref    → BLOCK" "$R" block \
       "refs/heads/dirty2 $C2 refs/heads/dirty2 $B"
 rm -rf "$R"
 
-# ── Pair 6: instrument completeness. An absent operator override is fail-closed at the PUBLISH
-# boundary (it only warns at commit time — that asymmetry is deliberate, see the hook's comment). ──
+# ── Pair 6: instrument completeness, and the line between "not configured" and "broken".
+# CHANGED DELIBERATELY 2026-07-26 — this pair used to expect BLOCK on an absent operator override.
+# Two things overturned that: selfcheck flagged it as over-blocking (T7: "guard over-fires; that
+# trains the override"), and the reasoning did not hold — the override contains THIS operator's
+# literals, so another environment lacking it was never protected by it anyway. What protects a fresh
+# clone is the generic credential shapes in the COMMITTED layer. So an absent override now warns, and
+# what still blocks is a genuinely BROKEN pattern source, which affects everyone. Both pinned. ──
 R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
 ( cd "$R" && echo ok > g.md && git add g.md && git commit -qm g >/dev/null && rm -f .claude/rules/.public-surface-patterns )
-check "operator override ABSENT            → BLOCK" "$R" block \
+check "operator override absent (per-operator) → PASS " "$R" pass \
+      "refs/heads/f $(cd "$R" && git rev-parse HEAD) refs/heads/f $B"
+rm -rf "$R"
+
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && echo ok > g.md && git add g.md && git commit -qm g >/dev/null \
+  && : > .claude/rules/.public-surface-patterns.defaults )   # present but EMPTY = broken, not unconfigured
+check "committed defaults EMPTY (broken)      → BLOCK" "$R" block \
+      "refs/heads/f $(cd "$R" && git rev-parse HEAD) refs/heads/f $B"
+rm -rf "$R"
+
+# Applicability is mechanical: no committed pattern source at all = not an FH checkout = legs N/A.
+# Without this the hook blocked every push in any bare repo it was copied into, which is how the
+# over-block was found in the first place.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && echo ok > g.md && git add g.md && git commit -qm g >/dev/null \
+  && rm -f .claude/rules/.public-surface-patterns.defaults .claude/rules/.public-surface-patterns )
+check "no committed pattern source (not FH)   → PASS " "$R" pass \
       "refs/heads/f $(cd "$R" && git rev-parse HEAD) refs/heads/f $B"
 rm -rf "$R"
 
