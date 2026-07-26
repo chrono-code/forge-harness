@@ -4,6 +4,37 @@ AI reads this file first when searching past work. Open individual files for det
 
 ---
 
+## 2026-07-26 — Scan logic single-sourced · FH_BACKEND=cross · v1.4.72
+
+- **Single-sourcing** (`scripts/psa_scan_lib.sh`): three near-duplicate implementations of
+  public-surface pattern loading/matching (pre-commit, pre-push, publish scanner) collapsed into one.
+  Motivation was measured, not aesthetic — across 7 cross-family rounds on the same subsystem, every
+  confidentiality defect found was a divergence between the copies (readable/non-empty override check
+  in one, no-TAB rejection in two of three, the per-file LOW allowlist in exactly one — which is how
+  the push gate blocked its own first real push). Duplication removal verified mechanically:
+  `PSA_PLACEHOLDER` 3→1. Deliberately NOT unified, each with an in-file reason: degrade direction per
+  surface, the publish scanner's `grep -a` binary handling, and its stricter allowlist.
+- **`FH_BACKEND=cross`**: runs both model families and UNIONs findings (a finding only one family saw
+  is still a finding, so union rather than vote); verdict is the most severe leg. The output always
+  declares which legs actually ran (`FH_GATE_LEGS` / `FH_GATE_DECORRELATED`) and degrades loudly to a
+  single leg when only one family is installed — a single-family result reading as cross-checked is
+  the same defect class as a check that did not run reading as PASS. Implemented as a recursive
+  wrapper so the npm-shipped single-backend path is untouched.
+- **Over-block correction**, found by this repo's own selfcheck (T7: *"guard over-fires; that trains
+  the override"*): the new push-time legs blocked whenever this operator's gitignored override was
+  absent. The reasoning did not survive re-examination — that file holds one operator's literals, so
+  another environment lacking it was never protected by it. Corrected to warn; what still blocks is a
+  genuinely broken pattern source. Applicability is now decided mechanically before any dependency is
+  required, and an N/A skip is announced rather than silent.
+- **Anchors**: `universal_guard_check` 22 pairs · `prepush_guard_check` 12 pairs · fh-gate regressions
+  31. Both anchors test the STAGED blob, score a hook runtime fault as its own failure class, and
+  require a BLOCK to name a confidentiality cause (after the library landed, 6 of 8 BLOCK pairs were
+  green for a harness reason).
+- **Published**: npm `@chrono-meta/fh-gate@1.4.72`, tag `v1.4.72`, registry confirmed by polling.
+- **Residual**: `cross` has no real-model end-to-end run yet (deterministic fakes only); the union does
+  not deduplicate across legs (a false duplicate is cheap, a dropped finding is not).
+- Tags: `single-source` `decorrelation` `cross-family` `known-pair` `over-block` `release`
+
 ## 2026-07-26 — Confidentiality gate: scope decoupled from the 4-axis classifier (gate-locality N=5)
 
 - **Origin**: source-reading a cross-audited sister asset (`PromptPartner/agentsmith`, `leak-gate.sh`).
