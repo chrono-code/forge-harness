@@ -107,7 +107,22 @@ itself citing:
   — the ~7%→84% cache-hit-rate figure from cache-boundary control (fixed system prompt,
   dynamic content at the user-message end).
 
-**Grounding status — UNCALIBRATED**: both URLs returned HTTP 403 when this session attempted
+**Grounding status — split verdict (2026-07-28 re-check).** Two separate questions; only one
+is closed. Do not collapse them:
+
+| Question | Verdict | Evidence |
+|---|---|---|
+| Does the cited paper exist? | ✅ **VERIFIED** | `arxiv.org/abs/2603.09619` → HTTP 200, title *"Context Engineering: From Prompts to Corporate Multi-Agent Architecture"*. Measured alongside a known-real control ID (1706.03762 → 200), so the instrument is calibrated for this check. |
+| Do the paper/blog actually state these figures? | ❌ **UNVERIFIED** | The source text was never read. The numbers are traced only to the digest comment. |
+
+⚠️ **Instrument note (kept because it nearly produced a wrong verdict).** The first re-check
+used the arXiv **API** (`export.arxiv.org/api/query`) and returned empty for the target — but
+also empty for the known-real control, i.e. the instrument was dead, not the paper missing.
+An absence measured without a live control is not evidence. Switching to the `abs` page gave a
+working control and flipped the existence verdict to VERIFIED. Original 403 note below for
+provenance.
+
+**Original (2026-07-27) note**: both URLs returned HTTP 403 when that session attempted
 to fetch and verify the claimed spans directly (`WebFetch`), matching the same sandbox
 network-policy limitation the daily frontier-digest routine logged on every run this week
 (WebSearch fallback, no direct API access). The figures above are therefore traced only to

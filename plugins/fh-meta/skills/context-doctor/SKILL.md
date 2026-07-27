@@ -117,13 +117,18 @@ recommend, do not chase this when tokens are merely plentiful).
 - Is session-specific / dynamic content (task state, recent results) placed at the
   **end of the user message**, not interleaved into the system prompt or early context?
 
-**Reported, UNCALIBRATED by FH** (2026-07-27 frontier digest, issue #102 — both cited sources
-returned HTTP 403 to this session's fetch tooling, so these are traced only to the digest
-comment text, not independently re-verified): input:output token ratio **> 10:1** favors
-cache/context engineering over model-level optimization; **> 50:1**, prefix caching
-dominates; cache-boundary control reportedly raised hit rate ~7%→84% in one production case
-(arXiv:2603.09619 · appscale.blog). Treat the ratio thresholds as illustrative, not a
-calibrated gate, until re-verified.
+**Reported, UNCALIBRATED by FH** (2026-07-27 frontier digest, issue #102): input:output token
+ratio **> 10:1** favors cache/context engineering over model-level optimization; **> 50:1**,
+prefix caching dominates; cache-boundary control reportedly raised hit rate ~7%→84% in one
+production case (arXiv:2603.09619 *Context Engineering: From Prompts to Corporate Multi-Agent
+Architecture* · appscale.blog).
+
+**What is and is not verified** — the two are separate checks and only one has been run:
+the cited paper's **existence** was confirmed 2026-07-28 (arxiv.org/abs/2603.09619 → HTTP 200,
+title matches; measured alongside a known-real control ID, so the check itself is calibrated).
+The **figures** above were not read out of the paper — they are still traced only to the digest
+comment. Treat the ratio thresholds as illustrative, not a calibrated gate, until the source
+text is read directly.
 
 > **Detail**: See `SKILL_detail.md §CacheBoundary` — full citation text and the 403 grounding
 > note — read before citing these figures elsewhere.
