@@ -59,8 +59,108 @@ SEP=$'\n'   # ranges are newline-separated and evaluated ONE REF AT A TIME: conc
             # multi-ref push could return an empty or wrong commit set (R6 audit 2026-07-26).
 PUSH_RANGES=""    # rev-list args for exactly the commits this push would publish (R5 audit 2026-07-26)
 
+# --- stacked-branch advisory (ADVISORY — never changes the verdict) --------------------------
+# Warns when the branch being pushed carries commits that already live on ANOTHER unmerged remote
+# branch. That is the signature of a branch cut while standing on a feature branch instead of on
+# the integration branch.
+#
+# Measured origin (2026-07-27, a field harness, PRs #38/#39): a branch was cut off a feature branch
+# by accident, so the child PR carried the parent's three commits (parent PR = 3 commits, measured).
+# From there BOTH available routes cost something, and both bills arrive at parent-merge time:
+#   (a) leave the child based on the integration branch → its diff shows the parent's changes too,
+#       and once the parent is squash-merged the SHAs no longer match, so the child goes CONFLICTING;
+#   (b) retarget the child onto the parent branch to clean the diff → merging the parent with
+#       `--delete-branch` deletes that base and GitHub **CLOSES** the child rather than retargeting it.
+# The observed run took (b) and ended CLOSED + CONFLICTING (`state=CLOSED`, `mergeable=CONFLICTING`).
+# In both routes the tempting recovery is `git push -f`, which walks straight into the irreversible
+# surface THIS HOOK exists to guard. (Clean recovery: re-cut from the integration branch and
+# cherry-pick — no history rewrite.)
+#
+# Why it is worth a line in a destructive-op hook: the mistake happens at branch-cut time but only
+# bites at parent-merge time, so the two are hard to connect — and its natural "fix" is a history
+# rewrite. Surfacing it at push time removes the pressure before it reaches the force-push path.
+#
+# ADVISORY on purpose (Surface-Class Degrade Invariant, reversible half): intentional stacked PRs
+# are a legitimate workflow, so blocking would be pure over-blocking — and over-blocking trains
+# `--no-verify`, which disarms the IRREVERSIBLE guards in this same hook. What this closes is
+# silence, not permission.
+fh_stacked_branch_advisory() {
+  _sb_ref="$1"; _sb_sha="$2"
+  case "$_sb_ref" in refs/heads/*) ;; *) return 0 ;; esac
+  _sb_self="${_sb_ref#refs/heads/}"; _sb_hit=""
+
+  # Single baseline — this hook already resolved one at the top (BASE). Wave-1 caught the first
+  # draft inventing a 4-candidate fallback chain while its own comment claimed it reused BASE:
+  # comment and code disagreed, and the extra candidates existed nowhere else in the file.
+  if ! git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null 2>&1; then
+    # 부재는 통과가 아니다 — a silent `return` here is indistinguishable from "scanned, nothing
+    # found". Say that the scan did not happen. (Advisory, so it still does not block.)
+    printf '  ℹ️  [fh-advisory:stacked-branch] SKIPPED (all refs) — base %s does not resolve (FH_DESTRUCTIVE_BASE or default origin/main; shallow clone / unfetched remote). Not scanned. Fix: git fetch origin, or set FH_DESTRUCTIVE_BASE.\n' "$BASE" >&2
+    return 0
+  fi
+  # Orphan / unrelated history has no merge-base, so `BASE..HEAD` would enumerate the branch's
+  # ENTIRE history — none of which is "cut off the wrong base". Different situation, not this one.
+  if ! git merge-base "$BASE" "$_sb_sha" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Ref enumeration uses for-each-ref with an explicit TAB-delimited format — never the human
+  # `git branch` output. Cross-family review (codex, 2026-07-27) named three defects that all
+  # traced to that one choice: `origin/HEAD -> origin/main` parses as ref="HEAD", branch names
+  # containing spaces get truncated (so self-exclusion can fail), and `* `/`+ ` prefixes leak in.
+  # for-each-ref emits refs, not a display listing, so the input grammar is actually what the
+  # parser assumes.
+  #
+  # Self-exclusion is by EXACT name comparison, never by interpolating the branch name into a
+  # regex. Wave-1 reproduced that bug: a branch named `feat/a.b` built the pattern `/feat/a.b$`,
+  # whose `.` also matched a genuinely different branch `origin/feat/aXb` — grep -v dropped the
+  # REAL hit and the advisory silently no-opped on a true positive.
+  #
+  # The integration branch is excluded by its RESOLVED name (from BASE), not by hard-coded
+  # `main`/`master` (cross-family MED-2): hard-coding hides a genuine stack built on a local
+  # branch that merely happens to be called `main` in a repo whose base is something else.
+  _sb_base_name="${BASE##*/}"
+  #
+  # ⚠️ Each commit in the range is checked, NOT just the tip. Wave-2 briefly rewrote this to test
+  # `$_sb_sha` alone and the anchors caught it immediately: a child branch that adds its own commit
+  # has a tip nobody else carries — the parent's commits are the evidence, and they sit BELOW the
+  # tip. Bound: newest 50, stated in the message (a bounded best-effort advisory, not a proof).
+  _sb_others=""
+  for _sb_c in $(git rev-list "${BASE}..${_sb_sha}" 2>/dev/null | head -50); do
+    _sb_others=$(
+      { git for-each-ref --contains "$_sb_c" --format='remote	%(refname:short)' refs/remotes 2>/dev/null
+        # Local refs too: the mistake is made BEFORE the parent is ever pushed, which is the most
+        # likely moment for it. A remote-only check structurally misses that case (Wave-1 A).
+        git for-each-ref --contains "$_sb_c" --format='local	%(refname:short)' refs/heads 2>/dev/null
+      } | awk -F'\t' -v self="$_sb_self" -v basename="$_sb_base_name" -v base="$BASE" '
+          { kind=$1; ref=$2
+            name=ref
+            if (kind == "remote") sub(/^[^\/]*\//, "", name)   # drop the remote segment only
+            if (name == self || name == "HEAD" || name == basename) next
+            if (ref == base) next
+            print kind "  " ref }' | head -3
+    )
+    [ -n "$_sb_others" ] && { _sb_hit="$_sb_c"; break; }
+  done
+  [ -n "$_sb_others" ] || return 0
+
+  printf '\n  ⚠️  [fh-advisory:stacked-branch] %s carries commit(s) that already live on another branch.\n' "$_sb_self" >&2
+  printf '     shared commit example: %s\n' "$(git log -1 --format='%h %s' "$_sb_hit" 2>/dev/null | cut -c1-72)" >&2
+  printf '     also on:\n' >&2
+  printf '%s\n' "$_sb_others" | sed 's/^/       - /' >&2
+  printf '     Intentional stack? Ignore this. Otherwise the branch was cut off a feature branch\n' >&2
+  printf '     instead of %s — re-cut from %s and cherry-pick BEFORE opening the PR.\n' "$BASE" "$BASE" >&2
+  printf '     Merging the parent with --squash --delete-branch CLOSES the child PR rather than\n' >&2
+  printf '     retargeting it, and `git push -f` to recover is the surface this hook guards.\n' >&2
+  printf '     (Advisory only — does not block. Scanned the NEWEST 50 commits of %s..%s.)\n\n' "$BASE" "$_sb_self" >&2
+  return 0
+}
+
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -z "${remote_ref:-}" ] && continue
+  # Advisory first — it can never alter the verdict, and it must be visible even when a guard
+  # below blocks (the two findings are independent and the operator wants both at once).
+  [ "$local_sha" = "$ZERO" ] || fh_stacked_branch_advisory "$local_ref" "$local_sha"
   if [ "$local_sha" = "$ZERO" ]; then
     # local side zero → this refspec DELETES remote_ref
     case "$remote_ref" in
