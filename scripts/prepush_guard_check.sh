@@ -225,6 +225,143 @@ check "LOW token in a NON-allowlisted file → BLOCK" "$R" block \
       "refs/heads/f $(cd "$R" && git rev-parse HEAD) refs/heads/f $B"
 rm -rf "$R"
 
+# ── Pair 10: stacked-branch ADVISORY. Unlike every pair above, the assertion is on the WARNING,
+# not on the verdict — this leg exists precisely because the advisory must never change the exit
+# code. Origin (2026-07-27, field harness PRs #38/#39): a branch cut off a feature branch produced a
+# child PR carrying the parent's three commits. Both ways out bill at parent-merge time — keeping the
+# integration base leaves the child CONFLICTING after the parent is squashed, and retargeting onto the
+# parent branch makes --delete-branch CLOSE the child. The observed run hit both (state=CLOSED,
+# mergeable=CONFLICTING), and the tempting recovery is a force-push — the irreversible surface this
+# hook guards.
+#
+# Assertions key on the STABLE MARKER `[fh-advisory:stacked-branch]`, not on the human prose around
+# it (Wave-1 B): a prose-coupled assertion silently desyncs the moment the message is reworded. ──
+SB_MARK='[fh-advisory:stacked-branch]'
+sb_check() {  # sb_check <name> <repo> <expect: warn|skip|none> <refline> [must-name]
+  # [must-name]: a branch the warning MUST name. "a warning appeared" is too weak an assertion —
+  # under a mutation that broke the self-exclusion, the advisory still warned, but about the
+  # pushed branch ITSELF. The leg went green while the defect was live (measured 2026-07-27).
+  local name="$1" repo="$2" expect="$3" refline="$4" mustname="${5:-}" out rc got
+  out=$(printf '%s\n' "$refline" | ( cd "$repo" && bash templates/.git-hooks/pre-push origin git@example:x/y.git 2>&1 )); rc=$?
+  if printf '%s' "$out" | grep -qiE 'bad substitution|unbound variable|syntax error|command not found'; then
+    echo "  ❌ $name — RUNTIME FAULT in the hook"; FAILED=1; return
+  fi
+  if printf '%s' "$out" | grep -qF "$SB_MARK"; then
+    # Key on a machine token, not prose. Measured 2026-07-27: this classifier first grepped the
+    # phrase "skipped —", and a one-word rewording of the hook's message silently reclassified a
+    # correct SKIP as a WARN — the same prose-coupling defect Wave-1 flagged in the leg assertions.
+    if printf '%s' "$out" | grep -qF "$SB_MARK SKIPPED"; then got=skip; else got=warn; fi
+  else
+    got=none
+  fi
+  if [ "$got" != "$expect" ]; then
+    echo "  ❌ $name — expected $expect, got $got"
+    printf '%s\n' "$out" | sed 's/^/       | /' | head -8
+    FAILED=1; return
+  fi
+  # The advisory must not move the verdict. These legs are otherwise-clean pushes, so a non-zero
+  # exit means the advisory (or something it perturbed) started blocking.
+  if [ "$rc" -ne 0 ]; then
+    echo "  ❌ $name — advisory changed the verdict (exit $rc); it must be advisory only"
+    printf '%s\n' "$out" | sed 's/^/       | /' | head -6
+    FAILED=1; return
+  fi
+  if [ -n "$mustname" ] && ! printf '%s' "$out" | grep -qF "$mustname"; then
+    echo "  ❌ $name — warned, but never named '$mustname' (warning for the wrong reason)"
+    printf '%s\n' "$out" | grep -F "$SB_MARK" -A5 | sed 's/^/       | /' | head -8
+    FAILED=1; return
+  fi
+  echo "  ✅ $name ($expect, verdict unchanged${mustname:+, named $mustname})"
+}
+# ⚠️ 계기 주의 (실측): 처음엔 remote_sha 를 all-zero(=신규 브랜치)로 줬는데, 그러면 push 범위에
+# 샌드박스의 base 커밋(= templates/.git-hooks/pre-push 사본을 담고 있다)이 들어가 이 훅의 **기존**
+# load-bearing cross-family 가드가 발화해 차단됐다. sb_check 은 그 rc!=0 을 "advisory 가 verdict 를
+# 바꿨다"로 오귀속했다 — 다른 가드의 차단을 이 기능 탓으로 읽는 계기 결함이다.
+# base 커밋을 remote_sha 로 주면 범위가 픽스처 커밋만으로 좁혀져 그 혼선이 사라진다.
+
+# 10-a known-positive: cut off a REMOTE feature branch.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && git update-ref refs/remotes/origin/main "$(git rev-parse HEAD)" \
+  && git switch -q -c feat/parent && printf 'p\n' > p.md && git add p.md && git commit -qm parent >/dev/null \
+  && git update-ref refs/remotes/origin/feat/parent "$(git rev-parse HEAD)" \
+  && git switch -q -c feat/child && printf 'c\n' > c.md && git add c.md && git commit -qm child >/dev/null )
+sb_check "cut off a REMOTE feature branch     → warn" "$R" warn \
+      "refs/heads/feat/child $(cd "$R" && git rev-parse feat/child) refs/heads/feat/child $B"
+rm -rf "$R"
+
+# 10-b known-positive (Wave-1 A): the parent was never pushed. A remote-only check misses exactly
+# the most likely moment for this mistake — before the parent's first push.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && git update-ref refs/remotes/origin/main "$(git rev-parse HEAD)" \
+  && git switch -q -c feat/localparent && printf 'p\n' > p.md && git add p.md && git commit -qm parent >/dev/null \
+  && git switch -q -c feat/child2 && printf 'c\n' > c.md && git add c.md && git commit -qm child >/dev/null )
+sb_check "cut off a LOCAL-only feature branch → warn" "$R" warn \
+      "refs/heads/feat/child2 $(cd "$R" && git rev-parse feat/child2) refs/heads/feat/child2 $B"
+rm -rf "$R"
+
+# 10-c known-positive (Wave-1 S, live-reproduced): a branch name carrying a regex metacharacter.
+# The first draft interpolated the name into `grep -vE ".../${self}$"`, so `feat/a.b`'s `.` also
+# matched a genuinely different branch `feat/aXb` — grep -v dropped the REAL hit and the advisory
+# silently no-opped on a true positive. Exclusion is exact-name now; this leg pins that.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && git update-ref refs/remotes/origin/main "$(git rev-parse HEAD)" \
+  && git switch -q -c feat/aXb && printf 'p\n' > p.md && git add p.md && git commit -qm parent >/dev/null \
+  && git update-ref refs/remotes/origin/feat/aXb "$(git rev-parse HEAD)" \
+  && git switch -q -c 'feat/a.b' \
+  && git branch -q -D feat/aXb )
+# ⚠️ the local `feat/aXb` is DELETED on purpose. Left in place, the local listing line
+# (`local  feat/aXb`, no `/` before `feat`) dodges the vulnerable pattern `/feat/a.b$` and the leg
+# goes green even with the bug restored — i.e. it would pass for the wrong reason. Measured: the
+# first version of this fixture did exactly that under a mutation test.
+sb_check "regex-metachar branch name          → warn" "$R" warn \
+      "refs/heads/feat/a.b $(cd "$R" && git rev-parse 'feat/a.b') refs/heads/feat/a.b $B" \
+      "origin/feat/aXb"
+rm -rf "$R"
+
+# 10-d (Wave-1 A): base unresolvable → must SAY it did not scan. A silent return is
+# indistinguishable from "scanned, nothing found" — 부재는 통과가 아니다.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && git switch -q -c feat/nobase && printf 'n\n' > n.md && git add n.md && git commit -qm x >/dev/null )
+sb_check "base unresolvable                   → skip announced" "$R" skip \
+      "refs/heads/feat/nobase $(cd "$R" && git rev-parse feat/nobase) refs/heads/feat/nobase $B"
+rm -rf "$R"
+
+# 10-e (cross-family LOW-7): parser edge cases. The first draft parsed human `git branch -r`
+# output, where `origin/HEAD -> origin/main` parses as ref="HEAD" and a branch name with a space is
+# truncated. for-each-ref emits refs, not a listing — this leg pins that the symbolic HEAD ref does
+# not manufacture a warning and does not mask a real one.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && git update-ref refs/remotes/origin/main "$(git rev-parse HEAD)" \
+  && git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main \
+  && git switch -q -c feat/parent2 && printf 'p\n' > p.md && git add p.md && git commit -qm parent >/dev/null \
+  && git update-ref refs/remotes/origin/feat/parent2 "$(git rev-parse HEAD)" \
+  && git switch -q -c feat/child3 && printf 'c\n' > c.md && git add c.md && git commit -qm child >/dev/null )
+sb_check "origin/HEAD symref present         → warn" "$R" warn \
+      "refs/heads/feat/child3 $(cd "$R" && git rev-parse feat/child3) refs/heads/feat/child3 $B" \
+      "origin/feat/parent2"
+rm -rf "$R"
+
+# 10-f (cross-family MED-2): the integration branch is excluded by its RESOLVED name, not by a
+# hard-coded main/master. A stack built on a LOCAL branch merely named `master` in a repo whose base
+# is origin/main must still warn — hard-coding hid exactly that case.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && git update-ref refs/remotes/origin/main "$(git rev-parse HEAD)" \
+  && git switch -q -c master && printf 'p\n' > p.md && git add p.md && git commit -qm onmaster >/dev/null \
+  && git switch -q -c feat/child4 && printf 'c\n' > c.md && git add c.md && git commit -qm child >/dev/null )
+sb_check "stack on a local 'master' branch   → warn" "$R" warn \
+      "refs/heads/feat/child4 $(cd "$R" && git rev-parse feat/child4) refs/heads/feat/child4 $B" \
+      "master"
+rm -rf "$R"
+
+# 10-g CONTROL: cut off the integration branch. Without this leg an advisory that fired
+# unconditionally would score green on every positive leg above while being useless.
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && git update-ref refs/remotes/origin/main "$(git rev-parse HEAD)" \
+  && git switch -q -c feat/clean && printf 'w\n' > w.md && git add w.md && git commit -qm clean >/dev/null )
+sb_check "control: cut off main               → no warn" "$R" none \
+      "refs/heads/feat/clean $(cd "$R" && git rev-parse feat/clean) refs/heads/feat/clean $B"
+rm -rf "$R"
+
 echo
 if [ "$FAILED" -eq 0 ]; then
   echo "[prepush-guard] ✅ all known pairs hold"
