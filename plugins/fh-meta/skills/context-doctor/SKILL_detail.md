@@ -93,6 +93,44 @@ CC Context Audit Results
 
 ---
 
+## §CacheBoundary — prompt-caching evidence (Step 3.5, provisional)
+
+Full citation for the Step 3.5 evidence line, kept out of the always-read SKILL.md body
+per this file's own role (detail loads on-demand, SKILL.md stays lean).
+
+**Source**: forge-harness GitHub issue #102 ("Frontier Digest Log"), 2026-07-27 daily comment,
+itself citing:
+- arXiv:2603.09619 — reported input:output token-ratio thresholds (>10:1 favors context/cache
+  engineering over model-level optimization; >50:1, prefix caching dominates) and a
+  41–80% cost reduction / 13–31% TTFT improvement range attributed to prompt caching.
+- appscale.blog/en/blog/context-engineering-production-llm-agents-token-budget-compaction-2026
+  — the ~7%→84% cache-hit-rate figure from cache-boundary control (fixed system prompt,
+  dynamic content at the user-message end).
+
+**Grounding status — split verdict (2026-07-28 re-check).** Two separate questions; only one
+is closed. Do not collapse them:
+
+| Question | Verdict | Evidence |
+|---|---|---|
+| Does the cited paper exist? | ✅ **VERIFIED** | `arxiv.org/abs/2603.09619` → HTTP 200, title *"Context Engineering: From Prompts to Corporate Multi-Agent Architecture"*. Measured alongside a known-real control ID (1706.03762 → 200), so the instrument is calibrated for this check. |
+| Do the paper/blog actually state these figures? | ❌ **UNVERIFIED** | The source text was never read. The numbers are traced only to the digest comment. |
+
+⚠️ **Instrument note (kept because it nearly produced a wrong verdict).** The first re-check
+used the arXiv **API** (`export.arxiv.org/api/query`) and returned empty for the target — but
+also empty for the known-real control, i.e. the instrument was dead, not the paper missing.
+An absence measured without a live control is not evidence. Switching to the `abs` page gave a
+working control and flipped the existence verdict to VERIFIED. Original 403 note below for
+provenance.
+
+**Original (2026-07-27) note**: both URLs returned HTTP 403 when that session attempted
+to fetch and verify the claimed spans directly (`WebFetch`), matching the same sandbox
+network-policy limitation the daily frontier-digest routine logged on every run this week
+(WebSearch fallback, no direct API access). The figures above are therefore traced only to
+the digest comment's own text — a real, read GitHub source — and are **not** independently
+re-verified against the original paper/post. Per the Instrument-Calibration doctrine
+(`CLAUDE.md`), do not treat the 10:1 / 50:1 thresholds as a calibrated gate and do not cite
+the ~7%→84% figure elsewhere without re-fetching from an environment with access first.
+
 ## §Headroom — Tooling (external option)
 
 The compression pass in SKILL.md is tool-agnostic, but a concrete, reversible, local-first implementation exists: **Headroom** (`github.com/chopratejas/headroom`, open source, v0.22). It compresses tool outputs, logs, files, and RAG chunks before they reach the LLM — **vendor/coverage-reported** at 60–95% fewer tokens with the same answers ([The Register, 2026-05-31](https://www.theregister.com/ai-ml/2026/05/31/netflix-wiz-creates-app-to-slash-ai-bills-then-open-sources-it/5248702); figures unverified by FH). General token-efficiency basis: `../../../../knowledge/shared/harness-core/harness_frontier_diagnosis_2026-06-02.md`.

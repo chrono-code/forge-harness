@@ -20,7 +20,7 @@ Diagnoses the main causes of session token waste and prescribes immediate remedi
 3. Not using `/clear` after direction changes → continuing work with accumulated noise
 4. Verbose CLI output → every `git`/`ls`/build/test call floods context with stdout (a *different* layer from 1–3 — see §Command-Output Reduction)
 
-**Two reduction axes — keep them distinct.** Causes 1–3 are the **context-footprint** axis (what gets read *into* context: files, history). Cause 4 is the **command-output** axis (tokens produced *by* the tools you run). `.claudeignore` cannot touch command output, and a command-output proxy cannot touch file reads — they are complementary, not substitutes.
+**Two reduction axes — keep them distinct.** Causes 1–3 are the **context-footprint** axis (what gets read *into* context: files, history). Cause 4 is the **command-output** axis (tokens produced *by* the tools you run). `.claudeignore` cannot touch command output, and a command-output proxy cannot touch file reads — they are complementary, not substitutes. (Step 3.5 below adds an optional **third**, orthogonal lever — provider-side cache billing — distinct from both.)
 
 **Standalone install** — this skill works normally with plugin install only, without cloning the full meta-harness.
 
@@ -111,6 +111,39 @@ When context is near the limit and you want to *preserve state* rather than rese
 
 > Models are tools for allocating the right expertise to complexity. Opus for simple tasks = wasted expertise; Haiku for design decisions = insufficient expertise. Switch models when task nature changes.
 
+### Step 3.5. Cache-Boundary Audit (prompt caching, optional third lever)
+
+Distinct from both axes above: Steps 1–3 reduce what occupies the context *window*; this
+reduces what the provider re-bills as **fresh input tokens** on each turn by preserving
+prompt-cache hits. **Optional** — run it when a metered/quota-limited backend makes cache
+cost the binding constraint (same gating logic as §Command-Output Reduction: diagnose and
+recommend, do not chase this when tokens are merely plentiful).
+
+**Audit checklist**:
+- Is the system prompt / CLAUDE.md content **stable byte-for-byte** across turns in a
+  session? Any turn-to-turn diff in the fixed prefix invalidates the cache for that prefix —
+  which is in tension with Step 5's CLAUDE.md-compression prescription: compress at session
+  boundaries (before a fresh cache is built), never mid-session (which would invalidate one
+  already warm).
+- Is session-specific / dynamic content (task state, recent results) placed at the
+  **end of the user message**, not interleaved into the system prompt or early context?
+
+**Reported, UNCALIBRATED by FH** (2026-07-27 frontier digest, issue #102): input:output token
+ratio **> 10:1** favors cache/context engineering over model-level optimization; **> 50:1**,
+prefix caching dominates; cache-boundary control reportedly raised hit rate ~7%→84% in one
+production case (arXiv:2603.09619 *Context Engineering: From Prompts to Corporate Multi-Agent
+Architecture* · appscale.blog).
+
+**What is and is not verified** — the two are separate checks and only one has been run:
+the cited paper's **existence** was confirmed 2026-07-28 (arxiv.org/abs/2603.09619 → HTTP 200,
+title matches; measured alongside a known-real control ID, so the check itself is calibrated).
+The **figures** above were not read out of the paper — they are still traced only to the digest
+comment. Treat the ratio thresholds as illustrative, not a calibrated gate, until the source
+text is read directly.
+
+> **Detail**: See `SKILL_detail.md §CacheBoundary` — full citation text and the 403 grounding
+> note — read before citing these figures elsewhere.
+
 ### Step 4. harvest-loop Integration (burst pattern recording)
 
 When burst pattern is detected and `tracks/_audit/` exists: locate the latest weekly_audit file and suggest adding the Token Efficiency Check items to it (bash + checklist block in §Step-Bash).
@@ -131,6 +164,8 @@ Run the audit bash (§Step-Bash) and apply thresholds:
 | SKILL.md (any) | > 300 lines AND no SKILL_detail.md | Propose `/salience-splitter` — governance-semantic split (not compression); compression removes content, splitting routes it on-demand |
 
 **Frequency**: When explicitly called with `/context-doctor` or auto-invoked at session start when MEMORY.md is detected at 180+ lines.
+
+**Cache-boundary note**: apply CLAUDE.md compression (above) at a session boundary, not mid-session — see Step 3.5's cache-invalidation tension if that step is also in scope.
 
 ## Context Hierarchy (L1/L2/L3)
 
@@ -187,8 +222,8 @@ The reductions above all act on the **context-footprint** axis (files, history r
 
 | Environment | Behavior |
 |---|---|
-| Meta-harness cloned (Mode A) | Perform full Steps 1–5 / integrate with harvest-loop files |
-| Plugin only (Mode C) | Perform Steps 1–3 / Step 4 output only (no file writes) |
+| Meta-harness cloned (Mode A) | Perform full Steps 1–5 (+ optional Step 3.5) / integrate with harvest-loop files |
+| Plugin only (Mode C) | Perform Steps 1–3 (+ optional Step 3.5, no file writes needed) / Step 4 output only (no file writes) |
 | External general environment | Focus on `.claudeignore` generation + large file guidance |
 
 ## Invocation Triggers
@@ -231,6 +266,7 @@ Explicit invocation (`/context-doctor`) always runs regardless of suppress state
 - "context diet", "memory audit", "CLAUDE.md is heavy", "MEMORY.md size"
 - "context engineering", "context rot", "context collapse"
 - "command output is huge", "verbose output", "rtk", "token killer", "trim command output"
+- "prompt caching", "cache hit rate", "cache boundary", "why are my API costs so high"
 
 ### Natural Language Triggers (activates without internal vocabulary)
 
@@ -247,6 +283,7 @@ Also activates when an external user expresses without token/context terminology
 | "Context is getting full", "context meter is high" | Approaching context limit | Step 3 — propose Wrap-then-Compact pattern |
 | "context engineering", "doing context engineering", "context rot setting in" | 2026 industry term for context discipline (Chroma 2025 / Anthropic) | Step 2 + Step 3 |
 | "every git command dumps a wall of text", "the build output eats my context" | Verbose command output flooding context | §Command-Output Reduction (route to proxy/hook) |
+| "our token bill is high but context looks fine", "cache keeps missing" | Suspected cache-boundary invalidation, not context bloat | Step 3.5 (optional) |
 
 ## Three-Doctor Loop Integration
 
@@ -277,9 +314,10 @@ context-doctor (token/context) · harness-doctor (structure) · sim-conductor (s
 
 | Condition | Completion verdict |
 |---|---|
-| Diagnosis results output to conversation (relevant stages among Steps 1~5) | ✅ Diagnosis complete |
+| Diagnosis results output to conversation (relevant stages among Steps 1~5, incl. optional 3.5) | ✅ Diagnosis complete |
 | `.claudeignore` created or modified + path output | ✅ Prescription complete |
 | Large file detected with split strategy guidance output | ✅ Step 2 complete |
+| Step 3.5 run: checklist findings output, thresholds labeled UNCALIBRATED per source above | ✅ Cache-boundary audit complete (only when Step 3.5 was triggered) |
 | "No context structure issues" judgment output | ✅ Health check complete |
 
 **This skill's Done When = "diagnosis report output complete"**. Actual resolution of prescription items is in the user's or follow-up work domain and is not included in this skill's completion criteria.
