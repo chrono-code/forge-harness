@@ -16,6 +16,14 @@
 # (Irreversibility-gate note: because it is advisory, a degraded/empty run is a no-op,
 #  not a free pass — the cross-family review is the load-bearing check it feeds.)
 #
+# NAMED RECALL RESIDUALS (cross-family audit, gpt-5.5, 2026-07-28 — accepted, not closed):
+#   * Indirection defeats every probe. `allow() { exit 0; }` … `check || allow` is the same
+#     fail-open shape one function call away, and a line-oriented grep cannot follow it. This is
+#     inherent to the heuristic, not a bug to patch — it is why the terminal verdict is the
+#     cross-family review, and why a clean run is never evidence of safety.
+#   * The regression anchor proves the probes on the fixture GRAMMAR it ships, not on every
+#     spelling of each class (e.g. `if ! cmd; then :; fi`, arithmetic-context defaults).
+#
 # Usage:
 #   bash scripts/degrade_direction_scan.sh [path ...]        # scan dirs/files (default: .)
 #   git diff --name-only main..HEAD -- '*.py' | xargs bash scripts/degrade_direction_scan.sh
@@ -36,10 +44,29 @@ FILES=(); UNSCANNABLE=()
 for t in "${TARGETS[@]}"; do
   if [ -d "$t" ]; then
     while IFS= read -r f; do FILES+=("$f"); done < <(find "$t" -type f \( -name '*.py' -o -name '*.sh' \) 2>/dev/null)
+    # Shebang pass — this is what makes git hooks visible at all. Measured 2026-07-28:
+    # `templates/.git-hooks` (files named `pre-push`, no extension, under a dotted directory) —
+    # FH's own mechanical floor — reported "no scannable (py/sh) target files", exit 0.
+    # Shebang pass. Deliberately NOT restricted to extensionless names: a cross-family audit
+    # (2026-07-28, gpt-5.5) found that an earlier draft skipped any dotted basename, so a shell
+    # file named `helper.bash` carrying an identical known-positive was dropped from a DIRECTORY
+    # target in silence — while the explicit-file branch reported the same file as UNSCANNABLE.
+    # Silent-drop on one path and honest-report on the other is the fail-open half. Confirmed by
+    # running both paths on the same fixture before accepting the finding.
+    while IFS= read -r f; do
+      b="${f##*/}"                      # basename — a dotted DIRECTORY (.git-hooks) is not an extension
+      case "$b" in
+        *.py|*.sh) continue ;;          # already collected above
+        *.md|*.json|*.yaml|*.yml|*.txt|*.lock|*.png|*.jpg|*.svg|*.pdf|*.zip) continue ;;
+      esac
+      head -n1 "$f" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b' && FILES+=("$f")
+    done < <(find "$t" -type f 2>/dev/null)
   elif [ -f "$t" ]; then
-    case "$t" in
+    tb="${t##*/}"
+    case "$tb" in
       *.py|*.sh) FILES+=("$t") ;;
-      *) UNSCANNABLE+=("$t") ;;
+      *.*) UNSCANNABLE+=("$t") ;;
+      *) if head -n1 "$t" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b'; then FILES+=("$t"); else UNSCANNABLE+=("$t"); fi ;;
     esac
   fi
 done
@@ -57,6 +84,78 @@ hits=0
 emit() { printf '  %s:%s\n    [%s] %s\n' "$1" "$2" "$3" "$4"; hits=$((hits+1)); }
 
 for f in "${FILES[@]}"; do
+  # ---- Shell-shaped probes (S*) -------------------------------------------------------------
+  # Calibration finding (2026-07-28, known-pair): every probe below the S-block is PYTHON-shaped
+  # (`except:` / `.get(k, True)` / `if not x:` / `.split()`), none of which exist in bash. A .sh file
+  # was still COLLECTED and counted, so a fail-open shell gate printed "no smells in 1 scanned py/sh
+  # file" — a FALSE CLEAN, which is worse than honest non-coverage. A known-positive .sh carrying four
+  # distinct default-toward-PASS shapes scored 0/4. These probes close that; they run on any file
+  # whose basename ends in .sh OR that carries a shell shebang (see the is_sh test below).
+  is_sh=""; fb="${f##*/}"
+  case "$fb" in
+    *.sh) is_sh=1 ;;
+    *.py) ;;
+    # Any other collected file reached FILES only via the shebang pass, or is a dotted shell name
+    # like `helper.bash`. Re-check the shebang rather than keying on the extension — keying on the
+    # extension is what produced the collect-but-never-probe false clean this whole block exists to
+    # close (n+10). Collected-but-unprobed must not be reachable again.
+    *) head -n1 "$f" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b' && is_sh=1 ;;
+  esac
+  if [ -n "$is_sh" ]; then
+    # S1 — permissive short-circuit on a FAILING CHECK: `scan=$(...) || return 0`, `verify … || exit 0`.
+    #   The check errored and the surface reports success. Safe-fail is `|| return 1` / `|| exit 1`.
+    #   SCOPED to check-shaped left-hand sides (command substitution, or a verb like
+    #   scan/check/verify/grep/audit/validate/gate). A PRECONDITION guard — `[ -d x ] || exit 0`,
+    #   `[[ $d =~ … ]] || return 0` — is deliberately excluded: "this run does not apply here" is not
+    #   the same claim as "this check passed". Hand-measured 2026-07-28: unscoped, 6/6 sampled hits
+    #   were false positives, 4 of them precondition guards.
+    #   EXCEPTION, re-added after an adversarial pass on this very scoping: a `-f`/`-x` test is a
+    #   DEPENDENCY check, not a scope check. `[ -f "$GUARD_LIB" ] || exit 0` means "my guard library
+    #   is missing, therefore allow" — the fail-open shape that bit qasp on 2026-07-28. Excluding it
+    #   with the scope guards would have hidden exactly the class this scan exists to find.
+    while IFS= read -r m; do
+      emit "$f" "${m%%:*}" "S1:||→PASS(sh)" "failing check short-circuits to a permissive result (\`|| return 0\` / \`|| exit 0\` / \`|| true\`) — an errored check must fail closed, not report success"
+    done < <(grep -nE '\|\|[[:space:]]*(return[[:space:]]+0|exit[[:space:]]+0|true)([[:space:]]*(#|;|$))' "$f" 2>/dev/null \
+             | grep -vE '#[[:space:]]*noqa[:[:space:]]*degrade' \
+             | grep -vE '^[0-9]+:[[:space:]]*(if[[:space:]]+)?\[\[?[[:space:]]*(-[dznN][[:space:]]|[^]]*=~)' \
+             | grep -E '(\$\(|`|\[[[:space:]]*-[fx][[:space:]]|\b(scan|check|verify|validate|audit|grep|gate|assert|lint|test_)[A-Za-z_]*[[:space:](])')
+
+    # S2 — `else` fall-through to a permissive exit/return within 2 lines (unenumerated case → allow).
+    while IFS= read -r ln; do
+      emit "$f" "$ln" "S2:else→PASS(sh)" "else/fall-through branch exits permissively — the unenumerated case should fail closed"
+    done < <(grep -nE -A2 '^[[:space:]]*else[[:space:]]*$' "$f" 2>/dev/null \
+             | grep -E '^[0-9]+[-:][[:space:]]*(exit[[:space:]]+0|return[[:space:]]+0)[[:space:]]*(#.*)?$' \
+             | grep -oE '^[0-9]+' | sort -u)
+
+    # S3 — empty/unset defaulted to a permissive VERDICT: `${V:-PASS}` / `V="PASS"` after a failed read.
+    #   "the value never arrived" must not be spelled the same way as "the value said PASS".
+    #   `${V:-0}` and `${V:-true}` are NOT flagged: numeric defaulting is the prescribed integer
+    #   sanitization against the pipefail-fallback class (see S5), and flagging it would push an
+    #   author to delete the remedy. Measured 2026-07-28 — `${PRS:-0}` in session_close_check.sh is
+    #   the fix, not the defect. Only explicit verdict words count.
+    while IFS= read -r m; do
+      emit "$f" "${m%%:*}" "S3:default→PASS(sh)" "unset/empty defaults to a permissive verdict — absent is not clean (\`not found\` ≠ \`0\`); default to the blocking value"
+    done < <(grep -nE "(\\$\{[A-Za-z_][A-Za-z0-9_]*:?-[[:space:]]*(PASS|OK|ALLOW|GRANTED|VALID|PASSED)\}|\|\|[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=[\"']?(PASS|OK|ALLOW|GRANTED|VALID))" "$f" 2>/dev/null \
+             | grep -vE '#[[:space:]]*noqa[:[:space:]]*degrade')
+
+    # S4 — empty-output guard treated as clean: `if [ -z "$out" ]; then return 0/exit 0`.
+    #   Identical to Probe E's falsy-sentinel class, in shell spelling: an errored scan produces empty
+    #   output, so "found nothing" and "never ran" become indistinguishable.
+    while IFS= read -r ln; do
+      emit "$f" "$ln" "S4:empty→PASS(sh)" "empty output treated as clean — a scan that errored also produces empty output; distinguish 'errored/absent' from 'verified clean'"
+    done < <(grep -nE -A2 '^[[:space:]]*(if|elif)[[:space:]]+\[+[[:space:]]*-z[[:space:]]' "$f" 2>/dev/null \
+             | grep -E '^[0-9]+[-:][[:space:]]*(exit[[:space:]]+0|return[[:space:]]+0)[[:space:]]*(#.*)?$' \
+             | grep -oE '^[0-9]+' | sort -u)
+
+    # S5 — the pipefail-fallback disarm: `... | grep -c ... || echo 0` appends a SECOND line under
+    #   `set -o pipefail`, so the later `-gt` integer test becomes a bash error (= false) and the guard
+    #   passes silently, with the error going only to stderr. Measured class, 2026-07-26.
+    while IFS= read -r m; do
+      emit "$f" "${m%%:*}" "S5:pipefail-fallback(sh)" "\`|| echo 0\` fallback on a pipeline — under \`set -o pipefail\` this yields a multi-line value whose integer comparison errors out and silently passes the guard; split the pipeline and sanitize to an integer"
+    done < <(grep -nE '\|[^|]+\|\|[[:space:]]*echo[[:space:]]+[\"'"'"']?0' "$f" 2>/dev/null \
+             | grep -vE '#[[:space:]]*noqa[:[:space:]]*degrade')
+  fi
+
   # Probe A — except/else/finally block returning a permissive value within 2 lines.
   #   The classic "swallow the error → report success". A safe-fail returns BLOCK/None/raise.
   while IFS= read -r line; do
@@ -90,15 +189,17 @@ for f in "${FILES[@]}"; do
            | grep -vE '\bfor\b|in range|in enumerate|not in' \
            | grep -vE '\b(verdict|present|ground|state|match|expected)\w*\b')
 
-  # Probe E — negated-falsy guard returning permissive: a falsy error sentinel (None/{}/"") makes
-  # `if not X: return <PASS>` treat "errored/never-ran" as "clean". Distinguish errored from clean.
+  # Probe E — negated-falsy guard returning permissive (dominance-benchmark round-2 f2 class): an error
+  # SENTINEL (None / {} / "" / []) is falsy, so `if not X: return <PASS>` treats "the check errored / never
+  # ran" identically to "the check ran and found nothing clean". Distinguish errored from clean before allowing.
   while IFS= read -r ln; do
     emit "$f" "$ln" "E:falsy-sentinel→PASS" "negated-falsy guard returns permissive — a falsy error sentinel (None/{}/'') masquerades as 'clean'; a gate must distinguish 'errored/absent' from 'verified clean'"
   done < <(grep -nE -A2 '^[[:space:]]*if[[:space:]]+not[[:space:]]+[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*:' "$f" 2>/dev/null \
            | grep -E "return[[:space:]]+$PASS([[:space:],)]|$)" | grep -oE '^[0-9]+' | sort -u | sed 's/$/:/')
 
-  # Probe F — positional field-select from a split feeding a decision: `parts[-1]`/`parts[0]` of an
-  # attacker-influenceable split lets a crafted trailing/leading field negate the verdict.
+  # Probe F — positional field-select from a split result feeding a decision (round-2 c3 class): taking the
+  # decision from `parts[-1]`/`parts[0]` of an attacker-influenceable split lets a crafted field (e.g. a
+  # signed DENY whose free-form comment ends "::ALLOW") negate the verdict. Validate structure, don't select by position.
   if grep -qE '\.r?split\(' "$f" 2>/dev/null; then
     while IFS= read -r m; do
       emit "$f" "${m%%:*}" "F:split-positional-verdict" "decision taken by position ([-1]/[0]) from a split result — an attacker-controlled trailing/leading field can negate the verdict; validate structure, don't select by position"

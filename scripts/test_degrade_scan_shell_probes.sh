@@ -163,6 +163,23 @@ n=$(p_hits "$TMP/kn.py")
 [ "$n" -eq 0 ] && ok "python known-negative: still silent" \
                 || bad "python known-negative: $n hit(s) — Python probes became noisy"
 
+# The field-propagated copy must not drift from the canonical one. Two copies of the same
+# normalizer diverge, and the lenient half silently drops what the strict half catches — measured
+# 2026-07-28: `templates/` was 2 lines behind BEFORE this session's fix and then a full 8 KB behind
+# after it, so field harnesses (the ones the cross-family gate doc actually points at) were running
+# the version that scored 0/4 on the known-positive while `scripts/` scored 4/4.
+TPL="$REPO_ROOT/templates/degrade_direction_scan.sh"
+if [ ! -d "$REPO_ROOT/templates" ]; then
+  # Package mode: the npm tarball may ship a narrower surface. Absent templates/ is not drift.
+  printf '  \u2013 field-copy drift check SKIPPED (no templates/ — package mode)\n'
+elif [ ! -f "$TPL" ]; then
+  bad "templates/ exists but degrade_direction_scan.sh is MISSING there — field harnesses get no scan"
+elif cmp -s "$TPL" "$SCAN"; then
+  ok "field-propagated copy is byte-identical to scripts/ (no divergent-normalizer drift)"
+else
+  bad "templates/degrade_direction_scan.sh has DRIFTED from scripts/ — the field copy is what qasp/pmh run; sync it (cp scripts/degrade_direction_scan.sh templates/)"
+fi
+
 echo "----"
 echo "degrade-scan shell probes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
