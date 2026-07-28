@@ -95,6 +95,40 @@ else
   ok "G1 empty store fails as an extractor error, not a pass"
 fi
 
+
+# H1/A1 — cross-family findings, both confirmed by execution before acceptance.
+#   H1 (agy): an anchor-form link `[[target#section]]` was COUNTED as repairable but the rewrite
+#             enumerated closing forms by hand and never matched it — so it was flagged on every
+#             run (idempotence broken) and the summary reported more fixes than it made.
+#   A1 (gpt-5.5): two notes sharing a normalized name let the fixer reroute an edge to whichever
+#             sorted first, and the wrong link then resolves exactly, so no later run flags it.
+printf -- '---\nname: my_topic\n---\nbody\n' > "$TD/store/my_topic.md"
+printf -- '---\nname: anchored\n---\nanchor: [[my-topic#section-1]]\nplain: [[my-topic]]\n' > "$TD/store/anchored.md"
+_run --fix-separators --quiet >/dev/null
+if grep -q '\[\[my_topic#section-1\]\]' "$TD/store/anchored.md"; then
+  ok "H1 anchor-form link rewritten (target only, #section preserved)"
+else
+  bad "H1 [[target#anchor]] left unrewritten — flagged forever, and the fix count over-reports"
+fi
+# Idempotence here is a STABLE count, not zero: the fenced example is counted every run and
+# deliberately never rewritten, so zero is unreachable by design. Asserting zero was an instrument
+# error in this anchor's first draft — it scored a correct tool as failing.
+before_n=$(out=$(_run); printf '%s\n' "$out" | awk '$1=="separator" && $2 ~ /^[0-9]+$/ {print $2; exit}')
+_run --fix-separators --quiet >/dev/null
+after_n=$(out=$(_run); printf '%s\n' "$out" | awk '$1=="separator" && $2 ~ /^[0-9]+$/ {print $2; exit}')
+if [ "$before_n" = "$after_n" ]; then
+  ok "H1b idempotent with anchor forms present (count stable at $after_n — the fenced example)"
+else
+  bad "H1b count moved $before_n → $after_n across a second fix pass"
+fi
+printf -- 'A\n' > "$TD/store/collide-x.md"; printf -- 'B\n' > "$TD/store/collide_x.md"
+out=$(_run)
+if printf '%s\n' "$out" | grep -q 'ambiguous'; then
+  ok "A1 colliding normalized names surface as a reported class"
+else
+  bad "A1 no ambiguous class — a colliding pair can still be auto-rerouted"
+fi
+
 echo "----"
 echo "memory-link-check anchor: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
