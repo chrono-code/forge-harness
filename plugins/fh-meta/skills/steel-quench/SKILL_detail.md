@@ -285,6 +285,12 @@ Default team-persona assignments:
 | **T2 Copilot** | `gh copilot suggest` | devil · expert |
 | **T3 Ollama** | `ollama run {model}` | devil |
 | **T4 Codex** | `npx @openai/codex exec` | devil · edge-case-hunter |
+
+> **사이드카 대기는 기계로 한다** — `scripts/sidecar_wait.sh` 경유가 필수 형식이고, 타입 verdict
+> (`COMPLETE`/`TIMEOUT`/`EMPTY`)만 읽는다. **`EMPTY` 만이 "사이드카가 아무 말 안 했다"** 이다.
+> 출력 파일을 눈으로 보고 판정하지 마라 — 살아있는 프로세스와 죽은 프로세스가 같은 0바이트를
+> 낸다(2026-07-29 실측: 1초/30초 만에 읽고 정상 동작 중인 사이드카 2종을 '실패'로 기록,
+> 실제로는 4건의 진짜 finding 이 나왔다). 정본 = `auto-decorrelation` SKILL.md §S-1b.
 | **T5 agy** | `agy -p "PROMPT"` (argument form only — stdin pipe prints help, measured 2026-06-13) | devil · beginner · alternatives (gemini successor) |
 
 **Step 1 — Parallel Team Dispatch**:

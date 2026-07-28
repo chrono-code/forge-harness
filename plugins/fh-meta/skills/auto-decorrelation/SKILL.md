@@ -129,13 +129,48 @@ diversity vs the orchestrator** (orchestrator = Claude/opus → recruit GPT or G
   surfaces a one-line `token-budget-gate` ask per run (*"recruiting codex (~N) — proceed?"*) unless the
   operator has set `paid_auto: true` in the UAP. One-time feature-consent ≠ consent to this spend now.
 - Dispatch via `agent-composer` (no re-implementation of dispatch).
-- **Liveness / hang-catch (mandatory — a hung sidecar never notifies).** A backgrounded CLI that hangs
+- **Wait mechanically — `scripts/sidecar_wait.sh` is the required form, not a suggestion (S-1b).**
+
+  **The rule, before the command, because a Sonnet-tier blind sim of this section said the command
+  reads as "the content" and everything after it as "color commentary" — and named peeking at the
+  output file as the first thing it would do wrong in a hurry:**
+
+  > **Never judge a sidecar by looking at its output file.** A live process and a dead one produce
+  > the same zero bytes. The only readable verdict is the typed `SIDECAR_VERDICT=` line, and it
+  > does not exist until the process has exited.
+
+  ```bash
+  printf '%s' "$prompt" | bash scripts/sidecar_wait.sh out.txt 900 -- codex exec -m gpt-5.5 -
+  # → SIDECAR_VERDICT=COMPLETE exit=0 bytes=48489      (read out.txt)
+  # → SIDECAR_VERDICT=TIMEOUT  waited=900s bytes=0     (still alive — NOT a result)
+  # → SIDECAR_VERDICT=EMPTY    exit=0                  (the only state that means "it said nothing")
+  ```
+
+  The runner **refuses to emit a verdict while the process is alive**, so "the sidecar returned
+  nothing" becomes unsayable until it has actually exited. Grep the typed `SIDECAR_VERDICT=` line;
+  never judge by looking at the output file.
+
+  **Why this is mechanical rather than a habit** — the bullets below already described bounding a
+  sidecar, and a session that had them loaded still got it wrong on 2026-07-29: it backgrounded
+  `codex exec` and `agy -p`, read the output files after **1 s and 30 s**, found them empty, and
+  recorded *"both sidecars returned 0-output"* into a gate marker, a PR body, a session card, a
+  memory file and a handoff. Both were running normally and both answered — codex with 48 KB and
+  three findings, agy with a further HIGH, and **all four were real**; one of them showed the change
+  under review was over-applied. So the measurement error nearly retired a working mechanism.
+
+  **That is a second failure mode this section did not cover.** The bullets below describe a *hung*
+  sidecar. An impatient read of a *healthy* one produces the identical observation — zero bytes —
+  and only one of the two is a fault. Distinguishing them requires process state, which is exactly
+  what a human eye on an output file cannot see and the runner always reports.
+
+- **Liveness / hang-catch (the runner does the waiting; this is how to read a `TIMEOUT`).** A backgrounded CLI that hangs
   (stuck on a sandbox/file-tool prompt, auth, or network) **does not exit**, so the background-completion
   signal *never fires* — passive waiting is the wrong model and silently stalls the run (observed
   2026-06-27: a `codex exec` that asked to read repo files hung at 0-output with no session log, and the
   turn waited on a notification that could not come). So **bound it actively, never wait open-endedly**:
-  - Set an explicit timeout on every sidecar call (`timeout N …` or the dispatch tool's timeout).
-  - Watch a **progress signal**, not just process-alive: output bytes growing **and** the CLI's own
+  - The timeout is the runner's second argument; pick it from the model's real latency, not from
+    impatience (a reasoning model can be silent for minutes and still be working).
+  - On `TIMEOUT`, watch a **progress signal**, not just process-alive: output bytes growing **and** the CLI's own
     session/log advancing (e.g. `~/.codex/sessions/<today>`). 0 output **and** no session created after a
     short bound (≈2–3 min for codex/agy) = **hung, not slow** → kill and recover, do not keep waiting.
   - **Recover, don't stall**: kill → diagnose (a file-tool/sandbox hang is the common cause) → retry with

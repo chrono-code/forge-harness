@@ -9,6 +9,12 @@ status: mechanism-validated (cross-provider grader confirmed 2026-06-02)
 > **Validation status** (updated 2026-06-02): mechanism validated by cross-provider grader.
 >
 > 2026-06-01 steel-quench (Issue #47): mechanism confirmed runnable — implementation shipped in PR #36/#37. Original empirical claims (Experiment 1·2) were an internal same-session self-report; raw transcripts not retained, codex grader blocked by network policy.
+
+> **사이드카 대기는 기계로 한다** — `scripts/sidecar_wait.sh` 경유가 필수 형식이고, 타입 verdict
+> (`COMPLETE`/`TIMEOUT`/`EMPTY`)만 읽는다. **`EMPTY` 만이 "사이드카가 아무 말 안 했다"** 이다.
+> 출력 파일을 눈으로 보고 판정하지 마라 — 살아있는 프로세스와 죽은 프로세스가 같은 0바이트를
+> 낸다(2026-07-29 실측: 1초/30초 만에 읽고 정상 동작 중인 사이드카 2종을 '실패'로 기록,
+> 실제로는 4건의 진짜 finding 이 나왔다). 정본 = `auto-decorrelation` SKILL.md §S-1b.
 >
 > 2026-06-02 update: Gemini 0.41.2 cross-provider grader run on `pipeline-conductor/SKILL.md` (retained transcript: `tracks/_meta/grader_gemini_pipeline_conductor_2026_06_02.txt`). Gemini found 3 S-grade findings (interaction deadlock, PR-approval deadlock, cadence-lock deadlock); Claude Sonnet-4.6 previously found 3 different S-grade findings (model conflict, invocation contradiction, self-referential sweep). **Zero overlap across 6 S-grade findings** — validates the non-overlapping failure modes claim and perspective diversity mechanism. Provider-identity diversity is empirically confirmed; specific Experiment 2 finding counts on goal-quench (original target) are not directly re-run. Record: `tracks/_meta/grader_gemini_pipeline_conductor_2026_06_02.txt`.
 

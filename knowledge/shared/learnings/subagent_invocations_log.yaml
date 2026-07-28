@@ -550,7 +550,7 @@
   prompt_summary: "Would have been: attack the S1~S5 probes + the FP scoping; verify no default-toward-PASS class is hidden by the scoping itself."
   outcome: sustained
   finding: "Ran the adversarial pass INLINE instead. It did find a HIGH (S1 scope-exclusion swallowed `[ -f lib ] || exit 0` dependency guards — the fail-open class), closed with a regression anchor. But inline review is same-context by construction, so the isolation property the gate asks for was NOT obtained."
-  note: "Recorded as `sustained` (decided NOT to invoke) because the session carries a standing instruction: no Agent tool unless the user requests it. FIRST `sustained` entry in this log — and directly relevant to fh_signal_2026-07-28_decorrelation-log-uncalibrated, which measured 0 rejected / 0 sustained across 74 entries and argued the log is written selectively toward optimistic outcomes. Operator decision pending on dispatching before merge."
+  note: "Recorded as `sustained` (decided NOT to invoke) because the session carries a session-level system configuration, not an operator instruction. FIRST `sustained` entry in this log — and directly relevant to fh_signal_2026-07-28_decorrelation-log-uncalibrated, which measured 0 rejected / 0 sustained across 74 entries and argued the log is written selectively toward optimistic outcomes. Operator decision pending on dispatching before merge."
 
 
 - date: 2026-07-28
@@ -560,4 +560,23 @@
   prompt_summary: "Would have been: cold-read the rewritten Session Wrap-up ⑤ at Sonnet and close a session with a finding arriving mid-close — does the atomic ordering actually fire, or does the fh_completed append still happen after the card?"
   outcome: sustained
   finding: "Not run. The four other worklist items are mechanical (scripts/hooks — tier-independent, exempt by the gate's own enforcement-column test) and were verified by known-pair + mutation + positive control. The CLAUDE.md ⑤ change is the one item the sim gate actually targets, and it is therefore UNVERIFIED at floor tier — recorded as a residual in the Axes 2-3 marker rather than absorbed silently."
-  note: "Second `sustained` in this log, same cause as the first: standing session instruction forbids the Agent tool unless the user requests it. The pattern is now n=2 — the gate's near-mandatory sim is structurally unreachable in sessions carrying that instruction, which is a governance question (whose exception is it?) rather than a per-session judgment call. Candidate for fh_signal."
+  note: "Second `sustained` in this log, same cause as the first: session-level system configuration withheld the Agent tool absent an explicit user request (a configured default, NOT something the operator said — the earlier wording blurred the source). The pattern is now n=2 — the gate's near-mandatory sim is structurally unreachable in sessions carrying that instruction, which is a governance question (whose exception is it?) rather than a per-session judgment call. Candidate for fh_signal."
+
+- date: 2026-07-29
+  agent: general-purpose (Sonnet) — blind behavioral sim
+  model: sonnet
+  purpose: "Target-tier sim gate on the salience-dependent auto-decorrelation §S-1b change (sidecar_wait as required form)"
+  prompt_summary: "Play out a real turn: dispatch a sidecar, check it 40s later, find 0 bytes — write the exact commands and the exact sentence you'd record. Then say what you'd skim past."
+  outcome: accepted
+  finding: >-
+    The rule FIRES at Sonnet tier — the sim reproduced the required command verbatim, refused to write
+    "0-output" at the 40s mark, and cited the exact lines that drove each answer. The value was in the
+    two honesty questions: it named the incident narrative as skimmable ("reads like color commentary,
+    and it comes AFTER the command, so a fast reader treats the command as the content"), and named
+    peeking at the output file as the FIRST thing it would do wrong in a hurry. Acted on: the operative
+    one-line rule was hoisted ABOVE the command block.
+  note: >-
+    First Agent-tool dispatch of this session. The two earlier `sustained` entries recorded the tool as
+    withheld by a "standing session instruction"; the operator pointed out they never said that — it is
+    session-level SYSTEM configuration, and the wording blurred the source. Corrected in the markers and
+    here. The operator then explicitly requested the agent, which satisfies the configured exception.
