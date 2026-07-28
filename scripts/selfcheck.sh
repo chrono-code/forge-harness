@@ -99,6 +99,18 @@ else
   fail=1
 fi
 
+# package-coverage — a shipped doc must not point at a file the tarball omits. Distinct from the
+# ref-path check below: that one asks "does this path exist at all", this one asks "does the
+# CONSUMER get it". Measured 2026-07-28: 35 paths existed, were named by a shipped doc, and were
+# absent from the tarball — including templates/predelete_check.sh, which CLAUDE.md instructs you
+# to run before a destructive op. Wired here in the same commit that created it, because the two
+# previous anchors this session shipped with zero callers.
+if [ -f scripts/package_coverage_check.sh ]; then
+  if ! bash scripts/package_coverage_check.sh; then
+    fail=1
+  fi
+fi
+
 # Referenced-path existence is a source-tree check. The npm package intentionally
 # ships a narrower runtime surface, so package-mode selfcheck skips this section.
 if [ -d ".claude/rules" ]; then
