@@ -111,6 +111,21 @@ if [ -f scripts/package_coverage_check.sh ]; then
   fi
 fi
 
+# memory-link-check — the memory store is a GRAPH (memory_intent_recall.md: nodes=files,
+# edges=[[links]], recall walks one hop). Measured 2026-07-28: 50 of 872 edges pointed at a note
+# that existed under a different separator and 22 at nothing — a dead edge returns nothing and is
+# indistinguishable from "nothing is related", so the doctrine degraded silently. The checker's
+# --fix-separators path WRITES, so its anchor runs here rather than being invoked by hand.
+# Package/other-machine mode: the checker self-SKIPs when no memory dir exists.
+if [ -f scripts/test_memory_link_check.sh ] && [ -f scripts/memory_link_check.py ]; then
+  if ! bash scripts/test_memory_link_check.sh; then
+    fail=1
+  fi
+elif [ -f scripts/memory_link_check.py ]; then
+  echo "FAIL  memory-link-check: checker present but scripts/test_memory_link_check.sh missing"
+  fail=1
+fi
+
 # session-close gate lanes (② harvest-loop discharge + ⑤ card-last) and the ⑤-b card-drift probe.
 # Both anchors calibrate scripts/session_close_check.sh, which the pre-push hook runs on every push
 # — an uncalibrated instrument there produces exactly the false verdicts the close chain exists to
