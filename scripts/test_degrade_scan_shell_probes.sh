@@ -134,6 +134,23 @@ n=$(s_hits "$TMP/non_detections.sh")
 [ "$n" -eq 0 ] && ok "non-detections stay silent (\${v:-0} sanitization + precondition guards)" \
                 || bad "non-detections fired $n time(s) — flagging the remedy trains authors to delete it"
 
+# A DOTTED shell filename (`helper.bash`) must not be silently dropped from a directory walk.
+# Cross-family finding (gpt-5.5, 2026-07-28), reproduced before acceptance: the directory path
+# dropped it in silence while the explicit-file path reported the same file as UNSCANNABLE.
+# Silent on one path, honest on the other, is the fail-open half.
+mkdir -p "$TMP/dotted"
+cat > "$TMP/dotted/helper.bash" <<'EOF'
+#!/usr/bin/env bash
+scan=$(run_scanner "$1") || return 0
+EOF
+cat > "$TMP/dotted/gate.sh" <<'EOF'
+#!/usr/bin/env bash
+scan=$(run_scanner "$1") || return 0
+EOF
+n=$(s_hits "$TMP/dotted")
+[ "$n" -eq 2 ] && ok "dotted shell filename (helper.bash) scanned alongside gate.sh in a directory walk" \
+                || bad "dotted shell filename: expected 2 S-hits, got $n — a .bash/.zsh gate is silently dropped again"
+
 n=$(s_hits "$TMP/dependency_guards.sh")
 [ "$n" -eq 2 ] && ok "dependency guards (\`[ -f lib ] || exit 0\`) still detected — scope exclusion did not swallow them" \
                 || bad "dependency guards: expected 2 S-hits, got $n — 'guard library missing → allow' is hidden again"

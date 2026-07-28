@@ -16,6 +16,14 @@
 # (Irreversibility-gate note: because it is advisory, a degraded/empty run is a no-op,
 #  not a free pass — the cross-family review is the load-bearing check it feeds.)
 #
+# NAMED RECALL RESIDUALS (cross-family audit, gpt-5.5, 2026-07-28 — accepted, not closed):
+#   * Indirection defeats every probe. `allow() { exit 0; }` … `check || allow` is the same
+#     fail-open shape one function call away, and a line-oriented grep cannot follow it. This is
+#     inherent to the heuristic, not a bug to patch — it is why the terminal verdict is the
+#     cross-family review, and why a clean run is never evidence of safety.
+#   * The regression anchor proves the probes on the fixture GRAMMAR it ships, not on every
+#     spelling of each class (e.g. `if ! cmd; then :; fi`, arithmetic-context defaults).
+#
 # Usage:
 #   bash scripts/degrade_direction_scan.sh [path ...]        # scan dirs/files (default: .)
 #   git diff --name-only main..HEAD -- '*.py' | xargs bash scripts/degrade_direction_scan.sh
@@ -36,13 +44,21 @@ FILES=(); UNSCANNABLE=()
 for t in "${TARGETS[@]}"; do
   if [ -d "$t" ]; then
     while IFS= read -r f; do FILES+=("$f"); done < <(find "$t" -type f \( -name '*.py' -o -name '*.sh' \) 2>/dev/null)
-    # Extensionless shell files (git hooks are named `pre-push` / `pre-commit`, never `*.sh`).
-    # Measured 2026-07-28: `templates/.git-hooks` — FH's own mechanical floor — reported
-    # "no scannable (py/sh) target files", exit 0. The most load-bearing bash in the repo was
-    # invisible AND read as clean. Collect by shebang when the name carries no extension.
+    # Shebang pass — this is what makes git hooks visible at all. Measured 2026-07-28:
+    # `templates/.git-hooks` (files named `pre-push`, no extension, under a dotted directory) —
+    # FH's own mechanical floor — reported "no scannable (py/sh) target files", exit 0.
+    # Shebang pass. Deliberately NOT restricted to extensionless names: a cross-family audit
+    # (2026-07-28, gpt-5.5) found that an earlier draft skipped any dotted basename, so a shell
+    # file named `helper.bash` carrying an identical known-positive was dropped from a DIRECTORY
+    # target in silence — while the explicit-file branch reported the same file as UNSCANNABLE.
+    # Silent-drop on one path and honest-report on the other is the fail-open half. Confirmed by
+    # running both paths on the same fixture before accepting the finding.
     while IFS= read -r f; do
       b="${f##*/}"                      # basename — a dotted DIRECTORY (.git-hooks) is not an extension
-      case "$b" in *.*) continue ;; esac
+      case "$b" in
+        *.py|*.sh) continue ;;          # already collected above
+        *.md|*.json|*.yaml|*.yml|*.txt|*.lock|*.png|*.jpg|*.svg|*.pdf|*.zip) continue ;;
+      esac
       head -n1 "$f" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b' && FILES+=("$f")
     done < <(find "$t" -type f 2>/dev/null)
   elif [ -f "$t" ]; then
@@ -73,11 +89,16 @@ for f in "${FILES[@]}"; do
   # (`except:` / `.get(k, True)` / `if not x:` / `.split()`), none of which exist in bash. A .sh file
   # was still COLLECTED and counted, so a fail-open shell gate printed "no smells in 1 scanned py/sh
   # file" — a FALSE CLEAN, which is worse than honest non-coverage. A known-positive .sh carrying four
-  # distinct default-toward-PASS shapes scored 0/4. These probes close that; they run on .sh only.
+  # distinct default-toward-PASS shapes scored 0/4. These probes close that; they run on any file
+  # whose basename ends in .sh OR that carries a shell shebang (see the is_sh test below).
   is_sh=""; fb="${f##*/}"
   case "$fb" in
     *.sh) is_sh=1 ;;
-    *.*) ;;
+    *.py) ;;
+    # Any other collected file reached FILES only via the shebang pass, or is a dotted shell name
+    # like `helper.bash`. Re-check the shebang rather than keying on the extension — keying on the
+    # extension is what produced the collect-but-never-probe false clean this whole block exists to
+    # close (n+10). Collected-but-unprobed must not be reachable again.
     *) head -n1 "$f" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b' && is_sh=1 ;;
   esac
   if [ -n "$is_sh" ]; then
