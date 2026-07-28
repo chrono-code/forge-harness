@@ -32,12 +32,10 @@ updated: 2026-05-26
 | deep-clarify | 2026-05-26 | 0 | 🆕 New |
 | frontier-digest | 2026-05-24 | 3 | 🟡 Low Frequency |
 | cross-ecosystem-synergy-detection | 2026-05-08 | 1 | ⚠️ Under Observation |
-| self-marketing-lint | 2026-05-09 | 1 | ⚠️ Under Observation |
 | meta-prompt-builder | 2026-05-10 | 1 | ⚠️ Under Observation |
 | asset-placement-gate | 2026-05-10 | 1 | ⚠️ Under Observation |
 | marketplace-gate | 2026-05-10 | 1 | ⚠️ Under Observation |
 | contention-layer | 2026-05-15 | 2 | 🟡 Low Frequency |
-| context-bridge-dispatch | 2026-05-15 | 2 | 🟡 Low Frequency |
 
 ## Status Criteria
 

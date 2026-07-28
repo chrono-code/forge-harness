@@ -56,7 +56,7 @@ hierarchical-context remedy (L1 always-on / L2 session / L3 on-demand) + prompt 
 | Candidate | Frontier basis | FH hook |
 |---|---|---|
 | **Machine-readable `agent-card`-style capability registry** for the FH agents (capability / input-output contract, synced to actual file counts) | A2A Agent Card = the discovery standard | Closes the "count drift / no canonical registry" gap already flagged in `fh_ecosystem_positioning.md` |
-| **Coordination-overhead budget** in `context-bridge-dispatch`: parallel-fan-out cap (3–4) + capability-aware routing | Centralized = +285% tokens; team size caps at 3–4 | `plugins/fh-meta/skills/context-bridge-dispatch`, `agent-composer` |
+| **Coordination-overhead budget** (then in `context-bridge-dispatch`, merged into `agent-composer` Step 3-a on 2026-06-02): parallel-fan-out cap (3–4) + capability-aware routing | Centralized = +285% tokens; team size caps at 3–4 | `plugins/fh-meta/skills/agent-composer` |
 
 ### ② Frontier → Org Propagation
 
