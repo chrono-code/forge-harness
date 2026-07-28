@@ -70,6 +70,24 @@ Agents in this registry belong to the **Automation layer**. Skills (in `plugins/
 
 > **Multi-model sidecar (validated)**: Any FH user can delegate to other models via sidecar — Gemini CLI, OpenAI/Codex CLI, or Copilot CLI's model catalog — invoked with `Bash` from within the Claude Code session. FH is the orchestrating harness; the sidecar is a routing/access layer (not a second harness — different layer entirely). Validated empirically: `echo "prompt" | gemini` works inside a CC session and produces usable output. Sidecar calls are Bash invocations, not agent dispatches — they bypass this registry and are coordinated inline by the skill. Capability routing matters too: Gemini/Antigravity is the natural breadth/multimodal sidecar, while Codex's primary cast is the **repo-grounded audit** sidecar (file reads · grep/source-close · diff & patch · gate execution · phantom/backtrace) — **not** discovery/design-depth; a Codex session with Browser/Chrome connectors mounted can additionally take live web-flow automation as a capability-routed handoff. In a local FH workspace that pairs the public methodology mirror with a private companion store (the `*-be` pattern), route by workspace capability while preserving each repository's ownership boundary. See `knowledge/shared/harness-core/multi_model_sidecar_strategy.md §Runtime Authority` for the authority model and the full pattern.
 
+> **Waiting on a sidecar — mechanical, not by eye (2026-07-29).** A sidecar you dispatched is judged
+> ONLY by the typed verdict line from `scripts/sidecar_wait.sh`:
+>
+> ```bash
+> printf '%s' "$prompt" | bash scripts/sidecar_wait.sh out.txt 900 -- codex exec -m gpt-5.5 -
+> #   SIDECAR_VERDICT=COMPLETE exit=0 bytes=48489   → read out.txt
+> #   SIDECAR_VERDICT=TIMEOUT  waited=900s bytes=0  → STILL ALIVE, not a result
+> #   SIDECAR_VERDICT=EMPTY    exit=0               → the only state meaning "it said nothing"
+> ```
+>
+> **Never judge a sidecar by looking at its output file.** A live process and a dead one produce the
+> same zero bytes, and only process state separates them. Measured here: a session backgrounded two
+> sidecars, read their files after 1 s and 30 s, recorded *"both returned 0-output"* into five
+> records — and both had answered, with four real findings, one of which showed the change under
+> review was over-applied. The mis-read nearly retired a working mechanism. This rule is repeated in
+> this file because line 71 tells you to invoke sidecars with `Bash`; a runtime reading only that
+> would dispatch with no waiting discipline at all. Canonical: `auto-decorrelation` SKILL.md §S-1b.
+
 > **Runtime authority — hard stop line (Codex / non-Claude runtimes):** your findings are **evidence candidates, not terminal verdicts**. They are not final until the governor source-closes them against a **mechanical anchor** (a local file hit · a literal source span · a passing check) — **never governor agreement alone**. You are a capability-routed **sidecar**, not a co-governor: there is one explicit governor per context. Full doctrine: `knowledge/shared/harness-core/multi_model_sidecar_strategy.md §Runtime Authority`.
 
 ---
