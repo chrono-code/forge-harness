@@ -1,6 +1,6 @@
 {
   "name": "@chrono-meta/fh-gate",
-  "version": "1.4.74",
+  "version": "1.4.75",
   "description": "FH runtime adapters — run FH governance, skills, and agents via Claude or Codex with machine-parseable gates.",
   "license": "MIT",
   "keywords": [
@@ -105,6 +105,7 @@
     "scripts/memory_link_check.py",
     "scripts/test_memory_link_check.sh",
     "scripts/memory_nearcheck.py",
+    "scripts/sidecar_wait.sh",
     "scripts/test_session_close_lanes.sh",
     "scripts/test_card_drift_probe.sh",
     "scripts/universal_guard_check.sh",
