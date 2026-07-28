@@ -24,6 +24,7 @@ TWO INSTRUMENT RULES LEARNED WHILE WRITING IT, both from wrong first numbers:
 
 CLASSES (a link is exactly one)
   ok            resolves in the memory store as written
+  ambiguous     two notes share a normalized name — NEVER auto-fixed, a human picks
   separator     resolves after -/_ normalization — mechanically repairable, and the only class
                 `--fix-separators` will touch
   cross-store   resolves in the hub repo or companion store — reported, never "fixed"
@@ -96,10 +97,25 @@ def norm(s: str) -> str:
     return s.replace("-", "_").lower()
 
 
+# Normalized keys whose bucket holds MORE THAN ONE distinct memory note. Auto-fixing these would
+# pick whichever file sorted first and silently reroute an edge to the wrong note — and the reroute
+# is permanent, because the rewritten link then resolves exactly and no later run flags it.
+# Cross-family review (gpt-5.5, 2026-07-29) supplied the reachable input: `alpha-beta.md` and
+# `alpha_beta.md` both exist, a note links `[[Alpha_Beta]]` meaning the underscore one, and case
+# drift alone is enough to send it to the hyphen one. Reported as ambiguous, never rewritten.
+AMBIGUOUS: set[str] = set()
+
+
 def build_index(memory: Path) -> dict[str, tuple[str, str]]:
     idx: dict[str, tuple[str, str]] = {}
+    AMBIGUOUS.clear()
+    seen: dict[str, str] = {}
     for p in sorted(memory.glob("*.md")):
-        idx.setdefault(norm(p.stem), ("memory", p.name))
+        k = norm(p.stem)
+        if k in seen and seen[k] != p.name:
+            AMBIGUOUS.add(k)
+        seen[k] = p.name
+        idx.setdefault(k, ("memory", p.name))
     for root in extra_roots():
         for p in root.rglob("*.md"):
             if ".git" in p.parts:
@@ -114,10 +130,13 @@ def classify(target: str, memory: Path, idx: dict) -> str:
         return "placeholder"
     if (memory / f"{t}.md").exists():
         return "ok"
-    hit = idx.get(norm(t))
+    k = norm(t)
+    hit = idx.get(k)
     if hit is None:
         return "dangling"
-    return "separator" if hit[0] == "memory" else "cross-store"
+    if hit[0] == "memory":
+        return "ambiguous" if k in AMBIGUOUS else "separator"
+    return "cross-store"
 
 
 def main() -> int:
@@ -142,6 +161,7 @@ def main() -> int:
     idx = build_index(memory)
     counts: Counter[str] = Counter()
     dangling: list[tuple[str, str]] = []
+    ambiguous: list[tuple[str, str]] = []
     seps: list[tuple[Path, str, str]] = []
 
     for p in notes:
@@ -152,21 +172,27 @@ def main() -> int:
             counts[k] += 1
             if k == "dangling":
                 dangling.append((p.name, t))
+            elif k == "ambiguous":
+                ambiguous.append((p.name, t))
             elif k == "separator":
                 seps.append((p, t, idx[norm(t)][1][:-3]))
 
     total = sum(counts.values())
     if not a.quiet:
         print(f"memory-link-check: {len(notes)} notes · {total} links")
-        for k in ("ok", "separator", "cross-store", "placeholder", "dangling"):
+        for k in ("ok", "separator", "ambiguous", "cross-store", "placeholder", "dangling"):
             print(f"  {k:12s} {counts[k]}")
+        if counts["ambiguous"]:
+            print("\n  ambiguous — two notes share a normalized name; a human must pick, the fixer will not:")
+            for t, n in Counter(t for _, t in ambiguous).most_common():
+                print(f"    {n}x  [[{t}]]")
         if dangling:
             print("\n  dangling (nothing on disk answers these — write the note, or drop the edge):")
             for t, n in Counter(t for _, t in dangling).most_common():
                 print(f"    {n}x  [[{t}]]")
 
     if a.fix_separators and seps:
-        touched, skipped = 0, 0
+        touched, skipped, fixed = 0, 0, 0
         for p in {s[0] for s in seps}:
             text = p.read_text(encoding="utf-8")
             # Split on fenced blocks and rewrite only the parts OUTSIDE them, then rejoin. Doing it
@@ -181,14 +207,26 @@ def main() -> int:
             for chunk, editable in parts:
                 if editable:
                     for _, wrong, right in [s for s in seps if s[0] == p]:
-                        chunk = chunk.replace(f"[[{wrong}]]", f"[[{right}]]")
-                        chunk = chunk.replace(f"[[{wrong}|", f"[[{right}|")
+                        # Rewrite the TARGET only, leaving whatever follows it intact — an anchor
+                        # (`#section`), an alias (`|shown as`), or nothing.
+                        #
+                        # An earlier version enumerated the closing forms by hand (`]]` and `|`)
+                        # and therefore silently skipped `[[target#anchor]]`: the link was still
+                        # COUNTED as repairable, so every later run flagged it again (idempotence
+                        # broken) and the summary reported more fixes than it had made. Found by a
+                        # cross-family reviewer and confirmed by execution before being accepted.
+                        pat = re.compile(r"\[\[" + re.escape(wrong) + r"(?=[\]|#])")
+                        chunk, n = pat.subn(f"[[{right}", chunk)
+                        fixed += n
                 else:
                     skipped += sum(chunk.count(f"[[{s[1]}") for s in seps if s[0] == p)
                 out.append(chunk)
             p.write_text("".join(out), encoding="utf-8")
             touched += 1
-        print(f"\n  fixed {len(seps) - skipped} separator link(s) across {touched} file(s)"
+        # Report what was ACTUALLY rewritten, not what was eligible. The two diverged once and the
+        # summary over-reported; a fixer that miscounts its own writes cannot be checked by reading
+        # its output.
+        print(f"\n  fixed {fixed} separator link(s) across {touched} file(s)"
               + (f"; left {skipped} inside fenced blocks (quoted examples)" if skipped else ""))
     elif seps and not a.quiet:
         print(f"\n  {len(seps)} separator link(s) are mechanically repairable → --fix-separators")
