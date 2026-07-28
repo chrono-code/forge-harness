@@ -102,6 +102,8 @@
     "scripts/prepush_guard_check.sh",
     "scripts/psa_scan_lib.sh",
     "scripts/session_close_check.sh",
+    "scripts/test_session_close_lanes.sh",
+    "scripts/test_card_drift_probe.sh",
     "scripts/universal_guard_check.sh",
     "scripts/test_prepush_stdin_integrity.sh",
     "scripts/public_surface_scan_files.sh",

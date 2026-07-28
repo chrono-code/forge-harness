@@ -71,22 +71,66 @@ printf 'canonical\n' > "$TD/src/card.md"
 cp "$TD/src/card.md" "$TD/dst/card.md"
 touch -r "$TD/src/card.md" "$TD/dst/card.md"
 
-newer_than() { [ "$2" -nt "$1" ]; }   # same predicate the guard uses
+# The guard's predicate: mtime-newer is the cheap screen, divergent CONTENT is the verdict.
+# ⚠️ This is a re-spelling of the script's logic, not the script's own function (sync-to-be.sh runs
+# on load and cannot be sourced), so it is a DIVERGENT NORMALIZER by construction — §2b below
+# pins the two together structurally so this copy cannot quietly drift lenient.
+trips() {   # $1 = src, $2 = dst
+  [ "$2" -nt "$1" ] || return 1
+  if head -1 "$2" 2>/dev/null | grep -q 'MIRROR COPY'; then
+    ! tail -n +2 "$2" 2>/dev/null | cmp -s - "$1"
+  else
+    ! cmp -s "$2" "$1"
+  fi
+}
 
 # known-NEGATIVE: mirror equal-or-older → must NOT trip
-if newer_than "$TD/src/card.md" "$TD/dst/card.md"; then
+if trips "$TD/src/card.md" "$TD/dst/card.md"; then
   bad "known-NEGATIVE — a freshly-mirrored file reads as 'destination newer' (guard would over-block)"
 else
   pass "known-NEGATIVE — normal mirror does not trip the guard"
 fi
 
+# known-NEGATIVE 2 (added 2026-07-28, measured FP): destination newer, content IDENTICAL.
+# This is what a `git rebase` inside the companion store produces — it re-checks-out the working
+# tree and stamps `now` on every touched file. Two byte-identical files aborted a healthy sync,
+# and an abort that fires on healthy runs trains SYNC_OVERWRITE_OK into a reflex, which disarms
+# the guard on the surface it exists to protect. Overwriting identical bytes cannot lose anything.
+sleep 1
+touch "$TD/dst/card.md"
+if trips "$TD/src/card.md" "$TD/dst/card.md"; then
+  bad "known-NEGATIVE 2 — identical content with a newer mtime trips the guard (rebase-stamp FP is back)"
+else
+  pass "known-NEGATIVE 2 — newer mtime + identical content does not trip (rebase stamp is not an edit)"
+fi
+
+# known-NEGATIVE 3: the only difference is the banner this transport itself injects.
+printf '%s\n' '<!-- MIRROR COPY — synced from the forge-harness hub. Do NOT edit here; the next sync overwrites it. Edit the canonical file under the hub instead. -->' > "$TD/dst/banner.md"
+cat "$TD/src/card.md" >> "$TD/dst/banner.md"
+cp "$TD/src/card.md" "$TD/src/banner.md"
+touch "$TD/dst/banner.md"
+if trips "$TD/src/banner.md" "$TD/dst/banner.md"; then
+  bad "known-NEGATIVE 3 — the injected MIRROR COPY banner reads as a mirror-side edit"
+else
+  pass "known-NEGATIVE 3 — the transport's own banner is not counted as divergence"
+fi
+
 # known-POSITIVE: the actual incident — someone edits the mirror
 sleep 1
 printf 'edited in the mirror\n' >> "$TD/dst/card.md"
-if newer_than "$TD/src/card.md" "$TD/dst/card.md"; then
+if trips "$TD/src/card.md" "$TD/dst/card.md"; then
   pass "known-POSITIVE — a mirror-side edit trips the guard (the 07-26 incident)"
 else
   bad "known-POSITIVE — a mirror-side edit does NOT trip the guard; the loss path is open again"
+fi
+
+# known-POSITIVE 2: a mirror-side edit UNDER the banner must still trip — the banner-aware
+# comparison must skip line 1, not skip the file.
+printf 'company-session finding added in the mirror\n' >> "$TD/dst/banner.md"
+if trips "$TD/src/banner.md" "$TD/dst/banner.md"; then
+  pass "known-POSITIVE 2 — a real edit beneath the banner still trips (banner skip is line-1 only)"
+else
+  bad "known-POSITIVE 2 — an edit under the banner is invisible; banner handling swallowed a real hit"
 fi
 
 # ── 3. The override must exist, and must be explicit ──────────────────────────
@@ -111,6 +155,22 @@ for fn in sync_dir sync_file; do
     bad "$fn does NOT carry the guard — the overwrite path is open through it"
   fi
 done
+
+# ── 2b. Both guard sites must apply the CONTENT verdict, not mtime alone ──────
+# `trips()` above re-spells the script's logic. If the script kept mtime-only on either site while
+# this anchor tested content, the anchor would report green on a guard that still over-blocks —
+# a divergent normalizer scoring its own dialect. Pin it structurally instead.
+sites=$(grep -c '_dest_content_differs "\$s" "\$d"\|_dest_content_differs "\$src" "\$dstf"' "$SYNC")
+if [ "${sites:-0}" -eq 2 ]; then
+  pass "both guard sites (dir + file) gate on _dest_content_differs, not mtime alone"
+else
+  bad "expected 2 content-checked guard sites in $SYNC, found ${sites:-0} — one path still aborts on mtime alone (rebase-stamp FP)"
+fi
+if grep -q '^_dest_content_differs()' "$SYNC"; then
+  pass "_dest_content_differs is defined once (single source for the content verdict)"
+else
+  bad "_dest_content_differs missing from $SYNC — this anchor is testing logic the script does not have"
+fi
 
 # ── 4. Banner must not fight the guard ────────────────────────────────────────
 # The banner writes to the destination, which would make it newer than its source and trip the

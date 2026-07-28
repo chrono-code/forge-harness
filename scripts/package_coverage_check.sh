@@ -73,6 +73,7 @@ pat = re.compile(
 )
 
 phantom = {}
+exercised = set()   # accepted entries a shipped doc ACTUALLY still points at
 for s in shipped:
     try:
         text = open(s, encoding='utf-8', errors='ignore').read()
@@ -82,8 +83,11 @@ for s in shipped:
         # Only a path that REALLY EXISTS here but is left out of the tarball is this defect.
         # A path that exists nowhere is the ordinary phantom-reference class the ref-path
         # check above already owns; a path outside files[] that is also absent is nothing.
-        if os.path.exists(m) and not covered(m) and m not in accepted:
-            phantom.setdefault(m, set()).add(s)
+        if os.path.exists(m) and not covered(m):
+            if m in accepted:
+                exercised.add(m)
+            else:
+                phantom.setdefault(m, set()).add(s)
 
 # Impossible-zero guard: this repo always has shipped docs. Zero scanned means the extractor
 # broke — report that as a failure rather than letting a dead check print a pass
@@ -94,6 +98,11 @@ if not shipped:
 
 for p, srcs in sorted(phantom.items(), key=lambda kv: (-len(kv[1]), kv[0])):
     print(f"{p}\t{len(srcs)}\t{sorted(srcs)[0]}")
+
+# An exception nobody exercises is a SILENCER waiting for a future real case to land on it.
+# Report the unexercised ones so the list stays a set of decisions, not accumulated residue.
+for a in sorted(accepted - exercised):
+    print(f"STALE\t{a}")
 raise SystemExit(1 if phantom else 0)
 PY
 )
@@ -104,9 +113,13 @@ if [ "$rc" -eq 2 ] || [ "$out" = "EXTRACTOR_BROKE" ]; then
   exit 1
 fi
 
+STALE_LIST=$(printf '%s\n' "$out" | grep '^STALE	' | cut -f2- || true)
+STALE_N=$(printf '%s' "$STALE_LIST" | grep -c . || true)
+EXERCISED_N=$(( ${#ACCEPTED_ABSENT[@]} - ${STALE_N:-0} ))
+
 if [ "$rc" -ne 0 ]; then
   echo "FAIL  package-coverage: shipped document(s) point at file(s) the package omits:"
-  printf '%s\n' "$out" | while IFS=$'\t' read -r path n src; do
+  printf '%s\n' "$out" | grep -v '^STALE	' | while IFS=$'\t' read -r path n src; do
     [ -z "$path" ] && continue
     printf '        %s  (named by %s shipped doc(s), e.g. %s)\n' "$path" "$n" "$src"
   done
@@ -115,5 +128,13 @@ if [ "$rc" -ne 0 ]; then
   exit 1
 fi
 
-echo "PASS  package-coverage: every referenced path is shipped or explicitly accepted (${#ACCEPTED_ABSENT[@]} accepted)"
+# Advisory only — a stale exception is hygiene, not a shipped-doc defect, so it must not
+# convert a clean package into a red gate (that trains the runner to ignore the check).
+if [ "${STALE_N:-0}" -gt 0 ]; then
+  echo "⚠️  package-coverage: ${STALE_N} ACCEPTED_ABSENT entry(ies) no longer exercised — remove, or a"
+  echo "    future real omission can land on the stale exception and be silenced:"
+  printf '%s\n' "$STALE_LIST" | sed 's/^/        /'
+fi
+
+echo "PASS  package-coverage: every referenced path is shipped or explicitly accepted (${#ACCEPTED_ABSENT[@]} accepted, ${EXERCISED_N} exercised)"
 exit 0

@@ -150,9 +150,24 @@ for f in "${FILES[@]}"; do
     # S5 — the pipefail-fallback disarm: `... | grep -c ... || echo 0` appends a SECOND line under
     #   `set -o pipefail`, so the later `-gt` integer test becomes a bash error (= false) and the guard
     #   passes silently, with the error going only to stderr. Measured class, 2026-07-26.
+    #
+    # NARROWED 2026-07-28 after hand-verifying all 9 hits this repo produced: 9/9 were false
+    # positives, i.e. the probe was pure noise for its own class, and 100% FP trains dismissal of
+    # the one hit that will matter. Two distinct causes, both mechanically reproduced:
+    #   (a) `a || b || echo 0` was read as a pipeline — the old regex could anchor its `\|` on the
+    #       SECOND bar of the first `||`. No pipe exists, so no second line can ever be produced.
+    #       (Every `_mtime() { stat -c %Y … || stat -f %m … || echo 0; }` in the tree was flagged.)
+    #   (b) a real pipeline whose failing stage emits NOTHING (`… | jq -r … || echo 0`) — the
+    #       fallback then supplies the only line, which is exactly the intended behavior.
+    # The disarm needs BOTH a real pipe AND a final stage that emits regardless of upstream failure
+    # — a counter (`grep -c`, `wc`). That is the measured shape: `find … | grep -c . || echo 0`
+    # yields "9\n0" and the `-gt` guard goes silent. Verified as a known pair (both directions) in
+    # scripts/test_degrade_scan_shell_probes.sh; narrowing without that anchor would just trade a
+    # noisy probe for a blind one.
     while IFS= read -r m; do
-      emit "$f" "${m%%:*}" "S5:pipefail-fallback(sh)" "\`|| echo 0\` fallback on a pipeline — under \`set -o pipefail\` this yields a multi-line value whose integer comparison errors out and silently passes the guard; split the pipeline and sanitize to an integer"
-    done < <(grep -nE '\|[^|]+\|\|[[:space:]]*echo[[:space:]]+[\"'"'"']?0' "$f" 2>/dev/null \
+      emit "$f" "${m%%:*}" "S5:pipefail-fallback(sh)" "\`|| echo 0\` fallback on a pipeline ending in a counter (grep -c/wc) — that stage emits even when an upstream stage fails, so under \`set -o pipefail\` the value gains a SECOND line, the integer comparison errors out, and the guard passes silently; split the pipeline and sanitize to an integer"
+    done < <(grep -nE '[^|]\|[[:space:]]*([a-z]+[[:space:]]+)*(grep[^|]*-c|wc)[^|]*\|\|[[:space:]]*echo[[:space:]]+[\"'"'"']?0' "$f" 2>/dev/null \
+             | grep -vE '^[0-9]+:[[:space:]]*#' \
              | grep -vE '#[[:space:]]*noqa[:[:space:]]*degrade')
   fi
 

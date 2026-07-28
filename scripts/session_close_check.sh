@@ -42,10 +42,28 @@ fi
 # masking a real match as pipeline failure so the warning NEVER fired on true positives
 # (caught by a Sonnet blind probe 2026-07-10, 5/5 deterministic repro). `grep -c` reads the
 # whole stream; `|| true` guards its exit-1-on-zero.
+#
+# SATISFIABLE (2026-07-28): this warning used to fire on EVERY close that touched an FH asset, with
+# no way for the session to discharge it — the script had no means of observing whether harvest-loop
+# ran. A permanently-firing line is noise, and noise trains the runner to skim past the ❌ lines that
+# do matter (the same objection raised against pre-push:484 on 2026-07-28 — one standard, both places).
+# So the obligation now has a mechanical discharge: a `harvest-loop` mention in TODAY's fh_completed
+# file. HONEST SCOPE: this tests ACKNOWLEDGMENT, not execution — the script cannot see a skill run.
+# Recording "harvest-loop: skipped, <reason>" discharges it exactly as recording a run does, which is
+# correct: CLAUDE.md ② accepts "harvest-loop (or an explicit skip note)". What it now catches is the
+# real miss class — closing with FH assets changed and *no decision recorded either way*.
 FH_CHANGED=$(git -C "$FH" log --since="today 00:00" --name-only --pretty=format: 2>/dev/null \
      | grep -cE '^(plugins/.*SKILL\.md|\.claude/rules/|templates/|CLAUDE\.md|knowledge/)' || true)
 if [ "${FH_CHANGED:-0}" -gt 0 ]; then
-  echo "⚠️  ② FH assets changed today ($FH_CHANGED path-touch(es)) — harvest-loop (or an explicit skip note) is owed"
+  HL_NOTED=0
+  [ -f "$FH/tracks/_meta/fh_completed_${TODAY}.md" ] \
+    && HL_NOTED=$(grep -ciE 'harvest[-_]loop' "$FH/tracks/_meta/fh_completed_${TODAY}.md" || true)
+  if [ "${HL_NOTED:-0}" -gt 0 ]; then
+    echo "✅ ② FH assets changed today ($FH_CHANGED path-touch(es)) — harvest-loop decision recorded in fh_completed_${TODAY}.md"
+  else
+    echo "⚠️  ② FH assets changed today ($FH_CHANGED path-touch(es)) and fh_completed_${TODAY}.md records no"
+    echo "     harvest-loop decision — run it, or write one line stating the skip and why (either discharges this)"
+  fi
 fi
 
 # ④ real-time completion log — required whenever any commit landed today
@@ -100,6 +118,18 @@ if [ -f "$CARD" ]; then
   NEWER=$(find "$FH/tracks/_meta" -maxdepth 1 -type f \( -name "fh_completed_*.md" -o -name "fh_signal_*.md" \) -newer "$CARD" 2>/dev/null | wc -l | tr -d ' ')
   if [ "$NEWER" -gt 0 ]; then
     echo "❌ ⑤ card-last violated — $NEWER close artifact(s) newer than the session card; re-run ⑤ (delta update)"
+    # NAME the offenders. Recurrence N=3 (2026-07-28, three closes in one day): every repair so far
+    # was a prose vow ("next time I'll write the finding into the card first") and every one failed,
+    # because the reflex fires mid-close. What is mechanizable is not the reflex but the COST of the
+    # miss — a bare count makes ⑤ a re-read of the whole session, while naming the files and showing
+    # what landed after the card makes the delta update a minute's work, which is what actually gets
+    # done rather than deferred. Diagnosis, not prevention: this line does not claim to stop the miss.
+    find "$FH/tracks/_meta" -maxdepth 1 -type f \( -name "fh_completed_*.md" -o -name "fh_signal_*.md" \) -newer "$CARD" 2>/dev/null \
+      | while IFS= read -r f; do
+          echo "     ↳ ${f#"$FH"/}"
+          tail -n 3 "$f" 2>/dev/null | sed 's/^/         │ /'
+        done
+    echo "     → fold the above into the card, save the card LAST, then re-push."
     FAIL=1
   else
     echo "✅ ⑤ card is the newest close artifact (card-last holds)"

@@ -95,6 +95,33 @@ DIRTY=0   # cp-fallback mode can't count cheaply → mark work done, let git-dif
 SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/')
 
 NEWER_HITS=""
+
+# mtime-newer is the CHEAP screen, not the verdict. Measured 2026-07-28 (n=2 files, one run):
+# after a successful sync this script COMMITS the companion store and, when another machine has
+# pushed, REBASES it — and a rebase re-checks-out the working tree, stamping every touched file
+# with `now`. The next run then aborted on two files whose content was byte-identical to their
+# source. That is the same "guard fires on this script's own output" trap the banner logic warns
+# about at line ~125, arriving by a different door (git, not the decorator), so the mtime restore
+# there does not cover it.
+#
+# Why content is the right discriminator: the loss this guard prevents is "the mirror holds
+# something the hub does not". If the bytes match, an overwrite transfers nothing and CANNOT lose
+# anything — so skipping the abort is not a relaxation of the guard, it is the guard's own
+# definition applied precisely. A real mirror edit still differs in content and still aborts
+# (verified: the 2026-07-28 session card, where the mirror was a strict superset, still trips it).
+#
+# This matters beyond noise: an abort that fires on every healthy run trains `SYNC_OVERWRITE_OK=1`
+# into muscle memory, and a reflex-overridden guard is a decoration on an irreversible surface.
+_dest_content_differs() {   # $1 = src file, $2 = dst file  → 0 if they differ (real hit)
+  local s="$1" d="$2"
+  # A mirrored .md carries the injected banner on line 1; compare like-for-like by dropping it.
+  if head -1 "$d" 2>/dev/null | grep -q 'MIRROR COPY'; then
+    ! tail -n +2 "$d" 2>/dev/null | cmp -s - "$s"
+  else
+    ! cmp -s "$d" "$s"
+  fi
+}
+
 check_dest_newer() {   # $1 = src dir, $2 = dst dir
   local src="$1" dst="$2" rel s d
   [ -d "$dst" ] || return 0
@@ -103,8 +130,8 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
     rel="${s#$src/}"
     d="$dst/$rel"
     [ -f "$d" ] || continue
-    # newer destination = someone edited the mirror directly
-    if [ "$d" -nt "$s" ]; then
+    # newer destination AND divergent content = someone edited the mirror directly
+    if [ "$d" -nt "$s" ] && _dest_content_differs "$s" "$d"; then
       NEWER_HITS="$NEWER_HITS  $d  (newer than $s)
 "
     fi
@@ -227,8 +254,11 @@ sync_file() {
   # guarded only sync_dir and left this path open — and this path carries CLAUDE.local.md, the
   # operator's local bindings. A guard applied to some callers of a shared hazard is not a guard;
   # it just relocates the hole. (Half-fix / propagation-boundary class.)
+  # Content check applies here for the same reason (see _dest_content_differs above): a rebase-
+  # stamped mtime on a byte-identical file is not an edit, and half a fix is the class this
+  # very comment block was written about.
   local dstf="$dstdir/$(basename "$src")"
-  if [ -f "$dstf" ] && [ "$dstf" -nt "$src" ]; then
+  if [ -f "$dstf" ] && [ "$dstf" -nt "$src" ] && _dest_content_differs "$src" "$dstf"; then
     if [ "${SYNC_OVERWRITE_OK:-0}" = "1" ]; then
       log "⚠️  destination-newer OVERRIDE (SYNC_OVERWRITE_OK=1) — overwriting $dstf"
       printf '%s\tSYNC_OVERWRITE_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$dstf" \

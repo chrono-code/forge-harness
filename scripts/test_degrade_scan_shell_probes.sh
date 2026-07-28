@@ -155,6 +155,32 @@ n=$(s_hits "$TMP/dependency_guards.sh")
 [ "$n" -eq 2 ] && ok "dependency guards (\`[ -f lib ] || exit 0\`) still detected — scope exclusion did not swallow them" \
                 || bad "dependency guards: expected 2 S-hits, got $n — 'guard library missing → allow' is hidden again"
 
+# S5 known pair — added 2026-07-28 when the probe shipped with NO fixture of its own and every one
+# of the 9 hits it produced in this repo turned out to be a false positive. Both directions are
+# pinned because narrowing an all-FP probe is one edit away from a blind one.
+cat > "$TMP/s5_positive.sh" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+N=$(find /nope . -maxdepth 1 2>/dev/null | grep -c . || echo 0)
+M=$(git log --oneline 2>/dev/null | wc -l || echo 0)
+EOF
+cat > "$TMP/s5_negative.sh" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+# `a || b || echo 0` is NOT a pipeline — no stage can emit a second line.
+_mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }
+# A pipeline whose failing stage emits nothing: the fallback supplies the only line, as intended.
+J=$(printf '%s' "$x" | jq -r '.a // 0' 2>/dev/null || echo 0)
+# A comment describing the defect must not be scored as the defect: cmd | grep -c . || echo 0
+EOF
+n=$(s_hits "$TMP/s5_positive.sh")
+[ "$n" -eq 2 ] && ok "S5 known-positive: counter-stage fallbacks (grep -c, wc) detected 2/2" \
+                || bad "S5 known-positive: expected 2 S-hits, got $n — the pipefail disarm is invisible"
+
+n=$(s_hits "$TMP/s5_negative.sh")
+[ "$n" -eq 0 ] && ok "S5 known-negative: \`||\` chains, empty-on-failure pipelines and comments stay silent" \
+                || bad "S5 known-negative: $n hit(s) — S5 is noise again (9/9 FP was its measured state)"
+
 n=$(p_hits "$TMP/kp.py")
 [ "$n" -ge 1 ] && ok "python known-positive: pre-existing probes still fire" \
                 || bad "python known-positive: no hits — the Python probes regressed"

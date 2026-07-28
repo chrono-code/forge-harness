@@ -497,7 +497,7 @@ Claude agents feature
 | `asset-placement-gate` | Routes a new skill/agent/plugin to the right place (hub vs project), no role overlap | "where does this go", "should this be shared", "hub or project" |
 | `marketplace-gate` | Scores a repo against 5 listing criteria (README, zero-config, maintenance, dup, safety) | "is this OK to publish", "ready for the marketplace", "pre-publish check" |
 | `public-surface-audit` | Scans git-tracked files for operator-private tokens (real username, corp names, home paths) | "did I leak anything", "scan for private tokens", "is my split clean" |
-| `self-marketing-lint` | Flags self-promotional / hype wording in descriptions (plain-text discipline) | "lint the marketing language", "is this description hyped" |
+| `harness-doctor --lint` | Flags self-promotional / hype wording in descriptions (plain-text discipline) | "lint the marketing language", "is this description hyped" |
 
 > **Going public?** Don't run these one at a time — say **"publish"** / **"make this repo public"** and Claude
 > fires the **Pre-Publish Surface Gate** (CLAUDE.md), which runs `public-surface-audit` + `marketplace-gate`

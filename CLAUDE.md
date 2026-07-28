@@ -695,7 +695,10 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
        **(b) flag the matching card carry item resolved for ⑤** — ⑤ owns the card write (card-last
        guard), ④-c never edits the card. **First-run no-op** if no matching handoff/carry exists.
        (Why-its-own-step origin + ownership split + salience/backstops → §detail below.)
-  → ⑤ Card update ← ABSOLUTE LAST: must capture ①–④-c outcomes
+  → ⑤ **Log-close + card update, in that internal order** ← ABSOLUTE LAST: must capture ①–④-c
+       outcomes. ⑤ is ATOMIC and owns BOTH writes: (a) append any close-time finding to
+       `fh_completed_{date}.md` FIRST, (b) then write the card. Once ⑤ starts, `fh_completed`
+       is CLOSED — a later append re-opens the violation ⑤ exists to prevent.
   → ⑥ Commit card + push
 ```
 
@@ -708,6 +711,16 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
 ⑤ runs. **Mechanical floor**: `scripts/session_close_check.sh` is **wired into `templates/.git-hooks/pre-push`** (2026-07-20) — it runs on *every* push, so it is no longer prose-invoked. Enforcement is surface-matched: an ordinary push **surfaces** ❌ violations (advisory — a branch push is reversible), and the **close push blocks** on them: run step ⑥ as **`FH_SESSION_CLOSE=1 git push`** → exit 1 (card-last violated / required close artifact missing) stops the push until fixed. *Why not block always*: ⑤ card-last is a close-time invariant, while ④ mandates writing `fh_completed_*` **during** the session — an unconditional block would pit the two rules against each other and train `--no-verify`, disarming the Destructive-Op gate in the same hook. Any new information produced during ①–④ (new commits from a merged self-PR, model changes,
 new findings, a carry item flipped to DONE) feeds INTO ⑤ — card is never written mid-sequence and
 then left open for more work to accumulate after it.
+
+**Why ⑤ became atomic (N=3, 2026-07-28 — three closes in one day)**: the miss was always the same
+shape — a finding surfaced *during* the close and the reflex appended it to `fh_completed`, which is
+correct under ④ and fatal after ⑤. The three prose repairs ("next time write it into the card first")
+all failed, including one session that stated the vow and then broke it in the same close. So the
+sequence is restructured rather than re-promised: `fh_completed` is not a step that runs alongside ⑤,
+it is the **first half of** ⑤. A close-time finding has exactly one landing order — log, then card —
+and there is no remaining moment where appending is the natural move. *Honest scope*: this removes
+the ordering ambiguity, not the reflex; the pre-push gate stays the floor, and on a violation it now
+**names the offending files and prints their last lines** so re-running ⑤ is a delta, not a re-read.
 
 **Mid-session card writes are drafts**: If a task (e.g., a calibration run) internally updates
 the card, that is a draft. The close chain always re-runs ⑤ to capture post-draft activities.

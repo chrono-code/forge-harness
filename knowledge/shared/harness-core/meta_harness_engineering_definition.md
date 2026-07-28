@@ -55,7 +55,7 @@ Proposed three-layer harness taxonomy:
 |---|---|---|
 | Harness interface | Context injection layer | `CLAUDE.md` · `.claude/rules/*.md` · `MEMORY.md` |
 | Harness mechanisms | Skill bus | `verify-bidirectional` · `steel-quench` · `phantom-quench` · `agent-composer` |
-| Scale | Multi-agent dispatch | Agent View · `context-bridge-dispatch` · `agent-composer` parallel dispatch |
+| Scale | Multi-agent dispatch | Agent View · `agent-composer` parallel dispatch (Step 3-a — absorbed the former context-bridge-dispatch) |
 | *(meta layer, not in taxonomy)* | Harness evolution | `harvest-loop` · `harness-doctor` · `frontier-digest` · `prompt-regression` |
 
 The academic taxonomy covers the **static structure** of a harness. FH adds the **dynamic evolution layer** — the mechanism by which the harness improves itself over time.

@@ -111,6 +111,26 @@ if [ -f scripts/package_coverage_check.sh ]; then
   fi
 fi
 
+# session-close gate lanes (② harvest-loop discharge + ⑤ card-last) and the ⑤-b card-drift probe.
+# Both anchors calibrate scripts/session_close_check.sh, which the pre-push hook runs on every push
+# — an uncalibrated instrument there produces exactly the false verdicts the close chain exists to
+# prevent. test_card_drift_probe.sh had shipped with ZERO callers since it was written; wiring it
+# here closes that, and the anchors are added to files[] in the same change so package mode runs
+# them too rather than reporting a deleted anchor.
+for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh; do
+  if [ ! -f scripts/session_close_check.sh ]; then
+    echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"
+  elif [ -f "$_anchor" ]; then
+    if ! bash "$_anchor"; then
+      fail=1
+    fi
+  else
+    # subject present, anchor gone => the calibration was deleted. Real failure, not a skip.
+    echo "FAIL  ${_anchor##*/}: session_close_check.sh present but its anchor is missing"
+    fail=1
+  fi
+done
+
 # Referenced-path existence is a source-tree check. The npm package intentionally
 # ships a narrower runtime surface, so package-mode selfcheck skips this section.
 if [ -d ".claude/rules" ]; then
