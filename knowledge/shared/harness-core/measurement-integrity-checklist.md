@@ -120,6 +120,8 @@ here.** Three shapes, all observed 2026-07-20 in a single session:
 | n+7 | **Instrument sees only part of its own declared surface** | An "always-loaded footprint" scan summed files rooted at `$TARGET`, silently omitting the auto-loaded memory index living outside it — **61% of the real resident surface** | A known-positive (a file you *know* is resident) fails to appear in the sum |
 | n+8 | **A cheap proxy substituted for the real property** | Index-line/topic-file **size ratio** used as a proxy for *content coverage*; minimum ratio 3.7× read as "safe" — while an entry whose file was 3.7× larger still lacked every fact the index carried | One known case checked by content, not size, inverts the verdict immediately |
 | n+9 | **Language / encoding assumption mismatch** | An **ASCII-token scanner run over a Korean corpus**: the index wrote `catch`, `MERGED`, `expert-system`; the files wrote `잡았다`, `머지`, `케이스크래프트` → every token scored as missing. **~96% false positives** | One known-negative (an entry you know is fully covered) scores as "missing" → mismatch exposed |
+| n+10 | **Accepted into the scanned set, but no probe matches that shape** — the instrument counts the file as covered and reports it *clean* | `degrade_direction_scan.sh` collected `.sh` files while every probe was Python-shaped (`except:` / `.get(k, True)` / `if not x:`). A known-positive bash file with four default-toward-PASS constructs scored **0/4**, and the output read `no default-toward-PASS smells in 1 scanned py/sh file` (2026-07-28) | The known-positive of *that shape* scores 0 while the summary says "scanned" — the tell is coverage claimed without detection demonstrated |
+| n+11 | **The collection predicate, not the probe, is what silently drops the target** | Same scan: git hooks are named `pre-push` (no extension) under `.git-hooks` (dotted directory), and the extension test ran against the **full path**, so FH's own mechanical floor reported `no scannable (py/sh) target files`, exit 0 | Point the instrument at a directory you *know* holds a positive; an empty file list is the finding, not a clean result |
 
 Secondary false-positive sources in the same run, worth checking explicitly: **whitespace/hyphen
 variants** (`3주새` vs `3주 새`), and treating a line's **navigational annotation** (`(detail …, archive)`)
@@ -134,6 +136,14 @@ as a factual claim.
   `UNMEASURED`, never `0`.
 - An instrument that produces an **impossible value** (all-pass, all-fail, or a self-scan in which the
   running tool does not detect itself) is suspect **before** its target is. Suspect the instrument first.
+- **"Scanned" is a claim, and it is separate from "covered."** A scanner that admits a file type into its
+  scanned set owes a known-positive *of that type*; without one, its clean message is a false clean, which
+  is strictly worse than an honest "not covered" (n+10). Same for the collection step: an empty file list
+  is a calibration failure to report, never a clean run (n+11).
+- **A probe that flags the prescribed remedy is a defect in the probe.** Measured 2026-07-28: flagging
+  `${count:-0}` — the integer sanitization that closes the `pipefail`-fallback class — would push an author
+  to delete the fix. Hand-check a sample of hits before shipping a probe; on this corpus 6/6 sampled hits
+  were false positives and the scoping that followed cut the load from 73 to 14.
 
 ### Done When
 

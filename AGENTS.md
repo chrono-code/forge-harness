@@ -104,11 +104,11 @@ For complex multi-step tasks, run `/agent-composer` first to plan which agents t
 
 The methodology layer (`tracks/`, `knowledge/`, `SKILL.md` docs) is Codex-compatible beta. Any AI model can follow skill workflows by reading SKILL.md files directly; the automation layer (hooks, plugin-channel agents under `plugins/*/agents/`, `/model`) is Claude Code-native and requires manual adaptation. FH's own agents are auto-loaded via the plugin channel when the plugin is enabled — `.claude/agents/` is the field-project override slot, not where FH ships its agents. Non-Claude runtimes use this `AGENTS.md`, `plugins/*/agents/*.md`, and `scripts/fh-run.sh` to apply the same methodology via adapter.
 
-### Non-Claude runtimes: four things CLAUDE.md holds that you will not auto-load
+### Non-Claude runtimes: five things CLAUDE.md holds that you will not auto-load
 
 `.claude/rules/*.md` with `paths:` frontmatter is a **Claude Code platform feature** — those files are
 auto-loaded into a Claude Code session when it reads a matching file, and **your runtime has no equivalent**.
-So four things that govern behavior are not going to reach you on their own. Read them explicitly:
+So five things that govern behavior are not going to reach you on their own. Read them explicitly:
 
 1. **FH asset changes run a mandatory 4-axis verification chain before the session's first commit.**
    Detail (axis definitions · marker required fields · lightweight exception · substantive carve-out):
@@ -166,6 +166,30 @@ So four things that govern behavior are not going to reach you on their own. Rea
 > **Detail**: See `knowledge/shared/harness-core/intent_marshaling_general_work.md` — the 5-step loop,
 > the gate-routing table, the Sonnet-floor boundaries, and the origin defect — **open it directly**
 > before applying the ladder or when a gap appears.
+
+5. **A scan, checker, or metric in this repo is not evidence until it has been shown to work on the
+   target you are pointing it at.** This one is easy to skip because the tooling looks finished, so it
+   is worth two cheap steps before you rely on a number it produces:
+
+   - **Run it against one case you already know the answer to, and one you know is clean.** A tool that
+     cannot separate those two has not been shown to measure anything, so its output cannot ground a
+     claim about the target — it may still be right, you just have no way to tell. This
+     repo has produced that exact result more than once — an ASCII-token scanner run over a Korean
+     corpus scored ~96% false positives, and a shell-shape scanner reported a fail-open script as
+     "clean" because every one of its probes was written for Python syntax.
+   - **Open one hit by hand before you state a count anywhere** — including in chat, not only in a file.
+     An unverified figure is anchored the moment it is said, and then has to be corrected everywhere it
+     travelled.
+
+   Two conventions that follow from this, and that the rest of the repo assumes you are using:
+   *an empty result is not a zero* — a scan that found no target files, or died mid-run, reports
+   `UNMEASURED`, never `0` — and *an extreme result (everything passed, everything failed) is a reason
+   to suspect the instrument before the target.*
+
+   Nothing enforces this mechanically; the trigger is your own intent to trust an output, which no hook
+   can see. Detail, including the known-pair procedure and the failure catalogue:
+   `knowledge/shared/harness-core/measurement-integrity-checklist.md` — **open it directly** before
+   running a scan whose count you will report.
 
 The irreversible-surface gates (Pre-Publish · Destructive-Op) likewise live in CLAUDE.md and fire on
 **intent**, not on a file — read them before any publish, delete, or history-rewrite. `pre-push` enforces
