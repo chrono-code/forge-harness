@@ -83,6 +83,22 @@ else
   fail=1
 fi
 
+# degrade-scan shell probes — the anchor was written 2026-07-28 and shipped with ZERO callers,
+# reproducing [[feedback_built_but_not_wired]] in the same session that cited it. The subject
+# (scripts/degrade_direction_scan.sh) and the anchor both ship, so this runs in package mode too;
+# only a missing SUBJECT is a legitimate skip.
+if [ ! -f scripts/degrade_direction_scan.sh ]; then
+  echo "SKIP  degrade-scan shell probes (subject scripts/degrade_direction_scan.sh absent)"
+elif [ -f scripts/test_degrade_scan_shell_probes.sh ]; then
+  if ! bash scripts/test_degrade_scan_shell_probes.sh; then
+    fail=1
+  fi
+else
+  # subject present, anchor gone => the calibration was deleted. Real failure, not a skip.
+  echo "FAIL  degrade-scan shell probes: scan present but scripts/test_degrade_scan_shell_probes.sh missing"
+  fail=1
+fi
+
 # Referenced-path existence is a source-tree check. The npm package intentionally
 # ships a narrower runtime surface, so package-mode selfcheck skips this section.
 if [ -d ".claude/rules" ]; then
