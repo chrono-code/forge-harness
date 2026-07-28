@@ -542,3 +542,13 @@
   findings: "R1 5문항 중 #5(유니코드 표기 변형으로 같은-계열 차단 우회) 수용·수리(NFKC+Cf 제거, 앵커 5종). #1 소스 실행으로 기각(자기모순), #2~#4 사이드카 자인 no-finding. R2 CONVERGED"
   verdict_holder: governor (소스 실행 대조)
   note: "적대 검증이 실사용을 대체 못 함 — 5문항이 못 잡은 '리뷰 존재≠통과' 구멍은 실운영 1호가 잡았다. qasp-dev PR#32"
+
+- date: 2026-07-28
+  agent: fh-commons:quench-challenger (NOT invoked)
+  model: n/a
+  purpose: "Axis 2 adversarial pass on the degrade-scan shell-probe change (load-bearing: a verdict pre-screen)"
+  prompt_summary: "Would have been: attack the S1~S5 probes + the FP scoping; verify no default-toward-PASS class is hidden by the scoping itself."
+  outcome: sustained
+  finding: "Ran the adversarial pass INLINE instead. It did find a HIGH (S1 scope-exclusion swallowed `[ -f lib ] || exit 0` dependency guards — the fail-open class), closed with a regression anchor. But inline review is same-context by construction, so the isolation property the gate asks for was NOT obtained."
+  note: "Recorded as `sustained` (decided NOT to invoke) because the session carries a standing instruction: no Agent tool unless the user requests it. FIRST `sustained` entry in this log — and directly relevant to fh_signal_2026-07-28_decorrelation-log-uncalibrated, which measured 0 rejected / 0 sustained across 74 entries and argued the log is written selectively toward optimistic outcomes. Operator decision pending on dispatching before merge."
+
