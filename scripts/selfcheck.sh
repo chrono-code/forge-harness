@@ -132,6 +132,21 @@ fi
 # prevent. test_card_drift_probe.sh had shipped with ZERO callers since it was written; wiring it
 # here closes that, and the anchors are added to files[] in the same change so package mode runs
 # them too rather than reporting a deleted anchor.
+# sidecar_wait stdin plumbing. Its subject is dispatched by auto-decorrelation / steel-quench /
+# sim-conductor / AGENTS.md as the REQUIRED wait form, so a regression there silently empties every
+# cross-family verification. The anchor's first version shipped in tests/ with ZERO callers — the
+# same defect the comment above records for test_card_drift_probe.sh, repeated one file later.
+if [ ! -f scripts/sidecar_wait.sh ]; then
+  echo "SKIP  test_sidecar_wait_stdin.sh (subject scripts/sidecar_wait.sh absent)"
+elif [ -f scripts/test_sidecar_wait_stdin.sh ]; then
+  if ! bash scripts/test_sidecar_wait_stdin.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_sidecar_wait_stdin.sh: sidecar_wait.sh present but its anchor is missing"
+  fail=1
+fi
+
 for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh; do
   if [ ! -f scripts/session_close_check.sh ]; then
     echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"
