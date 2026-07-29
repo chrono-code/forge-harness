@@ -106,6 +106,7 @@
     "scripts/test_memory_link_check.sh",
     "scripts/memory_nearcheck.py",
     "scripts/sidecar_wait.sh",
+    "scripts/test_sidecar_wait_stdin.sh",
     "scripts/test_session_close_lanes.sh",
     "scripts/test_card_drift_probe.sh",
     "scripts/universal_guard_check.sh",
