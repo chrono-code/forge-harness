@@ -716,7 +716,7 @@ Missing any layer = compression risk. (Path conventions adapt per project — se
 ## References
 
 - `README.md §Architecture — 2-layer design` — sidecar note in Automation layer section
-- `AGENTS.md §2-Layer Architecture Context` — sidecar note distinguishing Bash invocation from agent dispatch
+- `knowledge/shared/harness-core/agents_md_runtime_details.md §Sidecar-routing-and-waiting` — sidecar note distinguishing adapter invocation from agent dispatch
 - FH paper (Zenodo DOI: 10.5281/zenodo.20397566, arXiv: submit/7657304) — harness-as-durable-layer thesis
 - A sister-harness `sidecar-orchestrator` SKILL.md (2026-06-01) — gh copilot + corporate endpoint + 3-tier fallback + 3-layer persistence
 - arXiv:2605.26302 AgingBench — compression aging defense rationale
