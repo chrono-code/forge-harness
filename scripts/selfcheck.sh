@@ -152,6 +152,20 @@ fi
 # hooks counted as ours · the Mode D applicability gate silencing its own flagship case), and each
 # round's fix reverted a previous one because no anchor pinned it. Subject-present-but-anchor-absent
 # is a FAIL, not a skip — that is how an anchor gets quietly dropped.
+# Same treatment for the sidecar calibrator, same reason: its verdicts are all distinctions between
+# states that look identical from outside ("the sidecar ran" vs "the model I pinned answered",
+# "absent" vs "unmeasured"), and its lanes are hermetic stubs, so running them costs nothing.
+if [ ! -f scripts/sidecar_calibrate.sh ]; then
+  echo "SKIP  test_sidecar_calibrate_lanes.sh (subject scripts/sidecar_calibrate.sh absent)"
+elif [ -f scripts/test_sidecar_calibrate_lanes.sh ]; then
+  if ! bash scripts/test_sidecar_calibrate_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_sidecar_calibrate_lanes.sh: sidecar_calibrate.sh present but its anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/fh_node_check.sh ]; then
   echo "SKIP  test_node_check_lanes.sh (subject scripts/fh_node_check.sh absent)"
 elif [ -f scripts/test_node_check_lanes.sh ]; then
