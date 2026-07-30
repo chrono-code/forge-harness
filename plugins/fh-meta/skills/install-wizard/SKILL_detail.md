@@ -93,7 +93,70 @@ IDX
 WIRING="At session start: read \$BE_DIR/INDEX.md first; then ls -t paper-signals/ handoff/ digests/ and open anything newer than the session card (card=pointer, store commit=truth) — not only handoffs."
 grep -qF "read \$BE_DIR/INDEX.md first" "$HUB_DIR/CLAUDE.local.md" 2>/dev/null \
   || printf '\n## Companion-store session-start read\n%s\n' "$WIRING" >> "$HUB_DIR/CLAUDE.local.md"
+
+# 3. MECHANICAL FLOOR over that prose — register the SessionStart hooks (REQUIRED, not optional).
+#    WHY: step 2 writes an INSTRUCTION into CLAUDE.local.md. An instruction is salience: on task-first
+#    entry (the user's first message is a task, so the onboarding menu is correctly suppressed) or on a
+#    weaker tier, it silently does not fire and the session runs on stale local state. The two hooks
+#    below fire BEFORE turn 0 regardless of what the user types.
+#      - fh_session_load.sh   → companion freshness (this section's own load)
+#      - fh_env_delta_scan.sh → undeployed-sibling-repo discovery (CLAUDE.md claim ②; rated
+#                               PARTIAL/THEATER by the 2026-07-06 three-family audit while prose-only)
+#    Registration lives in the GITIGNORED .claude/settings.local.json — BE_DIR is an operator-private
+#    path and must never land in the project-shared settings.json. Idempotent: re-running replaces, never dups.
+#    Measured miss 2026-07-30 (n=2, a freshly installed second machine): neither hook was registered,
+#    so the Mode D load ran only because the operator happened to open with a greeting. A task-first
+#    first message would have skipped it entirely — on Opus, not merely on a weak tier.
+if [ -n "${BE_DIR:-}" ] && [ -d "$HUB_DIR/scripts" ]; then
+  # The real $BE_DIR is passed IN and baked into the command — never a "<your-store>" placeholder
+  # for the user to swap later. A placeholder written into a config file is a hook that reports
+  # "registered" and then silently resolves to a nonexistent path; the Sonnet target-tier sim
+  # (2026-07-30) named exactly this failure — the script prints success, the operator stops, the
+  # hook is dead. If a value must be substituted, substitute it at write time or do not write.
+  python3 - "$HUB_DIR" "$BE_DIR" <<'PY'
+import json, os, sys, collections
+hub, be = sys.argv[1], sys.argv[2]
+p = os.path.join(hub, ".claude", "settings.local.json")
+d = collections.OrderedDict()
+if os.path.exists(p):
+    with open(p) as fh:
+        d = json.load(fh, object_pairs_hook=collections.OrderedDict)
+cmd = lambda s: {"type": "command",
+                 "command": f'BE_DIR="{be}" bash "$CLAUDE_PROJECT_DIR/scripts/{s}"',
+                 "timeout": 20}
+if os.path.exists(p):   # back up before rewriting someone's config; a traceback mid-write truncates
+    import shutil; shutil.copy2(p, p + ".prewizard")
+hooks = d.setdefault("hooks", collections.OrderedDict())
+# Filter at HOOK level, not GROUP level: a user hook sharing a group with an FH hook would otherwise
+# be deleted with the group (cross-family review 2026-07-30 reproduced that loss).
+FH_HOOKS = ("fh_session_load.sh", "fh_env_delta_scan.sh")
+existing = []
+for g in hooks.get("SessionStart", []):
+    survivors = [h for h in g.get("hooks", [])
+                 if not any(n in h.get("command", "") for n in FH_HOOKS)]
+    if survivors:
+        g = dict(g); g["hooks"] = survivors; existing.append(g)
+hooks["SessionStart"] = existing + [
+    {"matcher": "", "hooks": [cmd("fh_session_load.sh"), cmd("fh_env_delta_scan.sh")]}]
+with open(p, "w") as fh:
+    json.dump(d, fh, indent=2, ensure_ascii=False); fh.write("\n")
+print("SessionStart hooks registered ->", p, "(backup: .prewizard)")
+PY
+  # VERIFY by running it once — a registration that was never executed is not a floor.
+  # Expected: a "companion-store freshness" line on stdout. If it prints nothing, BE_DIR is wrong.
+  BE_DIR="$BE_DIR" bash "$HUB_DIR/scripts/fh_session_load.sh" | head -3
+fi
 ```
+
+> **Known-pair check before calling this done** (per `measurement-integrity-checklist.md
+> §Instrument-Calibration`) — **run both legs, do not copy this verdict**:
+> - **known-positive** — `BE_DIR` set → a `companion-store freshness` line prints.
+> - **known-negative** — `BE_DIR` unset → **no companion block prints** and the script exits 0.
+>   It is *not* fully silent: the frontier-digest section runs above the Mode-D guard and speaks to
+>   every user about their own local digest. That is intended. An earlier draft of this note claimed
+>   the negative leg was silent and made that a ship-blocker; running it showed 171 bytes of correct
+>   frontier output — the note was written without executing the check it prescribed.
+> If the negative leg prints anything referencing the **companion store**, do not ship.
 
 - **Raw / Wiki / Conversation ingest axis** (`sync_push_protocols.md`): classify each artifact by
   processing stage — Raw (unprocessed capture) → stays raw; Wiki (distilled + `[[linked]]`) → the
@@ -102,9 +165,16 @@ grep -qF "read \$BE_DIR/INDEX.md first" "$HUB_DIR/CLAUDE.local.md" 2>/dev/null \
 - **Backend note**: for an **Obsidian** backend the graph view is the *visual* observability surface
   (free for that backend); for the recommended **git `*-be`** form, observability is the agent querying
   INDEX + sections (no visualization needed). gbrain ingests the same markdown.
-- **Salience caveat**: the CLAUDE.local.md session-start read is prose (no SessionStart hook) — on a weak
-  tier it may silently not fire. Accepted limitation (mirrors `operational_adaptation.md §Guards`);
-  revisit if a target-tier sim measures a miss.
+- **Salience → mechanical (corrected 2026-07-30)**: this used to read *"the session-start read is prose
+  (no SessionStart hook) — accepted limitation; revisit if a target-tier sim measures a miss."* **Both
+  halves were wrong by then.** The hook exists (`scripts/fh_session_load.sh`, shipped 2026-07-05), and
+  the revisit-trigger has fired: a freshly installed second machine ran with **neither** SessionStart
+  hook registered, on Opus — the load fired only because that session happened to open with a greeting
+  instead of a task. So step 3 above **registers the hooks**; the CLAUDE.local.md prose stays as the
+  human-readable layer *over* that floor, never as the floor itself.
+  **Residual (named, not closed)**: registration lives in the gitignored `settings.local.json`, so a
+  user who re-clones the hub without re-running the wizard silently loses it again — the honest
+  backstop is `install-doctor`'s check item, not the wizard alone.
 
 
 ---
@@ -445,6 +515,50 @@ export CC_SENTINELS_DIR="$HOME/.cc_sentinels"
 source "$FH_DIR/templates/fh_audit_check.zsh"
 EOF
 fi
+
+# Node floor check hook — ALL users, not Mode D only. Source of truth = the tracked snippet
+# templates/settings.SessionStart.snippet.json (`project_settings_json` key). Registration itself
+# cannot be tracked (every .claude/settings*.json path is gitignored), so the wizard is what wires it
+# — which is exactly why this must not be skipped: without it, a user on a fresh machine gets no
+# turn-0 signal that their floors are missing.
+# NPM-INSTALL PRECONDITION: this block reads the snippet from disk, so both it and
+# scripts/fh_node_check.sh must be in package.json `files[]`. They are (added 2026-07-30 after
+# scripts/package_coverage_check.sh caught the omission — without it an npm-installed wizard hit
+# FileNotFoundError here and registered nothing while reporting success upstream).
+python3 - "$FH_DIR" <<'PY'
+import json, os, sys, collections
+hub = sys.argv[1]
+snippet = os.path.join(hub, "templates", "settings.SessionStart.snippet.json")
+target = os.path.join(hub, ".claude", "settings.json")
+entry = json.load(open(snippet))["project_settings_json"]["hooks"]["SessionStart"]
+d = collections.OrderedDict()
+if os.path.exists(target):
+    d = json.load(open(target), object_pairs_hook=collections.OrderedDict)
+    import shutil; shutil.copy2(target, target + ".prewizard")   # back up before rewriting
+hooks = d.setdefault("hooks", collections.OrderedDict())
+# Merge at HOOK level, not group level. A group-level filter drops the whole group when a user's own
+# hook shares a group with the FH one — the common shape when someone hand-edits or appends to an
+# older wizard's output. (Cross-family review 2026-07-30 reproduced the loss: a group holding
+# [my_telemetry.sh, fh_session_load.sh] lost my_telemetry.sh entirely.)
+kept = []
+for g in hooks.get("SessionStart", []):
+    survivors = [h for h in g.get("hooks", []) if "fh_node_check" not in h.get("command", "")]
+    if survivors:
+        g = dict(g); g["hooks"] = survivors; kept.append(g)
+hooks["SessionStart"] = kept + entry
+os.makedirs(os.path.dirname(target), exist_ok=True)
+with open(target, "w") as fh:
+    json.dump(d, fh, indent=2, ensure_ascii=False); fh.write("\n")
+print("node-check SessionStart hook registered ->", target)
+PY
+chmod +x "$FH_DIR/scripts/fh_node_check.sh" 2>/dev/null
+# VERIFY against a THROWAWAY state file (FH_NODE_STATE). Verifying against the real state would
+# consume the user's one-shot event report, so their actual first session goes quiet and the notice
+# is buried in install output instead (cross-family review 2026-07-30).
+# known-pair: healthy machine → run 1 prints an event line, run 2 is SILENT.
+#             missing floor  → prints EVERY run (a floor gap is a condition, not an event).
+_T="$(mktemp)"; FH_NODE_STATE="$_T" bash "$FH_DIR/scripts/fh_node_check.sh"
+FH_NODE_STATE="$_T" bash "$FH_DIR/scripts/fh_node_check.sh"; rm -f "$_T"
 
 # 4-axis verification gate (Mode D / FH-self-development only — OPT-IN, double-confirm required)
 # SCOPE (state this before asking): this gates commits IN YOUR FH CLONE ($FH_DIR) — git commit there is

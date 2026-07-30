@@ -92,7 +92,10 @@ DIRTY=0   # cp-fallback mode can't count cheaply → mark work done, let git-dif
 # run of this very guard: `logs/` is excluded from the copy but was being scanned, so a normal
 # sync aborted on two launchd log files the transport never touches. Same divergence class the
 # gate pathspec hit earlier the same day — two lists describing one thing.)
-SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/')
+# `.fh_node_state` 는 **기계 고유** 상태다(노드 id·마지막 세션 시각·그 노드가 본 HEAD).
+# 컴패니언 스토어로 흘려보내면 노드마다 값이 엇갈려, 역방향 sync 가 생기는 순간 NODE_ID 가
+# 번갈아 뒤집히며 모든 세션에서 재점검 배너가 뜬다(cross-family 리뷰 2026-07-30, 전방 투기적).
+SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/' '.fh_node_state')
 
 NEWER_HITS=""
 
@@ -140,7 +143,7 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
     # array-expanded safely here, so they are duplicated — the one place this file tolerates it.
     # Changing SYNC_EXCLUDES without changing this line reopens the false-abort/false-pass gap;
     # scripts/sync_guard_check.sh asserts the two stay equivalent.
-  done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -path '*/logs/*' 2>/dev/null)
+  done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -name '.fh_node_state' ! -path '*/logs/*' 2>/dev/null)
 }
 
 # ── Mirror banner (salience layer over the guard above) ───────────────────────
@@ -236,7 +239,7 @@ sync_dir() {
   else
     # rsync absent (default Windows git-bash): tar-pipe mirror with the same excludes,
     # no --delete (append-only). Source is canonical, so overwriting be's copy is correct.
-    if ( cd "$src" && tar cf - --exclude='.gitkeep' --exclude='*.marker' --exclude='logs' . ) \
+    if ( cd "$src" && tar cf - --exclude='.gitkeep' --exclude='*.marker' --exclude='.fh_node_state' --exclude='logs' . ) \
          | ( cd "$dst" && tar xf - ); then
       DIRTY=1; log "mirrored (cp mode) → $dst"; stamp_banner "$dst" "$src"
     else

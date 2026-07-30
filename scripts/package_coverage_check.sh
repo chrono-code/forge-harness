@@ -43,6 +43,10 @@ fi
 #       no shipped hook invokes it.
 ACCEPTED_ABSENT=(
   ".claude/registry/LOCAL_SKILL_REGISTRY.md"
+  # An INSTALL DESTINATION the user creates (`cp templates/local_fh_context.md
+  # .claude/rules/local_fh_context.md`), not a file FH ships. Shipping it would overwrite the
+  # user's own cross-context wiring — the template it is copied FROM is what ships.
+  ".claude/rules/local_fh_context.md"
   ".claude/regression/probes.md"
   "scripts/sync-to-be.sh"
   "scripts/sync_guard_check.sh"
@@ -83,6 +87,24 @@ for s in shipped:
         # Only a path that REALLY EXISTS here but is left out of the tarball is this defect.
         # A path that exists nowhere is the ordinary phantom-reference class the ref-path
         # check above already owns; a path outside files[] that is also absent is nothing.
+        # EXISTENCE, not tracked-ness. A 2026-07-30 revision narrowed this to `git ls-files`
+        # to silence what looked like a machine-local false positive; measurement showed that was a
+        # WEAKENING — an existing-but-untracked path named by a shipped doc is exactly the defect
+        # (the npm user cannot have that file), and selfcheck's ref-path check SKIPs gitignored
+        # paths, so nothing else owns it. Reverted.
+        #
+        # WIDENING IS DEFERRED, AND THE REASON IS NOT A MEASUREMENT. Dropping `exists` entirely
+        # (flag every referenced ∧ ¬covered path) is arguably the correct predicate, but it cannot
+        # be evaluated while the extractor below is known-broken: its `(sh|py|js|md|json|…)`
+        # alternation puts `js` before `json`, so `settings.json` is captured as `settings.js`.
+        # A first pass at this comment cited a count of artifacts as evidence that `exists` is
+        # load-bearing — that count came FROM the broken extractor, i.e. an instrument was used to
+        # justify keeping a predicate before the instrument itself was validated (the circularity
+        # CLAUDE.md §Instrument-Calibration exists to forbid; a cross-family review caught it, and
+        # an independent extractor produced materially different numbers).
+        # HONEST STATE: fix the `js|json` alternation first, re-measure, then decide. Until then
+        # this check's true coverage is UNQUANTIFIED — treat a PASS as "no defect of the narrow
+        # exists-and-uncovered kind", not as "every shipped reference is sound".
         if os.path.exists(m) and not covered(m):
             if m in accepted:
                 exercised.add(m)
