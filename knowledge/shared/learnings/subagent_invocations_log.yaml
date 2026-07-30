@@ -580,3 +580,17 @@
     withheld by a "standing session instruction"; the operator pointed out they never said that — it is
     session-level SYSTEM configuration, and the wording blurred the source. Corrected in the markers and
     here. The operator then explicitly requested the agent, which satisfies the configured exception.
+- date: 2026-07-30
+  agent: fh-meta:challenger
+  task: "Axis-2 adversarial review of the per-node floor check + install-wizard SessionStart gap (5 rounds + 1 confirmation)"
+  mode: isolated Agent, opus, same-family (no cross-family sidecar reachable — disclosed in the marker, not silently passed)
+  outcome: accepted
+  evidence: "S-grade 6 → 5 → 4 → 2 → 0, CONVERGED. Caught, among others: a false 'tracked settings.json survives a clone' claim; two of this repo's own gate scripts already red; a group-level hook merge that deleted a user's own hook; a broken machine going permanently silent after one report; foreign (husky) hooks counted as FH floors; and a Mode D applicability gate that silenced the exact incident that started the work."
+  note: "Its standing prescription — write the known-pair lanes BEFORE the fix — was adopted at round 4 and ended three consecutive rounds of fix-induced regressions (0 in rounds 4, 5, confirmation). One prescription was REJECTED with measured grounds (widening the package-coverage predicate: 25 new hits, 24 artifacts), and the challenger then correctly showed my rejection rationale was itself circular; the file now labels that check UNQUANTIFIED."
+- date: 2026-07-30
+  agent: general-purpose (Sonnet-pinned target-tier sim)
+  task: "Blind fresh-session simulation: would a new machine end up correctly wired if the user opens with a task, not a greeting?"
+  mode: isolated Agent, sonnet, run BEFORE the fixes
+  outcome: accepted
+  evidence: "Two findings, both closed. (1) The node check was unreachable on the fresh-machine case because it lived in a gitignored registration — drove the split into scripts/fh_node_check.sh + a tracked snippet. (2) The wizard wrote a literal '<your-store>' placeholder and reported success, leaving a dead hook — the real BE_DIR is now baked in at write time."
+  note: "Sonnet tier was the right instrument here: both findings are about instructions being followed literally, which is exactly where a weaker tier diverges from an author's intent."

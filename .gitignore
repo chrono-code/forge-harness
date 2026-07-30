@@ -1,7 +1,10 @@
 # Local operational environment (not for public repo)
 .claude/memory/
-.claude/settings.local.json
-.claude/settings.json
+# 접미사까지 덮는다: 정확명만 무시하면 편집 중 만든 `.bak-<ts>` 사본이 추적 대상으로 남는다
+# (2026-07-30 실측: 백업 2개가 NOT-IGNORED 였고 운영자 실명을 10건/11건 담고 있었다 —
+# `git add -A` 한 번이면 공개 표면으로 나갔다).
+.claude/settings.local.json*
+.claude/settings.json*
 .claude/scheduled_tasks.lock
 .claude/goal-quench.active
 .claude/goal-quench.pending

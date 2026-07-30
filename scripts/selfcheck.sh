@@ -147,6 +147,22 @@ else
   fail=1
 fi
 
+# fh_node_check.sh gets the same treatment, and for the same reason: three adversarial rounds on it
+# produced defects that were ALL negative legs (floor N/A on a non-git install · another framework's
+# hooks counted as ours · the Mode D applicability gate silencing its own flagship case), and each
+# round's fix reverted a previous one because no anchor pinned it. Subject-present-but-anchor-absent
+# is a FAIL, not a skip — that is how an anchor gets quietly dropped.
+if [ ! -f scripts/fh_node_check.sh ]; then
+  echo "SKIP  test_node_check_lanes.sh (subject scripts/fh_node_check.sh absent)"
+elif [ -f scripts/test_node_check_lanes.sh ]; then
+  if ! bash scripts/test_node_check_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_node_check_lanes.sh: fh_node_check.sh present but its anchor is missing"
+  fail=1
+fi
+
 for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh; do
   if [ ! -f scripts/session_close_check.sh ]; then
     echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"

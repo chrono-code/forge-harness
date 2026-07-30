@@ -125,6 +125,9 @@
     "README.md",
     "README.ko.md",
     "README.zh.md",
-    "README.ja.md"
+    "README.ja.md",
+    "scripts/fh_node_check.sh",
+    "templates/settings.SessionStart.snippet.json",
+    "scripts/test_node_check_lanes.sh"
   ]
 }
