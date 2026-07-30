@@ -128,6 +128,8 @@
     "README.ja.md",
     "scripts/fh_node_check.sh",
     "templates/settings.SessionStart.snippet.json",
-    "scripts/test_node_check_lanes.sh"
+    "scripts/test_node_check_lanes.sh",
+    "scripts/sidecar_calibrate.sh",
+    "scripts/test_sidecar_calibrate_lanes.sh"
   ]
 }
