@@ -133,6 +133,8 @@
     "scripts/test_sidecar_calibrate_lanes.sh",
     "scripts/pipe_verdict_guard.sh",
     "scripts/test_pipe_verdict_guard_lanes.sh",
-    "templates/settings.PreToolUse.snippet.json"
+    "templates/settings.PreToolUse.snippet.json",
+    "scripts/halffix_propagation_scan.sh",
+    "scripts/test_halffix_lanes.sh"
   ]
 }

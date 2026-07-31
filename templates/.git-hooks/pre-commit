@@ -362,6 +362,15 @@ if [ -n "$EXEC_STAGED" ] && [ -z "$DOC_STAGED" ]; then
   echo ""
 fi
 
+# ── Half-fix propagation (advisory — MARK, never block) ──────────────────────
+# The operator's spec for this debt is explicit: 표시(차단 아님 — 정당한 복제도 있다).
+# templates/ ships deliberate copies of scripts/, so blocking on duplication would block correct
+# work; and a gate that fires when the author did the right thing is a gate that gets disabled.
+# Failing to RUN is likewise never a finding: a missing/erroring scan is silent here, because this
+# surface is a commit (reversible) — the fail-closed direction belongs to publish and delete.
+HALFFIX="$REPO_ROOT/scripts/halffix_propagation_scan.sh"
+[ -f "$HALFFIX" ] && bash "$HALFFIX" 2>&1 || true
+
 # ── Axis 1 — Regression Guard (always required) ──────────────────────────────
 echo "[Axis 1] Regression Guard..."
 GUARD="$REPO_ROOT/templates/regression_guard.sh"
