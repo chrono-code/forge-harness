@@ -63,11 +63,25 @@ concrete actions a reader might assume are inside and that the author asserts ar
 review by something other than the proposing session (the human, or a cross-family auditor). A class
 definition is reviewed as a **grant of future autonomy**, not as a config row.
 
+**Storage form (operator decision 2026-07-31)**: `standing_consent` — and every other machine-read UAP
+field — lives in the UAP's **YAML frontmatter**, the `---` block at the top of the file, parsed whole by
+the canonical loader. **Prose in the body is never read by a script**, and a grant written there is a
+**fail-closed error**, not an absence: an unread grant is not an absent one. Why the form changed: the
+previous reader line-sliced a `standing_consent:` key out of markdown, and each special case it closed
+opened the next (loader-identity → nested key → explicit-key → comment-vs-heading, three in one day).
+The root was storing a machine field in markdown, where `#` and indentation mean different things to
+the two languages; frontmatter removes the slicing *decision*, because "the first `---` block" has one
+referent. Record the human-readable grounds in the body, the value in the frontmatter.
+
 **Mechanical floor**: `scripts/consent_registry_check.sh` — joins `standing_consent` against the
 registry and enforces schema, eligibility soundness (a class naming an irreversible or unlisted sink
 **cannot** declare itself promotable), registration, expiry, and recorded scope. Missing registry → N/A
 + promotion disabled; unparseable → fail-closed. Run it before trusting any grant; the prose above is
-the salience layer over this check, not the enforcement.
+the salience layer over this check, not the enforcement. Anchor: `scripts/test_consent_registry.sh`
+(64 lanes, incl. the `F*` storage-form lanes). Four mutants were run against it — each false-clean
+net, the fence regex, and the falsy-laundering guard — and each turned its lanes red, so the green is
+measured rather than assumed. Cross-family review found the first draft's green was partly vacuous
+(one lane called `ok` in both branches; three others passed via a path other than the one they named).
 
 **Trigger**: the same registered class recorded `accepted` **3 consecutive times**, counted across
 sessions from the UAP outcome log. Refinements that keep the count honest:

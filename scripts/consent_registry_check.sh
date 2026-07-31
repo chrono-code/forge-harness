@@ -244,72 +244,106 @@ if not os.path.exists(uap_path):
     sys.exit(1 if fails else 3)
 
 raw = open(uap_path, errors="replace").read()
-# Match BOTH the block form (`standing_consent:` then an indented body) and the inline flow form
-# (`standing_consent: {a: {...}}`). The first version matched only the block form, so an inline
-# grant — including an EXPIRED one — was read as "no standing consent recorded" and reported PASS.
-# A grant the checker cannot see is not an absent grant; that is a false clean, the worst outcome
-# for a floor. Measured 2026-07-29 with a control (block form caught it, inline form did not).
+# ---- the ONE machine-read region: YAML frontmatter ---------------------------------
+# STORAGE-FORM CHANGE, operator decision 2026-07-31. What stood here was a line-slicer that scraped a
+# `standing_consent:` key out of markdown prose. It was not under-engineered — it had absorbed
+# first-match shadowing, key-spacing equivalence, inline-vs-block forms, falsy-sentinel laundering,
+# duplicate keys, and explicit-key form. It still lost, and the shape of the losing was the tell:
+# every special case it closed opened the next one — loader-identity → nested key → explicit-key →
+# comment-vs-heading, THREE of them in a single day (2026-07-31), one of which the fixing session
+# introduced itself while fixing the previous.
+#
+# The root was never slicer quality. It was that a machine field lived in markdown, where `#` and
+# indentation carry different meaning to YAML than to markdown, so every disambiguation rule had to
+# guess which language a line was written in. Frontmatter deletes the DECISION, not merely this
+# implementation: "the first `---` block at the top of the file" has exactly one referent, so there
+# is no next special case to lose to. The region is handed to the canonical loader whole.
+#
+# What this also retires: the measured merge-key OVER-BLOCK (`defaults: &d` + `<<: *d` was refused
+# because the anchor lived outside the extracted fragment). Anchors now resolve normally — the
+# fragment IS the document. Over-blocking was a real defect here, not a safety win: it trains the
+# override reflex and turns a gate into decoration.
+#
+# Fail-closed direction is UNCHANGED, and one net is deliberately kept and generalized: a grant that
+# exists where nothing reads it must never report as "nothing granted". That is a false clean, the
+# worst outcome for a floor.
 grants = {}
-# FIRST-MATCH SHADOWING (cross-family round 4, confirmed against a control): reading only the first
-# `standing_consent:` meant a benign or empty one earlier in the file HID a real grant later in it —
-# `standing_consent: {}` followed by an expired grant reported PASS, while the same expired grant
-# alone was caught. A checker that stops at the first occurrence is trivially defeated by appending.
-# There is exactly one consent block or the file is not decidable.
-# YAML-KEY EQUIVALENCE (round 6): `standing_consent : {...}` — a space or tab before the colon —
-# is the SAME YAML key but did not match `^standing_consent:`. Standalone it still failed closed
-# via the no-known-form net below; but paired with a normal empty block it was invisible to both
-# the count and the extraction, so the empty block was parsed and the real grant vanished. All
-# three patterns now allow `[ \t]*` before the colon.
-# RESIDUAL — MEASURED OVER-BLOCK (2026-07-29): a grant written with a YAML merge key
-# (`defaults: &d {...}` + `standing_consent:\n  <<: *d`) is REFUSED, because the anchor `&d` lives
-# outside the extracted fragment and the alias is undefined when the fragment is re-parsed alone.
-# That is ordinary DRY YAML, and over-blocking is a defect of the same weight as a fail-open: it
-# trains the override reflex and turns the gate into decoration. A whole-file-parse-first path was
-# attempted and reverted the same session — it regressed 16 of 40 anchor lanes, and shipping a
-# broken floor to close an over-block is a worse trade. Anchor lane N4 pins the current behaviour so
-# the next attempt is a measured delta, not a rediscovery.
-# RESIDUAL (named): this is regex-scraping a YAML key out of a markdown file, so it approximates
-# the YAML spec rather than implementing it (quoted keys, anchors, multi-doc streams are not
-# handled). The mitigation is the fail-closed net below, not a claim of completeness.
-occurrences = re.findall(r"^standing_consent[ \t]*:", raw, re.M)
-if len(occurrences) > 1:
-    out("❌", f"R3 the UAP declares `standing_consent` {len(occurrences)} times — ambiguous which "
-              f"is authoritative, and an early benign block would shadow a later grant; fail-closed")
-    fails += 1
-    body = None
-    grants = None
+# The opening/closing fence must accept every shape the CANONICAL loader accepts, or this regex
+# quietly becomes a second, stricter grammar sitting in front of the loader — the exact defect the
+# storage-form change was made to retire. Cross-family review 2026-07-31 measured five valid YAML
+# stream forms this pattern rejected: a `...` document terminator, a `#` comment on the opening or
+# closing fence, a `%YAML` directive, and — worst, because a lane claimed to cover it — the EMPTY
+# block `---\n---`, which the first version could not match at all (it consumed the opening newline
+# and then demanded another before the closing fence). All four rejections failed CLOSED, so no
+# grant leaked; but each was an OVER-BLOCK whose message blamed a missing frontmatter that was in
+# fact present, and a gate that misdirects the fix gets overridden.
+#   %YAML directives -> allowed before the opening fence
+#   opening/closing fence -> may carry trailing spaces and a # comment
+#   closing fence -> `---` OR `...` (both end a YAML document)
+#   body -> may be empty
+# BOM-tolerant too: a leading ﻿ would otherwise make the region look absent — safe, but for a
+# misleading reason.
+_FM = re.compile(
+    r"\A﻿?(?:%[^\n]*\r?\n)*"           # optional %YAML / %TAG directives
+    r"---[ \t]*(?:\#[^\n]*)?\r?\n"       # opening fence (+ optional comment)
+    r"(.*?)"                             # body (possibly empty)
+    r"(?:\r?\n)?"                        # the body's own trailing newline, if it has one
+    r"^(?:---|\.\.\.)[ \t]*(?:\#[^\n]*)?(?:\r?\n|\Z)",   # closing fence: --- or ...
+    re.S | re.M)
+_fm_match = _FM.match(raw)
+if _fm_match is None:
+    # No machine region at all. A UAP predating this format legitimately has none, so absence alone
+    # is "nothing granted" — but if the prose MENTIONS standing_consent, someone wrote a grant into a
+    # region no parser reads. Fail closed: that is the false-clean case, not an absence.
+    if re.search(r"standing_consent", raw):
+        out("❌", "R3 `standing_consent` appears in the UAP but the file has no YAML frontmatter — "
+                  "a grant written outside the machine region is never read; fail-closed")
+        fails += 1; grants = None
 else:
-    m = re.search(r"^standing_consent[ \t]*:[ \t]*(\{.*)$", raw, re.M)   # inline flow form
-    if not m:
-        m = re.search(r"^standing_consent[ \t]*:[ \t]*$(.*?)(?=^\S|\Z)", raw, re.M | re.S)  # block form
-        body = ("standing_consent:\n" + m.group(1)) if m else None   # re-emitted canonically
-    else:
-        body = "standing_consent: " + m.group(1)
-if grants is not None and body is not None:
     try:
-        # NoDupLoader here too. The duplicate-key rejection was added on the registry side and
-        # NOT here in the same edit — the third half-fix of this session, committed while
-        # fixing a half-fix. Duplicate grant keys were still last-wins: an expired grant
-        # followed by a future one silently kept the future one.
-        parsed = yaml.load(body, Loader=NoDupLoader)
-        # NO `or {}` HERE. `[] or {}` / `False or {}` / `0 or {}` all evaluate to `{}`, which reached
-        # the type check already laundered into a valid-empty mapping — so `standing_consent:\n  []`
-        # reported "no standing consent recorded" and exit 0, while the truthy `[a, b]` was caught
-        # (measured with that control, cross-family round 5). The falsy branch is exactly the one an
-        # accident produces. Sentinel first, type check second, defaulting last.
-        grants = (parsed if isinstance(parsed, dict) else {}).get("standing_consent", {})
-        if grants is None:
-            grants = {}            # an explicitly empty `standing_consent:` key is a real empty set
-        if not isinstance(grants, dict):
-            out("❌", f"R3 standing_consent is not a mapping ({type(grants).__name__}); fail-closed")
-            fails += 1; grants = None
+        # NoDupLoader, same as the registry side: yaml.safe_load is last-wins on duplicate keys, so
+        # `expires: 2020-01-01` followed by `expires: 2099-01-01` would silently keep the future one.
+        _fm = yaml.load(_fm_match.group(1), Loader=NoDupLoader)
     except Exception as e:
-        out("❌", f"R3 standing_consent block unparseable ({e}); fail-closed"); fails += 1
-        grants = None
-elif re.search(r"standing_consent", raw):
-    # The key appears but neither form matched — do not silently read that as "nothing granted".
-    out("❌", "R3 `standing_consent` appears in the UAP but matched no known form; fail-closed")
-    fails += 1; grants = None
+        out("❌", f"R3 UAP frontmatter unparseable ({e}); fail-closed"); fails += 1; grants = None
+    else:
+        if _fm is None:
+            _fm = {}                # an empty frontmatter block is a real empty mapping
+        if not isinstance(_fm, dict):
+            out("❌", f"R3 UAP frontmatter is not a mapping ({type(_fm).__name__}); fail-closed")
+            fails += 1; grants = None
+        elif "standing_consent" not in _fm and \
+                re.search(r"""^[ \t]*(?:["']?)standing_consent(?:["']?)[ \t]*:""",
+                          raw[_fm_match.end():], re.M):
+                # Quoted spellings included: YAML reads `"standing_consent":` as the identical key,
+                # so a bare-key-only net would miss a grant written that way in prose and report
+                # "nothing granted" — the false clean this net exists to prevent (cross-family
+                # 2026-07-31). The F1 net above already matched quoted forms via substring search;
+                # this one was anchored and did not, so the two nets disagreed on the same input.
+            # Frontmatter exists but the grant was written BELOW it, in prose. Same false-clean as
+            # above: the machine region is authoritative, so an unread grant is not an absent one.
+            # RESIDUAL — MEASURED OVER-BLOCK RISK (named, not silently accepted): this net is a
+            # regex over the prose region, so a DOCUMENTATION EXAMPLE of `standing_consent:` in the
+            # body — including inside a fenced code block — trips it and fails the file closed. The
+            # trade was taken deliberately: the false-clean it prevents is silent, while this
+            # over-block is loud and its message names the fix. But over-blocking is a defect of the
+            # same weight as a fail-open (it trains the override reflex), so if a real UAP ever needs
+            # to document the key, exclude fenced regions here rather than deleting the net.
+            out("❌", "R3 `standing_consent` is written in the UAP prose region but absent from the "
+                      "frontmatter — the frontmatter is authoritative; fail-closed")
+            fails += 1; grants = None
+        else:
+            # NO `or {}` here. `[] or {}` / `False or {}` / `0 or {}` all evaluate to `{}`, which
+            # would reach the type check already laundered into a valid-empty mapping — so a
+            # `standing_consent: []` would report "nothing recorded" while the truthy `[a, b]` was
+            # caught (measured with that control, cross-family round 5). Sentinel first, type check
+            # second, defaulting last.
+            grants = _fm.get("standing_consent", {})
+            if grants is None:
+                grants = {}         # an explicitly empty `standing_consent:` key is a real empty set
+            if not isinstance(grants, dict):
+                out("❌", f"R3 standing_consent is not a mapping ({type(grants).__name__}); fail-closed")
+                fails += 1; grants = None
 
 if grants is None:
     pass

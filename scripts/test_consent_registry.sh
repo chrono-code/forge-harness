@@ -45,7 +45,13 @@ lane() {
 
 OKCLASS='  - {name: ok, owner: o, mode: m, target: t, capabilities: [read], sinks: [], feeds: [], promotion_eligible: true}'
 mkreg() { printf 'classes:\n%s\n' "$1" > "$TD/r.yaml"; }
-mkuap() { printf '%s\n' "$1" > "$TD/u.md"; }
+# The UAP machine region is YAML FRONTMATTER (storage-form change 2026-07-31). A fixture body is the
+# frontmatter payload, so every grant-semantics lane below stays written exactly as before and keeps
+# testing what it tested. Lanes that exercise the storage form itself write their own file directly
+# and do not go through this helper.
+mkuap() { printf -- '---\n%s\n---\n\n# UAP (fixture)\n\nprose below the machine region.\n' "$1" > "$TD/u.md"; }
+# Raw writer for storage-form lanes — no frontmatter wrapping, byte-exact.
+mkuap_raw() { printf '%s\n' "$1" > "$TD/u.md"; }
 
 mkreg "$OKCLASS"
 mkuap 'standing_consent:
@@ -115,9 +121,14 @@ fi
 # P12 is the round-5 fail-open: `or {}` collapsed FALSY non-mappings into a valid-empty mapping
 # before the type check, so `[]`, `false` and `0` all reported "no standing consent" and exit 0 —
 # while the truthy `[a, b]` was caught. The falsy branch is the one an accident actually produces.
+# FIXTURE FIX 2026-07-31 (cross-family): this loop wrote the UAP directly, so after the storage-form
+# change it had no frontmatter and every case exited 1 via the "grant in prose" net — the right code
+# for the WRONG REASON, which meant the falsy-type check it exists to guard was no longer exercised
+# at all. Same shape as the defect the suite is about: a green lane that stopped measuring its
+# subject. Routed through mkuap so the value lands inside the machine region.
 for badval in '  []' '  false' '  0'; do
   mkreg "$OKCLASS"
-  printf 'standing_consent:\n%s\n' "$badval" > "$TD/u.md"
+  mkuap "$(printf 'standing_consent:\n%s' "$badval")"
   lane "P12 a falsy non-mapping standing_consent ($badval) is a type error, not 'none granted'" 1 "R3"
 done
 
@@ -136,8 +147,15 @@ mkuap 'standing_consent :
   ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
 lane "P13-b a space-before-colon BLOCK form is parsed and its grant validated" 1 "R5"
 
+# N3 EXPECTATION INVERTED 2026-07-31 — and the reason is the whole point of the storage-form change.
+# The slicer-era comment asserted that `standing_consent\t:` "is the SAME YAML key" as
+# `standing_consent:`, and this lane pinned a PASS on that belief. The canonical loader refuses it:
+# PyYAML rejects a tab there with a ScannerError, because YAML forbids tabs as structural whitespace.
+# So the belief was false, and a regex that approximates the YAML spec had been quietly ratifying a
+# document the spec rejects. Handing the region to the real loader replaces a guess with an answer —
+# a malformed document is now BROKEN (fail-closed), not silently accepted as equivalent.
 mkuap "$(printf 'standing_consent\t: {ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}}')"
-lane "N3 a tab-before-colon key with a VALID grant passes (no over-block)" 0 ""
+lane "N3 a tab-before-colon key is invalid YAML and fails closed (loader, not regex, decides)" 1 "R3"
 
 # P14 — round-7 fail-open: R6 presence-checked `effects`/`target` but never typed them, while the
 # registry side had strict types since R1-b. A fix propagated to one side only is a hole. Control:
@@ -228,12 +246,12 @@ mkreg "$OKCLASS"
 mkuap 'defaults: &d {ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}}
 standing_consent:
   <<: *d'
-bash "$CHK" "$TD/r.yaml" "$TD/u.md" >"$TD/o" 2>&1
-if [ $? -eq 1 ]; then
-  ok "N4 merge-key grant is refused — KNOWN OVER-BLOCK, pinned not endorsed (see residual note)"
-else
-  ok "N4 merge-key grant now PASSES — the over-block was fixed; update this lane and the residual note"
-fi
+# N4 REMOVED 2026-07-31 — it called ok() in BOTH branches, so it passed on every possible exit code
+# and could not fail. A lane that cannot fail measures nothing while adding a green tick, which is
+# the false-clean this suite exists to prevent (cross-family review caught it; it had been reporting
+# green in a 49-lane run all along). The over-block it pinned is now GONE and is asserted for real
+# by lane F4, which requires exit 0 rather than accepting anything.
+lane "N4 (retired — see F4, which asserts the merge-key grant actually passes)" 0 ""
 
 rm -f "$TD/r.yaml"
 # ── R9-F4 (2026-07-31) — N/A gets its OWN exit code. ────────────────────────────────────────────
@@ -302,7 +320,7 @@ lane "R9-1b the same irreversible capability is fine when not claimed promotable
 # reversible"); it must mean the same thing in the capability position.
 mkreg '  - {name: u, owner: o, mode: m, target: t, capabilities: [unknown], sinks: [], feeds: [], promotion_eligible: true}'
 mkuap 'standing_consent: {}'
-lane "R9-1c an `unknown` capability is not promotable either" 1 "R2-b"
+lane "R9-1c an \`unknown\` capability is not promotable either" 1 "R2-b"
 
 # Guard against over-reach in the other direction: an ordinary reversible capability with empty
 # sinks is the N1 shape and must stay passing. If this lane ever flips, the fix went too wide.
@@ -327,6 +345,89 @@ if bash "$CHK" "$ROOT/templates/consent_classes.yaml.example" /dev/null >/dev/nu
 else
   bad "S1 the shipped example registry does NOT validate"
 fi
+
+# ---- F: STORAGE FORM (frontmatter) -------------------------------------------------
+# These lanes test the machine-region boundary itself, not grant semantics, so they write the UAP
+# byte-exact via mkuap_raw instead of going through the frontmatter-wrapping helper.
+mkreg "$OKCLASS"
+GRANT='  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+
+# F1/F2 are the two false-clean shapes, and they are the reason this section exists. A grant that
+# sits where no parser reads it must never report as "nothing granted" — an unread grant is not an
+# absent one. This is the ONE net carried over from the slicer, generalized to the new form.
+mkuap_raw "$(printf '# UAP\n\nstanding_consent:\n%s\n' "$GRANT")"
+lane "F1 a grant in prose with NO frontmatter fails closed (never 'nothing granted')" 1 "R3"
+
+mkuap_raw "$(printf -- '---\nsidecar_consent: granted\n---\n\n# UAP\n\nstanding_consent:\n%s\n' "$GRANT")"
+lane "F2 frontmatter exists but the grant was written BELOW it — fails closed" 1 "R3"
+
+# F3 is the anti-over-block control for F1: absence must stay cheap. A UAP predating this format has
+# no machine region and grants nothing; painting that red would train the override reflex.
+mkuap_raw "$(printf '# UAP\n\nno machine region here, and nothing granted.\n')"
+lane "F3 no frontmatter and no grant mentioned is simply nothing granted (not a failure)" 0 ""
+
+# F4 pins the OVER-BLOCK THIS CHANGE RETIRES. Under the slicer a merge-key grant was refused because
+# the anchor lived outside the extracted fragment; the fragment is now the whole document, so
+# ordinary DRY YAML resolves. Over-blocking was a defect of the same weight as a fail-open.
+mkuap_raw "$(printf -- '---\ndefaults: &d {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}\nstanding_consent:\n  ok:\n    <<: *d\n---\n')"
+lane "F4 a merge-key/anchor grant now resolves (the measured over-block is retired)" 0 ""
+
+# F5 — duplicate keys stay rejected on this side too. safe_load is last-wins, so an expired grant
+# followed by a future one would silently keep the future one.
+mkuap_raw "$(printf -- '---\nstanding_consent:\n  ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}\n  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}\n---\n')"
+lane "F5 duplicate grant keys are refused, not last-wins" 1 "R3"
+
+# F6 — a leading BOM must not make the machine region look absent. Without the tolerance this still
+# fails closed, i.e. safe, but for a misleading reason, and a confusing gate gets overridden.
+mkuap_raw "$(printf -- '\357\273\277---\nstanding_consent:\n%s\n---\n' "$GRANT")"
+lane "F6 a BOM before the frontmatter does not hide the machine region" 0 ""
+
+# F7 — the region must be a mapping. A list parses fine as YAML and would otherwise be read for a
+# `standing_consent` key it can never have.
+mkuap_raw "$(printf -- '---\n- a\n- b\n---\n\nstanding_consent: whatever\n')"
+lane "F7 a non-mapping frontmatter is BROKEN, not an empty grant set" 1 "R3"
+
+# F8 — an unterminated block is not frontmatter. It then falls to the F1 net, which is the correct
+# landing: the grant is unread, so fail closed.
+mkuap_raw "$(printf -- '---\nstanding_consent:\n%s\n' "$GRANT")"
+lane "F8 an unterminated --- block is not a machine region and fails closed" 1 "R3"
+
+# F9 — an empty machine region is a real empty set, not a parse failure.
+# NOTE (cross-family 2026-07-31): this lane was PASSING FOR THE WRONG REASON. The first regex could
+# not match `---\n---` at all, so the file fell through to "no frontmatter, nothing mentioned" and
+# went green without the empty-region path ever running. Lane F9-b below is its control: same empty
+# region, but WITH a prose mention, which can only stay green if the region was really recognized.
+mkuap_raw "$(printf -- '---\n---\n\n# UAP\n')"
+lane "F9 an empty frontmatter block grants nothing and is not an error" 0 ""
+
+# F9-b — the discriminating control for F9. If the empty region is NOT recognized, this file reads as
+# "no frontmatter + standing_consent mentioned" and fails closed via F1. Green here means the empty
+# frontmatter was genuinely parsed. (Without this control F9 cannot tell the two paths apart.)
+mkuap_raw "$(printf -- '---\n---\n\n# UAP\n\nthe key name standing_consent appears in prose but not as a key.\n')"
+lane "F9-b empty region + a prose MENTION is still nothing granted (region truly parsed)" 0 ""
+
+# F10-F13 — YAML stream forms the canonical loader accepts and the first fence regex rejected. Each
+# failed CLOSED (no leak) but as an OVER-BLOCK whose message blamed an absent frontmatter that was
+# present. A gate that misdirects the fix gets overridden, so these are lanes, not footnotes.
+EXPIRED='  ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
+mkreg "$OKCLASS"
+mkuap_raw "$(printf -- '---\nstanding_consent:\n%s\n...\n' "$EXPIRED")"
+lane "F10 a '...' document terminator closes the machine region (grant is READ, then R5-caught)" 1 "R5"
+
+mkuap_raw "$(printf -- '--- # metadata\nstanding_consent:\n%s\n---\n' "$EXPIRED")"
+lane "F11 a comment on the opening fence does not hide the region" 1 "R5"
+
+mkuap_raw "$(printf -- '---\nstanding_consent:\n%s\n--- # end\n' "$EXPIRED")"
+lane "F12 a comment on the closing fence does not hide the region" 1 "R5"
+
+mkuap_raw "$(printf -- '%%YAML 1.2\n---\nstanding_consent:\n%s\n...\n' "$EXPIRED")"
+lane "F13 a %YAML directive before the fence does not hide the region" 1 "R5"
+
+# F14 — quoted key spelling in prose. YAML reads `"standing_consent":` as the same key, so the
+# prose-region net must see it too; an anchored bare-key-only net missed it while the F1 net caught
+# it, i.e. the two nets disagreed on one input.
+mkuap_raw "$(printf -- '---\nsidecar_consent: granted\n---\n\n# UAP\n\n"standing_consent":\n%s\n' "$EXPIRED")"
+lane "F14 a QUOTED grant key in the prose region is caught too (nets agree)" 1 "R3"
 
 echo "----"
 echo "consent-registry anchor: $pass passed, $fail failed"
