@@ -1,0 +1,49 @@
+{
+  "_README": [
+    "PreToolUse(Bash) hook snippet — TRACKED, so it arrives with a clone. Every .claude/settings*.json",
+    "path in this repo is gitignored (confirm with `git check-ignore -v .claude/settings.json`), so a",
+    "hook registration cannot itself be tracked. This is the tracked SOURCE that install-wizard merges",
+    "into the user's local settings. Shipping the file is not the same proposition as wiring it — that",
+    "gap is exactly what #204 found (the SessionStart hook existed from 07-05 and the wizard had never",
+    "installed it, for every new user).",
+    "",
+    "WHAT IT GUARDS: reading a verdict from the wrong end of a pipe. `cmd | tail -5; echo $?` reports",
+    "TAIL's status, so a FAILED gate reads as 0 — a degrade toward PASS, the direction that never",
+    "announces itself. Measured 6x in this project 2026-07-29..07-31.",
+    "",
+    "WHY A HOOK AND NOT A FILE LINTER: the plan of record was an S6 class in degrade_direction_scan.sh.",
+    "Hand-verifying every `pipe + $?` in this repo's scripts returned 7 hits, 7 of them CORRECT. True",
+    "positives in shipped files: 0. All 6 recurrences were in interactively-composed commands, which no",
+    "repo scanner reads. The guard belongs where the defect occurs — the Bash call itself.",
+    "",
+    "ADVISORY BY DESIGN: it warns and exits 0. It never blocks a Bash call, because a mis-read verdict",
+    "is re-runnable, and a false block on a developer's own shell trains the --no-verify reflex on the",
+    "hooks that DO guard irreversible surfaces (pre-push destructive-op, pre-commit confidentiality).",
+    "Escalate deliberately with FH_PIPE_VERDICT_BLOCK=1 if a project wants it to bite.",
+    "",
+    "Carries no private path, so it belongs in .claude/settings.json (project-local), not settings.local.json.",
+    "Merge, do not overwrite: preserve any PreToolUse entries the user already has; replace only the FH",
+    "one, keyed by script name.",
+    "",
+    "Verify after wiring (known pair, both directions):",
+    "  bash scripts/test_pipe_verdict_guard_lanes.sh          # 15 pairs, expect all hold",
+    "  printf '%s' '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"g.sh | tail; rc=$?\"}}' \\",
+    "    | bash scripts/pipe_verdict_guard.sh                 # expect a PIPE-VERDICT R2 warning"
+  ],
+  "project_settings_json": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/pipe_verdict_guard.sh\"",
+              "timeout": 5
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
