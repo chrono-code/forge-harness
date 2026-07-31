@@ -162,7 +162,11 @@ mkuap 'standing_consent: {}'
 printf 'classes: false\n' > "$TD/r.yaml"
 lane "H1 a falsy \`classes\` is not laundered into an empty registry" 1 ""
 printf 'classes:\n' > "$TD/r.yaml"
-lane "H1-b a null \`classes\` is N/A, not a clean PASS" 0 ""
+# Expectation changed 0 -> 3 with the R9-F4 exit contract. This is NOT a lane weakened to fit a
+# change: the lane's own NAME says "N/A, not a clean PASS", and 0 was the clean-PASS code. It
+# asserted the opposite of what it described, which is precisely the two-codes-three-states
+# conflation F4 named. 3 is the code that finally means what this lane always claimed to test.
+lane "H1-b a null \`classes\` is N/A (3), not a clean PASS" 3 ""
 if grep -q 'N/A' "$TD/o"; then ok "H1-c the empty registry is LABELLED N/A"; else bad "H1-c empty registry read as clean"; fi
 
 mkreg '  - {name: n, owner: o, mode: 123, target: t, capabilities: [read], sinks: [], feeds: [], promotion_eligible: true}'
@@ -232,12 +236,41 @@ else
 fi
 
 rm -f "$TD/r.yaml"
-lane "D1 a missing registry is N/A with promotion disabled (never a silent PASS)" 0 ""
+# ── R9-F4 (2026-07-31) — N/A gets its OWN exit code. ────────────────────────────────────────────
+# Three states (verified / unmeasured / broken) were encoded in two exit codes and disambiguated
+# only in PROSE. The exit code is the only machine-readable channel, so a caller writing the
+# conventional `if check; then run_unprompted; fi` treated "there is nothing to measure" as
+# "verified, go ahead" — printing "(not a PASS)" disables nothing.
+#
+# The fix is NOT to return 1. A missing registry is the state of every fresh clone, and failing
+# there would paint the gate red on first run and train the override reflex — a failure this
+# checker's own comments already record twice. `1` must keep meaning BROKEN.
+#
+# 3 = UNMEASURED. The asymmetry that decides the direction: the fallback here is not "block", it is
+# "ask the human". Consent promotion exists only to SKIP an approval prompt, so degrading to asking
+# restores the system's original behaviour and widens human-in-the-loop authority rather than
+# narrowing it. Degrading to exit 0 does the opposite — it removes a human decision no one granted.
+lane "D1 a missing registry is UNMEASURED (3), not verified (0)" 3 ""
 if grep -q 'N/A' "$TD/o"; then
   ok "D1-b the missing-registry result is LABELLED N/A, not reported as clean"
 else
-  bad "D1-b a missing registry produced exit 0 without an N/A label — that reads as PASS"
+  bad "D1-b a missing registry produced no N/A label — that reads as PASS"
 fi
+
+printf 'classes: []\n' > "$TD/r.yaml"
+mkuap 'standing_consent: {}'
+lane "D1-c a registry with zero classes is UNMEASURED (3)" 3 ""
+
+mkreg "$OKCLASS"
+rm -f "$TD/u.md"
+lane "D1-d a missing UAP is UNMEASURED (3) — no grants is not a verified pass" 3 ""
+
+# The contract's whole point: 0 must be reachable ONLY by a real join. If this lane and D1* ever
+# return the same code again, the channel has collapsed back into prose.
+mkreg "$OKCLASS"
+mkuap 'standing_consent:
+  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane "D1-e 0 still means VERIFIED, and only that" 0 ""
 
 printf 'classes: [ {name: broken\n' > "$TD/r.yaml"
 lane "D2 an unparseable registry fails closed (cannot decide == not allowed)" 1 ""

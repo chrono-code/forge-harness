@@ -31,9 +31,33 @@
 #   A PASS from this script means the registry and the grants are WELL-FORMED and the floor join
 #   holds. It does not mean the promotion mechanism as a whole was verified.
 #
+# EXIT CONTRACT (typed — three states, three codes; do NOT grep the prose)
+#   0 = VERIFIED   the registry and the grants are well-formed and the floor join holds
+#   3 = UNMEASURED there was nothing to join (no registry / zero classes / no UAP)
+#   1 = BROKEN     unparseable or invalid input; cannot decide == not allowed
+#
+#   A caller may skip an approval prompt ONLY on 0. On 3 it must KEEP ASKING.
+#
+# WHY 3 EXISTS (added 2026-07-31, cross-family round 9 finding F4)
+#   Three states were encoded in two codes and disambiguated only in PROSE. The exit code is the
+#   only machine-readable channel, so the conventional caller —
+#       if scripts/consent_registry_check.sh; then run_unprompted; fi
+#   — read "there is nothing to measure" as "verified, go ahead". Printing "(not a PASS)" disables
+#   nothing. `not found` is not `0` (CLAUDE.md §Instrument-Calibration), and this file's own line
+#   below already said so in words while returning the PASS code.
+#
+# WHY NOT 1 — a missing registry is the state of every fresh clone. Failing there would paint the
+#   gate red on first run and train the override reflex, a failure this file's comments already
+#   record twice (the merge-key over-block, and the reverted parser fix). 1 stays BROKEN.
+#
+# WHY 3 IS THE SAFE DIRECTION — the fallback here is not "block", it is "ask the human". Consent
+#   promotion exists only to SKIP an approval prompt, so degrading to asking restores the system's
+#   original behaviour and WIDENS human-in-the-loop authority. Degrading to 0 narrows it, removing
+#   a human decision nobody granted.
+#
 # DEGRADE DIRECTION
-#   No registry file        -> exit 0, prints "N/A: promotion DISABLED" (safe: nothing can promote)
-#   No UAP file             -> exit 0, same
+#   No registry file        -> exit 3, prints "N/A: promotion DISABLED" (unmeasured, keep asking)
+#   No UAP file             -> exit 3, same
 #   Unparseable either file -> exit 1 (fail-closed: cannot decide == not allowed)
 #   Any R1-R6 violation     -> exit 1
 #
@@ -53,7 +77,7 @@ def out(sym, msg): print(f"  {sym} {msg}")
 
 if not os.path.exists(reg_path):
     print(f"consent-registry: N/A — no registry at {reg_path}; promotion DISABLED (not a PASS)")
-    sys.exit(0)
+    sys.exit(3)   # UNMEASURED, not verified — see EXIT CONTRACT
 
 try:
     import yaml
@@ -129,7 +153,7 @@ if not isinstance(classes, list):
     sys.exit(1)
 if not classes:
     print("consent-registry: N/A — registry declares zero classes; promotion DISABLED (not a PASS)")
-    sys.exit(0)
+    sys.exit(3)   # UNMEASURED, not verified — see EXIT CONTRACT
 
 by_name = {}
 for i, c in enumerate(classes):
@@ -209,7 +233,9 @@ if fails == 0:
 # ---- standing_consent side --------------------------------------------------------
 if not os.path.exists(uap_path):
     print(f"consent-registry: N/A — no UAP at {uap_path}; nothing granted (not a PASS)")
-    sys.exit(1 if fails else 0)
+    # A registry failure still outranks: BROKEN beats UNMEASURED, because a broken registry is a
+    # decided negative while an absent UAP is merely nothing to join.
+    sys.exit(1 if fails else 3)
 
 raw = open(uap_path, errors="replace").read()
 # Match BOTH the block form (`standing_consent:` then an indented body) and the inline flow form
