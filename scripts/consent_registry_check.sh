@@ -31,9 +31,33 @@
 #   A PASS from this script means the registry and the grants are WELL-FORMED and the floor join
 #   holds. It does not mean the promotion mechanism as a whole was verified.
 #
+# EXIT CONTRACT (typed — three states, three codes; do NOT grep the prose)
+#   0 = VERIFIED   the registry and the grants are well-formed and the floor join holds
+#   3 = UNMEASURED there was nothing to join (no registry / zero classes / no UAP)
+#   1 = BROKEN     unparseable or invalid input; cannot decide == not allowed
+#
+#   A caller may skip an approval prompt ONLY on 0. On 3 it must KEEP ASKING.
+#
+# WHY 3 EXISTS (added 2026-07-31, cross-family round 9 finding F4)
+#   Three states were encoded in two codes and disambiguated only in PROSE. The exit code is the
+#   only machine-readable channel, so the conventional caller —
+#       if scripts/consent_registry_check.sh; then run_unprompted; fi
+#   — read "there is nothing to measure" as "verified, go ahead". Printing "(not a PASS)" disables
+#   nothing. `not found` is not `0` (CLAUDE.md §Instrument-Calibration), and this file's own line
+#   below already said so in words while returning the PASS code.
+#
+# WHY NOT 1 — a missing registry is the state of every fresh clone. Failing there would paint the
+#   gate red on first run and train the override reflex, a failure this file's comments already
+#   record twice (the merge-key over-block, and the reverted parser fix). 1 stays BROKEN.
+#
+# WHY 3 IS THE SAFE DIRECTION — the fallback here is not "block", it is "ask the human". Consent
+#   promotion exists only to SKIP an approval prompt, so degrading to asking restores the system's
+#   original behaviour and WIDENS human-in-the-loop authority. Degrading to 0 narrows it, removing
+#   a human decision nobody granted.
+#
 # DEGRADE DIRECTION
-#   No registry file        -> exit 0, prints "N/A: promotion DISABLED" (safe: nothing can promote)
-#   No UAP file             -> exit 0, same
+#   No registry file        -> exit 3, prints "N/A: promotion DISABLED" (unmeasured, keep asking)
+#   No UAP file             -> exit 3, same
 #   Unparseable either file -> exit 1 (fail-closed: cannot decide == not allowed)
 #   Any R1-R6 violation     -> exit 1
 #
@@ -53,7 +77,7 @@ def out(sym, msg): print(f"  {sym} {msg}")
 
 if not os.path.exists(reg_path):
     print(f"consent-registry: N/A — no registry at {reg_path}; promotion DISABLED (not a PASS)")
-    sys.exit(0)
+    sys.exit(3)   # UNMEASURED, not verified — see EXIT CONTRACT
 
 try:
     import yaml
@@ -129,7 +153,7 @@ if not isinstance(classes, list):
     sys.exit(1)
 if not classes:
     print("consent-registry: N/A — registry declares zero classes; promotion DISABLED (not a PASS)")
-    sys.exit(0)
+    sys.exit(3)   # UNMEASURED, not verified — see EXIT CONTRACT
 
 by_name = {}
 for i, c in enumerate(classes):
@@ -179,8 +203,30 @@ for i, c in enumerate(classes):
     # declaring itself promotable while naming an irreversible sink two fields above.
     taint = set(map(str, c["sinks"] or [])) | set(map(str, c["feeds"] or []))
     bad = taint & IRREVERSIBLE
+    # R2-b — the CAPABILITY field is part of the floor too. Until 2026-07-31 IRREVERSIBLE was
+    # intersected ONLY with sinks|feeds, so a class could DECLARE `capabilities: [history-rewrite]`
+    # outright and stay promotable as long as it named no sink: R2 saw an empty taint and R7's
+    # effect-subset rule then CONFIRMED the grant, because the effect really was a subset of the
+    # declared capabilities. The gate agreed with itself all the way to exit 0.
+    # R2's own comment above says "naming an irreversible SINK two fields above" — the guard was
+    # written against the sink field and the capability field was never in its scope. Sinks are
+    # where an effect LEAKS; capabilities are what the class is allowed to DO, and the floor cares
+    # about both. Checked separately from `bad` so the message names which field carried it.
+    # Found by codex/gpt-5.6-sol in round 9; the local canary returned CONVERGED on the same diff.
+    # `_norm`, not raw str(): R7 reads this SAME field through _norm, and the first cut of R2-b
+    # compared raw strings, so ` history-rewrite ` evaded R2-b while R7 still recognised it. One
+    # field with two spellings is the divergent-normalizer class, and it is the shape that turns a
+    # floor into decoration. Residual, named rather than fixed here: _norm strips whitespace but
+    # does NOT case-fold, so `History-Rewrite` still evades BOTH R2-b and R7 — case-folding would
+    # change R7's semantics too and belongs in its own change with its own lanes.
+    cap_bad = {_norm(x) for x in (c["capabilities"] or [])} & IRREVERSIBLE
     if c["promotion_eligible"] and bad:
         out("❌", f"R2 `{nm}` claims promotion_eligible:true but sinks/feeds include {sorted(bad)}")
+        fails += 1
+    elif c["promotion_eligible"] and cap_bad:
+        out("❌", f"R2-b `{nm}` claims promotion_eligible:true but declares irreversible "
+                  f"capabilities {sorted(cap_bad)} — an irreversible act is not made reversible by "
+                  f"having no declared sink")
         fails += 1
     elif c["promotion_eligible"] and taint:
         out("❌", f"R2 `{nm}` claims promotion_eligible:true with non-empty sinks/feeds {sorted(taint)} "
@@ -193,7 +239,9 @@ if fails == 0:
 # ---- standing_consent side --------------------------------------------------------
 if not os.path.exists(uap_path):
     print(f"consent-registry: N/A — no UAP at {uap_path}; nothing granted (not a PASS)")
-    sys.exit(1 if fails else 0)
+    # A registry failure still outranks: BROKEN beats UNMEASURED, because a broken registry is a
+    # decided negative while an absent UAP is merely nothing to join.
+    sys.exit(1 if fails else 3)
 
 raw = open(uap_path, errors="replace").read()
 # Match BOTH the block form (`standing_consent:` then an indented body) and the inline flow form
