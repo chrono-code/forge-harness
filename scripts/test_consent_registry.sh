@@ -242,6 +242,42 @@ fi
 printf 'classes: [ {name: broken\n' > "$TD/r.yaml"
 lane "D2 an unparseable registry fails closed (cannot decide == not allowed)" 1 ""
 
+# ── R9 (2026-07-31, cross-family codex @ gpt-5.6-sol) — the floor read the wrong field. ──────────
+# R2 intersected IRREVERSIBLE with `sinks | feeds` and NEVER with `capabilities`, so a class could
+# DECLARE an irreversible capability outright and still be promotable as long as it named no sink.
+# Grepped to be sure before fixing: IRREVERSIBLE appeared in exactly one place in the checker, and
+# its only operand was the sink/feed union. R2's own comment gives the reason away — it says
+# "naming an irreversible SINK two fields above" — the guard was written against the sink field and
+# the capability field was never in scope.
+#
+# The local canary (qwen3.6:27b, same prompt, adequate budget) returned CONVERGED on this same diff.
+# Taking that as the verdict would have declared convergence on a floor that lets history-rewrite
+# through — which is exactly why the doctrine calls local tier evidence-of and never terminal.
+mkreg '  - {name: rewrite, owner: o, mode: m, target: t, capabilities: [history-rewrite], sinks: [], feeds: [], promotion_eligible: true}'
+mkuap 'standing_consent:
+  rewrite: {granted: 2026-07-29, expires: 2026-12-31, effects: [history-rewrite], target: t}'
+lane "R9-1 a declared irreversible CAPABILITY is not promotable, empty sinks or not" 1 "R2-b"
+
+# The same class WITHOUT the promotion claim is fine: declaring an irreversible capability is not
+# itself an error, and blocking it would over-block a registry that merely describes what a class
+# can do. Over-blocking trains the override reflex — the checker already records one such revert.
+mkreg '  - {name: rewrite, owner: o, mode: m, target: t, capabilities: [history-rewrite], sinks: [], feeds: [], promotion_eligible: false}'
+mkuap 'standing_consent: {}'
+lane "R9-1b the same irreversible capability is fine when not claimed promotable" 0 ""
+
+# `unknown` is in IRREVERSIBLE for the sink rule ("unlisted sinks are UNKNOWN, and unknown is not
+# reversible"); it must mean the same thing in the capability position.
+mkreg '  - {name: u, owner: o, mode: m, target: t, capabilities: [unknown], sinks: [], feeds: [], promotion_eligible: true}'
+mkuap 'standing_consent: {}'
+lane "R9-1c an `unknown` capability is not promotable either" 1 "R2-b"
+
+# Guard against over-reach in the other direction: an ordinary reversible capability with empty
+# sinks is the N1 shape and must stay passing. If this lane ever flips, the fix went too wide.
+mkreg "$OKCLASS"
+mkuap 'standing_consent:
+  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane "R9-1d a reversible capability with empty sinks still passes (anti-over-block)" 0 ""
+
 # The shipped example must satisfy the validator — otherwise the artifact FH hands users is the
 # first counter-example. (Hand-verify-one-sample discipline, applied to our own template.)
 if bash "$CHK" "$ROOT/templates/consent_classes.yaml.example" /dev/null >/dev/null 2>&1; then

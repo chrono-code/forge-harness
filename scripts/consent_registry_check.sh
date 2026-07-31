@@ -179,8 +179,24 @@ for i, c in enumerate(classes):
     # declaring itself promotable while naming an irreversible sink two fields above.
     taint = set(map(str, c["sinks"] or [])) | set(map(str, c["feeds"] or []))
     bad = taint & IRREVERSIBLE
+    # R2-b — the CAPABILITY field is part of the floor too. Until 2026-07-31 IRREVERSIBLE was
+    # intersected ONLY with sinks|feeds, so a class could DECLARE `capabilities: [history-rewrite]`
+    # outright and stay promotable as long as it named no sink: R2 saw an empty taint and R7's
+    # effect-subset rule then CONFIRMED the grant, because the effect really was a subset of the
+    # declared capabilities. The gate agreed with itself all the way to exit 0.
+    # R2's own comment above says "naming an irreversible SINK two fields above" — the guard was
+    # written against the sink field and the capability field was never in its scope. Sinks are
+    # where an effect LEAKS; capabilities are what the class is allowed to DO, and the floor cares
+    # about both. Checked separately from `bad` so the message names which field carried it.
+    # Found by codex/gpt-5.6-sol in round 9; the local canary returned CONVERGED on the same diff.
+    cap_bad = set(map(str, c["capabilities"] or [])) & IRREVERSIBLE
     if c["promotion_eligible"] and bad:
         out("❌", f"R2 `{nm}` claims promotion_eligible:true but sinks/feeds include {sorted(bad)}")
+        fails += 1
+    elif c["promotion_eligible"] and cap_bad:
+        out("❌", f"R2-b `{nm}` claims promotion_eligible:true but declares irreversible "
+                  f"capabilities {sorted(cap_bad)} — an irreversible act is not made reversible by "
+                  f"having no declared sink")
         fails += 1
     elif c["promotion_eligible"] and taint:
         out("❌", f"R2 `{nm}` claims promotion_eligible:true with non-empty sinks/feeds {sorted(taint)} "
