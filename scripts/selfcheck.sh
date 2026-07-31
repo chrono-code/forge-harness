@@ -2,7 +2,13 @@
 # selfcheck.sh — mandatory-pass (deterministic) checks on FH's own executable surface.
 # Class: mandatory-pass (harness_6axis_framework.md §Axis 5 check classes) — blocks on fail.
 # Scope: executables shipped via npm files[] + the bash infra driving the FH gate chain.
-# Syntax-only (node --check / bash -n): zero side effects, no network, runs anywhere.
+# NOT syntax-only any more, and this line used to say it was. Syntax checks (node --check / bash -n)
+# are only the first section; behavioural lane suites follow and they DO have side effects and
+# environment needs: temp dirs, a loopback HTTP stub on 127.0.0.1:18011, git, `timeout`, and — via
+# the session-close lanes — an optional `gh` call that reaches GitHub when the binary is present.
+# Corrected 2026-07-31 (cross-family review): the stale "zero side effects, no network" claim
+# survived the additions that falsified it, which is how a reader ends up trusting the wrong
+# invariant. No remote network is REQUIRED; some is possible.
 # Wiring: `npm test` for any session; `prepublishOnly` so a publish cannot ship a
 # syntactically broken executable.
 set -u
@@ -105,10 +111,25 @@ fi
 # absent from the tarball — including templates/predelete_check.sh, which CLAUDE.md instructs you
 # to run before a destructive op. Wired here in the same commit that created it, because the two
 # previous anchors this session shipped with zero callers.
-if [ -f scripts/package_coverage_check.sh ]; then
+# Anchored 2026-07-31. Until then this was the ONE subject in this file exempt from the
+# "subject present but anchor missing => FAIL" rule the eight blocks below enforce — and the
+# exemption cost something real: its source-checkout predicate tested `-d .git`, so inside a git
+# WORKTREE (where .git is a FILE) it printed SKIP and returned 0 without scanning. A worktree is
+# how a fresh CI checkout gets approximated, so the check was absent from exactly the tree used
+# to reason about CI. scripts/test_package_coverage_lanes.sh pins the predicate across all four
+# tree shapes plus a known pair.
+if [ ! -f scripts/package_coverage_check.sh ]; then
+  echo "SKIP  test_package_coverage_lanes.sh (subject scripts/package_coverage_check.sh absent)"
+elif [ -f scripts/test_package_coverage_lanes.sh ]; then
+  if ! bash scripts/test_package_coverage_lanes.sh; then
+    fail=1
+  fi
   if ! bash scripts/package_coverage_check.sh; then
     fail=1
   fi
+else
+  echo "FAIL  test_package_coverage_lanes.sh: package_coverage_check.sh present but its anchor is missing"
+  fail=1
 fi
 
 # memory-link-check — the memory store is a GRAPH (memory_intent_recall.md: nodes=files,
@@ -239,10 +260,31 @@ if [ -d ".claude/rules" ]; then
   # fail=0 → SELFCHECK: PASS. The check would have silently ceased to exist while still
   # reporting a pass — the same shape count_check.sh:71 already guards against with its
   # impossible-zero rule. fh-meta always has refs; zero means the instrument broke.
-  _refs=$(grep -hoE '\`[^\` ]+\`' CLAUDE.md .claude/rules/*.md 2>/dev/null \
-    | sed 's/\`//g' \
-    | grep -E '^(knowledge|templates|scripts|docs|plugins|\.claude)/[^*{}<>$]+\.(md|sh|ya?ml|jsonc|json)$' \
-    | sort -u)
+  # EXTRACTION MOVED OFF grep (2026-07-31, measured on the first real CI run). The pipeline used to
+  # be `grep -hoE` + sed + `grep -E` over CLAUDE.md, which is Korean-heavy. On macOS (BSD grep, UTF-8
+  # locale) it returned ~50 refs; on the ubuntu runner (GNU grep, LANG unset => C locale) it returned
+  # ZERO, and the impossible-zero guard below is the only reason that surfaced as a failure instead
+  # of "no refs, all clean". Same root cause as the card-drift probe failing its positive lanes in
+  # the same run: multibyte text through locale-dependent grep.
+  # python3 reads the files as UTF-8 explicitly, so this extractor no longer has a locale at all.
+  # It is already a hard dependency of selfcheck (validate_plugins/marketplace, memory_link_check),
+  # so this adds nothing to the requirement set. The regex is the same one, transcribed.
+  _refs=$(python3 - <<'REFPY' 2>/dev/null
+import re, glob
+pat = re.compile(r'^(knowledge|templates|scripts|docs|plugins|\.claude)/[^*{}<>$]+\.(md|sh|ya?ml|jsonc|json)$')
+seen = set()
+for f in ['CLAUDE.md'] + sorted(glob.glob('.claude/rules/*.md')):
+    try:
+        text = open(f, encoding='utf-8', errors='replace').read()
+    except OSError:
+        continue
+    for tok in re.findall(r'`([^` ]+)`', text):
+        if pat.match(tok):
+            seen.add(tok)
+for p in sorted(seen):
+    print(p)
+REFPY
+)
   if [ -z "$_refs" ]; then
     echo "FAIL  ref-path: extractor produced 0 refs — the scan broke, it did not pass"
     fail=1

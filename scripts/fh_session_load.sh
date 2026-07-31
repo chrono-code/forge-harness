@@ -103,6 +103,22 @@ _fd_hit() { find "$1" -maxdepth 1 -name "frontier_digest_$(date +%Y_%m_%d)*.md" 
 # 계기의 스코프가 대상보다 좁았던 케이스 — 대상은 '오늘 digest 가 있나'지 '이 디스크에 있나'가 아니다.)
 # 술어는 로컬과 **동일**(glob + -size +1k) — divergent-leniency 를 만들지 않는다.
 _fd_ready() { _fd_hit "$FH/tracks/_meta" || { [ -n "$BE" ] && _fd_hit "$BE/tracks-meta"; }; }
+# THE SECOND HALF OF THE SAME SCOPE BUG (2026-07-31). The comment above got the principle right —
+# "대상은 '오늘 digest 가 있나'지 '이 디스크에 있나'가 아니다" — and then widened the predicate by
+# exactly ONE surface (the companion store), leaving it file-only. There are TWO live producers:
+# the launchd file runner AND an app routine that posts the digest as a comment on GitHub issue
+# #102 (measured 2026-07-31: 47 comments, one per day, including today's at 09:09 KST). So on a day
+# when the file runner fails, today's digest EXISTS and the hook said "부재가 아니라 실패다" — a
+# true statement about this disk stated as a claim about the digest.
+# The fix is NOT to call the network from a SessionStart hook (it must never block turn 0 and must
+# never fail on an offline node). It is to stop over-claiming: report the scope actually measured
+# ("this node's file output failed") and NAME the surface not measured, so the reader checks it in
+# one step instead of re-running a job whose output already exists elsewhere.
+_fd_issue_note() {
+  echo "    ⓘ 파일만 본 판정이다 — 오늘치는 **GH issue #102**(앱 routine, 매일 ~09:09 KST)에 이미 있을 수 있다."
+  echo "      확인: gh issue view 102 --repo chrono-meta/forge-harness --comments | tail -40"
+  echo "      → 파일 재생성이 필요한지는 그걸 보고 판단하라. '오늘은 뉴스 없음'으로 읽지 말 것."
+}
 if _fd_ready; then
   # 로컬엔 없고 컴패니언에만 있으면 = 이 노드는 러너가 아니다. 침묵하면 토폴로지가 안 보이므로 한 줄 알린다.
   if ! _fd_hit "$FH/tracks/_meta"; then
@@ -125,14 +141,37 @@ elif [ -f "$_FD_LOG" ]; then
   if [ -n "$_FD_ALIVE" ]; then
     echo "ℹ️  [frontier-digest] 잡이 아직 돌고 있는 중일 수 있다($_FD_STAMP, $_FD_ALIVE) — 실패 판정 보류, 나중에 재확인."
   else
-    echo "⚠️  [frontier-digest] 오늘 잡은 돌았는데 **산출물이 없다**($_FD_STAMP) — 부재가 아니라 실패다."
+    echo "⚠️  [frontier-digest] **이 노드의 파일 산출**이 실패했다($_FD_STAMP) — 부재가 아니라 실패다."
     echo "    마지막 로그: $(tail -1 "$_FD_LOG" 2>/dev/null | cut -c1-90)"
-    echo "    → 수동 재실행하거나 실패 원인을 보라. '오늘은 뉴스 없음'으로 읽지 말 것."
+    _fd_issue_note
   fi
 else
-  echo "⚠️  [frontier-digest] 스케줄(09:00) 지났는데 로그도 산출물도 없다($_FD_STAMP) — 잡이 아예 안 돌았을 수 있다(launchd 확인)."
+  echo "⚠️  [frontier-digest] 스케줄(09:00) 지났는데 로그도 파일 산출물도 없다($_FD_STAMP) — 이 노드에서 잡이 아예 안 돌았을 수 있다(launchd 확인)."
+  _fd_issue_note
 fi
 # (BE is resolved at the top of this script — the frontier-digest block above needs it too.)
+
+# 1-b) Weekly-audit cadence — mechanical, for the same reason the frontier-digest block above is.
+# MEASURED 2026-07-31: operations.md §Session start auto-detection (L1) promises "propose the audit
+# if 7+ days elapsed", and the audit had not run for FIFTY days. The frontier-digest cadence, which
+# is instrumented, never went a day unnoticed over the same window. The difference is not
+# importance; it is that one cadence is a hook and the other is prose, and this repo's own N=3
+# escalation rule says to instrument rather than to add a habit. One line in a hook that already
+# runs, not a new mechanism. Advisory by design: an overdue audit is not an irreversible surface,
+# so it surfaces and never blocks. Silent when current, and silent when the dir does not exist
+# (a fresh clone has no audit history and must not be nagged about one).
+_AUDIT_DIR="$FH/tracks/_audit"
+if [ -d "$_AUDIT_DIR" ]; then
+  _LATEST_AUDIT="$(find "$_AUDIT_DIR" -maxdepth 1 -name 'weekly_audit_*.md' -print 2>/dev/null \
+                   | sort | tail -1)"
+  if [ -n "$_LATEST_AUDIT" ]; then
+    _AUDIT_AGE_D=$(( ( $(date +%s) - $(_mtime "$_LATEST_AUDIT") ) / 86400 ))
+    if [ "$_AUDIT_AGE_D" -ge 7 ]; then
+      echo "🗓️  [weekly-audit] 마지막 감사가 ${_AUDIT_AGE_D}일 전이다($(basename "$_LATEST_AUDIT")) — 캐던스는 7일."
+      echo "    → /harvest-loop (lightweight) 또는 operations.md §Weekly Improvement Cycle 수동 절차."
+    fi
+  fi
+fi
 
 # Non-Mode-D / no companion store → silent no-op (this is the majority path for public users).
 [ -d "$BE/.git" ] || exit 0
