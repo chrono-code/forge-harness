@@ -29,6 +29,26 @@
 #   reflexes on hooks that DO guard irreversible surfaces. Set FH_PIPE_VERDICT_BLOCK=1 to escalate.
 #   If the command cannot be extracted, it stays silent: an unparsed input is not a finding.
 #
+# DELIVERY CHANNEL (added 2026-07-31 — closes N=8: detection 100%, delivery 0%)
+#   The first shipped version wrote its warning to stderr and exited 0. Per the hook contract
+#   (code.claude.com/docs/en/hooks), on exit 0 stderr is IGNORED and stdout is parsed for JSON —
+#   so the warning reached the transcript, never the model. The actor making the mistake never saw
+#   the guard fire (measured: the guard's own author repeated the guarded mistake twice the day
+#   after shipping it, N=7/N=8).
+#   Advisory now emits JSON on stdout: `hookSpecificOutput.additionalContext` (wrapped by CC in a
+#   system-reminder and injected into MODEL context) + top-level `systemMessage` (shown to the
+#   USER). Two audiences, two fields, one emission.
+#   ⚠️ `permissionDecision` is DELIBERATELY ABSENT: emitting "allow" alongside the warning would
+#   auto-approve the flagged command past the permission system — the guard must never grant what
+#   it exists to question. Block mode keeps the exit-2 path (stderr → fed to Claude, call blocked);
+#   on exit 2 stdout/JSON is ignored by contract, so stderr is the correct channel there.
+#   NAMED RESIDUAL (cross-family, 2026-07-31): with python3 broken/absent, payload extraction
+#   yields CMD="" and the guard exits 0 even under FH_PIPE_VERDICT_BLOCK=1 — block mode fails
+#   open on a dead interpreter. Accepted, not fixed: the Bash-call surface is re-runnable
+#   (reversible → degrade-to-advisory per the Surface-Class Degrade Invariant), and the
+#   alternative — exit 2 whenever python3 is missing — would block EVERY Bash call on such a
+#   machine, the exact false-block storm the advisory design exists to avoid.
+#
 # Usage:
 #   hook:  PreToolUse matcher "Bash" → bash scripts/pipe_verdict_guard.sh
 #   test:  printf '%s' "<command>" | bash scripts/pipe_verdict_guard.sh --stdin-raw
@@ -88,6 +108,32 @@ fi
 
 [ -n "$hits" ] || exit 0
 
+if [ "${FH_PIPE_VERDICT_BLOCK:-0}" = "1" ]; then
+  # Block mode: exit 2 = stderr fed to the model as the blocking reason; stdout ignored by contract.
+  printf '%s' "$hits" >&2
+  exit 2
+fi
+
+# Advisory mode: JSON on stdout, exit 0. additionalContext → model, systemMessage → user.
+# NO permissionDecision — see DELIVERY CHANNEL header. python3 owns the JSON escaping; if it
+# fails, degrade to the old stderr emission (delivery lost, but the call is never disturbed).
+# Capture-then-emit, not stream: a producer that prints partial output and dies must never leave
+# half a JSON object on the hook's stdout (cross-family finding, 2026-07-31). The codec pin must
+# be PYTHONIOENCODING itself — the hits text carries non-ASCII (⚠️), an inherited
+# PYTHONIOENCODING=ascii was measured to kill the emission (silently restoring the exact delivery
+# loss this rewrite closes), and PYTHONUTF8=1 does NOT win over an explicit PYTHONIOENCODING
+# (measured by lane C4: the UTF8-mode pin still emitted 0 bytes under the ascii env).
+json_out=$(printf '%s' "$hits" | PYTHONIOENCODING=utf-8 python3 -c '
+import json, sys
+h = sys.stdin.read()
+print(json.dumps({
+    "systemMessage": h,
+    "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": h},
+}))
+' 2>/dev/null)
+if [ -n "$json_out" ]; then
+  printf '%s\n' "$json_out"
+  exit 0
+fi
 printf '%s' "$hits" >&2
-if [ "${FH_PIPE_VERDICT_BLOCK:-0}" = "1" ]; then exit 2; fi
 exit 0

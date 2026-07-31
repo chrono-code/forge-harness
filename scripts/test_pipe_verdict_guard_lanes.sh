@@ -88,6 +88,73 @@ expect "B braced form still caught"       HIT   'a | b; rc=${PIPESTATUS[0]}'
 echo "-- opt-out --"
 expect "noqa suppresses"                  CLEAN 'bash g.sh | tail; rc=$?  # noqa: pipe-verdict'
 
+echo "-- C: delivery channel (closes N=8 — detection without delivery is decoration) --"
+# These lanes assert the CHANNEL, not the detection: per the hook contract, on exit 0 only stdout
+# JSON reaches anyone (additionalContext → model, systemMessage → user); stderr is discarded.
+# A lane that only greps merged output would stay green while the warning goes nowhere — which is
+# exactly the hole the 2026-07-31 rewrite closed. Verdicts are exit codes, not free-form stdout.
+# NAMED RESIDUAL (cross-family LOW, accepted): $(…) capture strips NUL bytes, so a mutant emitting
+# NUL+JSON would pass C1. The producer's hits text is static ASCII+⚠️ with no NUL source, so the
+# lane does not pay for a byte-exact harness; revisit only if the producer ever emits dynamic bytes.
+HIT_CMD='bash x.sh | tail -5; echo "exit=${PIPESTATUS[0]}"'
+payload() { python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1"; }
+
+# All C lanes measure ONE invocation: stdout, stderr, and exit code from the same run (a pair of
+# runs can each satisfy half the contract while no single run satisfies it — cross-family finding).
+c_errf=$(mktemp)
+
+# C1 — advisory hit, full hook payload path: stdout must be one JSON object carrying
+#      additionalContext + systemMessage, with permissionDecision ABSENT (emitting "allow" would
+#      auto-approve the flagged command — the guard must never grant what it questions). exit 0.
+c_out=$(payload "$HIT_CMD" | bash "$G" 2>"$c_errf"); c_rc=$?
+c_err=$(cat "$c_errf")
+if [ "$c_rc" -eq 0 ] && printf '%s' "$c_out" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+h = d["hookSpecificOutput"]
+assert h["hookEventName"] == "PreToolUse"
+assert "PIPE-VERDICT" in h["additionalContext"]
+assert "PIPE-VERDICT" in d["systemMessage"]
+assert "permissionDecision" not in h and "permissionDecision" not in d
+' 2>/dev/null; then
+  printf '  ✅ %-52s %s\n' "C1 advisory: stdout JSON, no permissionDecision" OK; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s err=%s\n' "C1 advisory: stdout JSON, no permissionDecision" "$c_rc" "$c_out" "$c_err"; fail=$((fail+1))
+fi
+
+# C2 — block mode: exit 2, warning on stderr (stdout JSON is ignored by contract on exit 2).
+c_out=$(payload "$HIT_CMD" | FH_PIPE_VERDICT_BLOCK=1 bash "$G" 2>"$c_errf"); c_rc=$?
+c_err=$(cat "$c_errf")
+if [ "$c_rc" -eq 2 ] && printf '%s' "$c_err" | grep -q 'PIPE-VERDICT' && [ -z "$c_out" ]; then
+  printf '  ✅ %-52s %s\n' "C2 block: exit 2, stderr carries the reason" OK; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s err=%s\n' "C2 block: exit 2, stderr carries the reason" "$c_rc" "$c_out" "$c_err"; fail=$((fail+1))
+fi
+
+# C3 — clean command through the full payload path: NO JSON at all (an empty advisory would still
+#      inject an empty reminder every Bash call — silence must stay silent). exit 0.
+c_out=$(payload 'echo hello' | bash "$G" 2>"$c_errf"); c_rc=$?
+rm -f "$c_errf"
+if [ "$c_rc" -eq 0 ] && [ -z "$c_out" ]; then
+  printf '  ✅ %-52s %s\n' "C3 clean: no emission at all" OK; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s\n' "C3 clean: no emission at all" "$c_rc" "$c_out"; fail=$((fail+1))
+fi
+
+# C4 — hostile inherited codec: the hits text is non-ASCII (⚠️), and an environment-inherited
+#      PYTHONIOENCODING=ascii was measured (2026-07-31) to abort json.dumps and silently restore
+#      the pre-fix delivery loss. The guard pins PYTHONUTF8=1; this lane keeps that pin honest.
+c_out=$(payload "$HIT_CMD" | PYTHONIOENCODING=ascii bash "$G" 2>/dev/null); c_rc=$?
+if [ "$c_rc" -eq 0 ] && printf '%s' "$c_out" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert "PIPE-VERDICT" in d["hookSpecificOutput"]["additionalContext"]
+' 2>/dev/null; then
+  printf '  ✅ %-52s %s\n' "C4 ascii-codec env: JSON still delivered" OK; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s\n' "C4 ascii-codec env: JSON still delivered" "$c_rc" "$c_out"; fail=$((fail+1))
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "[pipe-verdict-guard] ✅ all $pass known pairs hold"; exit 0
