@@ -180,6 +180,17 @@ fi
 # Two guards that read the AUTHOR's own actions rather than the repo's files. Both were added
 # 2026-07-31; the pipe-verdict lane shipped in PR #209 WITHOUT this wiring, which is itself the
 # half-fix class the second guard exists to catch — found by running that guard on this repo.
+if [ ! -f scripts/sidecar_calibrate.sh ]; then
+  echo "SKIP  test_ollama_panel_lanes.sh (subject scripts/sidecar_calibrate.sh absent)"
+elif [ -f scripts/test_ollama_panel_lanes.sh ]; then
+  if ! bash scripts/test_ollama_panel_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_ollama_panel_lanes.sh: sidecar_calibrate.sh present but its ollama-leg anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/pipe_verdict_guard.sh ]; then
   echo "SKIP  test_pipe_verdict_guard_lanes.sh (subject scripts/pipe_verdict_guard.sh absent)"
 elif [ -f scripts/test_pipe_verdict_guard_lanes.sh ]; then

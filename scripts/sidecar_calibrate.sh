@@ -181,6 +181,91 @@ probe_runtime() {
 probe_runtime codex "gpt-5.6-sol"
 probe_runtime agy   "Gemini 3.1 Pro (High)"
 
+# ── Local OpenAI-compatible panel (Ollama) — a DIFFERENT anchor, on purpose. ──────────────────
+# One host serves several model FAMILIES (measured 2026-07-31: an OpenAI-lineage open-weight, a
+# Qwen, a Gemma, a Mistral on one endpoint), so the panel's unit here is the model, not the binary.
+# Everything is local, so nothing leaves the machine — this is the only panel member a residency-
+# constrained session may use on company-adjacent work.
+#
+# WHY THE IDENTITY PROBE IS REPLACED, NOT REUSED — the self-report anchor above is INVALID for this
+# class. Measured: `gpt-oss:20b` asked which model it is answered "The underlying model is GPT-4
+# (likely)". Open-weight models do not reliably know their own name, so a self-report anchor would
+# mark every one of them UNTRUSTED-PIN and drop a genuinely exact pin from the panel. Applying an
+# instrument that cannot separate a known-positive from a known-negative on this target is the
+# calibration failure this whole file exists to prevent — so the anchor moves to the SERVER'S
+# response envelope, which reports the model actually loaded. That is a server-side fact rather
+# than a model's claim, i.e. strictly stronger than what codex/agy expose through their CLIs.
+#
+# HOST IS NEVER HARDCODED. A LAN/Tailscale address is an internal hostname, and this file is
+# public-tracked; §Company residency keeps those out of committed content. Default is loopback;
+# point FH_OLLAMA_HOST at a remote node from a local, gitignored place.
+OLLAMA_HOST_URL="${FH_OLLAMA_HOST:-http://127.0.0.1:11434}"
+# Measured floor, not a guess: at num_predict=64 a reasoning model spent the ENTIRE budget in its
+# `thinking` field (780 chars) and returned an EMPTY response — which reads identically to "cannot
+# carry a verdict". At 512 the same model answered `PASS`. Budget starvation and incapacity are
+# different findings and must not be reported as one.
+OLLAMA_NUM_PREDICT="${FH_OLLAMA_NUM_PREDICT:-512}"
+
+probe_ollama() {
+  command -v curl >/dev/null 2>&1 || { echo "ollama ABSENT — curl missing (absence measured)"; return 0; }
+  curl -sf --max-time 10 "$OLLAMA_HOST_URL/api/version" >/dev/null 2>&1 || {
+    printf 'ollama ABSENT — no server at the configured host (absence measured, not assumed)\n'
+    printf '       set FH_OLLAMA_HOST to probe a remote node; default is loopback\n'
+    return 0
+  }
+
+  local models="${FH_OLLAMA_MODELS:-}"
+  if [ -z "$models" ]; then
+    models=$(curl -sf --max-time 15 "$OLLAMA_HOST_URL/api/tags" 2>/dev/null \
+      | python3 -c 'import json,sys
+try: d=json.load(sys.stdin)
+except Exception: raise SystemExit
+print(",".join(m["name"] for m in d.get("models",[])[:6]))' 2>/dev/null)
+  fi
+  [ -n "$models" ] || { echo "ollama REACHABLE but no models listed"; return 0; }
+
+  # Control runs ONCE per host, not per model: it is a property of the server, and repeating it per
+  # model would just multiply the cost of a fact that cannot differ.
+  local ctl ctl_state
+  ctl=$(curl -s --max-time 20 "$OLLAMA_HOST_URL/api/generate" \
+        -d '{"model":"fh-calib-nonexistent:99b","prompt":"hi","stream":false}' 2>&1)
+  if printf '%s' "$ctl" | grep -qiE '"error"|not found'; then ctl_state="rejects-bogus"; else ctl_state="accepts-bogus"; fi
+
+  local IFS=,
+  for m in $models; do
+    [ -n "$m" ] || continue
+    local body out env_model resp compact pin v
+    body=$(python3 -c 'import json,sys; print(json.dumps({"model":sys.argv[1],"prompt":sys.argv[2],"stream":False,"options":{"num_predict":int(sys.argv[3]),"temperature":0}}))' \
+           "$m" "$VERDICT_PROMPT" "$OLLAMA_NUM_PREDICT")
+    out=$(curl -sf --max-time 240 "$OLLAMA_HOST_URL/api/generate" -d "$body" 2>/dev/null)
+    if [ -z "$out" ]; then
+      printf 'ollama %-22s UNREACHABLE-THIS-RUN (measured, not inferred)\n' "$m"; continue
+    fi
+    env_model=$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("model",""))' 2>/dev/null)
+    resp=$(printf '%s' "$out" | python3 -c 'import json,sys; print((json.load(sys.stdin).get("response") or "").strip())' 2>/dev/null)
+    compact=$(printf '%s' "$resp" | tr -s '[:space:]' ' ' | sed 's/^ *//; s/ *$//')
+    if [ "$env_model" = "$m" ]; then pin="PIN-OK(envelope)"; else pin="UNTRUSTED-PIN"; fi
+    if [ "${#compact}" -le 12 ] && printf '%s' "$compact" | grep -qiE '^(pass|fail)[.!]?$'; then v="VERDICT-OK"; else v="VERDICT-UNPARSEABLE"; fi
+    printf 'ollama %-22s REACHABLE · %s · control: %s · %s\n' "$m" "$pin" "$ctl_state" "$v"
+    [ -z "$QUIET" ] && printf '       answered: %s\n' "$(printf '%s' "$compact" | cut -c1-60)"
+    if [ "$v" = "VERDICT-UNPARSEABLE" ] && [ -z "$compact" ]; then
+      printf '       ⚠️  EMPTY answer. Before recording this as "cannot carry a verdict", re-run with a\n'
+      printf '           larger FH_OLLAMA_NUM_PREDICT — a reasoning model can spend the whole budget\n'
+      printf '           thinking and return nothing, which looks identical from out here.\n'
+    fi
+    [ "$pin" = "PIN-OK(envelope)" ] && [ "$v" = "VERDICT-OK" ] && PANEL="${PANEL:+$PANEL, }ollama:$m"
+  done
+}
+# `--stub-model` means the caller is the hermetic CLI lane harness, which drives stub BINARIES and
+# asserts on an empty panel. This leg talks to a SERVER, so on a developer machine with a local
+# Ollama running it would populate the panel and break those lanes — which is exactly what happened
+# when this was first wired (test_sidecar_calibrate_lanes lane6, "empty panel not stated", caught by
+# the existing suite rather than by review). Skipping under --stub-model keeps each harness hermetic
+# in its own way; this leg's own lanes drive a stub SERVER via FH_OLLAMA_HOST instead.
+if [ -z "$STUB_MODEL" ] && { [ -z "$ONLY" ] || [ "$ONLY" = "ollama" ]; }; then
+  probe_ollama
+fi
+
 if [ -n "$PANEL" ]; then
   echo "PANEL: $PANEL — usable different-family auditor(s), pin verified this run"
 else

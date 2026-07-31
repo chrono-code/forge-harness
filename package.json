@@ -135,6 +135,7 @@
     "scripts/test_pipe_verdict_guard_lanes.sh",
     "templates/settings.PreToolUse.snippet.json",
     "scripts/halffix_propagation_scan.sh",
-    "scripts/test_halffix_lanes.sh"
+    "scripts/test_halffix_lanes.sh",
+    "scripts/test_ollama_panel_lanes.sh"
   ]
 }
