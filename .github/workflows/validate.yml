@@ -19,24 +19,20 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    # MEASURED ON THE FIRST REAL RUN (2026-07-31). The very first CI execution of selfcheck failed
-    # two ways that never fail on the author's macOS, and both had ONE root cause: this repo's
-    # instruments grep over KOREAN text and emoji — `session_close_check.sh` matches card lines with
-    # `grep -E '(🔴|🟡)'` and uses the character class `산출물[^가-힣]*0`, and the ref-path extractor
-    # scans a Korean-heavy CLAUDE.md. BSD grep in a UTF-8 locale treats those as multibyte; GNU grep
-    # with LANG unset (the runner default is the C locale) does not, so every POSITIVE lane matched
-    # nothing while every NEGATIVE lane "passed" — the card-drift probe reported 0 warnings where 1
-    # was required and the ref-path extractor produced 0 refs.
-    # That failure shape is the point: silence, not an error. A locale mismatch does not raise, it
-    # returns zero, and zero reads as clean. It is the exact mirror of the 2026-07-20 incident where
-    # an ASCII scanner over a Korean corpus produced ~96% FALSE POSITIVES; here the same mismatch
-    # produces false negatives. CLAUDE.md §Instrument-Calibration, in the other direction.
-    # Setting the locale is the immediate fix and is NOT the whole fix: a consumer running
-    # `npm test` on a C-locale machine hits the same silence, so the extractors are being moved off
-    # locale-dependent grep one at a time (ref-path first, see scripts/selfcheck.sh).
-    env:
-      LANG: C.UTF-8
-      LC_ALL: C.UTF-8
+    # NO LOCALE PIN HERE — and its absence is a measured result, not an oversight.
+    # The first CI run failed two ways (card-drift positives 0/4, ref-path 0 refs) and the
+    # hypothesis was a Korean/emoji-vs-grep locale mismatch, so a run pinned LANG/LC_ALL=C.UTF-8
+    # AND moved the ref-path extractor to python3. Outcome: ref-path passed, card-drift failed
+    # IDENTICALLY. Since ref-path's fix is fully explained by the python3 move, the pin has zero
+    # demonstrated effect and the locale hypothesis is REFUTED for card-drift. The manifest entry
+    # that shipped the pin said in advance: "if it refutes, do NOT keep the locale pin as
+    # decoration — remove it and re-diagnose." Removed. A knob kept because it might help is
+    # indistinguishable from one that does, and the next reader would inherit it as a fact.
+    # STILL OPEN, diagnosed only to the point the evidence reaches: the card-drift probe's
+    # POSITIVE lanes return 0 on the runner and 3/3 here, and the failing set includes its ENGLISH
+    # lane (P4) — so the common factor sits upstream of the Korean keywords, at the `(🔴|🟡)` line
+    # selection or earlier, NOT in the absence-keyword regex. Next measurement is a linux
+    # reproduction, not another guess.
     steps:
       - uses: actions/checkout@v4
 
