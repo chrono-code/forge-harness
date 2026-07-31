@@ -531,7 +531,7 @@ Proposal format: `"I see [X]. Want me to run /[skill] to [one-line description]?
 | **"진단해줘", "개선해줘", "diagnose this", "improve this harness", "check this project", "audit this project"** — said while working **in a mapped project** (not a single-file ask) | **Field-Harness Diagnostic** (see §Field-Harness Diagnostic above → compose existing checks into one ranked M/S/R list → HITL approval per item, nothing auto-fixed) |
 | **"새 프로젝트", "하네스 작성해줘", "이 프로젝트 가속화", "harness-ify this", "accelerate this project"** — an onboarding/acceleration door (returning-menu ①②③) | **Onboarding / Acceleration Autopilot** (see §Onboarding / Acceleration Autopilot above → Phase 0 auto-discover + branch → innovator-centered recommend → ranked install plan → HITL per item, non-overwriting; "끝까지 자율로" → full-autonomy under /goal-quench gate) |
 
-**Guard**: Do not propose a skill that is already running. One signal = one-line proposal (no pressure). Before proposing, consult the UAP (§Operational Adaptation Loop): a skill the user has rejected 3+ times is **suppressed**, not re-proposed.
+**Guard**: Do not propose a skill that is already running. One signal = one-line proposal (no pressure). Before proposing, consult the UAP (§Operational Adaptation Loop): a skill the user has rejected 3+ times is **suppressed**, not re-proposed — and, symmetrically, a class **accepted 3× consecutively** earns a one-time "stop asking?" offer (§Consent promotion; never on irreversible surfaces).
 For per-skill utterance patterns, see the relevant `SKILL.md §Trigger Phrases` section.
 
 ### Cadence Rules — Check at Session Start
@@ -564,7 +564,8 @@ Some proposals are not *time*-overdue — they fire **once when a specific work 
 Self-healing is not only FH-self-dev (Mode D 4-axis) and reactive (`verify-bidirectional`). A **standing, per-user operational loop** tunes FH behavior to the individual during normal field use, and escalates **only generalizable** learnings to the `field-harvest` → FH-origin PR funnel — idiosyncratic taste stays local (drift guard).
 
 - **User Adaptation Profile (UAP)** — `tracks/_meta/user_adaptation_profile.md` (local/gitignored; **behavioral prefs only, never domain content**). Records skill-proposal outcomes (`accepted`/`rejected`/`sustained` — same vocabulary as `operations.md`), preferred tier/language/cadence, recurring friction, muted nags.
-- **Pass** — rides `field-harvest` Mode B at field-session close (no new trigger, one per session): READ to apply (suppress a 3×-rejected proposal, default to preferred tier, mute declined cadence nags), WRITE to update outcomes.
+- **Pass** — rides `field-harvest` Mode B at field-session close (no new trigger, one per session): READ to apply (suppress a 3×-rejected proposal, **offer standing consent on a 3×-accepted class**, default to preferred tier, mute declined cadence nags), WRITE to update outcomes.
+- **Consent promotion (accept-side)** — repeated approval must offer to stop asking, not bill the same prompt forever: 3 consecutive `accepted` on a **registered** class (`tracks/_meta/consent_classes.yaml` — classes are declared, never minted mid-run) → **offer once, quoting the three approvals and the exact scope** → granted = a **time-limited lease**, revocable, and every unprompted run announces itself. **Not symmetric with suppression**: a bad suppression costs a re-ask, a bad grant has side effects. **Floor, decided mechanically from the registry — never by the session's own judgment**: a class never promotes if its sinks are irreversible (publish · delete · history-rewrite), if it *feeds* such a sink (**taint propagates through reversible steps**), or if that is **unknown** — unknown is not reversible. No UAP / no registry entry / expired → keep asking (absent ≠ granted). **Named residual: the ledger is self-attested** — mitigated (append-only, quoted evidence), not closed.
 - **Generalization gate** — idiosyncratic → UAP local; generalizable (any user benefits; `≥40%` reject = redefine candidate / `≥60%` accept = reinforce, per `operations.md` gate) → `field-harvest` Mode A → FH PR (HITL).
 - **Ephemeral guard** — UAP is gitignored, wiped on cloud reclaim; in ephemeral sessions operate from defaults, do not fabricate it.
 
@@ -699,6 +700,10 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
        outcomes. ⑤ is ATOMIC and owns BOTH writes: (a) append any close-time finding to
        `fh_completed_{date}.md` FIRST, (b) then write the card. Once ⑤ starts, `fh_completed`
        is CLOSED — a later append re-opens the violation ⑤ exists to prevent.
+       **Late finding (named case)**: a finding that surfaces AFTER (b) — including while writing
+       the final message to the operator — means ⑤ is **not done**. Re-run ⑤ **whole**: append,
+       then **rewrite the card**. Appending alone is the violation; the card must never be older
+       than `fh_completed`.
   → ⑥ Commit card + push
 ```
 

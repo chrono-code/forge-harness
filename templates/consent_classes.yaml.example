@@ -1,0 +1,75 @@
+# consent_classes.yaml — the consent-class registry.
+#
+# Copy to `tracks/_meta/consent_classes.yaml` (gitignored, per-environment) to enable
+# accept-side consent promotion. See `knowledge/shared/rules/operational_adaptation.md`
+# §Consent promotion.
+#
+# WHY A REGISTRY AT ALL (cross-family review, 2026-07-29)
+#   The first draft let the running session name the class it was counting approvals against.
+#   That defeats the class-inflation guard before it fires: the class does not need to be WIDENED
+#   later if it was born wide. Recording three approvals as `sim-conductor` instead of
+#   `dispatch read-only sim on a local artifact` silently grants every future sim-conductor mode.
+#   So classes are DECLARED here, reviewed by a human, and the session may only count against
+#   an entry that already exists. A session may propose a new entry; it may not mint one mid-run.
+#
+# THE FLOOR IS READ FROM THIS FILE, NOT JUDGED AT RUNTIME
+#   `sinks` is the field the irreversibility floor is decided from. A session asking itself
+#   "is this reversible?" is the wrong arbiter — it is the party that wants to stop being asked.
+#   Absent entry / absent file / unparseable entry => NO promotion, keep asking. Unknown is not
+#   reversible.
+#
+# TAINT
+#   A class inherits the floor if it FEEDS an irreversible sink, not only if it crosses one.
+#   `local-commit` below is the worked example: committing is locally reversible, but if a
+#   post-commit hook, sync daemon, or CI workflow publishes from that commit, the chain crossed
+#   go-public and the class must be marked tainted. Declare `feeds:` honestly — the whole point
+#   is that no single step in a bad chain looks dangerous on its own.
+
+classes:
+  # ---- promotion-eligible example -------------------------------------------------
+  - name: dispatch-readonly-sim-local-artifact
+    owner: fh-meta:sim-conductor          # the gate/skill that does the asking
+    mode: blind-target-tier-sim
+    target: a single local file under the current repo
+    capabilities: [read, dispatch]        # read · local-write · network · dispatch · repo-mutation
+    sinks: []                             # crosses nothing irreversible
+    feeds: []                             # enables/queues nothing irreversible
+    promotion_eligible: true
+    lease_days: 30                        # standing consent is a renewable lease, never permanent
+
+  # ---- NOT promotion-eligible: sink is irreversible --------------------------------
+  - name: npm-publish
+    owner: Pre-Publish Surface Gate
+    mode: registry-publish
+    target: the package tarball file set
+    capabilities: [read, network]
+    sinks: [go-public]                    # irreversible => never promotes, at any count
+    feeds: []
+    promotion_eligible: false
+    reason: "publish is effectively irreversible — a package is live the instant it ships and may
+             be cached or forked before any scrub (CLAUDE.md §Pre-Publish Surface Gate)."
+
+  # ---- NOT promotion-eligible: TAINTED (this is the one that looks safe) -----------
+  - name: local-commit
+    owner: FH 4-axis commit gate
+    mode: git-commit
+    target: the working tree
+    capabilities: [local-write, repo-mutation]
+    sinks: []                             # committing itself is reversible
+    feeds: [go-public]                    # ...but CI/sync publishes from it
+    promotion_eligible: false
+    reason: "taint — reversible in isolation, feeds an irreversible sink. Every step in the
+             workflow-edit -> release-notes -> commit -> CI-publish chain is individually
+             reversible; the chain is not."
+
+  # ---- NOT promotion-eligible: unclassified ---------------------------------------
+  - name: run-arbitrary-shell
+    owner: (none — catch-all)
+    mode: unrestricted
+    target: unbounded
+    capabilities: [read, local-write, network, dispatch, repo-mutation]
+    sinks: [unknown]                      # unknown is NOT reversible
+    feeds: [unknown]
+    promotion_eligible: false
+    reason: "sinks cannot be enumerated, so the floor cannot be decided mechanically. A class
+             whose blast radius is unbounded is never a candidate, regardless of approval count."

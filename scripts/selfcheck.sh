@@ -153,6 +153,21 @@ fi
 # prevent. test_card_drift_probe.sh had shipped with ZERO callers since it was written; wiring it
 # here closes that, and the anchors are added to files[] in the same change so package mode runs
 # them too rather than reporting a deleted anchor.
+# consent-class registry floor. Its subject decides whether standing consent may skip an approval
+# prompt, so an uncalibrated instrument there hands out autonomy the operator never granted. The
+# anchor was written into tests/ with ZERO callers first — the same defect this file already
+# records twice above; wiring it here is the fix, not a note about the fix.
+if [ ! -f scripts/consent_registry_check.sh ]; then
+  echo "SKIP  test_consent_registry.sh (subject scripts/consent_registry_check.sh absent)"
+elif [ -f scripts/test_consent_registry.sh ]; then
+  if ! bash scripts/test_consent_registry.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_consent_registry.sh: consent_registry_check.sh present but its anchor is missing"
+  fail=1
+fi
+
 # sidecar_wait stdin plumbing. Its subject is dispatched by auto-decorrelation / steel-quench /
 # sim-conductor / AGENTS.md as the REQUIRED wait form, so a regression there silently empties every
 # cross-family verification. The anchor's first version shipped in tests/ with ZERO callers — the

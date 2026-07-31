@@ -617,12 +617,71 @@ if [ ! -f "$MANIFEST" ]; then
   echo "  ❌ FAIL — tracks/_meta/edit_manifest.yaml not found"
   echo "  Run /edit-manifest RECORD or create the file manually."
   FAILED=1
-elif grep -q "date: $TODAY" "$MANIFEST" 2>/dev/null; then
-  echo "  ✅ PASS (entry for $TODAY found in edit_manifest.yaml)"
 else
-  echo "  ❌ FAIL — no entry dated $TODAY in edit_manifest.yaml"
-  echo "  Run /edit-manifest RECORD to log predicted impact for today's changes."
-  FAILED=1
+  # PRESENCE **AND** VALIDITY, decided by the canonical loader rather than by grep.
+  #
+  # This axis had been a pure substring grep, so it never asked whether the file it gates is the
+  # thing its name promises. It was not: 12 of 147 entries were invalid YAML for months, silently,
+  # because every consumer reads it line-wise (this hook, activity_log.sh awk, sync-to-be.sh cp).
+  #
+  # The FIRST fix for that was itself defective, and cross-family review measured all three holes —
+  # which is why the verdict now travels on the EXIT CODE and one Python pass owns every predicate:
+  #   - `$(python3 ...) || echo unchecked` SWALLOWED the exit code, so any interpreter failure, on a
+  #     manifest with a confirmed syntax error, degraded to PASS. A checker whose crash means "fine"
+  #     is not a checker.
+  #   - it discarded the parse RESULT, so a duplicate `date:` key (YAML is last-wins) could delete
+  #     today's entry while still reporting valid, and a list item drifted outside its parent list
+  #     still passed — the exact class the same commit had just repaired, left undetected.
+  #   - the grep was substring-based: a COMMENTED `# date: <today>` counted as an entry, while a
+  #     quoted `date: "<today>"` or extra spacing did not. Fail-open and over-block in one predicate.
+  # Free-form stdout is never the verdict channel either — a python3 shim printing one banner line
+  # would otherwise fail a healthy manifest.
+  MANIFEST_MSG=$(python3 - "$MANIFEST" "$TODAY" <<'PYEOF'
+import sys
+try:
+    import yaml
+except Exception:
+    sys.exit(3)                      # 3 = checker unavailable (env gap, not a defect in the change)
+try:
+    doc = yaml.safe_load(open(sys.argv[1]))
+except Exception as e:
+    mk = getattr(e, "problem_mark", None)
+    print("invalid YAML at line %s" % (mk.line + 1 if mk else "?")); sys.exit(1)
+if not isinstance(doc, list):
+    print("top level is %s, expected a list of entries" % type(doc).__name__); sys.exit(1)
+for i, entry in enumerate(doc):
+    if not isinstance(entry, dict):
+        print("entry #%d is a %s, not a mapping — a list item may have drifted outside its parent"
+              % (i, type(entry).__name__)); sys.exit(1)
+def norm(v):
+    return v.isoformat() if hasattr(v, "isoformat") else str(v).strip()
+if not any(norm(e.get("date")) == sys.argv[2] for e in doc):
+    sys.exit(2)                      # 2 = parses fine, but no entry for today
+sys.exit(0)
+PYEOF
+  )
+  MANIFEST_RC=$?
+  case "$MANIFEST_RC" in
+    0) echo "  ✅ PASS (entry for $TODAY present; manifest parses and its shape is intact)" ;;
+    3) # Degrade-to-advisory on purpose: a commit is a REVERSIBLE surface (CLAUDE.md
+       # §Irreversibility Surface-Class Degrade Invariant), and a missing PyYAML is an environment
+       # gap rather than a defect in the change being committed. Loud, never silent.
+       if grep -q "date: $TODAY" "$MANIFEST" 2>/dev/null; then
+         echo "  ✅ PASS (entry for $TODAY found by fallback grep; validity UNCHECKED — PyYAML unavailable)"
+       else
+         echo "  ❌ FAIL — no entry dated $TODAY in edit_manifest.yaml (fallback grep; PyYAML unavailable)"
+         echo "  Run /edit-manifest RECORD to log predicted impact for today's changes."
+         FAILED=1
+       fi ;;
+    2) echo "  ❌ FAIL — manifest is valid YAML but has no entry dated $TODAY"
+       echo "  Run /edit-manifest RECORD to log predicted impact for today's changes."
+       FAILED=1 ;;
+    *) echo "  ❌ FAIL — edit_manifest.yaml did not validate: ${MANIFEST_MSG:-checker exited $MANIFEST_RC}"
+       echo "  Usual causes: an unquoted value containing ': ' (quote it), or a list item indented"
+       echo "  outside its parent list. Check:"
+       echo "    python3 -c \"import yaml;yaml.safe_load(open('tracks/_meta/edit_manifest.yaml'))\""
+       FAILED=1 ;;
+  esac
 fi
 
 # Universal guards (defined above) — confidentiality/privacy boundary, every commit.
