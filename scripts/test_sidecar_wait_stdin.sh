@@ -143,7 +143,19 @@ if command -v script >/dev/null 2>&1; then
   # The inner shell writes its rc to a FILE. Parsing `script`'s own stdout fails: it emits ^D and
   # CRLF, and the first version of this lane read rc as empty and reported a defect that did not
   # exist — the target was fine, the instrument was not.
-  script -q /dev/null bash -c "SIDECAR_POLL=1 timeout 12 bash '$SW' '$TD/p9.out' 3 -- cat >'$TD/p9.txt' 2>&1; echo \$? > '$TD/p9rc'" >/dev/null 2>&1 < /dev/null
+  # `script(1)` HAS TWO INCOMPATIBLE CLIs and this lane only ever spoke one of them. BSD/macOS takes
+  # `script -q <file> <cmd> [args...]`; util-linux (every Linux runner) takes `script -q -c "<cmd>"
+  # <file>`. Given the BSD form, util-linux treats `bash` and `-c` as stray operands, never runs the
+  # inner command, and writes no rc file — so the lane read rc='<unread>' and reported a defect in
+  # sidecar_wait that did not exist. Measured on the first CI run, 2026-07-31; it had been invisible
+  # because this suite had only ever executed on macOS. Same shape as the Hangul-range collation bug
+  # found in the same run: a TOOL INTERFACE that differs by platform, silently.
+  _P9CMD="SIDECAR_POLL=1 timeout 12 bash '$SW' '$TD/p9.out' 3 -- cat >'$TD/p9.txt' 2>&1; echo \$? > '$TD/p9rc'"
+  if script --version 2>&1 | grep -qi util-linux; then
+    script -q -c "$_P9CMD" /dev/null >/dev/null 2>&1 < /dev/null
+  else
+    script -q /dev/null bash -c "$_P9CMD" >/dev/null 2>&1 < /dev/null
+  fi
   rc9=$(tr -dc '0-9' < "$TD/p9rc" 2>/dev/null)
   if [ -n "$rc9" ] && [ "$rc9" != "124" ] && grep -q 'SIDECAR_VERDICT=' "$TD/p9.txt" 2>/dev/null; then
     ok "P9 the tty path runs and emits a verdict (UNCALIBRATED — see note; does NOT bind the branch)"
