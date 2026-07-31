@@ -1,0 +1,68 @@
+name: TMP card-drift debug
+
+# TEMPORARY — delete once the card-drift divergence is diagnosed.
+# WHY IT EXISTS: the card-drift probe passes 3/3 on macOS and returns warn=0 on EVERY lane
+# (positive and negative alike) on the ubuntu runner, which means the ⑤-b block does not emit at
+# all rather than mis-matching. Two hypotheses were formed and REFUTED locally — a Korean/emoji
+# locale mismatch (a C.UTF-8 pin changed nothing) and an unauthenticated `gh` aborting the script
+# (a failing gh stub still passed 3/3). Two refutations in a row is the signal to stop guessing on
+# a proxy and instrument the machine where the failure actually happens.
+# This job reproduces ONE known-positive fixture exactly as scripts/test_card_drift_probe.sh does,
+# then dumps each stage so the answer arrives in a single cycle instead of five.
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Environment facts
+        run: |
+          echo "locale:"; locale || true
+          echo "grep: $(grep --version | head -1)"
+          echo "find: $(find --version | head -1)"
+          echo "bash: $BASH_VERSION"
+          echo "gh present: $(command -v gh || echo no)"
+
+      - name: Reproduce the P fixture and dump every stage
+        run: |
+          set +e
+          T=$(mktemp -d); mkdir -p "$T/tracks/_meta/logs"
+          CARD="$T/tracks/_meta/reference_next_session_starter.md"
+          printf '%s\n' '- 🔴 **foo-digest 잡 미가동(07-22)** — 로그도 산출물도 0(launchd 확인 필요).' > "$CARD"
+          touch "$T/tracks/_meta/foo_digest_2026_07_22.md"
+
+          echo "== card bytes =="; od -c "$CARD" | head -5
+          echo "== artifact present =="; ls -l "$T/tracks/_meta/"
+
+          echo "== stage 1: emoji line selection =="
+          grep -E '(🔴|🟡)' "$CARD" | tee /tmp/s1; echo "  lines=$(wc -l < /tmp/s1)"
+
+          echo "== stage 2: absence-keyword filter =="
+          ABS='미가동|산출물[^가-힣]*0|로그[^가-힣]*0|0건|부재|안 돌|미생성|not running|no output|zero output'
+          grep -E "$ABS" /tmp/s1 | tee /tmp/s2; echo "  lines=$(wc -l < /tmp/s2)"
+
+          echo "== stage 3: token extraction =="
+          grep -oE '[A-Za-z0-9_./-]+' /tmp/s2 \
+            | sed 's/^[.-]*//; s/[.-]*$//' \
+            | grep -E '(/|[A-Za-z0-9]+[-_][A-Za-z0-9]+)' | grep -E '.{6,}' \
+            | grep -vE '^[0-9._-]+$' | sort -u | tee /tmp/s3; echo "  tokens=$(wc -l < /tmp/s3)"
+
+          echo "== stage 4: artifact find for each token =="
+          while IFS= read -r tok; do
+            [ -z "$tok" ] && continue
+            nu=$(printf '%s' "$tok" | tr '-' '_'); nh=$(printf '%s' "$tok" | tr '_' '-')
+            n=$(find "$T/tracks/_meta" -maxdepth 2 -type f ! -name "$(basename "$CARD")" \
+                 \( -name "*${nu}*" -o -name "*${nh}*" \) 2>/dev/null | wc -l | tr -d ' ')
+            echo "  tok='$tok' norm_u='$nu' norm_h='$nh' found=$n"
+          done < /tmp/s3
+
+          echo "== stage 5: what the real script emits (full output) =="
+          bash scripts/session_close_check.sh "$T"; echo "  script rc=$?"
+
+          echo "== stage 6: trace of the last 60 lines =="
+          bash -x scripts/session_close_check.sh "$T" 2>&1 | tail -60
