@@ -64,6 +64,7 @@
     "scripts/count_check.sh",
     "scripts/selfcheck.sh",
     "scripts/package_coverage_check.sh",
+    "scripts/test_package_coverage_lanes.sh",
     "scripts/test_fh_gate_regressions.sh",
     "templates/local_fh_context.md",
     "docs/ETHOS.md",

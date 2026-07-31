@@ -21,9 +21,26 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
-if [ ! -d .git ] || [ ! -f package.json ]; then
+# Source-checkout test uses `-e`, not `-d`. In a git WORKTREE `.git` is a FILE (a gitdir pointer),
+# so the old `-d` test read every worktree as "installed package" and skipped the check entirely —
+# silently, with exit 0. Measured 2026-07-31: a worktree created specifically to approximate CI
+# reported PASS while this check had not run at all, i.e. the instrument used to justify wiring CI
+# was itself fail-open on the surface it was standing in. `-e` covers both the ordinary checkout
+# (dir) and the worktree (file); genuine package mode has no `.git` of either kind, so it still
+# skips. Anchored by scripts/test_package_coverage_lanes.sh.
+if [ ! -e .git ]; then
   echo "SKIP  package-coverage (not a source checkout)"
   exit 0
+fi
+# PREDICATE SPLIT (cross-family review, 2026-07-31). These were one condition, and folding them
+# together meant `.git` present + manifest missing returned SKIP + exit 0 — "we are in a checkout
+# and cannot read what ships" reported as "nothing to check here". Absence of the input is not
+# absence of the defect; `not found != 0` (CLAUDE.md §Instrument-Calibration). Only the no-.git
+# case is a legitimate skip (an installed package, where the un-shipped files are correctly gone).
+if [ ! -f package.json ]; then
+  echo "FAIL  package-coverage: source checkout with no package.json — the shipped file list is"
+  echo "      unreadable, so coverage is UNMEASURED, not clean"
+  exit 1
 fi
 
 # ── Accepted-absent, with the reason each one is NOT a defect ────────────────────────────────

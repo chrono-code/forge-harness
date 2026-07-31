@@ -1,8 +1,18 @@
 name: Validate
 
 on:
+  # Every branch, not only main. Measured 2026-07-31: the consent-promotion branch accumulated a
+  # 49-lane suite plus a merged PR (#212) without CI ever running on it — the lanes had been
+  # executed ONLY on the author's machine, so "the lanes are green" and "the lanes are green
+  # anywhere else" were never distinguished. A gate that only runs at the merge boundary cannot
+  # tell an author their work depends on something only they have; it tells them at the end,
+  # after the design is fixed. Cheap to widen: public repo, and the checks are fast and local.
+  # NOT "no network" — an earlier draft of this line said that while the job below runs
+  # `pip install pyyaml`, and a lane binds a loopback HTTP server. Both are disclosed at their own
+  # steps; the claim is corrected here rather than left as a comment contradicting the file it
+  # sits in (cross-family review, 2026-07-31).
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
     branches: [main]
 
@@ -54,3 +64,73 @@ jobs:
           # README header · local_fh_context). count_check uses active-skill (non-deprecated)
           # semantics, so it cannot pass on a directory miscount.
           bash scripts/count_check.sh
+
+      # Kept as its own step even though selfcheck.sh below also runs count_check.sh. That is a
+      # decision, not residue: this step is the documented merge-boundary gate for the PR #111
+      # incident, and it must survive any future edit to selfcheck's step list. It also names the
+      # failure precisely in the CI UI instead of burying it in a 100-line log.
+
+      - name: Lane-suite runtime prerequisites
+        run: |
+          # ASK THE INTERPRETER, DO NOT PATTERN-MATCH THE SOURCE. The first draft of this step
+          # gated the install on `grep -rqlE '^[[:space:]]*import yaml' scripts/`. Cross-family
+          # review refuted it against this very repo: scripts/validate_yaml.sh:42 reads
+          # `import sys, yaml`, which that pattern does not match — so the step would print
+          # "nothing to install" while a script on the ref imports yaml. It also could not tell
+          # grep's "no match" (1) from grep's "error" (2), folding a broken scan into the clean
+          # branch. That is the same divergent-parser / false-clean shape FH keeps closing
+          # elsewhere, reproduced here in a five-line CI step.
+          #
+          # The reliable question is not "does some file look like it imports yaml" but "can this
+          # interpreter import yaml", and python answers it directly. Fail-closed: if the import
+          # is still unavailable after the install attempt, the step FAILS rather than letting a
+          # lane discover it later as a mystery red.
+          if python3 -c "import yaml" 2>/dev/null; then
+            echo "pyyaml already available"
+          else
+            # PINNED — but only on the INSTALL path. If the runner image already ships an
+            # importable PyYAML, the check above short-circuits and that preinstalled version is
+            # what runs; this pin does not override it. Stated rather than left implied, because
+            # "pinned" reads as a stronger guarantee than the code gives. Pinning the install still
+            # removes the drift that matters here (a fresh install picking a new major).
+            echo "pyyaml missing — installing (pinned)"
+            python3 -m pip install --quiet --disable-pip-version-check 'pyyaml==6.0.2'
+          fi
+          python3 -c "import yaml; print('pyyaml', yaml.__version__)"
+          python3 -c "import sys; print('python', sys.version.split()[0])"
+          node -v
+
+      - name: Selfcheck (mandatory-pass surface + every wired lane suite)
+        run: |
+          echo "=== scripts/selfcheck.sh — the same command npm test and prepublishOnly run ==="
+          # THE ANCHOR THIS WORKFLOW WAS MISSING. selfcheck is FH's mandatory-pass surface: it
+          # syntax-checks every shipped executable and runs all wired lane suites (fh-gate
+          # regressions, pre-push stdin integrity, degrade-scan probes, session-close lanes,
+          # package coverage, and the consent-registry floor once that branch lands).
+          # Until 2026-07-31 it ran at exactly two boundaries — `npm test` and `prepublishOnly` —
+          # both of which execute on the author's machine. CI validated plugin.json, marketplace
+          # .json and skill counts, i.e. metadata, and never the executable surface those lanes
+          # exist to hold. The lanes were a floor that had never been stood on by anyone else.
+          # CORRECTED CLAIM (cross-family review, 2026-07-31): the first version of this comment
+          # said selfcheck is "hermetic by construction ... no network". That was FALSE, and it was
+          # false in the direction that matters — it asserted an absence of environment dependence
+          # while the step below has some. The first correction then UNDER-corrected, claiming "no
+          # REMOTE network"; round-3 review refuted that too, by path: selfcheck runs the
+          # session-close lanes, which run session_close_check.sh without masking `gh`, and that
+          # script calls `gh pr list --author @me`. On an authenticated host selfcheck DOES contact
+          # GitHub. Stated plainly rather than narrowed a third time.
+          # WHAT SELFCHECK ACTUALLY NEEDS: python3, node, curl, `timeout`
+          # (scripts/test_sidecar_wait_stdin.sh requires it), loopback bind permission
+          # (test_ollama_panel_lanes.sh starts a stub HTTP server on 127.0.0.1:18011), git, and
+          # optionally `gh`. Precisely on `gh`: session_close_check.sh branches on the BINARY being
+          # present, not on auth — an unauthenticated `gh` still enters the branch and its failure
+          # is swallowed by `2>/dev/null`, yielding zero PRs. So CI is green without a token, but
+          # the reason is suppressed failure, not a separate no-gh path. (An earlier version of
+          # this comment said "no-gh path"; that was imprecise.)
+          # All hold on ubuntu-latest; they did not hold in the reviewer's sandbox, where five lanes
+          # failed for the loopback reason alone.
+          # NAMED RESIDUAL: if a future runner or a hardened sandbox forbids loopback binding, that
+          # lane FAILS rather than skipping — a red CI, not a silent pass. That is the correct
+          # direction, and it is written here so the next reader diagnoses it in one step instead
+          # of trusting a claim of hermeticity this file used to make.
+          bash scripts/selfcheck.sh
