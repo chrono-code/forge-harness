@@ -311,6 +311,15 @@ mkuap 'standing_consent:
   ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "R9-1d a reversible capability with empty sinks still passes (anti-over-block)" 0 ""
 
+# R9-1e — the SAME field must be normalised the SAME way by every rule that reads it. R7 compares
+# capabilities through `_norm` (which strips surrounding whitespace); the first cut of R2-b compared
+# raw `str(x)`, so ` history-rewrite ` slipped past R2-b while R7 still recognised it — one field,
+# two spellings, which is the divergent-normalizer class psa_scan_lib.sh's header is entirely about.
+# Caught reviewing the diff before merge, not by the lanes above.
+mkreg '  - {name: w, owner: o, mode: m, target: t, capabilities: [" history-rewrite "], sinks: [], feeds: [], promotion_eligible: true}'
+mkuap 'standing_consent: {}'
+lane "R9-1e whitespace around an irreversible capability does not evade R2-b" 1 "R2-b"
+
 # The shipped example must satisfy the validator — otherwise the artifact FH hands users is the
 # first counter-example. (Hand-verify-one-sample discipline, applied to our own template.)
 if bash "$CHK" "$ROOT/templates/consent_classes.yaml.example" /dev/null >/dev/null 2>&1; then

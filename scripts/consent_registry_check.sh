@@ -213,7 +213,13 @@ for i, c in enumerate(classes):
     # where an effect LEAKS; capabilities are what the class is allowed to DO, and the floor cares
     # about both. Checked separately from `bad` so the message names which field carried it.
     # Found by codex/gpt-5.6-sol in round 9; the local canary returned CONVERGED on the same diff.
-    cap_bad = set(map(str, c["capabilities"] or [])) & IRREVERSIBLE
+    # `_norm`, not raw str(): R7 reads this SAME field through _norm, and the first cut of R2-b
+    # compared raw strings, so ` history-rewrite ` evaded R2-b while R7 still recognised it. One
+    # field with two spellings is the divergent-normalizer class, and it is the shape that turns a
+    # floor into decoration. Residual, named rather than fixed here: _norm strips whitespace but
+    # does NOT case-fold, so `History-Rewrite` still evades BOTH R2-b and R7 — case-folding would
+    # change R7's semantics too and belongs in its own change with its own lanes.
+    cap_bad = {_norm(x) for x in (c["capabilities"] or [])} & IRREVERSIBLE
     if c["promotion_eligible"] and bad:
         out("❌", f"R2 `{nm}` claims promotion_eligible:true but sinks/feeds include {sorted(bad)}")
         fails += 1
