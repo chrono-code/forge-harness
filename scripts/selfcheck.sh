@@ -177,6 +177,31 @@ else
   fail=1
 fi
 
+# Two guards that read the AUTHOR's own actions rather than the repo's files. Both were added
+# 2026-07-31; the pipe-verdict lane shipped in PR #209 WITHOUT this wiring, which is itself the
+# half-fix class the second guard exists to catch — found by running that guard on this repo.
+if [ ! -f scripts/pipe_verdict_guard.sh ]; then
+  echo "SKIP  test_pipe_verdict_guard_lanes.sh (subject scripts/pipe_verdict_guard.sh absent)"
+elif [ -f scripts/test_pipe_verdict_guard_lanes.sh ]; then
+  if ! bash scripts/test_pipe_verdict_guard_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_pipe_verdict_guard_lanes.sh: pipe_verdict_guard.sh present but its anchor is missing"
+  fail=1
+fi
+
+if [ ! -f scripts/halffix_propagation_scan.sh ]; then
+  echo "SKIP  test_halffix_lanes.sh (subject scripts/halffix_propagation_scan.sh absent)"
+elif [ -f scripts/test_halffix_lanes.sh ]; then
+  if ! bash scripts/test_halffix_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_halffix_lanes.sh: halffix_propagation_scan.sh present but its anchor is missing"
+  fail=1
+fi
+
 for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh; do
   if [ ! -f scripts/session_close_check.sh ]; then
     echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"
