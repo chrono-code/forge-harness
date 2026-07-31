@@ -1,6 +1,9 @@
 # Codex Compatibility — Known Limitations & Validated Patterns
 
-> Status: **beta**. This document is beta-removal condition #2 (see `AGENTS.md` → Codex Compatibility → Beta removal conditions). It lists what works, what breaks, and what to expect when applying forge-harness (FH) methodology through OpenAI Codex (`codex exec`) instead of Claude Code.
+> Status: **beta**. This document is a beta-removal condition (see
+> `knowledge/shared/harness-core/agents_md_runtime_details.md §Beta-removal`). It lists what works,
+> what breaks, and what to expect when applying forge-harness (FH) methodology through OpenAI Codex
+> (`codex exec`) instead of Claude Code.
 
 FH is a 2-layer system: a **methodology layer** (`tracks/`, `knowledge/`, `SKILL.md` docs) that is model-agnostic, and an **automation layer** (Claude Code hooks, plugin-channel agents under `plugins/*/agents/`, field-project overrides under `.claude/agents/`, `/model`, settings.json) that is Claude-native. Codex users run the methodology layer by reading `SKILL.md` files directly; automation steps either run through runtime adapters (`fh-gate`, `fh-run`) or require manual substitution.
 

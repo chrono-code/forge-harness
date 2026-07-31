@@ -1,0 +1,54 @@
+{
+  "_README": [
+    "SessionStart hook snippet — TRACKED, so it arrives with a clone. Every .claude/settings*.json",
+    "path in this repo is gitignored (confirm with `git check-ignore -v .claude/settings.json`; do",
+    "not cite a line number, they move), so a hook registration cannot itself be tracked. This is the tracked",
+    "SOURCE that install-wizard merges into the user's local settings. Without the merge step the",
+    "hooks do not run — shipping the file is not the same proposition as wiring it.",
+    "",
+    "Two entries, deliberately split by privacy:",
+    "  - fh_node_check.sh   → NO private path. Belongs in .claude/settings.json (project-local).",
+    "  - fh_session_load.sh + fh_env_delta_scan.sh → carry BE_DIR (an operator-private companion",
+    "    store path), so they belong ONLY in .claude/settings.local.json, and only for Mode D users.",
+    "",
+    "Merge, do not overwrite: preserve any SessionStart entries the user already has; replace only",
+    "the FH ones, keyed by script name."
+  ],
+  "project_settings_json": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/fh_node_check.sh\"",
+              "timeout": 10
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "settings_local_json_MODE_D_ONLY": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "BE_DIR=\"<absolute path to your companion store>\" bash \"$CLAUDE_PROJECT_DIR/scripts/fh_session_load.sh\"",
+              "timeout": 20
+            },
+            {
+              "type": "command",
+              "command": "BE_DIR=\"<absolute path to your companion store>\" bash \"$CLAUDE_PROJECT_DIR/scripts/fh_env_delta_scan.sh\"",
+              "timeout": 15
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

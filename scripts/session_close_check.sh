@@ -146,7 +146,21 @@ fi
 # HONEST SCOPE: 카드 🔴/🟡 줄에서 부재-주장 키워드를 잡고, 그 줄의 이름/경로 토큰으로
 # 실물을 글롭 검색한다. 어휘가 안 겹치면 못 잡는다(무음 FN) — 앵커지 floor 가 아니다.
 # 방향은 advisory: 가역 표면에서 하드 블록은 --no-verify 를 학습시킨다(#165 HIGH-1 동일 원리).
-_ABSENCE_RE='미가동|산출물[^가-힣]*0|로그[^가-힣]*0|0건|부재|안 돌|미생성|not running|no output|zero output'
+# COLLATION-FREE BY CONSTRUCTION (2026-07-31, diagnosed ON the runner after two local hypotheses
+# were refuted). This regex used to contain the Hangul RANGE `[^가-힣]`. A multibyte range inside a
+# bracket expression is collation-dependent, and GNU grep in the C locale — the GitHub runner's
+# default — rejects it outright:  `grep: Invalid collation character`.
+# The failure mode is what makes it serious: grep writes that to stderr, exits 2, and emits NOTHING.
+# Downstream this is indistinguishable from exit 1 "no match", so the pipeline produced zero lines
+# and the probe concluded "no absence claims in the card" — CLEAN — on every input, positive and
+# negative alike. Its 7 lanes had passed 3/3 on macOS for weeks because BSD grep accepts the range.
+# Same shape as the pyyaml CI trigger caught earlier the same day: grep's ERROR status folded into
+# its NO-MATCH branch. `not found != 0`, and neither is `could not look`.
+# The replacement uses an ASCII-only class, which has no collation to be invalid. SEMANTIC SHIFT,
+# stated rather than hidden: the original meant "산출물 then non-Hangul then 0" (keep the claim
+# inside one clause); this means "산출물 then no DIGIT within 20 chars then 0". Slightly wider, and
+# the lanes below are what pin that it did not become too wide.
+_ABSENCE_RE='미가동|산출물[^0-9]{0,20}0|로그[^0-9]{0,20}0|0건|부재|안 돌|미생성|not running|no output|zero output'
 # 부정/정정 문맥 가드 — 부재-주장을 **인용하며** 정정하는 줄만 건너뛴다. 판별자는 debunk
 # 어휘 단독이 아니라 **부재-키워드가 인용부호 안에 있는가** — challenger A-1 실측: 살아있는
 # 주장 + 무관한 '정정 필요' 가 같은 줄이면 debunk-단독 가드가 진짜 경고를 무음 삼켰다(FN).

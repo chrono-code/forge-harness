@@ -1,6 +1,6 @@
 {
   "name": "@chrono-meta/fh-gate",
-  "version": "1.4.77",
+  "version": "1.4.79",
   "description": "FH runtime adapters — run FH governance, skills, and agents via Claude or Codex with machine-parseable gates.",
   "license": "MIT",
   "keywords": [
@@ -64,6 +64,7 @@
     "scripts/count_check.sh",
     "scripts/selfcheck.sh",
     "scripts/package_coverage_check.sh",
+    "scripts/test_package_coverage_lanes.sh",
     "scripts/test_fh_gate_regressions.sh",
     "templates/local_fh_context.md",
     "docs/ETHOS.md",
@@ -128,6 +129,17 @@
     "README.md",
     "README.ko.md",
     "README.zh.md",
-    "README.ja.md"
+    "README.ja.md",
+    "scripts/fh_node_check.sh",
+    "templates/settings.SessionStart.snippet.json",
+    "scripts/test_node_check_lanes.sh",
+    "scripts/sidecar_calibrate.sh",
+    "scripts/test_sidecar_calibrate_lanes.sh",
+    "scripts/pipe_verdict_guard.sh",
+    "scripts/test_pipe_verdict_guard_lanes.sh",
+    "templates/settings.PreToolUse.snippet.json",
+    "scripts/halffix_propagation_scan.sh",
+    "scripts/test_halffix_lanes.sh",
+    "scripts/test_ollama_panel_lanes.sh"
   ]
 }

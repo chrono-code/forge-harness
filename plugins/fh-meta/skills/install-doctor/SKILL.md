@@ -48,6 +48,94 @@ claude --version 2>/dev/null || echo "Claude Code not installed"
 
 **⚠️ When Bedrock routing confirmed**: Request AWS quota increase (TPM/RPM increase) or raise LiteLLM `max_input_tokens`, then retry. Fundamental solution is switching to direct Anthropic API access.
 
+### Node floor check — run on EVERY machine, not once per user
+
+A user's context (companion store, memory, session card) travels between machines; **the machine's
+own setup does not**. A rich context makes a fresh laptop read as "already configured", so the two
+mechanical floors below must be checked per node — this is the check `scripts/fh_node_check.sh`
+points at when it reports a missing floor at turn 0.
+
+```bash
+# HUB_DIR — the same variable the hook scripts use. Do NOT invent a second name (an earlier draft
+# read FH_DIR, which nothing sets, so an operator with HUB_DIR set would have been silently told
+# about a different repo).
+FH="${HUB_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+
+# ① git-side floor. Probe the EXECUTABLE HOOK, not the config key — `core.hooksPath` unset is a
+#    normal, working install when hooks sit in .git/hooks, and a set-but-empty path is a broken
+#    install that the key alone reports as fine. Both directions are wrong; the file is the truth.
+#    Resolve the directory with `git rev-parse --git-path` rather than assembling "$FH/.git/hooks":
+#    in a LINKED WORKTREE `.git` is a file, so the assembled path does not exist and every hook
+#    reads as missing (verified: a worktree with working hooks reported ❌❌ under the old form).
+#    Same resolution the script uses — one predicate, not two.
+# --path-format needs git >= 2.31; on older git fall back to the RELATIVE --git-path form resolved
+# against the toplevel, never to a hand-built "$FH/.git/hooks" (which is the worktree bug above).
+HD="$(git -C "$FH" rev-parse --path-format=absolute --git-path hooks 2>/dev/null)"
+if [ -z "$HD" ]; then
+  _rel="$(git -C "$FH" rev-parse --git-path hooks 2>/dev/null || echo .git/hooks)"
+  case "$_rel" in /*) HD="$_rel" ;; *) HD="$(git -C "$FH" rev-parse --show-toplevel 2>/dev/null || echo "$FH")/$_rel" ;; esac
+fi
+for h in pre-commit pre-push; do
+  if [ -x "$HD/$h" ]; then echo "✅ $h executable ($HD)"
+  else echo "❌ $h MISSING or not executable at $HD — that gate is not running on this node"; fi
+done
+
+# ② turn-0 load floor (Mode D only): the companion-load hook. Its registration lives in the
+#    GITIGNORED settings.local.json, so it does NOT survive a re-clone — hence a per-node check.
+#    Parse the JSON and match the SCRIPT NAME inside hooks.SessionStart — not a bare grep for the
+#    key. settings.json also carries a SessionStart entry (fh_node_check), so keying on the key
+#    alone passes on a machine where the companion load is absent; and a plain substring grep also
+#    hits commented-out lines, other hook events, and permission strings. Same predicate the script
+#    uses — two predicates reading one state differently is how a result leaks silently.
+#    Applicability gate FIRST, and keyed the same way the script keys it: a Mode D user is one with
+#    an exported BE_DIR, or a CLAUDE.local.md that MENTIONS a companion binding — NOT one who merely
+#    HAS a CLAUDE.local.md (that is Claude Code's standard local-override file; anyone may keep one),
+#    and NOT one who has a settings.local.json (gitignored, so a fresh clone lacks it — and a fresh
+#    clone with a full companion store is the exact case this must not silence). The vocabulary
+#    covers every backend the wizard documents (vault · gbrain · *-be repo), because an FH-flavoured
+#    regex would silence two first-class backends. It is a MENTION test, not semantic: "I do not use
+#    a companion store" also matches, and that over-match costs one informational line — the cheap
+#    direction, since the expensive direction is silence.
+if { [ -n "${BE_DIR:-}" ] && [ -d "$BE_DIR" ]; } \
+   || { [ -f "$FH/CLAUDE.local.md" ] && grep -qiE 'BE_DIR|companion[ -]store|컴패니언|vault|gbrain|obsidian' "$FH/CLAUDE.local.md"; }; then
+  python3 - "$FH" <<'PY'
+import json, os, sys
+hub = sys.argv[1]
+for p in (os.path.join(hub, ".claude", "settings.local.json"),
+          os.path.expanduser("~/.claude/settings.json")):
+    try: groups = json.load(open(p)).get("hooks", {}).get("SessionStart", [])
+    except Exception: continue
+    if any("fh_session_load" in h.get("command", "")
+           for g in groups for h in g.get("hooks", [])):
+        print("✅ companion-load SessionStart registered"); sys.exit(0)
+print("❌ companion-load SessionStart MISSING — freshness + env-delta do not fire at turn 0")
+PY
+else
+  echo "N/A  companion-load SessionStart (not a Mode D setup — no companion store configured)"
+fi
+```
+
+**Bootstrap note — honest scope**: `scripts/fh_node_check.sh` (the check that *reports* a missing
+floor at turn 0) ships with the clone, but its **registration does not**: every
+`.claude/settings*.json` path in this repo is gitignored (confirm with `git check-ignore -v
+.claude/settings.json` — don't trust a line number, they move), so no SessionStart entry can be
+tracked. The tracked artifact is `templates/settings.SessionStart.snippet.json`; `/install-wizard`
+merges it. A user who never runs the wizard still gets no turn-0 signal — that residual is reduced,
+not closed, and this check item is the backstop for it.
+
+**Emission model** (so the output is read correctly): a **missing floor is reported every session**
+until it is fixed — it is a persistent condition, not an event. A healthy machine is silent. So
+seeing this banner twice is not a bug, and seeing it once then never again means it was an *event*
+line (identity change / infra delta), not a floor complaint.
+
+**Fix for either ❌**: re-run `/install-wizard` (it registers both — `install-wizard/SKILL_detail.md`
+§Mode-D-Companion-Setup step 3 and the 4-axis gate block), or apply the two commands it uses directly.
+
+**Why this is a check item and not a note** (measured 2026-07-30): a second machine held the full
+companion store and memory, yet ran with **both** SessionStart hooks absent. Nothing surfaced it —
+the miss was found by accident. A weak tier is where this bites hardest: a mechanized floor is
+tier-independent, while the prose it replaces is exactly what a weaker model drops first.
+
 ---
 
 ## Step 1. Existing Asset Inventory

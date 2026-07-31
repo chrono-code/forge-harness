@@ -114,6 +114,69 @@ no runnable path exists (run-first, ask-last — sonnet_floor_doctrine.md §Auto
 
 Record sim results in the Axes 2–3 marker + sub-agent invocation log.
 
+### Reviewer-visible evidence — the marker is not readable from the other side
+
+**Rule**: a PR touching FH assets carries a **sanitized evidence capsule** in its body — what was
+run, what it returned, what was found and closed — plus, for any verdict reported as a **grade, tier
+or code**, both the **inline expansion** and the **canonical definition's location**
+(`sim grade F = Functional/PASS — scale: sim-conductor SKILL.md §Area-D`). A bare letter is not a
+verdict to anyone outside the author's vocabulary, and a decoded letter is still only *semantics* —
+it says what the grade means, never that the run produced it. Keep those two separate.
+
+**Never paste the raw marker.** Write the capsule; do not copy the file. The marker is a local
+artifact that may quote paths, hostnames, internal asset names, or unredacted findings, and
+**§Company residency forbids those reaching a log, comment, or paste** (`CLAUDE.md` — "not into a
+log, comment, or paste"). A PR body is a paste on a public surface. This matters mechanically, not
+just in principle: the pre-commit confidentiality guard scans **staged tracked content** and has no
+view of PR-body text, so a body is *outside* the repo's mechanical privacy floor. Run the
+public-surface scan over the capsule text before creating or editing the body. (Cross-family review
+2026-07-30 caught this: the first draft of this rule said "inline the evidence itself", which pointed
+authors straight through that gap — the residency floor and the reviewer-visibility goal were pulling
+in opposite directions and only one of them had a hook.)
+
+**Why this is structural, not politeness**: the marker file itself is **gitignored by design**
+(`.gitignore` `tracks/**` — verify per file with `git check-ignore -v <marker>`; a couple of
+force-added files elsewhere under `tracks/_meta/` do not change it for markers). So the
+machine-checkable evidence for a change exists only on the author's machine — a reviewer on another
+session, another worktree, or another runtime **cannot reach it**.
+The gate is satisfied and the reviewer still has nothing but prose. This is the same shape as the
+gate-locality defect (a gate placed where the actor that needs it cannot read it), one layer over:
+**evidence placed where the reviewer cannot read it**.
+
+**Measured 2026-07-30 (PR #205, a Codex-authored change reviewed by Claude)**: the PR body reported
+`salience cold-start simulation: grade F`. The reviewer could not resolve it — the marker was in a
+gitignored path inside the author's worktree — and recorded it as UNVERIFIED. `F` in fact meant
+**Functional**, the PASS grade of sim-conductor's Area-D consumer scale
+(`plugins/fh-meta/skills/sim-conductor/SKILL.md` §Area-D — `F` functional / `P` partial / `B` broken),
+i.e. the sim had *passed*. Two failures, one on each side, and the rule addresses both: the author
+reported a coded verdict without its scale, and the reviewer's own grep surfaced the defining file
+and the reviewer did not open it. **A pointer your instrument hands you is not optional reading.**
+
+**Degrade direction — and it does NOT satisfy the rule.** Evidence that cannot be sanitized into a
+capsule is declared, never dropped, and never silently counted as met:
+
+```
+LOCAL-ONLY ATTESTATION — UNVERIFIED: <one-line result> (record: local marker <name>)
+```
+
+That line is **an author's claim, not reviewer-visible evidence**. It leaves the requirement
+*unmet*, and the PR proceeds only by one of: a sanitized reproducible capsule · an authorized
+independent review on a machine that can read the record · explicit operator acceptance of the
+unverified state. Silence reads as verified, which is why the label is mandatory — but the label is
+an honest gap, not a way to close one. **Never restate a local-only result as though the reviewer
+confirmed it**, and note that inlining a marker field proves nothing about provenance either: the
+marker's own scope is form + non-vacuity + auditability, **not** that the run happened (see the
+marker-scope note above).
+
+**Enforcement boundary — say which half is mechanical.** An earlier draft of this rule claimed no
+hook could enforce any of it. That was overbroad: **presence and syntax are mechanizable** — a
+`pull_request` CI status can check that an applicable PR carries a capsule, that graded verdicts are
+expanded, and that a local-only attestation is labelled; a local `gh pr create/edit` wrapper can run
+the private-pattern scan that public CI cannot (public CI must never hold the private patterns).
+What stays un-mechanizable is **truth and provenance** — whether the capsule describes a run that
+actually happened. Neither anchor is built today; that is a named residual, and a rule that
+over-claims its own floor is the defect this file exists to prevent.
+
 > **Detail**: See `knowledge/shared/harness-core/claude_md_gate_details.md §Sim-Dispatch-Fallback` — the
 > headless `claude -p --model` fallback when in-session model-pin is unavailable, the saturation-disguise
 > retry (compact-then-retry once), and the credit-pool caveat — read when a model-pinned dispatch fails.

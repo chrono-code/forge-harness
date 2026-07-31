@@ -29,6 +29,25 @@ run_fixture() {  # $1=name  $2=card-content  $3=make-artifact(0/1)  $4=expect-wa
   local out; out=$(bash "$CHECK" "$T" 2>/dev/null)
   local warned=0
   printf '%s\n' "$out" | grep -q "⑤-b card-drift" && warned=1
+  # RUN EVERY FIXTURE TWICE — ambient locale AND LC_ALL=C. Added 2026-07-31 after the probe passed
+  # 3/3 here for weeks while returning warn=0 for EVERY lane on the ubuntu runner. Cause: the
+  # absence regex held a Hangul RANGE `[^가-힣]`, which GNU grep in the C locale rejects with
+  # "Invalid collation character" — it exits 2 and prints nothing, which downstream is
+  # indistinguishable from "no match", so the probe reported the card clean on every input.
+  # BSD grep accepts the range, so no amount of running this suite on macOS could ever have caught
+  # it. MEASURED LIMIT, stated because the first version of this comment overclaimed: LC_ALL=C on
+  # macOS is NOT a stand-in for GNU grep — reverting the Hangul range with this dual-run in place
+  # still passed here. So this leg detects the class only where GNU grep runs, i.e. in CI. It is
+  # kept because a locale-divergent verdict is a defect wherever it is observed, and it costs one
+  # extra invocation; the platform-independent detector is the source lint below.
+  local out_c; out_c=$(LC_ALL=C LANG=C bash "$CHECK" "$T" 2>/dev/null)
+  local warned_c=0
+  printf '%s\n' "$out_c" | grep -q "⑤-b card-drift" && warned_c=1
+  if [ "$warned" != "$warned_c" ]; then
+    echo "❌ $name — LOCALE-DIVERGENT: ambient warn=$warned but LC_ALL=C warn=$warned_c"
+    echo "     텍스트 계기가 로케일에 따라 다른 판정을 낸다 — 어느 쪽이 맞든 캘리브레이션 실패다."
+    rm -rf "$T"; FAILED=1; return
+  fi
   rm -rf "$T"
   if [ "$warned" = "$expect" ]; then
     echo "✅ $name (warn=$warned, expected=$expect)"
@@ -72,6 +91,42 @@ run_fixture "P4 영어 부재주장 (A-4 앵커)" \
 
 run_fixture "N7 인용된 부재키워드+정정 → 무경고 (실카드 07-22 클래스)" \
   "- 🔴 foo-digest 산출 누락. 기존 카드의 \"미가동\" 주장은 오판정이었음" 1 0
+
+
+# ── LOCALE-RANGE LINT (platform-independent, added 2026-07-31) ─────────────────────────
+# The behavioural dual-run above cannot fire on BSD grep, so the class needs a detector that does
+# not depend on which grep is installed. This one reads the SOURCE: a bracket expression containing
+# a non-ASCII RANGE (`[^가-힣]`, `[ㄱ-ㅎ]`, …) is collation-dependent by construction and will be
+# rejected outright by GNU grep in the C locale — "Invalid collation character", exit 2, no output,
+# which downstream reads as "no match" and therefore as clean.
+# Alternation of non-ASCII literals (`(🔴|🟡)`, `미가동|부재`) is NOT flagged: it carries no
+# collation, and the runner proved it works (the emoji line-selection stage passed there while the
+# range stage errored). Flagging it would push an author to mangle working code.
+echo "-- locale-range lint: 비ASCII 문자 범위를 쓰는 정규식 (collation 의존) --"
+LINT_OUT=$(python3 - "$SCRIPT_DIR" <<'LINTPY'
+import re, sys, glob, os
+root = sys.argv[1]
+# a bracket expression containing  <non-ascii> - <non-ascii>
+rng = re.compile(r'\[[^]\n]*[^\x00-\x7F]-[^\x00-\x7F][^]\n]*\]')
+hits = []
+for f in sorted(glob.glob(os.path.join(root, '*.sh'))):
+    for i, line in enumerate(open(f, encoding='utf-8', errors='replace'), 1):
+        if line.lstrip().startswith('#'):
+            continue
+        m = rng.search(line)
+        if m:
+            hits.append(f"{os.path.basename(f)}:{i}: {m.group(0)}")
+print('\n'.join(hits))
+LINTPY
+)
+if [ -n "$LINT_OUT" ]; then
+  echo "❌ 비ASCII 범위 발견 — GNU grep(C 로케일)에서 exit 2 로 죽고 결과가 '무매치'로 읽힌다:"
+  printf '%s\n' "$LINT_OUT" | sed 's/^/     /'
+  FAILED=1
+else
+  echo "✅ locale-range lint: 비ASCII 문자 범위 없음"
+fi
+
 
 echo "── card-drift probe calibration: $([ "$FAILED" -eq 0 ] && echo "PASS (전 픽스처) — 배선 가능" || echo "FAIL — 계기 불량, 배선 금지") ──"
 exit "$FAILED"

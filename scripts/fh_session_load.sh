@@ -27,6 +27,51 @@
 set -uo pipefail
 
 FH="${HUB_DIR:-${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}}"
+BE="${BE_DIR:-}"   # companion-store path — supplied by the gitignored hook registration; no public default.
+                   # Resolved HERE (not at the Mode-D block below) because the frontier-digest check
+                   # needs it: on a multi-node setup the digest producer may be a DIFFERENT machine.
+
+# ── node re-entry floor check ────────────────────────────────────────────────
+# 이 검사는 scripts/fh_node_check.sh 로 분리했다. 이유: 이 파일(fh_session_load.sh)은 gitignored
+# settings.local.json 에 등록되므로 새 클론/새 기계에선 애초에 안 돈다 — 검사가 존재 이유가 되는
+# 상황에서 도달 불가였다(Sonnet 타깃-티어 심 2026-07-30 지적).
+# ⚠️ 분리해도 자동 배선은 아니다: .claude/settings.json 도 gitignored 라(.gitignore:3-4) 등록 자체는
+# 추적될 수 없다. 추적되는 건 templates/settings.SessionStart.snippet.json 이고, 배선은 위자드가 한다.
+# 여기서 다시 호출하지 않는다: 두 곳에서 부르면 같은 이벤트를 두 번 찍는다.
+
+# ── §early-refresh: 컴패니언 refresh 를 frontier 판정보다 먼저 한다 ─────────────
+# 왜 순서가 문제인가: frontier 판정은 러너가 아닌 노드에서 $BE/tracks-meta 를 본다. refresh 가
+# 그 뒤에 있으면 **그날의 첫 세션**은 아직 안 끌어온 워킹트리를 읽어 오늘 digest 를 못 보고,
+# 이 수정이 없애려던 바로 그 오경보를 그대로 낸다(하루 한 번, 가장 값진 시점에서 실패).
+# cross-family 리뷰 2026-07-30 [HIGH] 지적. 비-Mode-D(공개) 사용자는 BE 가 비어 통째로 건너뛴다.
+PULL_NOTE="(no companion store configured)"
+if [ -d "$BE/.git" ]; then
+  export GIT_TERMINAL_PROMPT=0
+  export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new}"
+
+  # Hard wall-clock deadline on the ONLY network step. ConnectTimeout bounds the handshake, but a
+  # slow/stalled TRANSFER after connect has no bound — measured 2026-07-12: SessionStart worst-case
+  # 17.5s with 2 hook-timeout kills, all attributable to the fetch. perl-alarm is the portable
+  # watchdog (macOS ships no coreutils `timeout`); on overrun the fetch dies and the offline branch
+  # reports honestly. FH_FETCH_DEADLINE overrides (seconds). If perl is absent the wrapper degrades
+  # to running the command with NO deadline — a missing watchdog must never become a permanently
+  # skipped fetch misreported as "offline" (challenger catch 2026-07-12).
+  if command -v perl >/dev/null 2>&1; then
+    _deadline() { perl -e 'alarm shift @ARGV; exec @ARGV' "$@"; }
+  else
+    _deadline() { shift; "$@"; }
+  fi
+  PULL_NOTE=""
+  if _deadline "${FH_FETCH_DEADLINE:-8}" git -C "$BE" fetch --quiet >/dev/null 2>&1; then
+    if git -C "$BE" merge --ff-only --quiet >/dev/null 2>&1; then
+      PULL_NOTE="fetched + fast-forwarded"
+    else
+      PULL_NOTE="fetched but NOT fast-forward (companion diverged — read local + newest remote)"
+    fi
+  else
+    PULL_NOTE="fetch skipped (offline or deadline hit — read local state)"
+  fi
+fi
 
 # ── frontier-digest: 부재를 0으로 읽지 않는다 ────────────────────────────────────
 # 왜: digest 는 launchd 로 매일 09:00 에 돌지만 **31회 중 6회(19%) 산출물 없이 끝났다**
@@ -51,9 +96,35 @@ _FD_STAMP="$(date +%H:%M) 기준"
 # 존재 판정은 러너 digest_ready 와 동일 술어(glob + -size +1k). 정확명 [ -f ] 는 러너와 관대함이
 # 갈린다 — partial 파일(>0 <1k)이 성공으로 오독되고, suffix 착지가 영구 오경보가 된다
 # (divergent-leniency: 같은 상태를 두 술어가 다르게 읽으면 한쪽 결과가 무음으로 샌다).
-_fd_ready() { find "$FH/tracks/_meta" -maxdepth 1 -name "frontier_digest_$(date +%Y_%m_%d)*.md" -size +1k 2>/dev/null | grep -q .; }
+_fd_hit() { find "$1" -maxdepth 1 -name "frontier_digest_$(date +%Y_%m_%d)*.md" -size +1k 2>/dev/null | grep -q .; }
+# 노드-로컬만 보면 **다른 머신이 만든 산출물이 구조적으로 안 보인다**. 멀티머신에선 러너가 한 대이고
+# 나머지 노드는 컴패니언 스토어로만 그 산출물을 받는다 → 러너 아닌 노드가 매일 "실패다" 오경보를 낸다.
+# (2026-07-30 실측: 프로가 07-24~30 매일 정상 생산 중인데 에어는 7일 연속 FAILED 를 띄웠다.
+# 계기의 스코프가 대상보다 좁았던 케이스 — 대상은 '오늘 digest 가 있나'지 '이 디스크에 있나'가 아니다.)
+# 술어는 로컬과 **동일**(glob + -size +1k) — divergent-leniency 를 만들지 않는다.
+_fd_ready() { _fd_hit "$FH/tracks/_meta" || { [ -n "$BE" ] && _fd_hit "$BE/tracks-meta"; }; }
+# THE SECOND HALF OF THE SAME SCOPE BUG (2026-07-31). The comment above got the principle right —
+# "대상은 '오늘 digest 가 있나'지 '이 디스크에 있나'가 아니다" — and then widened the predicate by
+# exactly ONE surface (the companion store), leaving it file-only. There are TWO live producers:
+# the launchd file runner AND an app routine that posts the digest as a comment on GitHub issue
+# #102 (measured 2026-07-31: 47 comments, one per day, including today's at 09:09 KST). So on a day
+# when the file runner fails, today's digest EXISTS and the hook said "부재가 아니라 실패다" — a
+# true statement about this disk stated as a claim about the digest.
+# The fix is NOT to call the network from a SessionStart hook (it must never block turn 0 and must
+# never fail on an offline node). It is to stop over-claiming: report the scope actually measured
+# ("this node's file output failed") and NAME the surface not measured, so the reader checks it in
+# one step instead of re-running a job whose output already exists elsewhere.
+_fd_issue_note() {
+  echo "    ⓘ 파일만 본 판정이다 — 오늘치는 **GH issue #102**(앱 routine, 매일 ~09:09 KST)에 이미 있을 수 있다."
+  echo "      확인: gh issue view 102 --repo chrono-meta/forge-harness --comments | tail -40"
+  echo "      → 파일 재생성이 필요한지는 그걸 보고 판단하라. '오늘은 뉴스 없음'으로 읽지 말 것."
+}
 if _fd_ready; then
-  :
+  # 로컬엔 없고 컴패니언에만 있으면 = 이 노드는 러너가 아니다. 침묵하면 토폴로지가 안 보이므로 한 줄 알린다.
+  if ! _fd_hit "$FH/tracks/_meta"; then
+    echo "ℹ️  [frontier-digest] 오늘 digest 는 **다른 노드**가 생산했다(컴패니언 스토어 경유) — 이 노드는 러너가 아니다."
+    echo "    읽을 것: \$BE_DIR/tracks-meta/frontier_digest_$(date +%Y_%m_%d)*.md"
+  fi
 elif [ "$((10#$_FD_NOW))" -lt "$_FD_SCHED" ]; then
   echo "ℹ️  [frontier-digest] 오늘 digest 는 09:00 예정 — 아직 전이다($_FD_STAMP). 부재는 정상."
 elif [ -f "$_FD_LOG" ]; then
@@ -70,14 +141,37 @@ elif [ -f "$_FD_LOG" ]; then
   if [ -n "$_FD_ALIVE" ]; then
     echo "ℹ️  [frontier-digest] 잡이 아직 돌고 있는 중일 수 있다($_FD_STAMP, $_FD_ALIVE) — 실패 판정 보류, 나중에 재확인."
   else
-    echo "⚠️  [frontier-digest] 오늘 잡은 돌았는데 **산출물이 없다**($_FD_STAMP) — 부재가 아니라 실패다."
+    echo "⚠️  [frontier-digest] **이 노드의 파일 산출**이 실패했다($_FD_STAMP) — 부재가 아니라 실패다."
     echo "    마지막 로그: $(tail -1 "$_FD_LOG" 2>/dev/null | cut -c1-90)"
-    echo "    → 수동 재실행하거나 실패 원인을 보라. '오늘은 뉴스 없음'으로 읽지 말 것."
+    _fd_issue_note
   fi
 else
-  echo "⚠️  [frontier-digest] 스케줄(09:00) 지났는데 로그도 산출물도 없다($_FD_STAMP) — 잡이 아예 안 돌았을 수 있다(launchd 확인)."
+  echo "⚠️  [frontier-digest] 스케줄(09:00) 지났는데 로그도 파일 산출물도 없다($_FD_STAMP) — 이 노드에서 잡이 아예 안 돌았을 수 있다(launchd 확인)."
+  _fd_issue_note
 fi
-BE="${BE_DIR:-}"   # companion-store path — supplied by the gitignored hook registration; no public default.
+# (BE is resolved at the top of this script — the frontier-digest block above needs it too.)
+
+# 1-b) Weekly-audit cadence — mechanical, for the same reason the frontier-digest block above is.
+# MEASURED 2026-07-31: operations.md §Session start auto-detection (L1) promises "propose the audit
+# if 7+ days elapsed", and the audit had not run for FIFTY days. The frontier-digest cadence, which
+# is instrumented, never went a day unnoticed over the same window. The difference is not
+# importance; it is that one cadence is a hook and the other is prose, and this repo's own N=3
+# escalation rule says to instrument rather than to add a habit. One line in a hook that already
+# runs, not a new mechanism. Advisory by design: an overdue audit is not an irreversible surface,
+# so it surfaces and never blocks. Silent when current, and silent when the dir does not exist
+# (a fresh clone has no audit history and must not be nagged about one).
+_AUDIT_DIR="$FH/tracks/_audit"
+if [ -d "$_AUDIT_DIR" ]; then
+  _LATEST_AUDIT="$(find "$_AUDIT_DIR" -maxdepth 1 -name 'weekly_audit_*.md' -print 2>/dev/null \
+                   | sort | tail -1)"
+  if [ -n "$_LATEST_AUDIT" ]; then
+    _AUDIT_AGE_D=$(( ( $(date +%s) - $(_mtime "$_LATEST_AUDIT") ) / 86400 ))
+    if [ "$_AUDIT_AGE_D" -ge 7 ]; then
+      echo "🗓️  [weekly-audit] 마지막 감사가 ${_AUDIT_AGE_D}일 전이다($(basename "$_LATEST_AUDIT")) — 캐던스는 7일."
+      echo "    → /harvest-loop (lightweight) 또는 operations.md §Weekly Improvement Cycle 수동 절차."
+    fi
+  fi
+fi
 
 # Non-Mode-D / no companion store → silent no-op (this is the majority path for public users).
 [ -d "$BE/.git" ] || exit 0
@@ -89,31 +183,7 @@ BE="${BE_DIR:-}"   # companion-store path — supplied by the gitignored hook re
 #    - fail-fast env: no credential/SSH/host-key prompts can hang SessionStart.
 #    - fetch + merge --ff-only: a fast-forward is the only safe hook mutation; a diverged companion
 #      simply does not advance (no merge commit, no conflict state left behind) and we say so.
-export GIT_TERMINAL_PROMPT=0
-export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new}"
-
-# Hard wall-clock deadline on the ONLY network step. ConnectTimeout bounds the handshake, but a
-# slow/stalled TRANSFER after connect has no bound — measured 2026-07-12: SessionStart worst-case
-# 17.5s with 2 hook-timeout kills, all attributable to the fetch. perl-alarm is the portable
-# watchdog (macOS ships no coreutils `timeout`); on overrun the fetch dies and the offline branch
-# reports honestly. FH_FETCH_DEADLINE overrides (seconds). If perl is absent the wrapper degrades
-# to running the command with NO deadline — a missing watchdog must never become a permanently
-# skipped fetch misreported as "offline" (challenger catch 2026-07-12).
-if command -v perl >/dev/null 2>&1; then
-  _deadline() { perl -e 'alarm shift @ARGV; exec @ARGV' "$@"; }
-else
-  _deadline() { shift; "$@"; }
-fi
-PULL_NOTE=""
-if _deadline "${FH_FETCH_DEADLINE:-8}" git -C "$BE" fetch --quiet >/dev/null 2>&1; then
-  if git -C "$BE" merge --ff-only --quiet >/dev/null 2>&1; then
-    PULL_NOTE="fetched + fast-forwarded"
-  else
-    PULL_NOTE="fetched but NOT fast-forward (companion diverged — read local + newest remote)"
-  fi
-else
-  PULL_NOTE="fetch skipped (offline or deadline hit — read local state)"
-fi
+# (컴패니언 refresh 는 위 §early-refresh 로 올렸다 — frontier 판정이 최신 트리를 보게 하려고.)
 
 # 2) Session card date (the pointer the operator's close chain writes last).
 CARD="$FH/tracks/_meta/reference_next_session_starter.md"
