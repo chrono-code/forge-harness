@@ -260,10 +260,31 @@ if [ -d ".claude/rules" ]; then
   # fail=0 → SELFCHECK: PASS. The check would have silently ceased to exist while still
   # reporting a pass — the same shape count_check.sh:71 already guards against with its
   # impossible-zero rule. fh-meta always has refs; zero means the instrument broke.
-  _refs=$(grep -hoE '\`[^\` ]+\`' CLAUDE.md .claude/rules/*.md 2>/dev/null \
-    | sed 's/\`//g' \
-    | grep -E '^(knowledge|templates|scripts|docs|plugins|\.claude)/[^*{}<>$]+\.(md|sh|ya?ml|jsonc|json)$' \
-    | sort -u)
+  # EXTRACTION MOVED OFF grep (2026-07-31, measured on the first real CI run). The pipeline used to
+  # be `grep -hoE` + sed + `grep -E` over CLAUDE.md, which is Korean-heavy. On macOS (BSD grep, UTF-8
+  # locale) it returned ~50 refs; on the ubuntu runner (GNU grep, LANG unset => C locale) it returned
+  # ZERO, and the impossible-zero guard below is the only reason that surfaced as a failure instead
+  # of "no refs, all clean". Same root cause as the card-drift probe failing its positive lanes in
+  # the same run: multibyte text through locale-dependent grep.
+  # python3 reads the files as UTF-8 explicitly, so this extractor no longer has a locale at all.
+  # It is already a hard dependency of selfcheck (validate_plugins/marketplace, memory_link_check),
+  # so this adds nothing to the requirement set. The regex is the same one, transcribed.
+  _refs=$(python3 - <<'REFPY' 2>/dev/null
+import re, glob
+pat = re.compile(r'^(knowledge|templates|scripts|docs|plugins|\.claude)/[^*{}<>$]+\.(md|sh|ya?ml|jsonc|json)$')
+seen = set()
+for f in ['CLAUDE.md'] + sorted(glob.glob('.claude/rules/*.md')):
+    try:
+        text = open(f, encoding='utf-8', errors='replace').read()
+    except OSError:
+        continue
+    for tok in re.findall(r'`([^` ]+)`', text):
+        if pat.match(tok):
+            seen.add(tok)
+for p in sorted(seen):
+    print(p)
+REFPY
+)
   if [ -z "$_refs" ]; then
     echo "FAIL  ref-path: extractor produced 0 refs — the scan broke, it did not pass"
     fail=1
