@@ -608,3 +608,17 @@
   outcome: accepted
   evidence: "Guard R1: 7 bypass + 3 FP classes, JSON-contract violations 0; 3 findings overlapped challenger = independent convergence; 1 suggestion (start-anchoring) refuted with recorded reason, later PARTIALLY vindicated by live prose FPs — resolved with leading-separator class instead of command-position anchor. qasp R1: HIGH status-enum hole independently converged with governor read; core_override_flag requiredness grounded in contract §105 before acting. R2: 5/5 CLOSED, CONVERGED."
   note: "codex unavailable (~8/6); agy carried the cross-family leg for both FH and qasp reviews, mirroring the 07-31 panel precedent."
+- date: 2026-08-01
+  agent: headless claude -p (scratchpad cwd — context-decorrelated audit leg)
+  task: "qasp reverse-verification Run #1: Protocol #2/#4/#5 audit of FH guard+close-chain slice, 21 black-box TCs executed"
+  mode: headless -p, workspace-confined, FH CLAUDE.md not loaded (decorrelation by cwd)
+  outcome: accepted
+  evidence: "CALIBRATED (KP4 re-derived AND executed via TC-DG-03; known-negative FP 0; self-FP-tagged 1). 10 findings -> governor source-ground: 7 novel-grounded (3 S fixed same-evening 2711e0a), 2 rejected as governor corpus-feeding artifacts (agent itself marked both 미확인 — honest). Dynamic leg 17/21 PASS."
+  note: "First field->meta reverse verification. Rejection cause was the governor's slice construction, not the instrument — lesson registered in run report."
+- date: 2026-08-01
+  agent: fh-meta:challenger (in-session isolated)
+  task: "Axis-2 adversarial pass on spec-sync diff (3 fixes from Run #1)"
+  mode: sync Agent dispatch, read-only, 4 attack angles
+  outcome: accepted
+  evidence: "M0/S1/R3. S = same-class stale phrasing in destructive_pre_gate.sh:63 usage comment ('single command') that the diff itself existed to eliminate — fixed same branch. All 4 angles returned evidence, not assertion (grep :83, 3 suite counter prints, JSON tool, ⑤-b never-FAIL)."
+  note: "Angle ④ surfaced an accepted trade: count-free refs lose lane-deletion detection — mechanical suite-internal floor named as the right home if wanted."

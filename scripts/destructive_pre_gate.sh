@@ -60,7 +60,8 @@
 # Usage:
 #   hook:  PreToolUse matcher "Bash" → bash scripts/destructive_pre_gate.sh
 #   test:  printf '%s' "<command>" | bash scripts/destructive_pre_gate.sh --stdin-raw
-# Opt out on a single command with a trailing `# noqa: destructive-op`.
+# Opt out with `# noqa: destructive-op` — exempts the ENTIRE Bash payload (whole-command match,
+# see PRECISION OVER RECALL above), not a single line.
 
 set -u
 

@@ -728,6 +728,10 @@ it is the **first half of** ⑤. A close-time finding has exactly one landing or
 and there is no remaining moment where appending is the natural move. *Honest scope*: this removes
 the ordering ambiguity, not the reflex; the pre-push gate stays the floor, and on a violation it now
 **names the offending files and prints their last lines** so re-running ⑤ is a delta, not a re-read.
+The check also carries a **⑤-b card-drift probe** (advisory, never blocks): it cross-checks the
+card's *absence claims* against on-disk reality (`session_close_check.sh` ⑤-b block) — surfaced
+here because an implemented-and-lane-tested step that no spec document names is exactly the
+orphan-implementation class the 2026-08-01 reverse-verification pilot flagged (P2-08).
 
 **Mid-session card writes are drafts**: If a task (e.g., a calibration run) internally updates
 the card, that is a draft. The close chain always re-runs ⑤ to capture post-draft activities.
