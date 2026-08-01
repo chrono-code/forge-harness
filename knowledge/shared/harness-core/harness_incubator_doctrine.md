@@ -157,6 +157,16 @@ authored-case baseline (single-draw per case; reps waived per measurement-integr
 first draw matched expected — see the 2026-07-13 subagent-invocations log entry), not a calibrated
 accuracy estimate.
 
+### 3-b. The nursery also verifies what it births
+
+The incubator's arc does not end at emission: FH **reviews, accelerates, and verifies** the harnesses
+it births or adopts — a verification axis attached to the nursery as an evidenced path (field→meta
+reverse-verification arc, 2026-08-01: a field QA harness's doctrine audited the meta-harness itself,
+N=2 subjects). Boundary rule for that axis: *harness-verification core = the FH-native
+triad-consistency lens (spec ↔ implementation ↔ TC), askable with no cluster member present;
+extended = cluster instruments (trace auditors, process-fidelity harnesses), composed by UNION.*
+Full doctrine: `harness_verification_core_extended.md`.
+
 **Incubation unit — projects AND features**: incubation applies not only to new projects but to **new
 capabilities of an existing harness**. A field harness's self-development is itself run inside the
 meta-harness chamber first, then transplanted — the nursery forges new layers for existing stars, not

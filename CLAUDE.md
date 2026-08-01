@@ -30,7 +30,11 @@ existing harnesses) in its own sandbox — expensive per run, cheaper in total b
 pools and compounds — and **emits** them as independent specialized harnesses (shipped today as
 scaffold + approval machinery; the full chamber flow is the named target). Over other harnesses it
 operates in two modes: **compose** (cluster strengths) ∪ **disrupt** (melt and reforge via crucible;
-core invariants never melt). Full doctrine: `knowledge/shared/harness-core/harness_incubator_doctrine.md`.
+core invariants never melt). The nursery also **verifies what it births**: harness-verification
+**core** = the FH-native triad-consistency lens (spec↔implementation↔TC, cluster-independent) ·
+**extended** = cluster instruments composed by UNION
+(`knowledge/shared/harness-core/harness_verification_core_extended.md`). Full doctrine:
+`knowledge/shared/harness-core/harness_incubator_doctrine.md`.
 
 | Layer | Role | Representative Assets |
 |---|---|---|
@@ -313,11 +317,13 @@ pipeline**, not an afterthought, and a below-floor orchestrator RUNS the review 
 ## Field-Harness Diagnostic — "진단해줘 / 개선해줘" on a mapped project (compose → rank → HITL)
 
 The **on-demand pull sibling** of the gate above: a *project-level* "diagnose / improve this harness" ask
-composes the checks FH **already has** across **seven lenses** — leak (`/public-surface-audit`, incl. **Step 3c ignore-verification** — a file believed gitignored but actually tracked is the leak this sub-step exists to catch) · split
+composes the checks FH **already has** across **eight lenses** — leak (`/public-surface-audit`, incl. **Step 3c ignore-verification** — a file believed gitignored but actually tracked is the leak this sub-step exists to catch) · split
 integrity (`/phantom-quench` **Step 2.7**) · token/salience (`/context-doctor` · `/salience-splitter`) · structure
 (`/harness-doctor`) · verdict degrade (`scripts/degrade_direction_scan.sh`) · loop-readiness
 (`loop_engineering.md`) · built-but-unwired (per-module caller grep — a completed module with zero
-external call sites; the dominant class of the 2026-08-01 qasp audit) — into **one ranked `M`/`S`/`R`
+external call sites; the dominant class of the 2026-08-01 qasp audit) · triad consistency
+(spec↔implementation↔TC agreement — `harness_verification_core_extended.md` §2 dispatched-procedure
+recipe, cluster-independent core lens) — into **one ranked `M`/`S`/`R`
 list**. No-reinvention: it only routes and ranks.
 
 **Resident guards (do not defer these to the detail file)**: **nothing is auto-fixed** — the list is the

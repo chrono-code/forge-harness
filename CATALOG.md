@@ -4,6 +4,26 @@ AI reads this file first when searching past work. Open individual files for det
 
 ---
 
+## 2026-08-01 — Harness-Verification Doctrine: core lens vs cluster instruments
+
+- **New doctrine** (`knowledge/shared/harness-core/harness_verification_core_extended.md`): the
+  incubator's verification axis, graduated from the field→meta reverse-verification arc (one day,
+  four runs, two subjects; FH-side runs known-pair-calibrated, the company-side replication's
+  calibration record stays company-side). First clause: *harness-verification core =
+  the FH-native triad-consistency lens (spec ↔ implementation ↔ TC), askable with no cluster member
+  present; extended = cluster instruments (trace auditors, process-fidelity harnesses), composed by
+  UNION* — the Sonnet-Floor shape applied to verification.
+- **Evidence**: a field QA harness's audit doctrine, context-decorrelated, found 7 novel grounded
+  findings on an FH slice (all in the triad-disagreement class) and replicated on a second subject
+  (7 more, 3 fixed same-day); a three-instrument UNION run measured finding-class intersection zero;
+  a mechanized transcript adapter sealed the self-attested-trace residual same-day.
+- **Companions updated**: `harness_incubator_doctrine.md` §3-b (the nursery also verifies what it
+  births) · `CLAUDE.md §Identity` one-clause summary.
+- **Honest labels**: the core lens is doctrine-level today (dispatched-procedure route; no native
+  carrier asset yet — named residual, next build is evidence-threshold-gated). Subjects = 2, trace
+  pairs = 1.
+- Tags: `doctrine` `verification` `reverse-verification` `union` `cluster` `triad-consistency`
+
 ## 2026-07-26 — Scan logic single-sourced · FH_BACKEND=cross · v1.4.72
 
 - **Single-sourcing** (`scripts/psa_scan_lib.sh`): three near-duplicate implementations of
