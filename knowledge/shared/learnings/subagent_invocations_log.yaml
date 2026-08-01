@@ -643,3 +643,17 @@
   outcome: accepted
   evidence: "6 findings (3 HIGH). HIGH thin-client both-ways construction accepted → discharge-dependency precedence rule added; HIGH core-vs-floor-unmeasured tension accepted → requirement-not-certification clause; HIGH 'established' overclaim softened to first-measurement. 3 remaining absorbed as hedges; 0 dismissed without recorded ground."
   note: "codex still quota-parked (~8/6); agy carried the cross-family leg, consistent with the 08-01 panel precedent. -m flag invalid — use --model; file-read denied headless — inline the doc."
+- date: 2026-08-01
+  agent: codex sidecar (gpt-5.6-sol, session-header anchored)
+  task: "Leg C — missed-by-both pass on 3 shipped guard scripts + PreToolUse snippet"
+  mode: headless codex exec, reasoning high, prompt-inlined sources, named residuals excluded by instruction
+  outcome: accepted
+  evidence: "HIGH 3 / MED 5 / LOW 1, verdict 'reopen CONVERGED' on a 133-lane-green surface. Governor reproduced HIGH #1 live (checkout -f . = CLEAN, -- . = HIT known-pair). Cross-guard interaction angle returned NONE with docs citation. Fixes deferred to a dedicated branch (HITL)."
+  note: "codex ran its own probes and docs verification — sol-tier depth. Third family reopening a 2-family CONVERGED verdict, second instance today."
+- date: 2026-08-01
+  agent: codex sidecar (gpt-5.6-terra + gpt-5.6-luna, calibration probes)
+  task: "Tier-sufficiency screen for always-on decorrelation — same adapter-audit task as sol leg B, known-pair scored"
+  mode: headless codex exec, high, identical prompts; scored against sol's 6 HIGH classes + fabrication check
+  outcome: accepted
+  evidence: "terra 6/6 known-positives + 5 net-new (approval-negation regex, heredoc tail-drop, --dry-run, marker-in-success, tool-id reuse); luna 5/6 + 4 net-new (Write/Edit content discarded entirely) — only miss = design-layer channel-provenance. All quoted lines verified real. Echo nondeterministic across all calls — session-header model: line adopted as the anchor."
+  note: "n=1 screen on one bounded task class — recommendation scoped: terra default for detection legs, luna for volume/background, sol for convergence verdicts and probe-executing deep audits."
