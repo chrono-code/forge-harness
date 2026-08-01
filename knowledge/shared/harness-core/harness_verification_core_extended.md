@@ -25,9 +25,15 @@ extended today (e.g. trace auditing) becomes core the day FH ships a native carr
 pilot's mechanized transcript adapter is exactly such a candidate). **Precedence rule** (the test
 looks through to the discharge dependency): an FH-shipped *thin client* whose verification work is
 actually done by a cluster member's engine is **extended** — shipping a wrapper does not internalize
-a capability; core requires that the discharge **completes with no cluster member present**. And
-"core" names a **requirement placed on the capability, not a certification** that today's route
-meets it at every tier — the floor-conformance question is a named residual (§5).
+a capability; core requires that the discharge **completes with no cluster member present**.
+**Granularity rule** (cross-family probe 2026-08-01 — a tool emitting a local
+`CONDITIONAL_PASS — runtime clauses unmeasured` that upgrades to an unconditional verdict via a
+cluster instrument routes both ways if judged per-tool): route **per verdict, not per tool** — the
+typed partial verdict that completes locally and **names its unmeasured clauses** is core for what
+it measures; the fuller verdict it advertises through cluster resolution is extended. "Completes" =
+emits its declared typed verdict; a verdict silently narrower than declared is neither. And "core"
+names a **requirement placed on the capability, not a certification** that today's route meets it
+at every tier — the floor-conformance question is a named residual (§5).
 
 This is the Sonnet-Floor doctrine's shape applied to verification: base capability must be 100%
 present at the floor (no cluster required); reinforcement is dispatch, never substrate. A
@@ -45,8 +51,9 @@ checks on declared counts, while the triad lens interrogates the **agreement bet
 artifacts** across the whole declared contract. Measured consequence of not asking the general
 question: pinned
 counts rot against grown suites, implementations ship with no spec presence (orphan implementations),
-and opt-out semantics drift between spec text and code comment — all invisible to per-asset review,
-all found on first application of the lens (see §4).
+and opt-out semantics drift between spec text and code comment — none previously caught by the
+per-asset stack (every §4 finding was novel-grounded: absent from prior review records of the same
+files), all found on first application of the lens (see §4).
 
 Why this is *core*, not a borrowed instrument: the lens is a **methodology** (a MECE
 spec-coverage matrix + a three-way traceability table + findings with per-item grounding), learned
@@ -78,9 +85,12 @@ auto-fixed.
 
 ## 3. The extended mode — cluster instruments, UNION composition
 
-Instruments the cluster contributes are **class-disjoint** from the core lens, and from each other,
-by observation modality (first measured 2026-08-01, instrument-triple run on one FH slice —
-finding-class intersection **zero**):
+Instruments the cluster contributes are **class-disjoint from the core lens** by observation
+modality; between the extended instruments themselves the disjointness is **partial, not claimed**
+(scope correction 2026-08-01, cross-family audit: the pilot's own record shows one outcome class —
+an unreviewed merge — caught by both trace and process-fidelity instruments, and the process leg
+returned scalar scores rather than a finding inventory, so a three-way class intersection was never
+computable from that data; what the run measured is **static↔trace intersection zero**):
 
 - **Static triad lens** (core, above) — sees spec/implementation/TC disagreement. Principally blind
   to runtime events: a trace auditor's violation classes do not exist in static artifacts.
@@ -88,15 +98,17 @@ finding-class intersection **zero**):
   machine-written transcript) — see runtime boundary violations and blocked attempts. Principally
   blind to static drift: a rotten spec count is not an event in any trace.
 - **Process-fidelity / judge harnesses** (extended — e.g. a DeepEval-style expected-tool-set +
-  LLM-judge leg) — see procedure deviation; conceptual overlap with trace auditors on some classes,
-  different mechanism, still zero overlap with the static class.
+  LLM-judge leg) — see procedure deviation; **overlaps trace auditors on some outcome classes**
+  (different mechanism does not make an outcome class disjoint), zero measured overlap with the
+  static class.
 
 Composition rule: **detection composes by UNION** — the model-ensemble union pattern
 (operator-measured, held in operator memory: detection = UNION lift, generation = voting; the
 instrument-level measurement is §4 item 3) generalizes from model diversity to **instrument
-diversity**. Blindness between these instruments is principled (modality), not a performance gap, so
-adding reps of one instrument is not expected to cover another's class (principled claim, measured
-once — §5); only adding the other instrument does.
+diversity**. Static↔trace blindness is argued from modality (a static artifact defect is not a trace
+event, and vice versa) and measured once (§5); on that argument, reps of one instrument are not
+expected to cover the other's class — adding the other instrument is. Between extended instruments
+the same claim is **not** made (see the scope correction above).
 
 Extended-mode discipline (unchanged invariants, restated for this surface): cluster dispatch rides
 the existing consent lanes and residency rules; instrument findings are evidence candidates until the
@@ -120,9 +132,11 @@ below):
    quirk. (Calibration status of this run is recorded company-side only — residency boundary; the
    FH-side judgment stands on runs 1, 3, 4 alone.)
 3. **Instrument-triple UNION run** — three instruments over one governed/mutant trace pair:
-   finding-class intersection zero; discriminating control separated (governed vs mutant) on every
-   instrument. First measurement of the class-disjointness §3 argues (single slice, single pair —
-   the principled-blindness argument carries the rest; §5).
+   discriminating control separated (governed vs mutant) on every instrument; **static↔trace
+   finding-class intersection zero** (the measurable pair — the process-fidelity leg returned
+   scalars, not a finding inventory, so it enters the UNION as a separating instrument but not the
+   intersection measurement). First measurement of the static↔trace disjointness §3 argues (single
+   slice, single pair — the modality argument carries the rest; §5).
 4. **Mechanized trace adapter** — the self-attested-trace residual sealed by extracting actions from
    the session's machine-written transcript; known-pair PASS, one live false-positive (data-vs-execution
    confusion) hand-verified and fixed same-day with a regression pair.

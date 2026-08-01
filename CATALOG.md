@@ -15,8 +15,10 @@ AI reads this file first when searching past work. Open individual files for det
   UNION* — the Sonnet-Floor shape applied to verification.
 - **Evidence**: a field QA harness's audit doctrine, context-decorrelated, found 7 novel grounded
   findings on an FH slice (all in the triad-disagreement class) and replicated on a second subject
-  (7 more, 3 fixed same-day); a three-instrument UNION run measured finding-class intersection zero;
-  a mechanized transcript adapter sealed the self-attested-trace residual same-day.
+  (7 more, 3 fixed same-day); a three-instrument UNION run measured **static↔trace** finding-class
+  intersection zero (between extended instruments disjointness is partial — scope-corrected same day
+  by cross-family audit); a mechanized transcript adapter addressed the self-attested-trace residual
+  same-day (its own audit-integrity limits are pilot-grade — Run #4 backlog).
 - **Companions updated**: `harness_incubator_doctrine.md` §3-b (the nursery also verifies what it
   births) · `CLAUDE.md §Identity` one-clause summary.
 - **Honest labels**: the core lens is doctrine-level today (dispatched-procedure route; no native
