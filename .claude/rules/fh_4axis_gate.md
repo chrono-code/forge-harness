@@ -79,7 +79,7 @@ FH asset modified → Axis 1 (templates/regression_guard.sh --pr {BRANCH})
   → All 4 PASS → git commit allowed   |   Any FAIL → fix inline, re-run
 ```
 
-**Why automatic**: Each axis catches a different defect class; asking separately means slip-through. **Why hook**: CLAUDE.md rules are advisory — the hook physically blocks commit until marker + manifest exist. **Scope**: active from the moment any FH file is modified in the session.
+**Why automatic**: Each axis catches a different defect class; asking separately means slip-through. **Why hook**: CLAUDE.md rules are advisory — the hook physically blocks commit until marker + manifest exist. External anchor: the HANDBOOK.md benchmark (arXiv:2607.25398) measures prose-only SOP compliance failing at frontier scale — canonical harvest with figures: `knowledge/shared/harness-core/gate_locality_principle.md` §external anchors (numbers live there only; a pinned figure in two files rots independently). **Scope**: active from the moment any FH file is modified in the session.
 
 **Lightweight exception** (Axis 1 + 4 only, skip Axes 2–3): Sessions where **zero SKILL.md / rules / templates files changed** (e.g., CATALOG.md entry, tracks/ update). The hook detects this automatically — no Axes 2+3 marker required for light-only commits. Judgment is file-based, not subjective.
 
