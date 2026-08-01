@@ -41,7 +41,7 @@ import json,sys
 try: d = json.load(sys.stdin)
 except Exception: sys.exit(0)
 if d.get("tool_name") != "Write": sys.exit(0)
-sys.stdout.write(d.get("tool_input", {}).get("file_path", "") or "")
+sys.stdout.buffer.write((d.get("tool_input", {}).get("file_path", "") or "").encode("utf-8"))
 ' 2>/dev/null) || FILE=""
 [ -n "$FILE" ] || exit 0
 
@@ -85,7 +85,8 @@ case "$BEHIND" in ''|*[!0-9]*) exit 0 ;; esac
 MSG="  ⚠️  STALE-CLONE $ROOT is behind $UPSTREAM by $BEHIND commit(s).
       Building on a stale clone manufactures duplicates of work that already exists upstream
       (measured: a 46-PR-behind clone rebuilt an existing lane, 2026-07-31).
-      Before creating new files here: git -C $ROOT pull --ff-only  (or rebase your branch).
+      Advisory timing: this notice arrives with the Write already evaluated — reconcile NOW,
+      before the next file: git -C '$ROOT' pull --ff-only  (or rebase your branch).
       found→extend applies at repo level too — check what upstream already has."
 
 if json_out=$(printf '%s' "$MSG" | PYTHONIOENCODING=utf-8 python3 -c '

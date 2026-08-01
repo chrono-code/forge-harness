@@ -218,6 +218,28 @@ else
   printf '  ❌ %-52s rc=%s out=%s\n' "C5 non-Bash payload: silent" "$c_rc" "$c_out"; fail=$((fail+1))
 fi
 
+echo "-- GPT leg-C round (2026-08-01): option-before-pathspec + staged-only + unicode-input --"
+expect "checkout -f . (leg-C bypass)"              HIT   'git checkout -f .'
+expect "restore --source=HEAD . (leg-C bypass)"    HIT   'git restore --source=HEAD .'
+expect "restore -s HEAD ."                         HIT   'git restore -s HEAD .'
+expect "restore --staged . is CLEAN (unstage only)" CLEAN 'git restore --staged .'
+expect "restore --staged --worktree ."             HIT   'git restore --staged --worktree .'
+expect "checkout .gitignore still CLEAN"           CLEAN 'git checkout .gitignore'
+
+# C6 — unicode command + ascii-codec env: the INPUT extractor must survive (leg-C HIGH #8 —
+# output encoder was pinned, input was not; a non-ASCII char anywhere in the payload emptied CMD
+# and the guard failed CLEAN-open).
+c_out=$(python3 -c 'import json;print(json.dumps({"tool_name":"Bash","tool_input":{"command":"git reset --hard # 한글 주석"}}))' | PYTHONIOENCODING=ascii bash "$G" 2>/dev/null); c_rc=$?
+if [ "$c_rc" -eq 0 ] && printf '%s' "$c_out" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert "DESTRUCTIVE-OP" in d["hookSpecificOutput"]["additionalContext"]
+' 2>/dev/null; then
+  printf '  ✅ %-52s %s\n' "C6 unicode cmd + ascii env: still HIT" OK; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s\n' "C6 unicode cmd + ascii env: still HIT" "$c_rc" "$c_out"; fail=$((fail+1))
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "[destructive-pre-gate] ✅ all $pass known pairs hold"; exit 0
