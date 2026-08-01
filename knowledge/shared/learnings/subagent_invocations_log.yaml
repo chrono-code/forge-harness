@@ -622,3 +622,38 @@
   outcome: accepted
   evidence: "M0/S1/R3. S = same-class stale phrasing in destructive_pre_gate.sh:63 usage comment ('single command') that the diff itself existed to eliminate — fixed same branch. All 4 angles returned evidence, not assertion (grep :83, 3 suite counter prints, JSON tool, ⑤-b never-FAIL)."
   note: "Angle ④ surfaced an accepted trade: count-free refs lose lane-deletion detection — mechanical suite-internal floor named as the right home if wanted."
+- date: 2026-08-01
+  agent: fh-meta:challenger (in-session isolated)
+  task: "Axis-2 adversarial review of harness-verification doctrine landing (new doctrine + 3 companion edits)"
+  mode: sync Agent dispatch, 4 attack angles, gitignored evidence records off-limits by instruction
+  outcome: accepted
+  evidence: "S3/M1/R4, every finding file:line-grounded. S1 boundary dual-criterion (trace-adapter routes both ways), S2 doctrine-binding obligation unwired from the Diagnostic entry point (self-referential P2-08 orphan class), S3 discharge recipe was operator-local-only. All three fixed same branch; 4 attack-failures explicitly recorded (3-face wording consistency held)."
+  note: "S2 is the reverse-verification lens catching the doctrine ABOUT itself — orphan-implementation class re-found by the adversarial pass before commit."
+- date: 2026-08-01
+  agent: claude (Sonnet, blind isolated sim)
+  task: "Target-tier sim: does the doctrine text alone route 3 scenarios correctly at the floor tier"
+  mode: doc-only read, no other files, main-session reasoning not inherited
+  outcome: accepted
+  evidence: "3/3 correct (dispatched-procedure route when no cluster; UNION-not-substitution; no-carrier does not waive core). Quoted the binding sentences verbatim."
+  note: "Ran on pre-fix draft; post-fix text strengthens the same sentences the sim anchored on (no weakening edit)."
+- date: 2026-08-01
+  agent: agy sidecar (gemini-3.6-flash-high; model-echo 'Gemini 3.6 Flash')
+  task: "Cross-family adversarial leg on final doctrine text (3 angles: contradiction / overclaim / boundary ambiguity)"
+  mode: headless agy -p, prompt-inlined document (public content), first-line model echo required
+  outcome: accepted
+  evidence: "6 findings (3 HIGH). HIGH thin-client both-ways construction accepted → discharge-dependency precedence rule added; HIGH core-vs-floor-unmeasured tension accepted → requirement-not-certification clause; HIGH 'established' overclaim softened to first-measurement. 3 remaining absorbed as hedges; 0 dismissed without recorded ground."
+  note: "codex still quota-parked (~8/6); agy carried the cross-family leg, consistent with the 08-01 panel precedent. -m flag invalid — use --model; file-read denied headless — inline the doc."
+- date: 2026-08-01
+  agent: codex sidecar (gpt-5.6-sol, session-header anchored)
+  task: "Leg C — missed-by-both pass on 3 shipped guard scripts + PreToolUse snippet"
+  mode: headless codex exec, reasoning high, prompt-inlined sources, named residuals excluded by instruction
+  outcome: accepted
+  evidence: "HIGH 3 / MED 5 / LOW 1, verdict 'reopen CONVERGED' on a 133-lane-green surface. Governor reproduced HIGH #1 live (checkout -f . = CLEAN, -- . = HIT known-pair). Cross-guard interaction angle returned NONE with docs citation. Fixes deferred to a dedicated branch (HITL)."
+  note: "codex ran its own probes and docs verification — sol-tier depth. Third family reopening a 2-family CONVERGED verdict, second instance today."
+- date: 2026-08-01
+  agent: codex sidecar (gpt-5.6-terra + gpt-5.6-luna, calibration probes)
+  task: "Tier-sufficiency screen for always-on decorrelation — same adapter-audit task as sol leg B, known-pair scored"
+  mode: headless codex exec, high, identical prompts; scored against sol's 6 HIGH classes + fabrication check
+  outcome: accepted
+  evidence: "terra 6/6 known-positives + 5 net-new (approval-negation regex, heredoc tail-drop, --dry-run, marker-in-success, tool-id reuse); luna 5/6 + 4 net-new (Write/Edit content discarded entirely) — only miss = design-layer channel-provenance. All quoted lines verified real. Echo nondeterministic across all calls — session-header model: line adopted as the anchor."
+  note: "n=1 screen on one bounded task class — recommendation scoped: terra default for detection legs, luna for volume/background, sol for convergence verdicts and probe-executing deep audits."
