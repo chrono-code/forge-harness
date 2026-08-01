@@ -40,7 +40,7 @@
     "script header). Advisory by design, same contract as pipe_verdict_guard (additionalContext +",
     "systemMessage, no permissionDecision); escalate with FH_DESTRUCTIVE_BLOCK=1. Opt out per",
     "command with `# noqa: destructive-op`.",
-    "  bash scripts/test_destructive_pre_gate_lanes.sh        # 71 pairs, expect all hold"
+    "  bash scripts/test_destructive_pre_gate_lanes.sh        # 75 pairs, expect all hold"
   ],
   "project_settings_json": {
     "hooks": {

@@ -108,6 +108,12 @@ expect "residual: rm -rf \$HOME stays CLEAN"       CLEAN 'rm -rf $HOME'
 expect "residual: find -delete stays CLEAN"        CLEAN 'find . -delete'
 expect "residual: mention-as-data DOES fire"       HIT   'echo "git reset --hard is dangerous"'
 expect "residual: sudo wrapper still caught"       HIT   'sudo rm -rf /'
+expect "path-prefix /bin/rm still caught"          HIT   '/bin/rm -rf /'
+expect "subshell (git reset --hard) caught"        HIT   'out=$(git reset --hard 2>&1)'
+# Round 3 (measured live 2x): English prose satisfied the rm row via the word TAIL of
+# "Confirm" + a dash-word carrying r + a stray glob — leading-separator class kills it.
+expect "prose word-tail rm FP stays CLEAN"         CLEAN 'echo Round 2 verification. Confirm each prior finding is closed WITHOUT introducing a new default-toward-PASS hole (attack) * done'
+expect "legit reset word-tail stays CLEAN"         CLEAN 'echo the legit reset --hard flag docs'
 
 echo "-- opt-out --"
 expect "noqa suppresses"                           CLEAN 'git reset --hard origin/main  # noqa: destructive-op'

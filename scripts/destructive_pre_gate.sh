@@ -80,9 +80,11 @@ printf '%s' "$CMD" | grep -qE '#[[:space:]]*noqa:?[[:space:]]*destructive-op' &&
 #   quotes stripped           → `rm -rf "/"` matches like its unquoted twin (A3; mention-as-data
 #                               FP surface unchanged — that class fires with or without quotes)
 #   tabs → spaces, squeezed   → `git  reset --hard` (double space) matches (A2)
-# Deliberately NOT anchored to a command-position: anchoring would trade `sudo rm -rf /` /
-# `env X=1 git reset --hard` bypasses for a smaller mention-as-data FP surface — recall wins on an
-# advisory layer (cross-family suggestion considered and REJECTED, reason on record here).
+# Anchoring: rows require a leading separator `[ (/]` before the command word (NOT command-position
+# anchoring — sudo/env/xargs wrappers keep a space before the word and stay caught). This closes the
+# measured prose FP where "Confi**rm** each … -toward-PASS … *" satisfied the rm row through a word
+# TAIL (fired live twice on this guard's own review commands, 2026-08-01). Full command-position
+# anchoring stays REJECTED (would drop sudo/env wrappers); `/` in the class keeps `/bin/rm` caught.
 JOINED="${CMD//\\$'\n'/ }"
 FLAT=" $(printf '%s' "$JOINED" | tr -d '\r' | tr '\n' ';' | sed 's/;/; /g' | tr -d '"'"'" | tr '\t' ' ' | tr -s ' ') "
 
@@ -104,17 +106,17 @@ FLAT=$(printf '%s' "$FLAT" | sed -E 's/git clean +[^|;&]*(-[a-zA-Z]*n[a-zA-Z]*|-
 # Matched with grep -E against the padded FLAT. Keep each pattern precise; add a lane pair in
 # scripts/test_destructive_pre_gate_lanes.sh for every row you add (known-pair rule).
 PATTERNS=(
-  'git reset [^|;&]*--hard@@git reset --hard discards ALL uncommitted changes irreversibly'
-  'git clean [^|;&]*-[a-zA-Z]*[fxX]@@git clean -f/-x permanently deletes untracked files'
-  'git checkout ([^|;&]*-- )?\.\/? @@git checkout . reverts every local modification'
-  'git restore [^|;&]*--worktree@@git restore --worktree reverts working-tree changes'
-  'git restore \.\/? @@git restore . reverts every local modification'
-  'git push [^|;&]*(--force(-with-lease)?[ ;]|-f[ ;]| \+[^ ;]+[ ;])@@force push rewrites remote history (pre-push hook will also gate this — enumerate first)'
-  'git branch [^|;&]*(-[a-zA-Z]*D |--delete [^|;&]*--force|--force [^|;&]*--delete)@@git branch -D force-deletes a branch without merge check'
-  'git stash (drop|clear)[ ;]@@git stash drop/clear permanently discards stashed work'
-  'git worktree remove [^|;&]*--force@@git worktree remove --force discards a dirty worktree'
-  'rm [^|;&]*-[a-zA-Z]*[rR][a-zA-Z]*[^|;&]* (/\*?|~/?|\.\/?\*?|\*)[ ;]@@rm -rf on root/home/cwd/glob deletes irreplaceably'
-  'rm [^|;&]*--no-preserve-root@@rm --no-preserve-root is never routine'
+  '[ (/]git reset [^|;&]*--hard@@git reset --hard discards ALL uncommitted changes irreversibly'
+  '[ (/]git clean [^|;&]*-[a-zA-Z]*[fxX]@@git clean -f/-x permanently deletes untracked files'
+  '[ (/]git checkout ([^|;&]*-- )?\.\/? @@git checkout . reverts every local modification'
+  '[ (/]git restore [^|;&]*--worktree@@git restore --worktree reverts working-tree changes'
+  '[ (/]git restore \.\/? @@git restore . reverts every local modification'
+  '[ (/]git push [^|;&]*(--force(-with-lease)?[ ;]|-f[ ;]| \+[^ ;]+[ ;])@@force push rewrites remote history (pre-push hook will also gate this — enumerate first)'
+  '[ (/]git branch [^|;&]*(-[a-zA-Z]*D |--delete [^|;&]*--force|--force [^|;&]*--delete)@@git branch -D force-deletes a branch without merge check'
+  '[ (/]git stash (drop|clear)[ ;]@@git stash drop/clear permanently discards stashed work'
+  '[ (/]git worktree remove [^|;&]*--force@@git worktree remove --force discards a dirty worktree'
+  '[ (/]rm [^|;&]*-[a-zA-Z]*[rR][a-zA-Z]*[^|;&]* (/\*?|~/?|\.\/?\*?|\*)[ ;]@@rm -rf on root/home/cwd/glob deletes irreplaceably'
+  '[ (/]rm [^|;&]*--no-preserve-root@@rm --no-preserve-root is never routine'
 )
 
 hits=""
