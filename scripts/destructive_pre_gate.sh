@@ -41,6 +41,16 @@
 #     payload with a destructive line 1 and a `# noqa: destructive-op` on line 2 exempts both.
 #     Accepted: noqa is self-grantable by design on this advisory surface (same trust channel as
 #     the DESTRUCTIVE_OP_OK env ack) — the hard floor for the irreversible half stays pre-push.
+#   - Shell-escape reconstruction (`\g\i\t reset --hard`, `$'git' reset`) and quoted-space git -C
+#     paths (`git -C "/tmp/my repo" reset --hard`) — regex-with-normalization cannot dequote like
+#     a shell; a Bash-compatible tokenizer would be over-build for an advisory layer (GPT-round,
+#     registered). Deliberate-obfuscation is outside this guard's threat model anyway: it counters
+#     SELF-JUSTIFICATION, not adversarial evasion.
+#   - Block mode (FH_DESTRUCTIVE_BLOCK=1) is an ESCALATED ADVISORY, not an enforcement boundary:
+#     malformed payload / dead python3 / grep processing failure all fail open by the documented
+#     degrade direction (reversible surface). A project needing a hard floor on these ops wires a
+#     PreToolUse permission rule or server-side protection, not this guard (GPT-round, pinned by
+#     the fault-injection lanes).
 #
 # DELIVERY CHANNEL: advisory emits JSON on stdout — hookSpecificOutput.additionalContext (model)
 #   + systemMessage (user). permissionDecision DELIBERATELY ABSENT: the guard must never
@@ -70,7 +80,7 @@ fi
 [ -n "$CMD" ] || exit 0
 
 # Explicit opt-out, checked before any rule.
-printf '%s' "$CMD" | grep -qE '#[[:space:]]*noqa:?[[:space:]]*destructive-op' && exit 0
+printf '%s' "$CMD" | LC_ALL=C grep -qE '#[[:space:]]*noqa:?[[:space:]]*destructive-op' && exit 0
 
 # Flatten to ONE line (grep is line-oriented; multi-line commands are the recurring shape) and pad
 # with spaces so end-of-string flags match uniformly (` -f` at line end == ` -f `).
@@ -85,19 +95,33 @@ printf '%s' "$CMD" | grep -qE '#[[:space:]]*noqa:?[[:space:]]*destructive-op' &&
 # measured prose FP where "Confi**rm** each … -toward-PASS … *" satisfied the rm row through a word
 # TAIL (fired live twice on this guard's own review commands, 2026-08-01). Full command-position
 # anchoring stays REJECTED (would drop sudo/env wrappers); `/` in the class keeps `/bin/rm` caught.
-JOINED="${CMD//\\$'\n'/ }"
-FLAT=" $(printf '%s' "$JOINED" | tr -d '\r' | tr '\n' ';' | sed 's/;/; /g' | tr -d '"'"'" | tr '\t' ' ' | tr -s ' ') "
+# GPT-round (R4) semantics fixes, each lane-pinned:
+#   backslash-newline joins with EMPTY string, matching shell semantics — a space here let
+#   `git re\` + newline + `set --hard` split the token and miss (measured bypass).
+#   Separators `&& || | & ( )` are space-padded so `:&&git reset --hard` and `--force|cat`
+#   satisfy the leading/trailing boundary classes without whitespace in the original.
+JOINED="${CMD//\\$'\n'/}"
+FLAT=" $(printf '%s' "$JOINED" | tr -d '\r' | tr '\n' ';' | sed 's/;/; /g' \
+  | sed -E 's/(\&\&|\|\||[|&()])/ \1 /g' | tr -d '"'"'" | tr '\t' ' ' | tr -s ' ') "
 
-# Normalize `git -C <path>` / `--git-dir=` / `--work-tree=` down to bare `git` BEFORE matching —
-# the Axis-2 pass measured `git -C /repo reset --hard` sailing through every git row, and this
-# environment specifically TRAINS that shape ("cwd resets between calls, use absolute paths /
-# git -C"), so the origin defect (a self-justifying model) would most naturally emit exactly it.
-FLAT=$(printf '%s' "$FLAT" | sed -E 's/git( +(-C +[^ ;]+|--git-dir=[^ ;]+|--work-tree=[^ ;]+))+/git/g')
+# Normalize git global options down to bare `git` BEFORE matching — the Axis-2 pass measured
+# `git -C /repo reset --hard` sailing through every git row, and this environment specifically
+# TRAINS that shape ("cwd resets between calls, use absolute paths / git -C"), so the origin
+# defect (a self-justifying model) would most naturally emit exactly it. GPT-round extended the
+# consumed set: --no-pager, -c k=v, -p/-P, and the space-separated --git-dir/--work-tree forms.
+FLAT=$(printf '%s' "$FLAT" | sed -E 's/git( +(-C +[^ ;]+|--git-dir[= ][^ ;]+|--work-tree[= ][^ ;]+|-c +[^ ;]+|--no-pager|-[pP]))+/git/g')
 
 # Dry-run neutralizer: `git clean -fdn` / `--dry-run` is non-destructive; rewrite it to a token no
 # row matches, so the clean row cannot FP on a dry run (Axis-2 #6 — an FP here violates the very
-# S5 lesson the header cites).
-FLAT=$(printf '%s' "$FLAT" | sed -E 's/git clean +[^|;&]*(-[a-zA-Z]*n[a-zA-Z]*|--dry-run)[^|;&]*/git clean DRYRUN/g')
+# S5 lesson the header cites). GPT-round scoping: only OPTION tokens may sit between `clean` and
+# the dry-run flag — a nested `"$(echo -n build)"` or a post-`--` pathspec `-n` no longer
+# neutralizes a real deletion (`--` itself is not matched by the option-token group, so
+# consumption stops there by construction).
+FLAT=$(printf '%s' "$FLAT" | sed -E 's/git clean( +--?[a-zA-Z][a-zA-Z=-]*)* +(-[a-zA-Z]*n[a-zA-Z]*|--dry-run)( +--?[a-zA-Z][a-zA-Z=-]*)*/git clean DRYRUN/g')
+
+# cwd-glob canonicalization: `././*` and friends collapse to `./*` so the rm row's target
+# alternation sees the canonical spelling (GPT-round; brace-expansion globs stay a residual).
+FLAT=$(printf '%s' "$FLAT" | sed -E 's/(\.\/)+/.\//g')
 
 # ── Destructive pattern table: regex@@description ─────────────────────────────────────────────
 # Delimiter is @@ because the regexes themselves carry `|` (alternation) — a `|` delimiter
@@ -105,25 +129,32 @@ FLAT=$(printf '%s' "$FLAT" | sed -E 's/git clean +[^|;&]*(-[a-zA-Z]*n[a-zA-Z]*|-
 # first run, 2026-08-01: 25/46 lanes failed with "brackets not balanced" before any live use).
 # Matched with grep -E against the padded FLAT. Keep each pattern precise; add a lane pair in
 # scripts/test_destructive_pre_gate_lanes.sh for every row you add (known-pair rule).
+# GPT-round (R4) token-boundary discipline: every destructive OPTION must start its own token
+# (preceded by a space) — `docs--hard`, `release--force`, `--exclude=cache`'s x, and
+# `rm --verbose`'s r no longer satisfy rows through substrings of unrelated tokens. Long-form
+# spellings the boundary would orphan are added explicitly (--force for clean, --recursive for
+# rm, --force-with-lease=<ref>, worktree -f, restore -W).
 PATTERNS=(
-  '[ (/]git reset [^|;&]*--hard@@git reset --hard discards ALL uncommitted changes irreversibly'
-  '[ (/]git clean [^|;&]*-[a-zA-Z]*[fxX]@@git clean -f/-x permanently deletes untracked files'
+  '[ (/]git reset ([^|;&]* )?--hard[ ;]@@git reset --hard discards ALL uncommitted changes irreversibly'
+  '[ (/]git clean ([^|;&]* )?(--force[ ;]|-[a-zA-Z]*[fxX][a-zA-Z]*[ ;])@@git clean -f/-x permanently deletes untracked files'
   '[ (/]git checkout ([^|;&]*-- )?\.\/? @@git checkout . reverts every local modification'
-  '[ (/]git restore [^|;&]*--worktree@@git restore --worktree reverts working-tree changes'
+  '[ (/]git restore ([^|;&]* )?(--worktree|-[a-zA-Z]*W[a-zA-Z]*[ ;])@@git restore --worktree reverts working-tree changes'
   '[ (/]git restore \.\/? @@git restore . reverts every local modification'
-  '[ (/]git push [^|;&]*(--force(-with-lease)?[ ;]|-f[ ;]| \+[^ ;]+[ ;])@@force push rewrites remote history (pre-push hook will also gate this — enumerate first)'
-  '[ (/]git branch [^|;&]*(-[a-zA-Z]*D |--delete [^|;&]*--force|--force [^|;&]*--delete)@@git branch -D force-deletes a branch without merge check'
+  '[ (/]git push ([^|;&]* )?(--force(-with-lease(=[^ ;]+)?)?[ ;]|-[a-zA-Z]*f[a-zA-Z]*[ ;]|\+[^ ;]+[ ;])@@force push rewrites remote history (pre-push hook will also gate this — enumerate first)'
+  '[ (/]git branch ([^|;&]* )?(-[a-zA-Z]*D[ ;]|--delete( [^|;&]*)? --force[ ;]|--force( [^|;&]*)? --delete[ ;])@@git branch -D force-deletes a branch without merge check'
   '[ (/]git stash (drop|clear)[ ;]@@git stash drop/clear permanently discards stashed work'
-  '[ (/]git worktree remove [^|;&]*--force@@git worktree remove --force discards a dirty worktree'
-  '[ (/]rm [^|;&]*-[a-zA-Z]*[rR][a-zA-Z]*[^|;&]* (/\*?|~/?|\.\/?\*?|\*)[ ;]@@rm -rf on root/home/cwd/glob deletes irreplaceably'
-  '[ (/]rm [^|;&]*--no-preserve-root@@rm --no-preserve-root is never routine'
+  '[ (/]git worktree remove ([^|;&]* )?(--force[ ;]|-[a-zA-Z]*f[a-zA-Z]*[ ;])@@git worktree remove --force discards a dirty worktree'
+  '[ (/]rm ([^|;&]* )?(--recursive|-[a-zA-Z]*[rR][a-zA-Z]*)[^|;&]* (/\*?|~/?|\.\/?\*?|\*)[ ;]@@rm -rf on root/home/cwd/glob deletes irreplaceably'
+  '[ (/]rm ([^|;&]* )?--no-preserve-root@@rm --no-preserve-root is never routine'
 )
 
 hits=""
 for entry in "${PATTERNS[@]}"; do
   pattern="${entry%%@@*}"
   desc="${entry#*@@}"
-  if printf '%s' "$FLAT" | grep -qE "$pattern"; then
+  # LC_ALL=C: an inherited locale must never change what an ASCII pattern matches (the collation
+  # class killed a sibling probe silently — card-drift 2026-07-31; patterns here are ASCII-only).
+  if printf '%s' "$FLAT" | LC_ALL=C grep -qE "$pattern"; then
     hits="${hits}  ⚠️  DESTRUCTIVE-OP ${desc}
 "
   fi
@@ -145,15 +176,14 @@ fi
 # text carries non-ASCII (⚠️) and an inherited ascii codec was measured to kill the emission
 # (pipe_verdict_guard lane C4). python3 owns escaping; on failure degrade to stderr (delivery
 # lost, call undisturbed).
-json_out=$(printf '%s' "$hits" | PYTHONIOENCODING=utf-8 python3 -c '
+if json_out=$(printf '%s' "$hits" | PYTHONIOENCODING=utf-8 python3 -c '
 import json, sys
 h = sys.stdin.read()
 print(json.dumps({
     "systemMessage": h,
     "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": h},
 }))
-' 2>/dev/null)
-if [ -n "$json_out" ]; then
+' 2>/dev/null) && [ -n "$json_out" ]; then
   printf '%s\n' "$json_out"
   exit 0
 fi

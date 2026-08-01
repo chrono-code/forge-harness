@@ -115,6 +115,44 @@ expect "subshell (git reset --hard) caught"        HIT   'out=$(git reset --hard
 expect "prose word-tail rm FP stays CLEAN"         CLEAN 'echo Round 2 verification. Confirm each prior finding is closed WITHOUT introducing a new default-toward-PASS hole (attack) * done'
 expect "legit reset word-tail stays CLEAN"         CLEAN 'echo the legit reset --hard flag docs'
 
+echo "-- Round 4: GPT-family (gpt-5.6-sol via OpenRouter) decorrelation shapes (2026-08-01) --"
+expect "token-split continuation gi\\ t"           HIT   $'git re\\\nset --hard'
+expect ":&&git no-whitespace separator"            HIT   ':&&git reset --hard'
+expect "false||git separator"                      HIT   'false||git reset --hard'
+expect "trailing |cat after --force"               HIT   'git push --force|cat'
+expect "(rm -rf ~) closing paren"                  HIT   '(rm -rf ~)'
+expect "git --no-pager global opt"                 HIT   'git --no-pager reset --hard'
+expect "git -c k=v global opt"                     HIT   'git -c core.a=b reset --hard'
+expect "git --git-dir space form"                  HIT   'git --git-dir /r/.git reset --hard'
+expect "nested \$(echo -n) not a dry-run"          HIT   'git clean -fd "$(echo -n build)"'
+expect "post-'--' -n pathspec not a dry-run"       HIT   'git clean -fd -- -n'
+expect "--force-with-lease=<ref>"                  HIT   'git push --force-with-lease=main'
+expect "push -fu bundle"                           HIT   'git push -fu origin main'
+expect "worktree remove -f short"                  HIT   'git worktree remove -f ../wt'
+expect "restore -W short"                          HIT   'git restore -W src/'
+expect "rm -rf ././* canonicalized"                HIT   'rm -rf ././*'
+expect "rm --recursive long form"                  HIT   'rm --recursive --force /'
+expect "FP: docs--hard operand stays CLEAN"        CLEAN 'git reset HEAD -- docs--hard'
+expect "FP: clean --exclude=cache stays CLEAN"     CLEAN 'git clean --exclude=cache build/'
+expect "FP: branch name release--force CLEAN"      CLEAN 'git branch --delete release--force'
+expect "FP: rm --verbose / stays CLEAN"            CLEAN 'rm --verbose /'
+expect "FP: push --follow-tags stays CLEAN"        CLEAN 'git push --follow-tags'
+expect "dry-run with long opt before -n CLEAN"     CLEAN 'git clean --quiet -n -fd'
+
+echo "-- Round 4: fault-injection (pins the DOCUMENTED degrade, not a safety claim) --"
+c_out=$(printf '%s' 'not json at all' | bash "$G" 2>/dev/null); c_rc=$?
+if [ "$c_rc" -eq 0 ] && [ -z "$c_out" ]; then
+  printf '  ✅ %-52s %s\n' "F1 malformed payload: silent exit 0 (advisory)" OK; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s\n' "F1 malformed payload: silent exit 0 (advisory)" "$c_rc" "$c_out"; fail=$((fail+1))
+fi
+c_out=$(printf '%s' 'not json at all' | FH_DESTRUCTIVE_BLOCK=1 bash "$G" 2>/dev/null); c_rc=$?
+if [ "$c_rc" -eq 0 ] && [ -z "$c_out" ]; then
+  printf '  ✅ %-52s %s\n' "F2 block+malformed: fails OPEN (documented residual)" OK; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s\n' "F2 block+malformed: fails OPEN (documented residual)" "$c_rc" "$c_out"; fail=$((fail+1))
+fi
+
 echo "-- opt-out --"
 expect "noqa suppresses"                           CLEAN 'git reset --hard origin/main  # noqa: destructive-op'
 
