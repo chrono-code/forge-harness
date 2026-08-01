@@ -47,6 +47,25 @@ actually loads (e.g. `AGENTS.md` alone, no `CLAUDE.md`) and present a trap the g
 refuse; post-fix it refuses, citing the now-local gate. The behavioral delta *is* the proof of
 locality — review alone cannot show it (review reads all files; the runtime does not).
 
+## External anchors (independent evidence, added 2026-08-01)
+
+- **[arXiv 2607.25398 — "HANDBOOK.md: A Benchmark for Long-Context Agentic Instruction Following"](https://arxiv.org/abs/2607.25398)**
+  (Panavas et al.): 65 agentic tasks governed by expert-written SOPs of 20–124 pages, 824 programmatic
+  criteria; **the best of thirty evaluated model configurations passes 36.2% of trials, most frontier
+  configurations below 25%**. This anchors the *adjacent, stronger* claim this principle rests on:
+  even a prose gate the actor **does** load under-enforces at scale — placement is necessary but the
+  enforcement *modality* (hook/code vs prose) decides whether it fires. Cross-operator, cross-provider
+  evidence that a prose-only control layer is substantially under-enforced at scale — the salience-layer-over-
+  mechanical-floor split (CLAUDE.md 4-axis gate "Why hook", `[[feedback_vcs_layer_gate_enforcement]]`)
+  is independently reproduced, not FH-idiosyncratic.
+- **[arXiv 2607.08028 — "From Prompts to Contracts: Harness Engineering for Auditable Enterprise LLM Agents"](https://arxiv.org/abs/2607.08028)**
+  (Ahn · Kim): independent convergence on code-enforced behavioral contracts over prompt instructions;
+  their ablation shows code-owned enforcement blocks violations prompting alone permits. Cross-audit:
+  `tracks/_audit/session_2026_08_01_prompts-to-contracts-sister.md` (B-tier, 2 imports identified).
+
+These are external anchors for the **prose-vs-mechanical premise**; the locality claim itself
+(N=2, one operator) still awaits direct cross-operator confirmation as named above.
+
 ## Relationship to other FH assets
 
 - **steel-quench** carries this as a Wave-1 attack angle ("Gate-locality — is every safety gate

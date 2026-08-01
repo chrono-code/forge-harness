@@ -594,3 +594,17 @@
   outcome: accepted
   evidence: "Two findings, both closed. (1) The node check was unreachable on the fresh-machine case because it lived in a gitignored registration — drove the split into scripts/fh_node_check.sh + a tracked snippet. (2) The wizard wrote a literal '<your-store>' placeholder and reported success, leaving a dead hook — the real BE_DIR is now baked in at write time."
   note: "Sonnet tier was the right instrument here: both findings are about instructions being followed literally, which is exactly where a weaker tier diverges from an author's intent."
+- date: 2026-08-01
+  agent: fh-meta:challenger
+  task: "Axis-2 adversarial review of destructive_pre_gate.sh + lanes + snippet + gate_locality anchors"
+  mode: isolated Agent, fable-5, paired with cross-family agy sidecar (below)
+  outcome: accepted
+  evidence: "2 HIGH + 5 MED + 1 LOW, every finding probe-measured (not asserted). HIGH #1 (git -C bypass) explicitly tied to this environment's own trained command shape. Re-fetched both arXiv abstracts independently — figures double-sourced. One MED (#9) corrected the knowledge doc's rhetoric ('decorative'→'under-enforced'). Its noqa-self-grant observation was accepted as a design property, not a defect."
+  note: "The guard fired live on the challenger's own probe command mid-review — the mention-as-data FP class demonstrating itself inside the review that named it."
+- date: 2026-08-01
+  agent: agy sidecar (Gemini 3.1 Pro (High), display-name pinned)
+  task: "Cross-family review x3: destructive_pre_gate (R1), qasp verdict_computer (R1), qasp fixes (R2 convergence)"
+  mode: headless agy -p, prompt-inlined sources (public/dev-track content only)
+  outcome: accepted
+  evidence: "Guard R1: 7 bypass + 3 FP classes, JSON-contract violations 0; 3 findings overlapped challenger = independent convergence; 1 suggestion (start-anchoring) refuted with recorded reason, later PARTIALLY vindicated by live prose FPs — resolved with leading-separator class instead of command-position anchor. qasp R1: HIGH status-enum hole independently converged with governor read; core_override_flag requiredness grounded in contract §105 before acting. R2: 5/5 CLOSED, CONVERGED."
+  note: "codex unavailable (~8/6); agy carried the cross-family leg for both FH and qasp reviews, mirroring the 07-31 panel precedent."

@@ -28,7 +28,19 @@
     "Verify after wiring (known pair, both directions):",
     "  bash scripts/test_pipe_verdict_guard_lanes.sh          # 15 pairs, expect all hold",
     "  printf '%s' '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"g.sh | tail; rc=$?\"}}' \\",
-    "    | bash scripts/pipe_verdict_guard.sh                 # expect a PIPE-VERDICT R2 warning"
+    "    | bash scripts/pipe_verdict_guard.sh                 # expect a PIPE-VERDICT R2 warning",
+    "",
+    "SECOND GUARD ON THE SAME SURFACE — destructive_pre_gate.sh (added 2026-08-01, field→meta",
+    "reverse propagation from pmh-dev): advisory warning when a Bash call carries a destructive",
+    "command (git reset --hard, clean -f, checkout ., force push, branch -D, stash drop/clear,",
+    "rm -rf on root/home/cwd). Origin: a below-floor sidecar self-justified `git reset --hard",
+    "origin/main` and ran it — the weaker the tier, the weaker the self-inhibition, so the",
+    "counterweight is mechanical. Net-new coverage is the LOCAL destructive ops no git hook sees;",
+    "the pre-push hook remains the hard floor for the push-time surface (role deconfliction in the",
+    "script header). Advisory by design, same contract as pipe_verdict_guard (additionalContext +",
+    "systemMessage, no permissionDecision); escalate with FH_DESTRUCTIVE_BLOCK=1. Opt out per",
+    "command with `# noqa: destructive-op`.",
+    "  bash scripts/test_destructive_pre_gate_lanes.sh        # 99 pairs, expect all hold"
   ],
   "project_settings_json": {
     "hooks": {
@@ -39,6 +51,11 @@
             {
               "type": "command",
               "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/pipe_verdict_guard.sh\"",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/destructive_pre_gate.sh\"",
               "timeout": 5
             }
           ]
