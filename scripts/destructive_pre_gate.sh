@@ -75,7 +75,7 @@ import json,sys
 try: d = json.load(sys.stdin)
 except Exception: sys.exit(0)
 if d.get("tool_name") != "Bash": sys.exit(0)
-sys.stdout.write(d.get("tool_input", {}).get("command", "") or "")
+sys.stdout.buffer.write((d.get("tool_input", {}).get("command", "") or "").encode("utf-8"))
 ' 2>/dev/null) || CMD=""
 fi
 [ -n "$CMD" ] || exit 0
@@ -124,6 +124,16 @@ FLAT=$(printf '%s' "$FLAT" | sed -E 's/git clean( +--?[a-zA-Z][a-zA-Z=-]*)* +(-[
 # alternation sees the canonical spelling (GPT-round; brace-expansion globs stay a residual).
 FLAT=$(printf '%s' "$FLAT" | sed -E 's/(\.\/)+/.\//g')
 
+# Staged-only restore neutralizer (GPT leg-C round, 2026-08-01): `git restore --staged .` only
+# unstages (worktree untouched, re-addable) — the broadened restore-dot row below would FP on it.
+# Neutralize ONLY when --staged is present AND no worktree flag is (staged+worktree IS destructive
+# and the -W/--worktree row catches it). Whole-payload rewrite: a compound payload mixing a
+# staged-only restore with a plain destructive restore is a named residual (rare shape).
+if printf '%s' "$FLAT" | LC_ALL=C grep -qE 'git restore [^|;&]*--staged' \
+   && ! printf '%s' "$FLAT" | LC_ALL=C grep -qE 'git restore [^|;&]*(--worktree|-[a-zA-Z]*W)'; then
+  FLAT=$(printf '%s' "$FLAT" | sed -E 's/git restore /git restore_stagedonly /g')
+fi
+
 # ── Destructive pattern table: regex@@description ─────────────────────────────────────────────
 # Delimiter is @@ because the regexes themselves carry `|` (alternation) — a `|` delimiter
 # truncated every alternation-bearing pattern at split time (caught by the known-pair lanes on
@@ -138,9 +148,9 @@ FLAT=$(printf '%s' "$FLAT" | sed -E 's/(\.\/)+/.\//g')
 PATTERNS=(
   '[ (/]git reset ([^|;&]* )?--hard[ ;]@@git reset --hard discards ALL uncommitted changes irreversibly'
   '[ (/]git clean ([^|;&]* )?(--force[ ;]|-[a-zA-Z]*[fxX][a-zA-Z]*[ ;])@@git clean -f/-x permanently deletes untracked files'
-  '[ (/]git checkout ([^|;&]*-- )?\.\/? @@git checkout . reverts every local modification'
+  '[ (/]git checkout ([^|;&]* )?\.\/? @@git checkout . reverts every local modification'
   '[ (/]git restore ([^|;&]* )?(--worktree|-[a-zA-Z]*W[a-zA-Z]*[ ;])@@git restore --worktree reverts working-tree changes'
-  '[ (/]git restore \.\/? @@git restore . reverts every local modification'
+  '[ (/]git restore ([^|;&]* )?\.\/? @@git restore . reverts every local modification'
   '[ (/]git push ([^|;&]* )?(--force(-with-lease(=[^ ;]+)?)?[ ;]|-[a-zA-Z]*f[a-zA-Z]*[ ;]|\+[^ ;]+[ ;])@@force push rewrites remote history (pre-push hook will also gate this — enumerate first)'
   '[ (/]git branch ([^|;&]* )?(-[a-zA-Z]*D[ ;]|--delete( [^|;&]*)? --force[ ;]|--force( [^|;&]*)? --delete[ ;])@@git branch -D force-deletes a branch without merge check'
   '[ (/]git stash (drop|clear)[ ;]@@git stash drop/clear permanently discards stashed work'
@@ -162,7 +172,9 @@ for entry in "${PATTERNS[@]}"; do
 done
 [ -n "$hits" ] || exit 0
 
-hits="${hits}      Before running: is uncommitted/stashed state enumerated (git status / predelete_check.sh)?
+hits="${hits}      Advisory timing: this context reaches the model on the NEXT turn — the call may have
+      already run (pre-action blocking = FH_DESTRUCTIVE_BLOCK=1). If it ran un-enumerated,
+      recover FIRST: git status / git stash list / git reflog / predelete_check.sh.
       Destructive-Op Gate order: enumerate → recover → destroy — never destroy-then-check.
       Intentional and reviewed → re-run with trailing \`# noqa: destructive-op\`."
 

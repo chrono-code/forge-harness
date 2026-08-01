@@ -67,7 +67,7 @@ import json,sys
 try: d = json.load(sys.stdin)
 except Exception: sys.exit(0)
 if d.get("tool_name") != "Bash": sys.exit(0)
-sys.stdout.write(d.get("tool_input", {}).get("command", "") or "")
+sys.stdout.buffer.write((d.get("tool_input", {}).get("command", "") or "").encode("utf-8"))
 ' 2>/dev/null) || CMD=""
 fi
 [ -n "$CMD" ] || exit 0
