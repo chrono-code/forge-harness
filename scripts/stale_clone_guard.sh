@@ -68,13 +68,55 @@ MARKER="$MARKER_DIR/$(printf '%s' "$ROOT" | cksum | cut -d' ' -f1)-$(date +%Y%m%
 [ -e "$MARKER" ] && exit 0
 
 UPSTREAM=$(git -C "$ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) || exit 0
-REMOTE="${UPSTREAM%%/*}"   # fetch the remote @{u} actually tracks, not a hardcoded origin (GPT pass)
+# Remote name resolution (leg-C LOW, 2026-08-01): `${UPSTREAM%%/*}` truncates a remote whose NAME
+# carries `/` (git accepts them via config even though `git remote add` rejects them) — `a/b/main`
+# became remote `a`, the fetch failed, and the guard went silently inert on exactly that clone.
+# `%(upstream:remotename)` is git's own parse; the cut stays as fallback for git versions without it.
+_HEAD_REF=$(git -C "$ROOT" symbolic-ref -q HEAD 2>/dev/null) || _HEAD_REF=""
+REMOTE=""
+[ -n "$_HEAD_REF" ] && REMOTE=$(git -C "$ROOT" for-each-ref --format='%(upstream:remotename)' "$_HEAD_REF" 2>/dev/null | head -1)
+[ -n "$REMOTE" ] || REMOTE="${UPSTREAM%%/*}"   # fallback; never a hardcoded origin (GPT pass)
 [ -n "$REMOTE" ] || exit 0
 
 if [ "${FH_STALE_CLONE_NO_FETCH:-0}" != "1" ]; then
-  # Bounded fetch: GIT_TERMINAL_PROMPT=0 kills the credential-prompt hang class; the hook-level
-  # timeout is the hard bound for wedged transports (macOS ships no GNU timeout).
-  GIT_TERMINAL_PROMPT=0 git -C "$ROOT" fetch -q "$REMOTE" 2>/dev/null || exit 0
+  # Internally-bounded fetch (leg-C MED, 2026-08-01): the previous hard bound was the RUNNER's
+  # hook timeout (20s), which kills the whole guard — preempting the exit-0 contract AND skipping
+  # the marker write, so a wedged transport re-stalled EVERY Write for the rest of the day
+  # (20s × N calls, a session-killer). The guard now owns its bound: fetch in the background,
+  # poll, and on expiry kill the fetch, ARM the day-throttle, exit 0. Arming on timeout is a
+  # deliberate trade: one silent day on a broken-network machine (fail-open, the documented
+  # degrade direction) beats a stall on every file creation. This is NOT the attempt-marker the
+  # GPT pass rejected — that armed on every early exit; this arms only after a full budget spent
+  # against a wedged transport. GIT_TERMINAL_PROMPT=0 still kills the credential-prompt class.
+  # Budget: tenths of a second; default 150 (15s) stays under the snippet's 20s runner timeout.
+  # CAPPED at 150 (terra round, 2026-08-01): an env-supplied budget > the runner timeout would
+  # restore the exact runner-preemption this bound exists to remove. (No boundary lane on purpose
+  # — it would idle its full 15s by construction; the cap is these three lines.)
+  # LENGTH-first, then value (terra round 2, 2026-08-01): an all-digit literal wider than the
+  # shell's integer width makes `[ "$x" -gt 150 ]` itself an ERROR ("integer expression expected" /
+  # "number truncated"), so the numeric cap never ran and the value stayed unnormalized. Digits are
+  # capped at 3 (max 999) before any arithmetic touches the value — safe in bash 3.2 and zsh alike.
+  _BUDGET="${FH_STALE_CLONE_FETCH_BUDGET_TENTHS:-150}"
+  case "$_BUDGET" in ''|*[!0-9]*) _BUDGET=150 ;; esac
+  [ "${#_BUDGET}" -gt 3 ] && _BUDGET=150
+  [ "$_BUDGET" -gt 150 ] && _BUDGET=150
+  # stdout AND stderr to /dev/null: the child inherits this hook's stdout pipe, and a
+  # still-running child holding it open would stall the hook runner past our own exit.
+  GIT_TERMINAL_PROMPT=0 git -C "$ROOT" fetch -q "$REMOTE" >/dev/null 2>&1 &
+  _FPID=$!
+  _t=0
+  while kill -0 "$_FPID" 2>/dev/null && [ "$_t" -lt "$_BUDGET" ]; do
+    sleep 0.1; _t=$((_t+1))
+  done
+  if kill -0 "$_FPID" 2>/dev/null; then
+    # No wait after the kill: a shell-script transport defers TERM until its foreground child
+    # exits (measured: the lane's wedge shim held a wait for the full 30s hang). The child is
+    # reparented at our exit; TERM is best-effort cleanup, the BOUND is the contract.
+    kill "$_FPID" 2>/dev/null || true
+    : > "$MARKER" 2>/dev/null || true
+    exit 0
+  fi
+  wait "$_FPID" 2>/dev/null || exit 0
 fi
 
 BEHIND=$(git -C "$ROOT" rev-list --count 'HEAD..@{u}' 2>/dev/null) || exit 0

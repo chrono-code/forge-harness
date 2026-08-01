@@ -97,6 +97,60 @@ else
   printf '  ❌ %-52s rc=%s out=%s\n' "non-Write tool: silent" "$rc" "$o"; fail=$((fail+1))
 fi
 
+# Slashed remote NAME (leg-C LOW, 2026-08-01): git accepts remote names carrying `/` via config
+# (git remote add rejects them, git config does not). `${UPSTREAM%%/*}` truncated `a/b/main` to
+# remote `a` → fetch failed → guard silently inert on a behind clone. %(upstream:remotename) fixes it.
+git clone -q "$WORK/origin.git" "$WORK/D" 2>/dev/null
+( cd "$WORK/D" \
+  && git config remote.a/b.url "$WORK/origin.git" \
+  && git config remote.a/b.fetch '+refs/heads/*:refs/remotes/a/b/*' \
+  && git fetch -q a/b \
+  && git config branch.main.remote a/b \
+  && git config branch.main.merge refs/heads/main \
+  && git reset -q --hard HEAD~2 ) 2>/dev/null  # noqa: destructive-op (fixture repo)
+run "slashed remote name still fires"     HIT   "$WORK/D/newfile.py"
+
+# Wedged-transport fetch (leg-C MED): the guard must own its bound — return within its internal
+# budget, exit 0, arm the day-throttle — instead of letting the RUNNER's 20s timeout kill it
+# (which skipped the marker write and re-stalled every Write of the day). PATH shim makes `git
+# fetch` hang; budget is set to 0.5s; the real git serves every other subcommand.
+SHIM="$WORK/shim"; mkdir -p "$SHIM"
+REALGIT=$(command -v git)
+cat > "$SHIM/git" <<EOF
+#!/bin/bash
+for a in "\$@"; do [ "\$a" = "fetch" ] && sleep 30; done
+exec "$REALGIT" "\$@"
+EOF
+chmod +x "$SHIM/git"
+mdir=$(mktemp -d "$WORK/marker.wedge")
+t0=$(date +%s)
+w_out=$(payload "$WORK/B/wedge.py" | PATH="$SHIM:$PATH" FH_STALE_CLONE_FETCH_BUDGET_TENTHS=5 \
+        FH_STALE_CLONE_MARKER_DIR="$mdir" bash "$G" 2>&1); w_rc=$?
+t1=$(date +%s)
+elapsed=$((t1 - t0))
+marker_count=$(ls "$mdir" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$w_rc" -eq 0 ] && [ -z "$w_out" ] && [ "$elapsed" -lt 10 ] && [ "$marker_count" -ge 1 ]; then
+  printf '  ✅ %-52s OK (%ss)\n' "wedged fetch: bounded, silent, throttle armed" "$elapsed"; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s elapsed=%ss markers=%s out=%s\n' "wedged fetch: bounded, silent, throttle armed" "$w_rc" "$elapsed" "$marker_count" "$w_out"; fail=$((fail+1))
+fi
+
+# Budget cap (terra round 2): an all-digit literal wider than the shell's integer width made the
+# numeric comparison itself error out, leaving the value unnormalized. Length-cap runs first.
+# Asserted on the CAP LOGIC (same three lines as the guard) — running the guard with an oversized
+# budget would idle its full clamped 15s, and a lane that costs 15s stops being run.
+for _b in 151 9999 999999999999999999999999999999999999999999999999999999999999 abc ""; do
+  _v="$_b"
+  case "$_v" in ''|*[!0-9]*) _v=150 ;; esac
+  [ "${#_v}" -gt 3 ] && _v=150
+  [ "$_v" -gt 150 ] 2>/dev/null && _v=150
+  if [ "$_v" -le 150 ] 2>/dev/null && [ "$_v" -gt 0 ] 2>/dev/null; then
+    printf '  ✅ %-52s OK (%s→%s)\n' "budget cap normalizes" "${_b:-empty}" "$_v"; pass=$((pass+1))
+  else
+    printf '  ❌ %-52s %s→%s\n' "budget cap normalizes" "${_b:-empty}" "$_v"; fail=$((fail+1))
+  fi
+done
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "[stale-clone-guard] ✅ all $pass known pairs hold"; exit 0

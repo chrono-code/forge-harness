@@ -60,6 +60,26 @@ expect "stash pop is CLEAN"                        CLEAN 'git stash pop'
 expect "worktree remove --force"                   HIT   'git worktree remove --force ../wt'
 expect "worktree remove plain is CLEAN"            CLEAN 'git worktree remove ../wt'
 
+echo "-- global-option allowlist completion (leg-C MED round, 2026-08-01) --"
+# Any global option the normalizer does not consume lets `git <opt> reset --hard` sail past every
+# git row. One HIT lane per newly consumed class + adjacent CLEANs (known-pair rule).
+expect "literal-pathspecs then reset --hard"       HIT   'git --literal-pathspecs reset --hard'
+expect "namespace= then reset --hard"              HIT   'git --namespace=ns reset --hard'
+expect "config-env= then clean -fd"                HIT   'git --config-env=AUTHOR=E clean -fd'
+expect "exec-path= then reset --hard"              HIT   'git --exec-path=/opt/git reset --hard'
+expect "no-optional-locks then push --force"       HIT   'git --no-optional-locks push --force origin main'
+expect "stacked globals then reset --hard"         HIT   'git --bare --no-advice -c a=b reset --hard'
+expect "literal-pathspecs status is CLEAN"         CLEAN 'git --literal-pathspecs status'
+expect "namespace= log is CLEAN"                   CLEAN 'git --namespace=ns log --oneline'
+
+# Healing-path citation (leg-C MED): the advisory must point at the runnable path, not a bare name.
+h_out=$(printf '%s' 'git reset --hard' | bash "$G" --stdin-raw 2>&1)
+if printf '%s' "$h_out" | grep -q 'templates/predelete_check.sh'; then
+  printf '  ✅ %-52s OK\n' "advisory cites templates/predelete_check.sh path"; pass=$((pass+1))
+else
+  printf '  ❌ %-52s out=%s\n' "advisory cites templates/predelete_check.sh path" "$h_out"; fail=$((fail+1))
+fi
+
 echo "-- rm scope (precision over recall: only root/home/cwd/glob) --"
 expect "rm -rf /"                                  HIT   'rm -rf /'
 expect "rm -rf ~"                                  HIT   'rm -rf ~'
