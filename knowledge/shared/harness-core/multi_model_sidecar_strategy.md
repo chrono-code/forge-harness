@@ -303,7 +303,11 @@ command -v gh >/dev/null 2>&1 && gh copilot --help >/dev/null 2>&1 && echo "tier
 #    model-selectable, so pick a non-Claude model from a Claude host for genuine diversity)
 
 # Tier 2 — native API key (pay-per-use; only if no Tier-1 CLI)
-for k in GEMINI_API_KEY OPENAI_API_KEY ANTHROPIC_API_KEY; do
+#   OpenRouter is a VERIFIED Tier-2 route (2026-08-01: a GPT-family audit leg ran 4 calls to
+#   completion when the codex CLI was quota-exhausted — same model, API-shaped). Discipline when
+#   it binds: record the response's model-echo header PER CALL (server-side proof of which model
+#   answered — slug typos silently reroute, the measured agy failure mode; self-report is not it).
+for k in GEMINI_API_KEY OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY; do
   [ -n "${!k:-}" ] && echo "tier2:$k"
 done
 
