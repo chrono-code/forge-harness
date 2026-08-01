@@ -313,10 +313,12 @@ pipeline**, not an afterthought, and a below-floor orchestrator RUNS the review 
 ## Field-Harness Diagnostic — "진단해줘 / 개선해줘" on a mapped project (compose → rank → HITL)
 
 The **on-demand pull sibling** of the gate above: a *project-level* "diagnose / improve this harness" ask
-composes the checks FH **already has** across **six lenses** — leak (`/public-surface-audit`, incl. **Step 3c ignore-verification** — a file believed gitignored but actually tracked is the leak this sub-step exists to catch) · split
+composes the checks FH **already has** across **seven lenses** — leak (`/public-surface-audit`, incl. **Step 3c ignore-verification** — a file believed gitignored but actually tracked is the leak this sub-step exists to catch) · split
 integrity (`/phantom-quench` **Step 2.7**) · token/salience (`/context-doctor` · `/salience-splitter`) · structure
 (`/harness-doctor`) · verdict degrade (`scripts/degrade_direction_scan.sh`) · loop-readiness
-(`loop_engineering.md`) — into **one ranked `M`/`S`/`R` list**. No-reinvention: it only routes and ranks.
+(`loop_engineering.md`) · built-but-unwired (per-module caller grep — a completed module with zero
+external call sites; the dominant class of the 2026-08-01 qasp audit) — into **one ranked `M`/`S`/`R`
+list**. No-reinvention: it only routes and ranks.
 
 **Resident guards (do not defer these to the detail file)**: **nothing is auto-fixed** — the list is the
 skill's job, the *go* is the human's; and **company residency (absolute)** — **raw company source, secrets,

@@ -149,6 +149,31 @@ human-review floor is structural, not a transitional patch. (Its Faros AI number
 the author's own caveat travels with any citation.)
 "Aggressive" Codex/Gemini use is bounded by the fit task-class above, never a blanket main-seat swap.
 
+### Decorrelation axes — model family AND authoring context (measured 2026-08-01)
+
+Decorrelation has been treated as one axis (model family). A codex-outage session measured a second,
+independent axis: **authoring-context share**. A 3-leg panel (agy/Gemini + local qwen3.6:35b + a
+**same-family Claude challenger in an isolated context**) ran 3 rounds over qasp changes; the
+distribution was sharp — the cheap local leg produced only refutable findings (2/2 source-rejected),
+the cross-family leg caught real HIGHs, and the **context-independent same-family leg caught the
+subtlest class** (a just-closed false-negative re-opened by an empty-canonical-key fall-through ·
+a fabricated expected value · a doc insertion truncating a bullet). Author-optimism largely falls
+away when the *context* is cut, even with the family held constant.
+
+Operational rules this adds:
+- A same-family isolated-context leg is a **legitimate decorrelation leg**, not a degraded
+  substitute — count it as one axis covered (context), with family still uncovered. The honest
+  disclosure when cross-family is unreachable is "family axis uncovered", not "no decorrelation".
+- The two axes compose: cross-family + context-independent is stronger than either alone. The
+  2026-08-01 follow-up run confirmed composition empirically — a GPT leg (OpenRouter, operator-directed
+  codex substitute) surfaced whole defect classes that both a Gemini leg and a context-independent
+  Claude leg had passed over (parser-bypass construction paths, duplicate-JSON-key ambiguity), while
+  the earlier legs had caught classes GPT did not re-find.
+- **Review-target pinning corollary** (accidental pattern, worth reproducing deliberately): pin the
+  review target to a COMMIT while fixes proceed uncommitted in parallel — two legs then cross-confirm
+  each other when their findings independently converge on the same defects, converting duplication
+  into validation instead of waste.
+
 ### Vendor-native harness — the main layer stays multi-CLI, never Copilot-consolidated
 
 The harness-depth thesis has a **per-vendor corollary**: a frontier model realizes its *highest effective
