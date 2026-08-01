@@ -41,6 +41,13 @@
 #     payload with a destructive line 1 and a `# noqa: destructive-op` on line 2 exempts both.
 #     Accepted: noqa is self-grantable by design on this advisory surface (same trust channel as
 #     the DESTRUCTIVE_OP_OK env ack) — the hard floor for the irreversible half stays pre-push.
+#   - `git -c alias.<name>='!<shell>' <name>` — the normalizer CONSUMES `-c k=v` (it must: that is
+#     how `git -c core.x=y reset --hard` is caught), and the alias name that follows is not a
+#     destructive row, so arbitrary shell runs CLEAN. Concrete realization of the indirection class
+#     above, named separately because the normalizer is what makes it reachable (terra round 2,
+#     2026-08-01). Not fixed: closing it means interpreting alias payloads, i.e. parsing shell —
+#     over-build for an advisory layer, and squarely inside the deliberate-obfuscation threat model
+#     this guard excludes. It counters SELF-JUSTIFICATION, not evasion.
 #   - Shell-escape reconstruction (`\g\i\t reset --hard`, `$'git' reset`) and quoted-space git -C
 #     paths (`git -C "/tmp/my repo" reset --hard`) — regex-with-normalization cannot dequote like
 #     a shell; a Bash-compatible tokenizer would be over-build for an advisory layer (GPT-round,
@@ -110,7 +117,13 @@ FLAT=" $(printf '%s' "$JOINED" | tr -d '\r' | tr '\n' ';' | sed 's/;/; /g' \
 # TRAINS that shape ("cwd resets between calls, use absolute paths / git -C"), so the origin
 # defect (a self-justifying model) would most naturally emit exactly it. GPT-round extended the
 # consumed set: --no-pager, -c k=v, -p/-P, and the space-separated --git-dir/--work-tree forms.
-FLAT=$(printf '%s' "$FLAT" | sed -E 's/git( +(-C +[^ ;]+|--git-dir[= ][^ ;]+|--work-tree[= ][^ ;]+|-c +[^ ;]+|--no-pager|-[pP]))+/git/g')
+# Leg-C MED round (2026-08-01) completed the allowlist against `git --help`'s global-option table:
+# the valueless pathspec/behavior toggles (--literal/--glob/--noglob/--icase-pathspecs,
+# --no-optional-locks, --no-replace-objects, --no-lazy-fetch, --no-advice, --bare, --paginate) and
+# the value-carrying --namespace/--super-prefix/--config-env/--exec-path= — any one of which let
+# `git <opt> reset --hard` sail past every git row. --exec-path WITHOUT `=` is deliberately not
+# consumed: bare --exec-path prints and exits, so nothing destructive follows it.
+FLAT=$(printf '%s' "$FLAT" | sed -E 's/git( +(-C +[^ ;]+|--git-dir[= ][^ ;]+|--work-tree[= ][^ ;]+|-c +[^ ;]+|--namespace[= ][^ ;]+|--super-prefix[= ][^ ;]+|--config-env[= ][^ ;]+|--exec-path=[^ ;]+|--no-pager|--no-optional-locks|--no-replace-objects|--no-lazy-fetch|--no-advice|--literal-pathspecs|--glob-pathspecs|--noglob-pathspecs|--icase-pathspecs|--bare|--paginate|-[pP]))+/git/g')
 
 # Dry-run neutralizer: `git clean -fdn` / `--dry-run` is non-destructive; rewrite it to a token no
 # row matches, so the clean row cannot FP on a dry run (Axis-2 #6 — an FP here violates the very
@@ -174,7 +187,9 @@ done
 
 hits="${hits}      Advisory timing: this context reaches the model on the NEXT turn — the call may have
       already run (pre-action blocking = FH_DESTRUCTIVE_BLOCK=1). If it ran un-enumerated,
-      recover FIRST: git status / git stash list / git reflog / predelete_check.sh.
+      recover FIRST: git status / git stash list / git reflog /
+      \`bash templates/predelete_check.sh <repo> [base]\` (repo-root relative — leg-C MED: an
+      uncited healing path is a dead pointer to the session that needs it mid-incident).
       Destructive-Op Gate order: enumerate → recover → destroy — never destroy-then-check.
       Intentional and reviewed → re-run with trailing \`# noqa: destructive-op\`."
 

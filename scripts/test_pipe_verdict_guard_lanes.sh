@@ -85,6 +85,77 @@ rc=$?'
 expect "B PIPESTATUS without braces"      HIT   'a | b; rc=$PIPESTATUS[0]'
 expect "B braced form still caught"       HIT   'a | b; rc=${PIPESTATUS[0]}'
 
+echo "-- D: statement-continuation flatten + wrapped filter (leg-C MED round, 2026-08-01) --"
+# The blanket newline→`;` rewrite broke the CONTINUATION shapes: a newline after `|`/`&&` or a
+# backslash-newline continues the statement, and inserting `;` un-matched R2 on exactly the
+# multi-line pipelines the flatten exists to catch.
+expect "D pipe-continuation newline then \$?"  HIT   'bash gate.sh |
+tail -20
+echo "exit=$?"'
+expect "D &&-continuation newline then \$?"    HIT   'bash gate.sh | tail -3 &&
+echo "exit=$?"'
+expect "D backslash-continuation mid-args"     HIT   'bash gate.sh | tail \
+-20; echo "exit=$?"'
+expect "D pipe-continuation to grep -q CLEAN"  CLEAN 'bash gate.sh |
+grep -q ok
+rc=$?'
+# Subshell/group wrapper around the filter is the same mistake one paren deeper.
+expect "D subshell-wrapped filter"             HIT   'bash gate.sh | (tail -5); echo "exit=$?"'
+expect "D subshell-wrapped filter, no args"    HIT   'bash gate.sh | (tail); rc=$?'
+expect "D brace-group filter"                  HIT   'bash gate.sh | { tail -5; }; echo "exit=$?"'
+expect "D subshell non-filter stays CLEAN"     CLEAN 'bash gate.sh | (grep -q ok); rc=$?'
+
+echo "-- T: terra decorrelation round (2026-08-01) --"
+# T2: |& merges stderr into the pipe — same verdict mistake, evaded the whitespace-anchored matcher.
+expect "T |& then \$?"                         HIT   'false |& tail -5; echo "exit=$?"'
+expect "T |& to grep -q stays CLEAN"           CLEAN 'false |& grep -q x; rc=$?'
+expect "T |&-continuation newline then \$?"    HIT   'false |&
+tail -5; echo "exit=$?"'
+# T3: newline directly after the wrapper open used to insert `;` and un-match R2.
+expect "T multiline subshell wrapper"          HIT   'false | (
+tail -5
+); echo "exit=$?"'
+# T4: KNOWN FP, pinned as expected — the quote-blind join reads quoted multi-line data as a live
+# pipeline (mention-as-data, advisory-tolerated; see the flatten comment in the guard).
+expect "T quoted-data FP is pinned HIT"        HIT   "printf 'false |
+tail; echo \$?'"
+
+echo "-- T2: terra round-2 (defects the round-1 FIXES introduced) --"
+# The wrapper matcher must require the filter to be the wrapper's FINAL command: when a real
+# command follows it inside the group, `$?` is THAT command's status and the warning is an FP
+# the pre-wrapper matcher never produced.
+expect "T2 filter not last in group is CLEAN"  CLEAN 'false | (tail -5; test -n "$x"); echo "exit=$?"'
+expect "T2 brace, filter not last is CLEAN"    CLEAN 'false | { tail -5; grep -q ok; }; rc=$?'
+expect "T2 filter IS last in group still HIT"  HIT   'false | (sort; tail -5); echo "exit=$?"'
+expect "T2 wrapped filter alone still HIT"     HIT   'false | (tail -5); echo "exit=$?"'
+# The `;` in branch (b)'s prefix keeps the filter at a statement start — a bare word ending in a
+# filter name must not satisfy it.
+expect "T2 bare word inside group is CLEAN"    CLEAN 'false | (echo cat); rc=$?'
+# KNOWN MISS, pinned so it cannot be silently "fixed" into a worse trade: a comment inside the
+# wrapper hides the closer. The available fix (strip `#…`) is quote-blind and would turn the
+# NEXT lane — a real, currently-caught shape — into a miss. Recall loss accepted, direction chosen.
+expect "T2 comment-in-group is a KNOWN MISS"   CLEAN 'false | (tail -5; # note
+); rc=$?'
+expect "T2 url-fragment shape must stay HIT"   HIT   'curl "https://x.dev/a#frag" | tail -3; rc=$?'
+
+echo "-- E: spec'd-but-unpinned shapes (triad-lens Sonnet floor run, 2026-08-01: F1/F3) --"
+# F1: the guard names five display filters; only three had lanes — less/more were shipped-but-unverified.
+expect "E less then \$?"                       HIT   'bash gate.sh | less; echo "exit=$?"'
+expect "E more then \$?"                       HIT   'make test | more; rc=$?'
+# F3: unparsed/absent payload → silent, spec'd in the header but never pinned (siblings pin theirs).
+e_out=$(printf '%s' 'not json' | bash "$G" 2>&1); e_rc=$?
+if [ "$e_rc" -eq 0 ] && [ -z "$e_out" ]; then
+  printf '  ✅ %-52s OK\n' "E malformed payload: silent exit 0"; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s\n' "E malformed payload: silent exit 0" "$e_rc" "$e_out"; fail=$((fail+1))
+fi
+e_out=$(python3 -c 'import json;print(json.dumps({"tool_name":"Write","tool_input":{"file_path":"/x"}}))' | bash "$G" 2>&1); e_rc=$?
+if [ "$e_rc" -eq 0 ] && [ -z "$e_out" ]; then
+  printf '  ✅ %-52s OK\n' "E non-Bash tool: silent"; pass=$((pass+1))
+else
+  printf '  ❌ %-52s rc=%s out=%s\n' "E non-Bash tool: silent" "$e_rc" "$e_out"; fail=$((fail+1))
+fi
+
 echo "-- opt-out --"
 expect "noqa suppresses"                  CLEAN 'bash g.sh | tail; rc=$?  # noqa: pipe-verdict'
 

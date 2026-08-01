@@ -42,6 +42,12 @@
 #   auto-approve the flagged command past the permission system — the guard must never grant what
 #   it exists to question. Block mode keeps the exit-2 path (stderr → fed to Claude, call blocked);
 #   on exit 2 stdout/JSON is ignored by contract, so stderr is the correct channel there.
+#   NAMED RESIDUAL (terra round 3, 2026-08-01) — a shell COMMENT inside a wrapper group hides the
+#   closer from R2's required-closer branch, so `| (tail -5; # note<newline>); rc=$?` MISSES.
+#   Accepted, not fixed, and the reason is the trade direction: stripping `#…` in the flatten is
+#   quote-blind, so `curl "https://x/a#frag" | tail -3; rc=$?` — which HITs today, measured — would
+#   become a miss. That swaps a contrived miss for a realistic one. Recall loss on a shape that does
+#   not occur in interactively-composed commands is the cheaper side; lane-pinned as a known miss.
 #   NAMED RESIDUAL (cross-family, 2026-07-31): with python3 broken/absent, payload extraction
 #   yields CMD="" and the guard exits 0 even under FH_PIPE_VERDICT_BLOCK=1 — block mode fails
 #   open on a dead interpreter. Accepted, not fixed: the Bash-call surface is re-runnable
@@ -84,7 +90,25 @@ add() { hits="${hits}  ⚠️  PIPE-VERDICT $1
 # every multi-line command missed — which is the worse half, because the invocations that actually
 # recur here are multi-line. A newline is a statement separator, so `; ` is the faithful substitute.
 # (Found by the Axis-2 adversarial pass on this guard, 2026-07-31; lanes A* pin it.)
-FLAT=$(printf '%s' "$CMD" | tr '\n' ';' | sed 's/;/; /g')
+# EXCEPT where the shell itself continues the statement (GPT leg-C MED, 2026-08-01): a newline
+# after `|`/`&&`/`||` or a backslash-newline is a CONTINUATION, not a separator — the blanket
+# `\n → ;` rewrite turned `cmd |\n tail; echo $?` into `cmd | ; tail…`, un-matching R2 on the
+# exact multi-line shape the flatten exists to catch. Join those first (backslash-newline joins
+# with the EMPTY string, matching shell semantics — the destructive_pre_gate R4 lesson), then
+# separate the remaining newlines. \001 is the newline sentinel (never occurs in command text).
+# terra round (2026-08-01): `|&` continuation and newline-after-`(`/`{` join too — both continue
+# the statement in the shells this guard serves. KNOWN FP INHERITED: the join cannot see quotes,
+# so a QUOTED multi-line string containing `false |\ntail; echo $?` now reads as a live pipeline
+# (mention-as-data — same advisory-tolerated class destructive_pre_gate documents; a
+# quote-aware parser is over-build for an advisory layer). Lane-pinned as expected-HIT.
+NL=$'\001'
+FLAT=$(printf '%s' "$CMD" | tr '\n' "$NL" | sed \
+  -e "s/\\\\${NL}[[:space:]]*//g" \
+  -e "s/|&[[:space:]]*${NL}[[:space:]]*/|\& /g" \
+  -e "s/|[[:space:]]*${NL}[[:space:]]*/| /g" \
+  -e "s/&&[[:space:]]*${NL}[[:space:]]*/\&\& /g" \
+  -e "s/\([({]\)[[:space:]]*${NL}[[:space:]]*/\1 /g" \
+  -e "s/${NL}/;/g" -e 's/;/; /g')
 
 # ── R1 — PIPESTATUS under zsh: the value is empty, so the verdict is absent. ──────────────────
 # Brace-optional: zsh accepts `$PIPESTATUS[0]` as well, and the brace-anchored form missed it (lane B*).
@@ -99,8 +123,24 @@ fi
 # `set -o pipefail` in the same command makes `$?` after a pipeline correct — not a finding.
 NORM=$(printf '%s' "$FLAT" | sed 's/||/__OR__/g')
 if ! printf '%s' "$NORM" | grep -qE 'set -o pipefail|set -[a-zA-Z]*o[a-zA-Z]* pipefail'; then
+  # `[({]?` — a subshell/group wrapper around the filter (`| (tail -5); echo $?`) is the same
+  # verdict mistake one paren deeper; without it the wrapper bypassed R2 (GPT leg-C MED, 2026-08-01).
+  # The closing paren rides in the arg class (`)` ∈ [^|;&]) or the explicit `[)}]?` for the no-arg form.
+  # `&?` after the pipe — `|&` (stderr-merged pipeline, zsh/bash4) is the same verdict mistake
+  # with a merged stream; it evaded the whitespace-anchored matcher (terra round, 2026-08-01).
+  # TWO BRANCHES, and the wrapped one REQUIRES A CLOSER (terra round 2, 2026-08-01): with the
+  # closer optional, `| (tail -5; test -n "$x"); echo $?` matched on the `;` INSIDE the group —
+  # but there `$?` is `test`'s status, which is exactly right, so the warning was a false positive
+  # the pre-wrapper matcher never produced. The filter must be the wrapper's FINAL command:
+  #   (a) bare filter, then a statement separator
+  #   (b) wrapper open · optional earlier statements ending in `;` · filter · args (no `;`, no
+  #       closer chars) · optional `;` · REQUIRED `)`/`}`
+  # Branch (b)'s optional `([^|&]*;)?` prefix keeps `| (sort; tail -5); echo $?` caught — the
+  # filter need not be the group's FIRST command, only its LAST — while the `;` requirement keeps
+  # the filter at a statement start, so `| (echo cat); rc=$?` does not match through a bare word.
+  _F='(tail|head|cat|less|more)'
   if printf '%s' "$NORM" \
-     | grep -qE '\|[[:space:]]*(tail|head|cat|less|more)([[:space:]][^|;&]*)?[[:space:]]*[;&].*\$\?'; then
+     | grep -qE "\|&?[[:space:]]*(${_F}([[:space:]][^|;&]*)?|[({]([^|&]*;)?[[:space:]]*${_F}([[:space:]][^|;&()}]*)?[[:space:]]*;?[[:space:]]*[)}])[[:space:]]*[;&].*\\\$\?"; then
     add "R2 \$? after a display filter" \
         "\$? holds the filter's status (tail/head/cat almost always succeed), not the command's — a FAILED check reads as 0. Capture first: \`out=\$(cmd 2>&1); rc=\$?\` then print \"\$out\" | tail."
   fi

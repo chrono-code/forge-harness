@@ -657,3 +657,31 @@
   outcome: accepted
   evidence: "terra 6/6 known-positives + 5 net-new (approval-negation regex, heredoc tail-drop, --dry-run, marker-in-success, tool-id reuse); luna 5/6 + 4 net-new (Write/Edit content discarded entirely) — only miss = design-layer channel-provenance. All quoted lines verified real. Echo nondeterministic across all calls — session-header model: line adopted as the anchor."
   note: "n=1 screen on one bounded task class — recommendation scoped: terra default for detection legs, luna for volume/background, sol for convergence verdicts and probe-executing deep audits."
+- date: 2026-08-01
+  agent: claude (general-purpose, background)
+  task: "Run #4 a+b — mech_trace_adapter 12-class integrity + granularity + 6 probe-novel fixes, known-pair recalibration"
+  mode: private-companion-store file edit (no commit), stdlib-only constraint, fixtures+runner left in place
+  outcome: accepted
+  evidence: "44/44 known-pair (governor re-ran: OK), SAR recalibration 0.617/1.000 exactly preserved, mutant discriminating-power check caught its own non-discriminating fixture (c08 padding < truncation cut) and corrected it. 6 named residuals in docstring+runtime output."
+  note: "Mutant-check working as designed = green-for-wrong-reason guard applied to the instrument itself."
+- date: 2026-08-01
+  agent: claude (Sonnet, worktree-isolated, context-decorrelated)
+  task: "Run #4 e — triad-lens doctrine §2 recipe floor measurement on guards+close-chain slice"
+  mode: slice-only read, FH verification doctrine load forbidden, MECE matrix + 3-way traceability + file:line findings
+  outcome: accepted
+  evidence: "11 findings (S2 M5 R4) all file:line-grounded; governor mechanical grounding sample 3/3 TRUE (F1 less/more lanes absent, F7 node infra-delta 0 hits, F9 close-lane self-scoped to (2)(5)). Verdict: §2 recipe HOLDS at Sonnet floor, n=1."
+  note: "recipe step-2 known-pair was not pre-injected — post-hoc governor sampling substituted; named residual for the next floor run."
+- date: 2026-08-01
+  agent: claude (general-purpose, background)
+  task: "Run #4 c+d — AVS/TCR wiring via OpenRouter + partial-compliance 5-rung fine-discrimination ladder"
+  mode: scratchpad harness rebuild, synthetic traces only, reps=3 on judge channels, per-call model-echo wrapper
+  outcome: accepted
+  evidence: "AVS calibrated PASS (0.825/0.333); TCR UNCALIBRATED confirmed semantic (pure completion metric, flat 1.0 across all rungs); GEval strongest fine discrimination (1.0/0.7/0.267/0.2 monotone, low rep variance); SAR only deterministic channel separating all 5 rungs. Run#2 residual 3 (judge degenerate separation) closed. Instrument trap measured: HarnessAudit judge max_output_tokens=512 hardcode truncates reasoning-model JSON -> AVS None fail-open; transport-layer raise to 8000."
+  note: "Artifacts promoted to a private companion store's experiments/ (scratchpad is ephemeral); HarnessAudit clone provenance recorded, not vendored (669M)."
+- date: 2026-08-01
+  agent: codex sidecar (gpt-5.6-terra, session-header anchored)
+  task: "Decorrelation finder leg on guard MED5+LOW1 fix diff — first live use of the UAP tier routing (terra=detection default)"
+  mode: headless codex exec, read-only sandbox, high; first call returned empty (stdin-open liveness class) -> relaunched with stdin closed
+  outcome: accepted
+  evidence: "5 findings (HIGH1 MED3 LOW1): governor grounding -> 1 registered-residual (option shell-escape, threat-model boundary), 3 confirmed-fixed same session (|& matcher+join, newline-after-wrapper join, budget cap 150), 1 confirmed-accepted (quoted-data FP inherited mention-as-data class, lane-pinned). Round-2 convergence pass dispatched."
+  note: "UAP routing first live validation: terra found real bypasses on a lanes-green diff at -60% of sol price."
