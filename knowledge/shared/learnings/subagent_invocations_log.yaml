@@ -798,3 +798,17 @@
     marker fields from convention-only axis2-rounds, and named criterion 4''s forbidden move.'
   note: 'Closes the named residual on PR #232''s marker (target-tier sim NOT RUN). The rule holds at the base floor
     without opus-tier reasoning.'
+
+- date: '2026-08-02'
+  agent: general-purpose x2 pinned to sonnet (ablation known pair)
+  task: 'First real ablation in this repo: is CLAUDE.md §New Skill Creation Pre-Commit Gate (1,310 chars) redundant
+    with the paths-scoped rule file that holds its detail?'
+  mode: two isolated agents, one given the asset WITH the section and one WITHOUT, both forbidden any other file
+    access; asked the section's own regression probe question
+  outcome: accepted
+  evidence: 'Arm A: all 6 bar items + the Done-When consequence + the routing/gate Step-0.5 obligation, all self-labelled
+    GROUNDED. Arm B: NOT IN MY CONTEXT for all three. VERDICT KEEP.'
+  note: 'The file-access ban is the experiment — ablation asks whether the text is knowable without residency, not
+    whether an agent can locate it. Both arms independently cited the same residual (the paths: trigger is a READ,
+    so a from-scratch Write never loads the detail rule), which is exactly the path the probe encodes. Method costs
+    ~2 min/section and replaces the coverage number that was cut for being wrong four times.'
