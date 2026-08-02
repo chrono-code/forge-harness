@@ -812,3 +812,19 @@
     whether an agent can locate it. Both arms independently cited the same residual (the paths: trigger is a READ,
     so a from-scratch Write never loads the detail rule), which is exactly the path the probe encodes. Method costs
     ~2 min/section and replaces the coverage number that was cut for being wrong four times.'
+
+- date: '2026-08-02'
+  agent: general-purpose x6 pinned to sonnet (ablation known pairs — 3 sections x 2 arms)
+  task: Ablation sweep — 3 sections x 2 arms (6 dispatches; the day's SubagentStop tally read 7, the extra being one earlier probe). Two largest MEASURABLE sections of CLAUDE.md — §Autonomous Initiative (12,224 chars,
+    8 probes) and §Session Wrap-up (8,398 chars, 2 probes) — plus the earlier §New Skill Creation Pre-Commit Gate
+  mode: paired arms per section (asset WITH vs WITHOUT the section), floor tier, all file access denied except the
+    one arm file
+  outcome: accepted
+  evidence: '3 sections ablated, 3 KEEP. §Autonomous Initiative: 5 routing behaviours GROUNDED in arm A and NOT
+    IN MY CONTEXT in arm B (context-doctor, harvest-loop, goal-quench, deep-clarify, the already-running Guard).
+    §Session Wrap-up: 4 of 6 close-chain answers fully absent without it (the ordered sequence, the absolute-last
+    rule and its reason, the late-finding re-run rule, the open-PR sweep). §New Skill gate: 3 of 3 absent.'
+  note: 'By-product worth more than the verdicts: the Pre-Publish row IN the initiative table is redundant — arm
+    B answered the full chain and the order invariant correctly from the gate''s own section (719 chars, ablatable).
+    And the headline: three measurements, three KEEPs. The ''CLAUDE.md is bloated'' premise is not surviving contact
+    — the earlier 46%-unmeasured framing measured probe coverage, which is not necessity.'
