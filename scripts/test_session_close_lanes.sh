@@ -82,15 +82,24 @@ _lane "②-C  no FH asset touched → no ② line at all"    ' ② '    0 "$(_fi
 # success / 30732642673 failure ("expected exit 1, got 0"), while the same commit passed locally.
 # Two consecutive writes land 1.435–2.773ms apart (measured here, macOS/APFS).
 #
-# MECHANISM — HYPOTHESIS, NOT MEASURED: a filesystem/clock whose mtime granularity is coarser than
-# that gap would stamp both files identically, `find -newer` would return nothing, ⑤ would correctly
-# report no violation, and the lane would read that as "the gate is broken". Plausible on Linux CI;
-# NOT confirmed, and deliberately not asserted here — the declared source says so in as many words
-# (tracks/_meta/fh_signal_2026-08-02_fh-direct.md §S2: "This is a guess and is labelled as one").
-# What IS established without the mechanism: the lane could not distinguish "no violation detected"
-# from "no violation state created", so its verdict was unsafe whatever the cause. The repair below
-# does not depend on the hypothesis being right, and the mtimes it prints are the measurement that
-# will settle it.
+# MECHANISM — MEASURED 2026-08-02, run 30734832234 (this file's own probe, below):
+#     Linux  (ubuntu-latest, CI): 187/200 consecutive write-pairs INDISTINGUISHABLE to find -newer
+#     Darwin (APFS, this laptop):   0/200
+# The runner's mtime granularity is coarser than the gap between two back-to-back writes, so both
+# files receive the same stamp, `find -newer` returns nothing, ⑤ correctly reports no violation, and
+# the old lane read that as "the gate is broken". Confirmed with a known-positive control in the same
+# run. It was carried as an explicit hypothesis until this number existed — the earlier text said so,
+# and the declared source still does (fh_signal_2026-08-02_fh-direct.md §S2).
+#
+# READ THE NUMBER NARROWLY: the probe measures the TIGHTEST possible gap (two writes in one loop
+# iteration). The fixture that actually flaked had a wider gap, so 187/200 establishes that the
+# mechanism is real on this runner — NOT that the old lane failed 93.5% of the time. Same SHA
+# flipping verdict 36s apart is consistent with that gap sitting near a tick boundary (inference,
+# not measurement).
+#
+# Independent of the mechanism: the lane could not distinguish "no violation detected" from "no
+# violation state created", so its verdict was unsafe whatever the cause. The repair below does not
+# depend on the mechanism, which is why it shipped before the number arrived.
 #
 # Two repairs, both required:
 #   (a) DETERMINISTIC separation — stamp the older file with an absolute past time via `touch -t`
