@@ -67,6 +67,12 @@ ACCEPTED_ABSENT=(
   ".claude/regression/probes.md"
   "scripts/sync-to-be.sh"
   "scripts/sync_guard_check.sh"
+  # Return path (companion store → hub) and its anchor. Same reason as the forward path above: the
+  # transport only means anything on a machine that HAS the operator's companion store, and shipping
+  # it would hand every consumer a script that resolves `$BE` to nothing. selfcheck references the
+  # anchor but guards on the subject's presence, so package mode SKIPs rather than falling through.
+  "scripts/sync-from-be.sh"
+  "scripts/sync_from_be_lanes.sh"
 )
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'
