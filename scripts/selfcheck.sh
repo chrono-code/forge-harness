@@ -330,6 +330,24 @@ else
   fail=1
 fi
 
+# tag/version consistency guard. Wired with the guard it anchors: the guard exists because a wrong
+# tag reached the remote and a publish from the wrong tree was stopped only by npm's own collision
+# check, so an unrun anchor here would be the same luck-as-floor arrangement one layer up.
+if [ ! -f templates/.git-hooks/pre-push ]; then
+  echo "SKIP  test_tag_version_lanes.sh (subject templates/.git-hooks/pre-push absent)"
+elif [ -f scripts/test_tag_version_lanes.sh ]; then
+  if ! bash scripts/test_tag_version_lanes.sh >/dev/null 2>&1; then
+    echo "FAIL  test_tag_version_lanes.sh: the tag/version guard would mis-route"
+    bash scripts/test_tag_version_lanes.sh 2>&1 | tail -12
+    fail=1
+  else
+    echo "PASS  test_tag_version_lanes.sh (mismatch blocks · match silent · scope · override)"
+  fi
+else
+  echo "FAIL  test_tag_version_lanes.sh: pre-push present but its anchor is missing"
+  fail=1
+fi
+
 # ④-e dispatch-log reconciliation + its tally hook. Wired in the same commit that ships them: the
 # obligation they mechanize lost 20/20 in a single session, so leaving the checker itself unrun
 # would be the same defect one layer up.

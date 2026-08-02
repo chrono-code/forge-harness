@@ -77,6 +77,10 @@ ACCEPTED_ABSENT=(
   # regression run must not compare against this harness's probe set). Shipping the reader without
   # its corpus would put a script in the package that can only ever report "instrument error".
   "scripts/probe_scope_check.sh"
+  # Anchors templates/.git-hooks/pre-push, which is itself source-tree-only infra (the hooks dir is
+  # not in files[]). Shipping the lane without its subject would put a test in the package that can
+  # only ever SKIP. selfcheck guards on the subject's presence, so package mode skips honestly.
+  "scripts/test_tag_version_lanes.sh"
 )
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'

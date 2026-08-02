@@ -54,6 +54,7 @@ DEL_OTHER=""      # refs/tags/* refs/notes/* etc. being deleted
 FORCED_REFS=""
 UNCLASSIFIED=""   # force-check impossible (remote tip not fetched)
 DIRECT_MAIN=""    # non-delete update pushed straight at the integration branch (PR-only policy)
+TAG_MISMATCH=""   # vX.Y.Z tag whose commit's package.json disagrees (irreversible-adjacent)
 SEP=$'\n'   # ranges are newline-separated and evaluated ONE REF AT A TIME: concatenating
             # them into one arg string let `--not` from ref A flip polarity for ref B, so a
             # multi-ref push could return an empty or wrong commit set (R6 audit 2026-07-26).
@@ -184,6 +185,40 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         fi ;;
     esac
   fi
+  # TAG/VERSION CONSISTENCY — a `vX.Y.Z` tag must point at a commit whose package.json says X.Y.Z.
+  # WHY (measured 2026-08-02): a release tag was pushed onto the WRONG commit because `git pull`
+  # had failed with a diverging-branches error that went unread, so `main` was still the pre-release
+  # tree. `npm publish` was then attempted from that same tree — and the ONLY thing that stopped it
+  # was npm's own "cannot publish over 1.4.84" collision check. Publishing is irreversible; being
+  # saved by the registry's bookkeeping is luck, not a floor.
+  # This is N=1 and it is built anyway: the repetition rule ("1-2 occurrences -> prose") is scoped to
+  # REVERSIBLE surfaces. A wrong tag on a public repo plus a publish from the wrong tree is the
+  # irreversible class, where this repo's own Surface-Class Degrade Invariant says fail-CLOSED now.
+  # Scope is deliberately narrow: only a NEW `refs/tags/v<digits>` push, only when package.json
+  # exists at that commit. Absent package.json -> not applicable (a tag in a non-npm repo is fine);
+  # unreadable package.json at a commit that HAS one -> BLOCK (cannot decide != allowed).
+  if [ "$local_sha" != "$ZERO" ] && [ "${remote_sha:-$ZERO}" = "$ZERO" ]; then
+    case "$remote_ref" in
+      refs/tags/v[0-9]*)
+        _tv="${remote_ref#refs/tags/v}"
+        _commit=$(git rev-parse "${local_sha}^{commit}" 2>/dev/null)
+        if [ -z "$_commit" ]; then
+          echo "  ⛔ TAG/VERSION: $remote_ref does not resolve to a commit — cannot verify, refusing"
+          TAG_MISMATCH="$TAG_MISMATCH $remote_ref"
+        elif git cat-file -e "${_commit}:package.json" 2>/dev/null; then
+          _pv=$(git show "${_commit}:package.json" 2>/dev/null \
+                | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+          if [ -z "$_pv" ]; then
+            echo "  ⛔ TAG/VERSION: package.json exists at ${_commit} but its version is unreadable — refusing"
+            TAG_MISMATCH="$TAG_MISMATCH $remote_ref"
+          elif [ "$_pv" != "$_tv" ]; then
+            echo "  ⛔ TAG/VERSION MISMATCH: $remote_ref points at ${_commit}, whose package.json says $_pv"
+            TAG_MISMATCH="$TAG_MISMATCH $remote_ref"
+          fi
+        fi ;;
+    esac
+  fi
+
   # PR-only policy: a non-delete update aimed straight at the integration branch.
   # Detected INSIDE this loop because this is the only place git's ref list is readable.
   if [ "$local_sha" != "$ZERO" ]; then
@@ -403,6 +438,27 @@ fi
 # instead of a bare server rejection, and it keeps working if the server setting is ever relaxed.
 # It is deliberately NOT the hard floor — a client-side hook is bypassable by `--no-verify`.
 # Scope: blocks the PUSH, not the merge — `gh pr merge` operates server-side and is unaffected.
+if [ -n "$TAG_MISMATCH" ] && [ "${TAG_VERSION_OK:-0}" != "1" ]; then
+  echo ""
+  echo "══════════════════════════════════════════════"
+  echo " ⛔ FH Tag/Version Consistency (pre-push)"
+  echo "══════════════════════════════════════════════"
+  echo "  Tag(s) whose commit disagrees with package.json:$TAG_MISMATCH"
+  echo ""
+  echo "  A release tag is the thing a human and a script both trust to answer \"what shipped\"."
+  echo "  Measured 2026-08-02: a tag went onto the pre-release commit because a failed \`git pull\`"
+  echo "  went unread, and \`npm publish\` was then attempted from that same tree. Only npm's own"
+  echo "  version-collision check stopped it. Publishing does not un-happen; that was luck."
+  echo ""
+  echo "  Fix:  git fetch origin && git switch main && git pull --ff-only"
+  echo "        git tag -d <tag> && git push origin :refs/tags/<tag>   # if already pushed"
+  echo "        # then re-tag on the commit whose package.json really carries that version"
+  echo ""
+  echo "  Deliberate exception (explicit, logged — mirrors MAIN_PUSH_OK / DESTRUCTIVE_OP_OK):"
+  echo "      TAG_VERSION_OK=1 git push …"
+  exit 1
+fi
+
 if [ -n "$DIRECT_MAIN" ] && [ "${MAIN_PUSH_OK:-0}" != "1" ]; then
   echo ""
   echo "══════════════════════════════════════════════"
