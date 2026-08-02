@@ -55,12 +55,17 @@ mkuap_raw() { printf '%s\n' "$1" > "$TD/u.md"; }
 
 mkreg "$OKCLASS"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "N1 a well-formed registry + eligible unexpired scoped grant passes" 0 ""
 
 mkuap 'standing_consent:
   ok: declined'
-lane "N2 a declined record is a valid non-grant state, not a malformed grant" 0 ""
+# EXPECTATION CHANGED 0 -> 3 (F4-b, 2026-07-31). A `declined` record is still a valid non-grant
+# state and still must not be a VIOLATION — that half of the lane is unchanged and is what the
+# 3-vs-1 distinction now asserts. What changed is that "the user said no" may not be reported
+# through the same channel as "the user said yes": exit 0 is the only code a caller may skip a
+# prompt on, and a file recording nothing but refusals has granted nothing.
+lane "N2 a declined record is a non-grant state (3), never a malformed grant (1)" 3 ""
 
 mkreg '  - {name: s, owner: o, mode: m, target: t, capabilities: [read], sinks: [go-public], feeds: [], promotion_eligible: true}'
 mkuap 'standing_consent: {}'
@@ -71,31 +76,31 @@ lane "P2 taint — a class that FEEDS an irreversible sink cannot be promotable"
 
 mkreg "$OKCLASS"
 mkuap 'standing_consent:
-  ghost: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  ghost: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "P3 a grant on an unregistered class is refused (unregistered == unknown)" 1 "R3"
 
 mkuap 'standing_consent:
-  ok: {granted: 2026-01-01, expires: 2026-06-30, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-01-01, expires: 2026-06-30, effects: [read], target: t}'
 lane "P4 an expired lease does not keep running" 1 "R5"
 
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31}'
 lane "P5 a grant with no recorded scope has no re-validation baseline" 1 "R6"
 
 # P6-P8 are the round-3 fail-opens. Each of these PASSED before the fix.
 mkreg '  - {name: q, owner: o, mode: m, target: t, capabilities: [read], sinks: [], feeds: [], promotion_eligible: "false"}'
 mkuap 'standing_consent:
-  q: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  q: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "P6 quoted \"false\" is rejected as a type error, not read as truthy" 1 "R1-b"
 
 mkreg '  - {name: d, owner: o, mode: m, target: t, capabilities: [read], sinks: [go-public], feeds: [], promotion_eligible: false}
   - {name: d, owner: o, mode: m, target: t, capabilities: [read], sinks: [], feeds: [], promotion_eligible: true}'
 mkuap 'standing_consent:
-  d: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  d: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "P7 a duplicate class name cannot launder an ineligible class" 1 "R1-c"
 
 mkreg "$OKCLASS"
-mkuap 'standing_consent: {ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}}'
+mkuap 'standing_consent: {ok: {owner: o, mode: m, sinks: [], granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}}'
 lane "P8 an INLINE grant is parsed, not silently read as 'nothing granted'" 1 "R5"
 
 # P10-P11 are the round-4 fail-opens. Both PASSED before the fix, and both were confirmed against a
@@ -106,16 +111,21 @@ mkuap 'standing_consent: {}
 notes in between
 
 standing_consent:
-  ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
 lane "P10 an early empty consent block cannot shadow a later grant (first-match)" 1 "R3"
 
 mkuap 'standing_consent:
-  ok: {state: "revoked ", granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
-if bash "$CHK" "$TD/r.yaml" "$TD/u.md" 2>&1 | grep -q "0 active grant"; then
+  ok: {owner: o, mode: m, sinks: [], state: "revoked ", granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+# ASSERTION REWRITTEN 2026-07-31 (F4-b). This lane read the VERDICT out of prose ("0 active grant")
+# through a pipe, which is both the grep-a-prose-verdict pattern this repo has a memory entry
+# against and — via the pipe — a read of grep's status, not the checker's. It now asserts the typed
+# channel: a normalized `revoked ` leaves zero active grants, which is exit 3, not 0 and not 1.
+bash "$CHK" "$TD/r.yaml" "$TD/u.md" >"$TD/o" 2>&1; rc=$?
+if [ "$rc" -eq 3 ] && grep -q "NONE of them an active grant" "$TD/o"; then
   ok "P11 a mapping non-grant state is normalized like the scalar one (no divergent normalizer)"
 else
-  bad "P11 \`state: \"revoked \"\` was validated as an ACTIVE grant"
-  bash "$CHK" "$TD/r.yaml" "$TD/u.md" 2>&1 | sed 's/^/     /'
+  bad "P11 \`state: \"revoked \"\` was not normalized to a non-grant (exit $rc, expected 3)"
+  sed 's/^/     /' "$TD/o"
 fi
 
 # P12 is the round-5 fail-open: `or {}` collapsed FALSY non-mappings into a valid-empty mapping
@@ -140,11 +150,11 @@ done
 mkreg "$OKCLASS"
 mkuap 'standing_consent: {}
 
-standing_consent : {ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}}'
+standing_consent : {ok: {owner: o, mode: m, sinks: [], granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}}'
 lane "P13 a space-before-colon key cannot hide behind a canonical block" 1 "R3"
 
 mkuap 'standing_consent :
-  ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
 lane "P13-b a space-before-colon BLOCK form is parsed and its grant validated" 1 "R5"
 
 # N3 EXPECTATION INVERTED 2026-07-31 — and the reason is the whole point of the storage-form change.
@@ -154,7 +164,7 @@ lane "P13-b a space-before-colon BLOCK form is parsed and its grant validated" 1
 # So the belief was false, and a regex that approximates the YAML spec had been quietly ratifying a
 # document the spec rejects. Handing the region to the real loader replaces a guess with an answer —
 # a malformed document is now BROKEN (fail-closed), not silently accepted as equivalent.
-mkuap "$(printf 'standing_consent\t: {ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}}')"
+mkuap "$(printf 'standing_consent\t: {ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}}')"
 lane "N3 a tab-before-colon key is invalid YAML and fails closed (loader, not regex, decides)" 1 "R3"
 
 # P14 — round-7 fail-open: R6 presence-checked `effects`/`target` but never typed them, while the
@@ -162,15 +172,15 @@ lane "N3 a tab-before-colon key is invalid YAML and fails closed (loader, not re
 # a MISSING field was caught; a type-wrong one passed.
 mkreg "$OKCLASS"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: true, target: 123}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: true, target: 123}'
 lane "P14 a type-wrong grant scope is rejected, not counted as recorded" 1 "R6"
 
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: "read", target: "  "}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: "read", target: "  "}'
 lane "P14-b a scalar effects / whitespace-only target is rejected" 1 "R6"
 
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [], target: t}'
 lane "P14-c an EMPTY effects list is not a baseline" 1 "R6"
 
 # H1-H9 — round-8 exhaustive field audit found NINE remaining holes in one pass, after four rounds
@@ -196,26 +206,26 @@ lane "H3 an unreadable sink item is UNDECLARED, not an empty sink list" 1 "R1-b"
 
 mkreg "$OKCLASS"
 mkuap 'standing_consent:
-  ok: {expires: 2026-12-31, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], expires: 2026-12-31, effects: [read], target: t}'
 lane "H5 a grant with no \`granted\` date cannot be audited" 1 "R5"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 29991231, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 29991231, effects: [read], target: t}'
 lane "H7 a non-ISO integer expiry is not a date" 1 "R5"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 9999-12-31, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 9999-12-31, effects: [read], target: t}'
 lane "H7-b an unbounded lease is a transfer wearing a lease's clothes" 1 "R5"
 mkuap 'standing_consent:
-  ok: {state: revokedd, granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], state: revokedd, granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "H6 a typo'\''d state fails closed instead of passing as active" 1 "R3"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [repo-mutation], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [repo-mutation], target: t}'
 lane "H8 a grant wider than its registered capabilities is refused" 1 "R7"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: everything}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: everything}'
 lane "H8-b grant/class target drift is refused" 1 "R7"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2020-01-01, effects: [read], target: t}
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2020-01-01, effects: [read], target: t}
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "H9 duplicate YAML keys are rejected, not resolved last-wins" 1 ""
 
 # H4 had a fix but NO lane — the mutation sweep caught that (disabling it failed zero lanes).
@@ -224,7 +234,7 @@ lane "H9 duplicate YAML keys are rejected, not resolved last-wins" 1 ""
 # still exits 1 via "not in the registry", so a rule-id assertion passed either way and the mutation
 # sweep caught zero lanes. A lane that cannot separate two paths is not measuring the one it names.
 mkuap 'standing_consent:
-  123: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  123: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 bash "$CHK" "$TD/r.yaml" "$TD/u.md" >"$TD/o" 2>&1
 if [ $? -eq 1 ] && grep -q 'grant key 123 must be a non-blank string' "$TD/o"; then
   ok "H4 a non-string grant key is refused AS A TYPE ERROR (not merely as unregistered)"
@@ -243,7 +253,7 @@ lane "P9 a scalar where a list is required is a type error" 1 "R1-b"
 # up as a lane change rather than being rediscovered from scratch — and so nobody reads the 40/40
 # as "no known over-block".
 mkreg "$OKCLASS"
-mkuap 'defaults: &d {ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}}
+mkuap 'defaults: &d {ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}}
 standing_consent:
   <<: *d'
 # N4 REMOVED 2026-07-31 — it called ok() in BOTH branches, so it passed on every possible exit code
@@ -287,7 +297,7 @@ lane "D1-d a missing UAP is UNMEASURED (3) — no grants is not a verified pass"
 # return the same code again, the channel has collapsed back into prose.
 mkreg "$OKCLASS"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "D1-e 0 still means VERIFIED, and only that" 0 ""
 
 printf 'classes: [ {name: broken\n' > "$TD/r.yaml"
@@ -306,7 +316,7 @@ lane "D2 an unparseable registry fails closed (cannot decide == not allowed)" 1 
 # through — which is exactly why the doctrine calls local tier evidence-of and never terminal.
 mkreg '  - {name: rewrite, owner: o, mode: m, target: t, capabilities: [history-rewrite], sinks: [], feeds: [], promotion_eligible: true}'
 mkuap 'standing_consent:
-  rewrite: {granted: 2026-07-29, expires: 2026-12-31, effects: [history-rewrite], target: t}'
+  rewrite: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [history-rewrite], target: t}'
 lane "R9-1 a declared irreversible CAPABILITY is not promotable, empty sinks or not" 1 "R2-b"
 
 # The same class WITHOUT the promotion claim is fine: declaring an irreversible capability is not
@@ -314,7 +324,9 @@ lane "R9-1 a declared irreversible CAPABILITY is not promotable, empty sinks or 
 # can do. Over-blocking trains the override reflex — the checker already records one such revert.
 mkreg '  - {name: rewrite, owner: o, mode: m, target: t, capabilities: [history-rewrite], sinks: [], feeds: [], promotion_eligible: false}'
 mkuap 'standing_consent: {}'
-lane "R9-1b the same irreversible capability is fine when not claimed promotable" 0 ""
+# EXPECTATION CHANGED 0 -> 3 (F4-b): the anti-over-block point of this lane is that the registry
+# must NOT be a violation, i.e. not 1. Its UAP grants nothing, so the join is empty -> UNMEASURED.
+lane "R9-1b the same irreversible capability is not a violation when not claimed promotable" 3 ""
 
 # `unknown` is in IRREVERSIBLE for the sink rule ("unlisted sinks are UNKNOWN, and unknown is not
 # reversible"); it must mean the same thing in the capability position.
@@ -326,7 +338,7 @@ lane "R9-1c an \`unknown\` capability is not promotable either" 1 "R2-b"
 # sinks is the N1 shape and must stay passing. If this lane ever flips, the fix went too wide.
 mkreg "$OKCLASS"
 mkuap 'standing_consent:
-  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 lane "R9-1d a reversible capability with empty sinks still passes (anti-over-block)" 0 ""
 
 # R9-1e — the SAME field must be normalised the SAME way by every rule that reads it. R7 compares
@@ -340,17 +352,24 @@ lane "R9-1e whitespace around an irreversible capability does not evade R2-b" 1 
 
 # The shipped example must satisfy the validator — otherwise the artifact FH hands users is the
 # first counter-example. (Hand-verify-one-sample discipline, applied to our own template.)
-if bash "$CHK" "$ROOT/templates/consent_classes.yaml.example" /dev/null >/dev/null 2>&1; then
-  ok "S1 the shipped templates/consent_classes.yaml.example validates"
+# ASSERTION REWRITTEN 2026-07-31 (F4-b). This lane used the bare-command form — precisely the
+# `if check; then ...` convention finding F4 identified as the fail-open — so it asked "is the exit
+# status truthy?" when the question is "is the REGISTRY broken?". With no grants to join the answer
+# is now 3 (UNMEASURED), which is a correct verdict about the grants and says nothing bad about the
+# registry. 1 is the only code that means the shipped example is invalid.
+bash "$CHK" "$ROOT/templates/consent_classes.yaml.example" /dev/null >"$TD/o" 2>&1; rc=$?
+if [ "$rc" -ne 1 ]; then
+  ok "S1 the shipped templates/consent_classes.yaml.example validates (exit $rc, not BROKEN)"
 else
   bad "S1 the shipped example registry does NOT validate"
+  sed 's/^/     /' "$TD/o"
 fi
 
 # ---- F: STORAGE FORM (frontmatter) -------------------------------------------------
 # These lanes test the machine-region boundary itself, not grant semantics, so they write the UAP
 # byte-exact via mkuap_raw instead of going through the frontmatter-wrapping helper.
 mkreg "$OKCLASS"
-GRANT='  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+GRANT='  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
 
 # F1/F2 are the two false-clean shapes, and they are the reason this section exists. A grant that
 # sits where no parser reads it must never report as "nothing granted" — an unread grant is not an
@@ -364,17 +383,20 @@ lane "F2 frontmatter exists but the grant was written BELOW it — fails closed"
 # F3 is the anti-over-block control for F1: absence must stay cheap. A UAP predating this format has
 # no machine region and grants nothing; painting that red would train the override reflex.
 mkuap_raw "$(printf '# UAP\n\nno machine region here, and nothing granted.\n')"
-lane "F3 no frontmatter and no grant mentioned is simply nothing granted (not a failure)" 0 ""
+# EXPECTATION CHANGED 0 -> 3 (F4-b). "Absence must stay cheap" is preserved exactly: 3 is not red,
+# it is N/A. What it no longer does is answer the conventional `if check; then run_unprompted; fi`
+# with success on a UAP that granted nothing at all.
+lane "F3 no frontmatter and no grant mentioned is nothing granted (3, not a failure)" 3 ""
 
 # F4 pins the OVER-BLOCK THIS CHANGE RETIRES. Under the slicer a merge-key grant was refused because
 # the anchor lived outside the extracted fragment; the fragment is now the whole document, so
 # ordinary DRY YAML resolves. Over-blocking was a defect of the same weight as a fail-open.
-mkuap_raw "$(printf -- '---\ndefaults: &d {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}\nstanding_consent:\n  ok:\n    <<: *d\n---\n')"
+mkuap_raw "$(printf -- '---\ndefaults: &d {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}\nstanding_consent:\n  ok:\n    <<: *d\n---\n')"
 lane "F4 a merge-key/anchor grant now resolves (the measured over-block is retired)" 0 ""
 
 # F5 — duplicate keys stay rejected on this side too. safe_load is last-wins, so an expired grant
 # followed by a future one would silently keep the future one.
-mkuap_raw "$(printf -- '---\nstanding_consent:\n  ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}\n  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}\n---\n')"
+mkuap_raw "$(printf -- '---\nstanding_consent:\n  ok: {owner: o, mode: m, sinks: [], granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}\n  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}\n---\n')"
 lane "F5 duplicate grant keys are refused, not last-wins" 1 "R3"
 
 # F6 — a leading BOM must not make the machine region look absent. Without the tolerance this still
@@ -398,18 +420,22 @@ lane "F8 an unterminated --- block is not a machine region and fails closed" 1 "
 # went green without the empty-region path ever running. Lane F9-b below is its control: same empty
 # region, but WITH a prose mention, which can only stay green if the region was really recognized.
 mkuap_raw "$(printf -- '---\n---\n\n# UAP\n')"
-lane "F9 an empty frontmatter block grants nothing and is not an error" 0 ""
+# EXPECTATION CHANGED 0 -> 3 (F4-b): still not an error (not 1), but an empty region grants nothing.
+lane "F9 an empty frontmatter block grants nothing (3) and is not an error (1)" 3 ""
 
 # F9-b — the discriminating control for F9. If the empty region is NOT recognized, this file reads as
 # "no frontmatter + standing_consent mentioned" and fails closed via F1. Green here means the empty
 # frontmatter was genuinely parsed. (Without this control F9 cannot tell the two paths apart.)
 mkuap_raw "$(printf -- '---\n---\n\n# UAP\n\nthe key name standing_consent appears in prose but not as a key.\n')"
-lane "F9-b empty region + a prose MENTION is still nothing granted (region truly parsed)" 0 ""
+# EXPECTATION CHANGED 0 -> 3 (F4-b). The discriminating power of this control is UNCHANGED: if the
+# empty region were not recognized, this file would fail CLOSED via the F1 net at exit 1, which is
+# still distinct from the 3 asserted here.
+lane "F9-b empty region + a prose MENTION is still nothing granted (region truly parsed)" 3 ""
 
 # F10-F13 — YAML stream forms the canonical loader accepts and the first fence regex rejected. Each
 # failed CLOSED (no leak) but as an OVER-BLOCK whose message blamed an absent frontmatter that was
 # present. A gate that misdirects the fix gets overridden, so these are lanes, not footnotes.
-EXPIRED='  ok: {granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
+EXPIRED='  ok: {owner: o, mode: m, sinks: [], granted: 2026-01-01, expires: 2020-01-01, effects: [read], target: t}'
 mkreg "$OKCLASS"
 mkuap_raw "$(printf -- '---\nstanding_consent:\n%s\n...\n' "$EXPIRED")"
 lane "F10 a '...' document terminator closes the machine region (grant is READ, then R5-caught)" 1 "R5"
@@ -428,6 +454,279 @@ lane "F13 a %YAML directive before the fence does not hide the region" 1 "R5"
 # it, i.e. the two nets disagreed on one input.
 mkuap_raw "$(printf -- '---\nsidecar_consent: granted\n---\n\n# UAP\n\n"standing_consent":\n%s\n' "$EXPIRED")"
 lane "F14 a QUOTED grant key in the prose region is caught too (nets agree)" 1 "R3"
+
+# ---- R9-F3: THE FINGERPRINT WAS A PARTIAL HASH ------------------------------------
+# Cross-family round 9 (codex @ gpt-5.6-sol). The rule says consent binds to the action's SHAPE and
+# enumerates that shape — "the owning gate/skill, and the set of effect classes ... plus the
+# `target` scope and the `sinks` fingerprint", offered to the user as `<mode · target ·
+# capabilities · sinks>`. The baseline the checker recorded was `effects` + `target` ONLY.
+# So the fields that say WHO acts (`owner`) and WHAT IT DOES when it acts (`mode`) were outside the
+# floor: keep the class name, target, capabilities and empty sinks, swap the owner to a different
+# skill, and R6 found its two fields present, R7 found the effects still a subset, and the gate
+# returned 0 with the blast radius re-pointed under a live grant.
+# The rule's own sentence is the indictment: "the name is exactly what does not change when the
+# danger does" — and neither, it turned out, did anything the floor was reading.
+# Each P-lane below was confirmed to return 0 before the fix and 1 after; each is paired with an
+# anti-over-block N-lane so the check is calibrated on a known-negative, not only a known-positive.
+FPGRANT='  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+
+# P-F3a / P-F3b — the drift the review reproduced: same name, same target, same capabilities, same
+# empty sinks; only the acting skill (or what it does) changed.
+mkreg '  - {name: ok, owner: DANGEROUS-OTHER-SKILL, mode: m, target: t, capabilities: [read], sinks: [], feeds: [], promotion_eligible: true}'
+mkuap "standing_consent:
+$FPGRANT"
+lane "P-F3a a class re-pointed to a different OWNER under a live grant is refused" 1 "R7"
+
+mkreg '  - {name: ok, owner: o, mode: unrestricted, target: t, capabilities: [read], sinks: [], feeds: [], promotion_eligible: true}'
+mkuap "standing_consent:
+$FPGRANT"
+lane "P-F3b a class whose MODE changed under a live grant is refused" 1 "R7"
+
+# N-F3c — the control for both: an intact fingerprint must still pass. Without it P-F3a/b prove
+# only that something fails, not that the owner/mode comparison is what fired.
+mkreg "$OKCLASS"
+mkuap "standing_consent:
+$FPGRANT"
+lane "N-F3c an intact owner/mode/target/sinks fingerprint still passes (anti-over-block)" 0 ""
+
+# P-F3d — presence. A grant written without the fingerprint cannot detect drift in it later, which
+# is the same argument R6 already made for effects/target and did not apply to the other three.
+mkuap 'standing_consent:
+  ok: {granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane "P-F3d a grant recording no owner/mode/sinks has no fingerprint to compare" 1 "R6"
+
+# N-F3e — the FALSY-LAUNDERING control, the defect class this file has now been bitten by three
+# times. `sinks: []` is a REAL fingerprint ("this class crossed nothing at grant time") and must not
+# collapse into "not recorded". If this lane ever goes red with an R6 sinks message, a sentinel
+# check was replaced by a truthiness test.
+mkuap "standing_consent:
+$FPGRANT"
+lane "N-F3e an EMPTY sinks list is a recorded fingerprint, not a missing one" 0 ""
+
+# P-F3f/g — types. The registry side got strict types at R1-b and the grant side got them for
+# effects/target at R6; the three new fields inherit the same rule rather than a laxer one.
+mkuap 'standing_consent:
+  ok: {owner: o, mode: m, sinks: "go-public", granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane "P-F3f a scalar sinks fingerprint is unreadable, and unreadable is undeclared" 1 "R6"
+
+mkuap 'standing_consent:
+  ok: {owner: "   ", mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane "P-F3g a blank owner is not a recorded owner" 1 "R6"
+
+# N-F3h — ONE normalizer, both sides. The registry side reads `owner` through _norm; if the grant
+# side ever compares raw strings, ` o ` and `o` become two values and the gate fires on a file that
+# did not drift. Divergent normalizers is exactly how R2-b was first written wrong.
+mkuap 'standing_consent:
+  ok: {owner: "  o  ", mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane "N-F3h whitespace around an owner is not drift (single normalizer, both sides)" 0 ""
+
+# ---- R9-F4-b: THE SAME FAIL-OPEN, ONE BRANCH OVER ---------------------------------
+# F4 gave "nothing to join" its own exit code for a MISSING registry, ZERO classes and a MISSING
+# UAP — and left a PRESENT UAP holding ZERO grants returning 0. Identical state, two codes. Lane
+# D1-d already asserted in its own name that "no grants is not a verified pass", and the EXIT
+# CONTRACT already defined 3 as "there was nothing to join"; only the code disagreed. A caller
+# writing `if scripts/consent_registry_check.sh; then run_unprompted; fi` ran unprompted against a
+# profile that had granted it nothing.
+mkreg "$OKCLASS"
+mkuap 'standing_consent: {}'
+lane "D3 a valid registry with an EXPLICITLY empty grant set is UNMEASURED (3)" 3 ""
+
+# D3-b — the discriminating control. If D3 and this lane ever return the same code again, the typed
+# channel has collapsed back into prose and 0 no longer means "a real grant was joined".
+mkuap "standing_consent:
+$FPGRANT"
+lane "D3-b 0 is still reachable ONLY by joining a real grant" 0 ""
+
+# D3-c — precedence. BROKEN outranks UNMEASURED: a registry violation is a decided negative, while
+# "nothing granted" is merely nothing to join. Without this lane the F4-b change could silently
+# convert a real violation into a soft N/A whenever the UAP happened to be empty.
+mkreg '  - {name: ok, owner: o, mode: m, target: t, capabilities: [read], sinks: [], feeds: [], promotion_eligible: "false"}'
+mkuap 'standing_consent: {}'
+lane "D3-c a registry violation still outranks 'nothing granted' (1 beats 3)" 1 "R1-b"
+
+
+# ── D3-d: the prose summary must agree with the typed exit ────────────────────
+# A tail-reading operator saw "consent-registry: PASS" on a run that exited 3 and whose own line
+# said "(not a PASS)". Machines read the code; humans read the last line. They must not disagree.
+cat > "$TD/r.yaml" <<'YAML'
+classes:
+  - name: safe-thing
+    owner: some-skill
+    mode: readonly
+    target: "tracks/_meta/**"
+    capabilities: [read]
+    effects: [read]
+    sinks: []
+    feeds: []
+    promotion_eligible: true
+YAML
+printf -- '---\nstanding_consent: {}\n---\n' > "$TD/u.md"
+bash "$CHK" "$TD/r.yaml" "$TD/u.md" >"$TD/o" 2>&1; _rc=$?
+if [ "$_rc" -ne 0 ] && tail -1 "$TD/o" | grep -q '^consent-registry: PASS$'; then
+  bad "D3-d prose summary says PASS while the typed exit is $_rc"
+else
+  ok "D3-d prose summary agrees with the typed exit (rc=$_rc)"
+fi
+
+
+# ── P-VOCAB: the irreversible vocabulary must not be evadable by case or invisible characters ──
+# Carried for two sessions as a named residual ("_norm does not case-fold"). A cross-family round
+# MEASURED it as a live fail-open: a class whose capability is a history rewrite was PASSing and
+# therefore promotable. Each variant below returned rc=0 before the fix.
+for _v in 'History-Rewrite' 'HISTORY-REWRITE' 'local-wrtie'; do
+  cat > "$TD/r.yaml" <<YAML
+classes:
+  - name: rewrite
+    owner: o
+    mode: m
+    target: t
+    capabilities: ["$_v"]
+    effects: [read]
+    sinks: []
+    feeds: []
+    promotion_eligible: true
+YAML
+  cat > "$TD/u.md" <<'YAML'
+---
+standing_consent:
+  rewrite: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}
+---
+YAML
+  bash "$CHK" "$TD/r.yaml" "$TD/u.md" >"$TD/o" 2>&1; _rc=$?
+  # Assert the RULE, not merely a non-zero exit. These fixtures also trip R7 (their grant effect is
+  # not a subset of the malformed capability list), so "exit != 0" would have passed even with the
+  # vocabulary check removed — right answer, wrong reason, which is the shape this suite's own
+  # lane() helper exists to reject. (Partial vacuity found by cross-family round 2.)
+  if [ "$_rc" -eq 0 ]; then bad "P-VOCAB '$_v' still PASSes (irreversible/unknown floor evaded)"
+  elif grep -qE '❌ (R2-b|R2-c)' "$TD/o"; then ok "P-VOCAB '$_v' refused BY THE FLOOR (R2-b/R2-c)"
+  else bad "P-VOCAB '$_v' refused, but not by R2-b/R2-c — the vocabulary check was not the reason"; fi
+done
+
+# N-VOCAB: the anti-over-block control. A class using ONLY declared capabilities must still pass —
+# a vocabulary check that refuses legitimate input teaches bypass and is a defect of equal rank.
+cat > "$TD/r.yaml" <<'YAML'
+classes:
+  - name: ok-class
+    owner: o
+    mode: m
+    target: t
+    capabilities: [read, local-write, network, dispatch, repo-mutation]
+    effects: [read]
+    sinks: []
+    feeds: []
+    promotion_eligible: true
+YAML
+cat > "$TD/u.md" <<'YAML'
+---
+standing_consent:
+  ok-class: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}
+---
+YAML
+lane "N-VOCAB every declared capability is still accepted (no over-block)" 0 ""
+
+# ── D4: BROKEN outranks UNMEASURED even at the zero-class early return ──
+printf 'classes: []\n' > "$TD/r.yaml"
+cat > "$TD/u.md" <<'YAML'
+---
+standing_consent:
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}
+---
+YAML
+lane "D4  live grant + zero registered classes = BROKEN (1), not 'nothing to join' (3)" 1 ""
+printf 'classes: []\n' > "$TD/r.yaml"
+printf -- '---\nstanding_consent: {}\n---\n' > "$TD/u.md"
+lane "D4-b no grant + zero classes is still UNMEASURED (3) — the discriminating control" 3 ""
+
+# ── K1: KNOWN OVER-BLOCK, pinned as known, NOT as correct ─────────────────────
+# A canonical YAML merge-key override (`<<: *anchor` then a field override) is reported as a
+# duplicate key and refused. This is a REAL over-block. It is pinned rather than fixed because the
+# one attempt to rewrite the parser regressed 16 of 41 lanes and was reverted in the same session;
+# the fix belongs in its own change with its own lanes. If this lane ever flips to rc=0, the
+# over-block was fixed — update the label, do not silence it.
+cat > "$TD/r.yaml" <<'YAML'
+classes:
+  - name: ok
+    owner: o
+    mode: m
+    target: t
+    capabilities: [read]
+    effects: [read]
+    sinks: []
+    feeds: []
+    promotion_eligible: true
+YAML
+cat > "$TD/u.md" <<'YAML'
+---
+defaults: &d {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: WRONG}
+standing_consent:
+  ok:
+    <<: *d
+    target: t
+---
+YAML
+# PROMOTED from "known over-block, pinned not endorsed" to a real assertion (2026-08-02). The
+# over-block was closed by moving duplicate detection BEFORE merge resolution — a reorder, not the
+# parser rewrite that regressed 16 of 41 lanes. Both directions are asserted: a canonical override is
+# accepted here, and K1-b below keeps the literal-duplicate detection it was protecting.
+lane "K1  a canonical YAML merge-key override is ACCEPTED (over-block closed)" 0 ""
+
+cat > "$TD/u.md" <<'YAML'
+---
+standing_consent:
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}
+---
+YAML
+lane "K1-b a LITERAL duplicate key is still fail-closed (the paired control)" 1 ""
+
+
+
+# ── N-SPELL / P-SPELL: effects⊆capabilities is a VOCABULARY question ────────────
+# Splitting the normalizer by purpose fixed a fail-open and opened an over-block: this comparison was
+# left on the identity normalizer, so `capabilities: [READ]` with a grant `effects: [read]` — the same
+# effect class, spelled differently — was refused. Over-blocking is not a safe default; a gate that
+# refuses correct input is one the operator learns to route around. Both directions are pinned so a
+# future normalizer change cannot fix one by breaking the other.
+cat > "$TD/r.yaml" <<'YAML'
+classes:
+  - name: c
+    owner: o
+    mode: m
+    target: t
+    capabilities: [READ]
+    effects: [READ]
+    sinks: []
+    feeds: []
+    promotion_eligible: true
+YAML
+cat > "$TD/u.md" <<'YAML'
+---
+standing_consent:
+  c: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}
+---
+YAML
+lane "N-SPELL a spelling variant of the SAME effect class is accepted (no over-block)" 0 ""
+
+cat > "$TD/r.yaml" <<'YAML'
+classes:
+  - name: c
+    owner: o
+    mode: m
+    target: t
+    capabilities: [read]
+    effects: [read]
+    sinks: []
+    feeds: []
+    promotion_eligible: true
+YAML
+cat > "$TD/u.md" <<'YAML'
+---
+standing_consent:
+  c: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [delete], target: t}
+---
+YAML
+lane "P-SPELL a grant WIDER than its class is still refused (the paired control)" 1 "R7"
+
 
 echo "----"
 echo "consent-registry anchor: $pass passed, $fail failed"

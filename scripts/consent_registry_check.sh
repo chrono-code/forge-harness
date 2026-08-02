@@ -16,8 +16,11 @@
 #   R3  join     — every standing_consent key resolves to a registered class
 #   R4  floor    — every standing_consent key resolves to a promotion_eligible class
 #   R5  lease    — every grant carries `expires` and is not past it
-#   R6  scope    — every grant records `effects` AND `target`, so the subset check has something to
+#   R6  scope    — every grant records the FULL fingerprint the rule binds consent to — `owner`,
+#                  `mode`, `effects`, `target`, `sinks` — so the subset check has something to
 #                  compare against (a grant whose scope was never recorded cannot be re-validated)
+#   R7  drift    — the recorded fingerprint still matches the registry: effects ⊆ capabilities,
+#                  target/owner/mode identical, and the class's current `sinks` ⊆ the granted ones
 #
 # WHAT IT DOES *NOT* CHECK (named, so the prose above it cannot over-claim)
 #   - the effect-SUBSET comparison itself. R6 proves a baseline was recorded; it does not compare a
@@ -70,7 +73,7 @@ REG="${1:-$ROOT/tracks/_meta/consent_classes.yaml}"
 UAP="${2:-$ROOT/tracks/_meta/user_adaptation_profile.md}"
 
 python3 - "$REG" "$UAP" <<'PY'
-import sys, os, re, datetime
+import sys, os, re, datetime, unicodedata
 reg_path, uap_path = sys.argv[1], sys.argv[2]
 
 def out(sym, msg): print(f"  {sym} {msg}")
@@ -98,9 +101,19 @@ def _no_dup(loader, node, deep=False):
     # a merge key exited 1 as an unregistered class). Over-blocking is not a safety win — it trains
     # the override reflex and turns the gate into decoration, so it counts as a defect like any
     # fail-open.
-    loader.flatten_mapping(node)
+    # ORDER MATTERS. Duplicates are detected over the node's OWN keys, BEFORE merge resolution —
+    # then the merge is resolved. Running flatten_mapping first put the anchor's keys and the
+    # explicit keys into one list, so a canonical YAML override (`<<: *d` then `target: t`) looked
+    # like a duplicate and a legitimate grant was refused. YAML merge semantics are explicit that
+    # the explicit key WINS; refusing it is us disagreeing with the format, not catching a defect.
+    # This is a reorder plus skipping the `<<` key itself — NOT the full-file parser rewrite that
+    # regressed 16 of 41 lanes and was reverted. A literal duplicate in one mapping still fails.
+    # (Pinned as K1 over-block for two rounds; closed 2026-08-02 once the lane count made the change
+    # verifiable — 85 lanes, both directions mutation-checked.)
     seen = set()
     for k, _ in node.value:
+        if getattr(k, "tag", "") == "tag:yaml.org,2002:merge":
+            continue                      # the `<<` key is a directive, not a data key
         key = loader.construct_object(k, deep=deep)
         try:
             if key in seen:
@@ -108,6 +121,7 @@ def _no_dup(loader, node, deep=False):
         except TypeError:
             pass
         seen.add(key)
+    loader.flatten_mapping(node)
     return yaml.SafeLoader.construct_mapping(loader, node, deep)
 
 NoDupLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _no_dup)
@@ -126,6 +140,17 @@ reg = load(open(reg_path), "registry")
 REQUIRED = ["name", "owner", "mode", "target", "capabilities", "sinks", "feeds", "promotion_eligible"]
 STR_FIELDS = ["name", "owner", "mode", "target"]
 IRREVERSIBLE = {"go-public", "publish", "delete", "history-rewrite", "unknown"}
+# The closed vocabulary. Anything outside it is UNKNOWN, and unknown is not reversible (the floor's
+# own words). Kept next to IRREVERSIBLE so the two cannot drift apart. All entries are pre-normalised
+# (lower-case) because _norm case-folds both sides.
+# READ FROM THE SOURCE, not invented: templates/consent_classes.yaml.example line 52 and
+# operational_adaptation.md line 51 both enumerate capabilities as
+# `read · local-write · network · dispatch · repo-mutation`. The irreversible names are unioned in
+# because they may legally APPEAR in a capabilities list — that is exactly what R2-b exists to catch,
+# so they must be recognised rather than flagged as unknown.
+# (First draft of this set was guessed and broke 61 of 76 lanes: it invented `write`/`publish` as
+# capabilities and omitted `repo-mutation`. The vocabulary lives in two files; read them.)
+KNOWN_EFFECTS = {"read", "local-write", "network", "dispatch", "repo-mutation"} | IRREVERSIBLE
 NON_GRANT = {"declined", "unset", "revoked"}
 MAX_LEASE_DAYS = 365
 
@@ -133,7 +158,34 @@ MAX_LEASE_DAYS = 365
 # an identifier, not prose) and whitespace-insensitive; the point is that one function decides, so
 # the two sides of a comparison can never drift apart.
 def _norm(s):
+    # IDENTITY / SCOPE comparison. Strip surrounding whitespace and NOTHING ELSE. Case, width and
+    # invisible characters are all REAL DIFFERENCES here: `OwnerOne` is not `ownerone`, and a target
+    # carrying a zero-width space is not the target without it. A difference the comparison cannot
+    # see is a re-ask that never fires.
+    #
+    # WHY THIS IS BACK TO STRIP-ONLY (2026-08-02): a previous session left a residual — "_norm does
+    # not case-fold, so `History-Rewrite` evades the irreversible floor" — and explicitly warned that
+    # case-folding would change R7's semantics and needed its own change. A cross-family round proved
+    # the fail-open was real, so I case-folded _norm — and the very next round measured the predicted
+    # consequence: owner/mode/target drift stopped being detected. The evidence was right and the
+    # warning was right; what was wrong was using ONE normalizer for two different questions.
     return str(s).strip()
+
+
+def _norm_vocab(s):
+    # VOCABULARY matching only — is this token one of the known / irreversible effect classes? Here
+    # case, width and invisible characters are NOISE, not signal: `History-Rewrite`, `history-rewrite`
+    # and a zero-width-suffixed variant all name the same irreversible surface, and treating them as
+    # distinct is what let a history-rewrite class declare itself promotable.
+    #
+    # TWO NORMALIZERS IS THE POINT, NOT A SLIP. The known trap is two normalizers for the SAME
+    # question drifting apart in leniency (one accepts what the other silently drops). These answer
+    # DIFFERENT questions — "are these the same identity?" vs "is this token in this closed set?" —
+    # and each is used for exactly one of them. Keep it that way: if a third call site appears, decide
+    # which question it is asking before picking.
+    t = unicodedata.normalize("NFKC", str(s))
+    t = "".join(ch for ch in t if unicodedata.category(ch) not in ("Cf", "Cc"))
+    return t.strip().casefold()
 
 # H1 FALSY CONTAINERS. `reg or {}` / `classes or []` laundered `false`, `0`, `[]` and a bare
 # `classes:` into a valid-empty registry that exited 0 — the same falsy-collapse defect already
@@ -151,9 +203,13 @@ if classes is None:
 if not isinstance(classes, list):
     print(f"consent-registry: FAIL — `classes` is {type(classes).__name__}, not a list; fail-closed")
     sys.exit(1)
-if not classes:
-    print("consent-registry: N/A — registry declares zero classes; promotion DISABLED (not a PASS)")
-    sys.exit(3)   # UNMEASURED, not verified — see EXIT CONTRACT
+ZERO_CLASSES = not classes
+# The zero-class verdict is DEFERRED, not decided here. Deciding it early required peeking at the
+# profile with a second, weaker parser (a bespoke frontmatter regex, a bare non-empty-dict test), and
+# two parsers for one file disagree by construction — measured: `--- # metadata` and
+# `standing_consent: []` and a declined-only profile each got the wrong code. One parser, one answer.
+# The main body below reads the profile properly; the verdict is taken at the end with everything
+# else. (cross-family round 2, 2026-08-02 — same lesson as collapsing three write paths into one.)
 
 by_name = {}
 for i, c in enumerate(classes):
@@ -219,7 +275,16 @@ for i, c in enumerate(classes):
     # floor into decoration. Residual, named rather than fixed here: _norm strips whitespace but
     # does NOT case-fold, so `History-Rewrite` still evades BOTH R2-b and R7 — case-folding would
     # change R7's semantics too and belongs in its own change with its own lanes.
-    cap_bad = {_norm(x) for x in (c["capabilities"] or [])} & IRREVERSIBLE
+    caps_n = {_norm_vocab(x) for x in (c["capabilities"] or [])}
+    cap_bad = caps_n & IRREVERSIBLE
+    # CLOSED vocabulary. An effect class nobody enumerated cannot be judged reversible, and the floor
+    # already says unknown is not reversible — so an unrecognised capability is treated as one.
+    # Without this, a typo (`local-wrtie`) or a novel string silently classified itself as safe.
+    unknown_caps = caps_n - KNOWN_EFFECTS
+    if c["promotion_eligible"] and unknown_caps:
+        out("❌", f"R2-c `{nm}` promotion_eligible:true with capabilities outside the declared "
+                  f"vocabulary {sorted(unknown_caps)} — unknown is not reversible")
+        fails += 1
     if c["promotion_eligible"] and bad:
         out("❌", f"R2 `{nm}` claims promotion_eligible:true but sinks/feeds include {sorted(bad)}")
         fails += 1
@@ -345,10 +410,23 @@ else:
                 out("❌", f"R3 standing_consent is not a mapping ({type(grants).__name__}); fail-closed")
                 fails += 1; grants = None
 
+no_active_grant = False
 if grants is None:
     pass
 elif not grants:
-    out("✅", "R3-R6 no standing consent recorded (nothing to validate)")
+    # F4-b (2026-07-31, same round, same principle, a path F4's fix did not reach). F4 gave
+    # "nothing to join" its own exit code for a MISSING registry, ZERO classes and a MISSING UAP —
+    # and left a present UAP holding ZERO grants returning 0. That is the identical state judged by
+    # two different codes: lane D1-d already asserts in its own name that "no grants is not a
+    # verified pass", and the EXIT CONTRACT at the top of this file already defines 3 as "there was
+    # nothing to join". The code disagreed with both. A caller writing the conventional
+    #     if scripts/consent_registry_check.sh; then run_unprompted; fi
+    # therefore ran unprompted against a UAP that had granted it nothing at all — the exact
+    # conversion of "keep asking" into "success" that F4 exists to stop, one branch over.
+    # Not a failure and not painted red: N/A, exit 3, keep asking.
+    print("consent-registry: N/A — registry is well-formed but NO standing consent is recorded; "
+          "nothing granted, keep asking (not a PASS)")
+    no_active_grant = True
 else:
     today = datetime.date.today()
     validated = 0
@@ -428,10 +506,71 @@ else:
         # caught (measured with that control, cross-family round 7). Half a fix propagated is a hole:
         # a baseline that is not a list-of-effects and a real target string cannot be compared against
         # anything later, which is the entire purpose of recording it.
-        eff, tgt = g.get("effects"), g.get("target")
-        if eff is None or tgt is None:
-            out("❌", f"R6 `{name}` grant records no `effects`+`target` — the subset check has no baseline")
+        # R6-c FINGERPRINT COMPLETENESS (cross-family round 9, finding F3, 2026-07-31).
+        # The rule says consent binds to the action's SHAPE and enumerates that shape:
+        #   "a grant records ... the owning gate/skill, and the set of effect classes ... plus the
+        #    `target` scope and the `sinks` fingerprint"  (operational_adaptation.md §Consent binds
+        #   to the action's SHAPE), and the offer quoted to the user is `<mode · target ·
+        #   capabilities · sinks>`.
+        # The baseline recorded here was `effects` + `target` ONLY. So a class could keep its name,
+        # target, capabilities and empty sinks while its `owner` (which gate/skill does the acting)
+        # or its `mode` (what it does when it acts) was swapped underneath the grant — R6 found its
+        # two fields present and R7 found the effects still a subset, and the checker returned 0.
+        # "The name is exactly what does not change when the danger does" — and so, it turned out,
+        # were the only two fields the floor was reading. A fingerprint missing the fields the rule
+        # names is not a fingerprint; it is a partial hash that collides on the dangerous case.
+        # Sentinel-then-type, never `or`: `sinks: []` is a REAL fingerprint ("crossed nothing at
+        # grant time") and must not be laundered into "not recorded" by a falsy test — the same
+        # falsy-collapse defect fixed twice above.
+        FP_STR = ("owner", "mode", "target")
+        missing_fp = [f for f in ("owner", "mode", "target", "effects", "sinks") if g.get(f) is None]
+        if missing_fp:
+            out("❌", f"R6 `{name}` grant records no {'+'.join(missing_fp)} — consent binds to the "
+                      f"action's SHAPE (owner·mode·target·effects·sinks), and a fingerprint missing "
+                      f"a field cannot detect drift in that field")
             fails += 1
+        eff, tgt = g.get("effects"), g.get("target")
+        for fld in FP_STR:
+            v = g.get(fld)
+            if v is not None and (not isinstance(v, str) or not v.strip()):
+                out("❌", f"R6 `{name}` `{fld}` must be a non-blank string, got "
+                          f"{type(v).__name__} {v!r} — an unreadable baseline is no baseline")
+                fails += 1
+        gs = g.get("sinks")
+        if gs is not None and (not isinstance(gs, list)
+                               or not all(isinstance(x, str) and x.strip() for x in gs)):
+            out("❌", f"R6 `{name}` `sinks` must be a list of non-blank strings, got "
+                      f"{type(gs).__name__} {gs!r} — an unreadable sink is an UNDECLARED sink")
+            fails += 1
+        else:
+            # R7-c SINK WIDENING. Rule: "on any later run whose fingerprint is not a subset of the
+            # granted one, standing consent reverts to unset and asks again ... widening is the
+            # trigger; narrowing is not." The class's CURRENT sinks are the later fingerprint.
+            # HONEST SCOPE — this comparison is defence-in-depth, not an independent catch today:
+            # R2 already refuses `promotion_eligible: true` on ANY non-empty sinks/feeds, so on an
+            # eligible class this branch is unreachable and no lane can discriminate it. It is kept
+            # because it survives an R2 relaxation and because it is the half that makes the RECORD
+            # meaningful; the lane that pins F3 pins the R6 *presence* requirement above, which is
+            # reachable. Do not read a PASS here as "sink drift was independently checked".
+            if isinstance(gs, list):
+                widened = sorted({_norm(x) for x in c["sinks"]} - {_norm(x) for x in gs})
+                if widened:
+                    out("❌", f"R7 `{name}` class now declares sink(s) {widened} that were not in the "
+                              f"granted fingerprint {gs!r} — widening reverts consent to unset")
+                    fails += 1
+        # Identity fields: equality, not subset. `owner`/`mode` name WHO acts and HOW; there is no
+        # "narrower owner". _norm (the single normalizer) on both sides, so the two spellings of one
+        # value can never be judged by two different rules — the divergent-normalizer class this
+        # file has already been bitten by three times.
+        for fld in ("owner", "mode"):
+            gv = g.get(fld)
+            if isinstance(gv, str) and gv.strip() and _norm(gv) != _norm(str(c[fld])):
+                out("❌", f"R7 `{name}` grant {fld} {gv!r} does not match the registered {fld} "
+                          f"{c[fld]!r} — the class was re-pointed under a live grant; consent binds "
+                          f"to the action's shape, not its name")
+                fails += 1
+        if eff is None or tgt is None:
+            pass   # already reported by R6 above; nothing left to compare
         else:
             if not isinstance(eff, list) or not eff or not all(isinstance(e, str) and e.strip() for e in eff):
                 out("❌", f"R6 `{name}` `effects` must be a non-empty list of strings, got "
@@ -451,7 +590,14 @@ else:
                 # registry side was not, so `[" read "]` matched while `[READ]` did not — whitespace
                 # forgiving, case strict, for no stated reason. Divergent normalizers on the two
                 # sides of a comparison is the same defect class this file already fixed twice.
-                over = sorted({_norm(e) for e in eff} - {_norm(x) for x in c["capabilities"]})
+                # VOCABULARY, not identity. `effects` and `capabilities` are both drawn from the
+                # closed effect vocabulary, so `READ` and `read` name the same class — comparing them
+                # with the identity normalizer refused a schema-conformant grant. Over-blocking is a
+                # defect of equal rank here: a gate that refuses correct input teaches the operator
+                # to bypass it. The sink-WIDENING comparison a few lines above stays on `_norm`,
+                # because that one asks fingerprint identity, not vocabulary. Per-site judgment, not
+                # a blanket swap. (cross-family round 3, 2026-08-02.)
+                over = sorted({_norm_vocab(e) for e in eff} - {_norm_vocab(x) for x in c["capabilities"]})
                 if over:
                     out("❌", f"R7 `{name}` grant claims effect(s) {over} outside its registered "
                               f"capabilities {c['capabilities']} — the grant is wider than the class")
@@ -460,13 +606,39 @@ else:
                 out("❌", f"R7 `{name}` grant target {tgt!r} does not match the registered target "
                           f"{c['target']!r} — scope drift between grant and class")
                 fails += 1
-    if fails == 0:
-        skipped = len(grants) - validated
+    skipped = len(grants) - validated
+    if validated == 0:
+        # Same state as the empty-grants branch above, reached differently: every key present was
+        # `declined`/`unset`/`revoked`. A file that records only refusals has granted nothing, and a
+        # refusal must never be the reason a prompt is skipped. UNMEASURED, not verified.
+        print(f"consent-registry: N/A — {skipped} recorded state(s), NONE of them an active grant; "
+              f"nothing granted, keep asking (not a PASS)")
+        no_active_grant = True
+    elif fails == 0:
         note = f" ({skipped} non-grant state(s) skipped)" if skipped else ""
         out("✅", f"R3-R6 all {validated} active grant(s) registered, eligible, unexpired, "
                   f"scope-recorded{note}")
 
 print("----")
-print(f"consent-registry: {'PASS' if fails == 0 else f'{fails} violation(s)'}")
-sys.exit(0 if fails == 0 else 1)
+# The human-facing summary must agree with the typed exit. It previously printed PASS on a run whose
+# own line above said "nothing granted, keep asking (not a PASS)" and whose exit code was 3 — so an
+# operator reading the tail saw an approval that the machine channel was refusing. "Do not grep the
+# prose" binds machines; people read the prose, and a summary that contradicts the verdict is a
+# false green with extra steps. (Caught by hand 2026-08-02 while verifying the exit-3 fix.)
+if fails:
+    print(f"consent-registry: {fails} violation(s)")
+elif no_active_grant:
+    print("consent-registry: UNMEASURED — nothing granted, keep asking (exit 3)")
+else:
+    print("consent-registry: PASS")
+# BROKEN outranks UNMEASURED: a violation is a decided negative, "nothing granted" is merely nothing
+# to join. Both outrank VERIFIED, which stays reachable ONLY by a real join against a real grant.
+if ZERO_CLASSES and not fails:
+    # A live grant against a registry that declares zero classes is an UNREGISTERED grant — R3's own
+    # verdict — which is BROKEN, not "nothing to join". No grant → genuinely nothing to join.
+    if not no_active_grant:
+        print("consent-registry: FAIL — a standing grant exists but the registry declares zero "
+              "classes; every such grant is UNREGISTERED (R3), which is BROKEN, not unmeasured")
+        sys.exit(1)
+sys.exit(1 if fails else (3 if no_active_grant else 0))
 PY
