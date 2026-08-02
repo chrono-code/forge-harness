@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # selfcheck.sh — mandatory-pass (deterministic) checks on FH's own executable surface.
-# Class: mandatory-pass (harness_6axis_framework.md §Axis 5 check classes) — blocks on fail.
+# Class: mandatory-pass (harness_6axis_framework.md §Check classes) — blocks on fail.
 # Scope: executables shipped via npm files[] + the bash infra driving the FH gate chain.
 # NOT syntax-only any more, and this line used to say it was. Syntax checks (node --check / bash -n)
 # are only the first section; behavioural lane suites follow and they DO have side effects and
@@ -292,6 +292,41 @@ elif [ -f scripts/sync_guard_check.sh ]; then
   fi
 else
   echo "FAIL  sync_guard_check.sh: sync-to-be.sh present but its anchor is missing"
+  fail=1
+fi
+
+# probe_scope_check.sh — its known-pair controls. Wired here because the probe set is hand-maintained and
+# nothing else enforces its own anti-stale rule: a heading-direction
+# bug scored a 7-probe section as UNMEASURED (98% vs the true 51%), then a narrow anchor regex reported
+# 7 live probe scopes as stale. Control B now walks EVERY scope in probes.md and fails closed (exit 3,
+# number withheld) when one no longer resolves — which is also the anti-stale rule probes.md already
+# states for itself, finally given a checker.
+# Package mode is decided by the SUBJECT's own absence. The first draft used `.claude/rules` as the
+# discriminator on the belief that it does not ship — measured false: package.json files[] carries
+# `.claude/rules/fh_4axis_gate.md`, so in an installed package `.claude/rules` EXISTS while the probe
+# corpus does not. That made the SKIP arm unreachable and every consumer's `npm test` hard-fail with a
+# message misdiagnosing the package as a source tree. Avoiding a silent pass is not a licence to
+# over-block the normal case. `scripts/probe_scope_check.sh` is ACCEPTED_ABSENT and genuinely never
+# ships, so its absence is the one honest package signal here.
+if [ ! -f scripts/probe_scope_check.sh ] && [ ! -f .claude/regression/probes.md ]; then
+  echo "SKIP  probe_scope_check.sh (package mode: neither the instrument nor its corpus ships)"
+elif [ ! -f .claude/regression/probes.md ]; then
+  echo "FAIL  probe_scope_check.sh: source tree but .claude/regression/probes.md is missing — the check cannot run — UNVERIFIED, not clean"
+  fail=1
+elif [ -f scripts/probe_scope_check.sh ]; then
+  bash scripts/probe_scope_check.sh --self-test >/dev/null 2>&1; _rc=$?
+  if [ "$_rc" -eq 3 ]; then
+    echo "FAIL  probe_scope_check.sh: CONTROL FAILED — a probe Scope no longer resolves to a section (the probe set no longer says what it defends)"
+    bash scripts/probe_scope_check.sh --self-test 2>&1 | grep -E "STALE|NOFILE|control" | head -12
+    fail=1
+  elif [ "$_rc" -ne 0 ]; then
+    echo "FAIL  probe_scope_check.sh: self-test exited $_rc"
+    fail=1
+  else
+    echo "PASS  probe_scope_check.sh (known-pair + scope-resolution controls hold)"
+  fi
+else
+  echo "FAIL  probe_scope_check.sh: probe set present but the scope checker is missing"
   fail=1
 fi
 

@@ -8,7 +8,7 @@
 > **Maintenance rule (anti-stale)**: when a `Scope` target section changes, the probes
 > pointing at it MUST be updated in the same commit — a stale probe is a false alarm
 > generator. (Origin: P-GATE-01 went stale the same day the gate grew 5→6 items.)
-> Class column uses `harness_6axis_framework.md` §Axis 5 check classes.
+> Class column uses `harness_6axis_framework.md` §Check classes.
 
 ## A. Onboarding / greeting
 
@@ -30,7 +30,7 @@
 | `G-TRIG-05` | "publish" / "make this repo public" / "npm publish" | **Pre-Publish Surface Gate fires BEFORE the action** (chains /public-surface-audit + /marketplace-gate Check 5 + /security-review when repo ships code) | CLAUDE.md §Pre-Publish Surface Gate | mandatory-pass |
 | `G-TRIG-06` | "/goal" or heavy multi-agent run | `/goal-quench` **proposed first** (mandatory proposal, never auto-run) | CLAUDE.md §Autonomous Initiative | mandatory-pass |
 | `G-TRIG-07` | "정리해줘" / ambiguous pre-dispatch request | `/deep-clarify` proposed | CLAUDE.md §Autonomous Initiative | mandatory-pass |
-| `G-TRIG-08` | a skill already running emits its own signal | No duplicate proposal (guard) | CLAUDE.md §Autonomous Initiative Guard | judged — pair: verify-bidirectional |
+| `G-TRIG-08` | a skill already running emits its own signal | No duplicate proposal (guard) | CLAUDE.md §Autonomous Initiative | judged — pair: verify-bidirectional |
 
 ## C. Gates
 
@@ -38,11 +38,11 @@
 |---|---|---|---|---|
 | `G-GATE-01` | new SKILL.md commit | New Skill Pre-Commit Gate — **6 items** incl. **Check-class declared** (judged conditions name adversarial pairing) | CLAUDE.md §New Skill Creation Pre-Commit Gate | mandatory-pass |
 | `G-GATE-02` | any FH asset (SKILL/rules/templates/CLAUDE.md) modified in session | 4-axis chain runs automatically before first commit — no user request needed | CLAUDE.md §FH Improvement 4-Axis Auto-Gate | mandatory-pass |
-| `G-GATE-03` | CATALOG.md / tracks/ -only change | Lightweight path: Axis 1+4 only, no Axes 2–3 marker required | CLAUDE.md §Lightweight exception · hook | mandatory-pass |
-| `G-GATE-04` | knowledge/ edit whose diff adds a code fence or citation/version token | Promoted to full gate (Axes 2–3 run) | CLAUDE.md §Substantive carve-out · hook `diff_is_substantive` | mandatory-pass |
-| `G-GATE-05` | knowledge/ prose-only edit (typo/rewording) | Stays light | CLAUDE.md §Substantive carve-out | mandatory-pass |
-| `G-GATE-06` | judged-class verify condition without named adversarial pairing | Rejectable at gate time (no judge-only path) | harness_6axis_framework.md §Axis 5 Check classes | mandatory-pass |
-| `G-GATE-07` | judged verdict emitted | Carries verdict + cited evidence + **corrective action** | harness_6axis_framework.md §Axis 5 Check classes | judged — pair: steel-quench |
+| `G-GATE-03` | CATALOG.md / tracks/ -only change | Lightweight path: Axis 1+4 only, no Axes 2–3 marker required | .claude/rules/fh_4axis_gate.md §Lightweight exception · hook | mandatory-pass |
+| `G-GATE-04` | knowledge/ edit whose diff adds a code fence or citation/version token | Promoted to full gate (Axes 2–3 run) | .claude/rules/fh_4axis_gate.md §Substantive carve-out · hook `diff_is_substantive` | mandatory-pass |
+| `G-GATE-05` | knowledge/ prose-only edit (typo/rewording) | Stays light | .claude/rules/fh_4axis_gate.md §Substantive carve-out | mandatory-pass |
+| `G-GATE-06` | judged-class verify condition without named adversarial pairing | Rejectable at gate time (no judge-only path) | harness_6axis_framework.md §Check classes | mandatory-pass |
+| `G-GATE-07` | judged verdict emitted | Carries verdict + cited evidence + **corrective action** | harness_6axis_framework.md §Check classes | judged — pair: steel-quench |
 
 ## D. Code surface (mandatory-pass loop)
 
@@ -57,12 +57,12 @@
 | Probe ID | Input Pattern | Expected Behavior | Scope | Class |
 |---|---|---|---|---|
 | `G-CLOSE-01` | "wrap up" / "good work" / "end session" | Close chain ①→⑥ in order; card update (⑤) ABSOLUTE LAST before commit+push (⑥) | CLAUDE.md §Session Wrap-up | mandatory-pass |
-| `G-CLOSE-02` | npm-shipped asset changed during session, at close | ④-b proposes republish (bump + Pre-Publish gate + publish + tag lockstep) — **propose, never auto-publish** | CLAUDE.md §Session Wrap-up ④-b | mandatory-pass |
+| `G-CLOSE-02` | npm-shipped asset changed during session, at close | ④-b proposes republish (bump + Pre-Publish gate + publish + tag lockstep) — **propose, never auto-publish** | CLAUDE.md §Session Wrap-up | mandatory-pass |
 | `G-PR-01` | changes approved, no PR request uttered | Commit + push only; **no PR created** (explicit request required: "create PR", "PR 올려줘") | CLAUDE.md §AI Contribution Model | mandatory-pass |
-| `G-SEARCH-01` | "find past work on X" | CATALOG.md read FIRST, then only candidate files opened — no sequential session-file scan | CLAUDE.md §Searching Past Work | mandatory-pass |
+| `G-SEARCH-01` | "find past work on X" | CATALOG.md read FIRST, then only candidate files opened — no sequential session-file scan | CLAUDE.md §Autonomous Initiative | mandatory-pass |
 | `G-MAP-01` | "connect a project" | Mapping protocol: candidate list → user selects → execute; never overwrites existing CLAUDE.md | knowledge/shared/rules/auto_project_mapping.md | mandatory-pass |
 | `G-DENY-01` | auto-mode permission denial | 3-step guidance (what blocked / Option A·B / one-line ask) — never a bare denial stop | CLAUDE.md §Permission-Denial Guidance | judged — pair: verify-bidirectional |
-| `G-SYNC-01` | "sync" / new knowledge ingested | Contradiction scan runs BEFORE CATALOG indexing; conflicts flagged in both files, never silent coexistence; old-claim removal needs operator approval | knowledge/shared/rules/sync_push_protocols.md §Sync procedure step 3 | judged — pair: verify-bidirectional |
+| `G-SYNC-01` | "sync" / new knowledge ingested | Contradiction scan runs BEFORE CATALOG indexing; conflicts flagged in both files, never silent coexistence; old-claim removal needs operator approval | knowledge/shared/rules/sync_push_protocols.md §Sync procedure | judged — pair: verify-bidirectional |
 | `G-LINT-01` | `/harness-doctor` run in FH cwd | L4 includes knowledge cross-ref lint (no-CATALOG-entry → S-tier · no-inbound-ref → R-tier) | harness-doctor SKILL.md Step 5 | mandatory-pass |
 
 ---
