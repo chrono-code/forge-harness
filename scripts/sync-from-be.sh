@@ -108,6 +108,19 @@ fi
 # and would never reach a BSD fallback, so probe `stat -c %Y` FIRST (same fix as fh_session_load.sh).
 _mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }
 
+# Portable permission bits — SAME ordering rule as _mtime, and it was missed here first time round.
+# `stat -f` on GNU means --file-system: it SUCCEEDS on a regular file and emits filesystem fields, so
+# a BSD-first chain never reaches the GNU branch on Linux. The octal sanitizer below then blanks the
+# result, which means the mode-preservation hardening directly under this line was a **silent no-op
+# on every Linux run** — including CI. It read as working because its 4 lanes only ever ran on macOS
+# (they had no automated caller until this change wired them). Fix is ordering, not a new mechanism.
+# Returns '' when the mode cannot be read; every caller already treats '' as "do not chmod".
+_mode() {
+  local m
+  m="$(stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null || echo '')"
+  case "$m" in ''|*[!0-7]*) echo '' ;; *) echo "$m" ;; esac
+}
+
 # ── Layer 1: public repo freshness ────────────────────────────────────────────
 # The tracked half travels by git, not by this transport — but "am I behind?" is one question, so
 # it is answered here too. NEVER touches a dirty tree, and never leaves the current branch.
@@ -214,16 +227,14 @@ _write_atomic() {   # $1 = source file, $2 = destination path  → 0 ok, 1 faile
   # 0600 companion file to 0644 on an ordinary run. (R6 #2.)
   local _ref="$dst"; [ -f "$dst" ] || _ref="$src"
   if [ -f "$_ref" ]; then
-    mode="$(stat -f '%Lp' "$_ref" 2>/dev/null || stat -c '%a' "$_ref" 2>/dev/null || echo '')"
-    case "$mode" in ''|*[!0-7]*) mode="" ;; esac
+    mode="$(_mode "$_ref")"
     if [ -n "$mode" ] && ! chmod "$mode" "$tmp" 2>/dev/null; then
       # Abort only if the failure would actually WIDEN the destination. Making every chmod failure
       # fatal turned a hardening step into an outage on filesystems that do not implement modes
       # (FAT/exFAT, some mounted shares), where nothing was being protected in the first place.
       # Compare, then decide. (R4 NEW-A: hardening must not create its own failure mode.)
       local tmode
-      tmode="$(stat -f '%Lp' "$tmp" 2>/dev/null || stat -c '%a' "$tmp" 2>/dev/null || echo '')"
-      case "$tmode" in ''|*[!0-7]*) tmode="" ;; esac
+      tmode="$(_mode "$tmp")"
       # Widening = the temp grants any permission bit the destination does not. Bitwise, not numeric:
       # `tmode AND NOT dmode` must be empty. (R5 #3 — reproduced 0755 -> 0666 passing as "not wider".)
       local _extra=0

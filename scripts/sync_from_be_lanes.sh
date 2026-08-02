@@ -216,10 +216,10 @@ echo "── L17 destination permissions are preserved across an overwrite ─�
 new_env l17
 printf 'orig\n' > "$HUB/tracks/_meta/secret.md"; chmod 600 "$HUB/tracks/_meta/secret.md"
 sleep 1; printf 'newer\n' > "$BEX/tracks-meta/secret.md"
-[ "$(stat -f '%Lp' "$HUB/tracks/_meta/secret.md" 2>/dev/null || stat -c '%a' "$HUB/tracks/_meta/secret.md")" = "600" ]; chk $? "CONTROL: destination really starts at 0600"
+[ "$(stat -c '%a' "$HUB/tracks/_meta/secret.md" 2>/dev/null || stat -f '%Lp' "$HUB/tracks/_meta/secret.md")" = "600" ]; chk $? "CONTROL: destination really starts at 0600"
 run >/dev/null 2>&1
 [ "$(cat "$HUB/tracks/_meta/secret.md")" = "newer" ]; chk $? "CONTROL: the overwrite actually happened"
-[ "$(stat -f '%Lp' "$HUB/tracks/_meta/secret.md" 2>/dev/null || stat -c '%a' "$HUB/tracks/_meta/secret.md")" = "600" ]; chk $? "mode not widened to 0644 by the rename"
+[ "$(stat -c '%a' "$HUB/tracks/_meta/secret.md" 2>/dev/null || stat -f '%Lp' "$HUB/tracks/_meta/secret.md")" = "600" ]; chk $? "mode not widened to 0644 by the rename"
 
 echo "── L18 a malformed machine id is rejected, never aliased to another machine ──"
 new_env l18
@@ -304,10 +304,10 @@ printf '%s' "$out" | grep -q 'BACKUP PATH COLLISION'; [ $? -ne 0 ]; chk $? "no f
 echo "── L25 a restrictive source mode is not widened on creation ──"
 new_env l25
 printf 'secret\n' > "$BEX/tracks-meta/secret.md"; chmod 600 "$BEX/tracks-meta/secret.md"
-[ "$(stat -f '%Lp' "$BEX/tracks-meta/secret.md" 2>/dev/null || stat -c '%a' "$BEX/tracks-meta/secret.md")" = "600" ]; chk $? "CONTROL: the companion file really is 0600"
+[ "$(stat -c '%a' "$BEX/tracks-meta/secret.md" 2>/dev/null || stat -f '%Lp' "$BEX/tracks-meta/secret.md")" = "600" ]; chk $? "CONTROL: the companion file really is 0600"
 run --include-new >/dev/null 2>&1
 [ -f "$HUB/tracks/_meta/secret.md" ]; chk $? "CONTROL: it was actually created"
-[ "$(stat -f '%Lp' "$HUB/tracks/_meta/secret.md" 2>/dev/null || stat -c '%a' "$HUB/tracks/_meta/secret.md")" = "600" ]; chk $? "created file kept 0600 (not widened to umask 0644)"
+[ "$(stat -c '%a' "$HUB/tracks/_meta/secret.md" 2>/dev/null || stat -f '%Lp' "$HUB/tracks/_meta/secret.md")" = "600" ]; chk $? "created file kept 0600 (not widened to umask 0644)"
 
 echo ""
 echo "════ lanes: $PASS passed · $FAIL failed ════"
