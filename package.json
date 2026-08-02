@@ -63,6 +63,7 @@
     "scripts/fh-goal.sh",
     "scripts/count_check.sh",
     "scripts/selfcheck.sh",
+    "scripts/test_selfcheck_state_lanes.sh",
     "scripts/package_coverage_check.sh",
     "scripts/test_package_coverage_lanes.sh",
     "scripts/test_fh_gate_regressions.sh",

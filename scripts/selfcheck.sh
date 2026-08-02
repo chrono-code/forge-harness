@@ -330,6 +330,20 @@ else
   fail=1
 fi
 
+# selfcheck's own subject-presence discriminators. Every other guard under scripts/ has a lane suite;
+# this decision had none, and it shipped two mis-routings in one session — a two-arm form that fell
+# through in silence, then a package discriminator keyed on a file that actually ships. Both are
+# known-POSITIVEs in the suite, so neither can come back green.
+if [ -f scripts/test_selfcheck_state_lanes.sh ]; then
+  if ! bash scripts/test_selfcheck_state_lanes.sh >/dev/null 2>&1; then
+    echo "FAIL  test_selfcheck_state_lanes.sh: a subject-presence discriminator would mis-route"
+    bash scripts/test_selfcheck_state_lanes.sh 2>&1 | tail -12
+    fail=1
+  else
+    echo "PASS  test_selfcheck_state_lanes.sh (four input states + both shipped mis-routings)"
+  fi
+fi
+
 # sync_from_be_lanes.sh — the RETURN path's anchor. Wired in the same change that ships it: the
 # script had an operator-side caller (a SessionStart hook outside this repo) while its 70 lanes had
 # NO caller anywhere, which is the shape this repo keeps re-finding — a transport that writes into
