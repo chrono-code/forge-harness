@@ -253,7 +253,19 @@ for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe
   if [ ! -f scripts/session_close_check.sh ]; then
     echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"
   elif [ -f "$_anchor" ]; then
-    if ! bash "$_anchor"; then
+    # Preserve the anchor's two failure CLASSES instead of flattening them into one `fail=1`.
+    # An anchor exits 3 when a fixture's premise never obtained — "this run's verdicts prove
+    # nothing" — which is a different instruction to whoever reads the CI summary than exit 1's
+    # "the gate is broken". Collapsing them here would rebuild, at the only wired caller, the
+    # triage ambiguity the anchors' own exit codes exist to remove (Wave-3, 2026-08-02).
+    # 3 and not 2: bash itself returns 2 on a syntax error, so a rotted anchor must not be able to
+    # impersonate a fixture premise failure. Both classes still set fail=1 — a fixture error is a
+    # failed run, it is just a differently-diagnosed one.
+    bash "$_anchor"; _rc=$?
+    if [ "$_rc" -eq 3 ]; then
+      echo "FIXTURE ERROR  ${_anchor##*/}: a lane premise never obtained — its verdicts prove nothing (exit 3, not a gate failure)"
+      fail=1
+    elif [ "$_rc" -ne 0 ]; then
       fail=1
     fi
   else
@@ -262,6 +274,26 @@ for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe
     fail=1
   fi
 done
+
+# sync_guard_check.sh — same anchor contract, wired here for the first time (2026-08-02). It had NO
+# automated caller at all: a known-pair anchor for the destination-newer guard that only ever ran
+# when a human remembered to type it. "A guard nobody re-tests degrades into a comment" is that
+# file's own opening argument, and it applied to the anchor itself. Guarded on its subject's
+# presence because the npm package ships a narrower surface than the source tree.
+if [ ! -f scripts/sync-to-be.sh ]; then
+  echo "SKIP  sync_guard_check.sh (subject scripts/sync-to-be.sh absent)"
+elif [ -f scripts/sync_guard_check.sh ]; then
+  bash scripts/sync_guard_check.sh; _rc=$?
+  if [ "$_rc" -eq 3 ]; then
+    echo "FIXTURE ERROR  sync_guard_check.sh: a lane premise never obtained — its verdicts prove nothing (exit 3, not a guard failure)"
+    fail=1
+  elif [ "$_rc" -ne 0 ]; then
+    fail=1
+  fi
+else
+  echo "FAIL  sync_guard_check.sh: sync-to-be.sh present but its anchor is missing"
+  fail=1
+fi
 
 # Referenced-path existence is a source-tree check. The npm package intentionally
 # ships a narrower runtime surface, so package-mode selfcheck skips this section.

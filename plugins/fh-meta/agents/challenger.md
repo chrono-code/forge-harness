@@ -107,7 +107,7 @@ After completing all attack angles:
 ```
 New S-grade attacks this round: N
 Attack potency trend: [Increasing / Stable / Declining]
-Convergence signal: [Not yet / Approaching (LOW-confidence dominant) / Achieved (zero new S)]
+Convergence signal: [Not yet / Approaching (LOW-confidence dominant) / Achieved (zero new S/A, and no repairs made in response — B included)]
 Residual risk: [List A/B items that remain unresolved]
 ```
 
