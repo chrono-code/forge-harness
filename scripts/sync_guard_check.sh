@@ -26,6 +26,15 @@ fail=0
 
 pass() { echo "  ✅ $1"; }
 bad()  { echo "  ❌ $1"; fail=$((fail + 1)); }
+# A fixture whose PREMISE never obtained is not a failing guard — it is a run whose verdict means
+# nothing. Kept on its own counter and its own exit code so the two are distinguishable from the
+# exit status alone, not merely in the log text (Wave-1 finding, 2026-08-02: a distinct message
+# folded into a shared exit code is not a distinct signal to CI).
+# **3, not 2** — bash returns 2 for a script SYNTAX ERROR, so claiming 2 would make a rotted script
+# report itself as a benign fixture issue and send the reader hunting mtimes instead of reading the
+# parse error. Exit codes are a shared namespace; do not squat on one the shell already owns.
+premise_bad() { echo "  ⛔ $1"; premise_fail=$((premise_fail + 1)); }
+premise_fail=0
 
 echo "sync_guard_check — destination-newer guard, both directions"
 echo
@@ -108,11 +117,28 @@ fi
 printf '%s\n' '<!-- MIRROR COPY — synced from the forge-harness hub. Do NOT edit here; the next sync overwrites it. Edit the canonical file under the hub instead. -->' > "$TD/dst/banner.md"
 cat "$TD/src/card.md" >> "$TD/dst/banner.md"
 cp "$TD/src/card.md" "$TD/src/banner.md"
-touch "$TD/dst/banner.md"
-if trips "$TD/src/banner.md" "$TD/dst/banner.md"; then
-  bad "known-NEGATIVE 3 — the injected MIRROR COPY banner reads as a mirror-side edit"
+# Establish "destination newer" DETERMINISTICALLY, not by write order. The sibling lanes above buy
+# the separation with `sleep 1`; this one had nothing, so it rests on two writes landing in
+# distinguishable clock ticks — an assumption, not a guarantee (a same-tick tie is the leading
+# hypothesis for the 2026-08-02 CI flake in test_session_close_lanes.sh ⑤; the mechanism there is
+# labelled unmeasured and the same caution applies here). A tie makes `trips()` return at its `-nt`
+# screen, so this lane would report "the banner is not counted as divergence" without the banner
+# case ever being reached — a pass for the wrong reason. Stamping the source into the absolute past
+# costs nothing and cannot tie.
+touch -t 200001010000.00 "$TD/src/banner.md"
+# The premise GATES the lane — it does not merely annotate it. The sibling repair in
+# test_session_close_lanes.sh skips the lane body when its premise fails; the first draft here only
+# incremented a counter and fell through, so a premise failure would still have printed a green
+# `pass` line for a lane whose input state was never created. That is the pass-for-the-wrong-reason
+# class this whole change exists to close, reproduced inside the same commit (Wave-3, 2026-08-02).
+if [ "$TD/dst/banner.md" -nt "$TD/src/banner.md" ]; then
+  if trips "$TD/src/banner.md" "$TD/dst/banner.md"; then
+    bad "known-NEGATIVE 3 — the injected MIRROR COPY banner reads as a mirror-side edit"
+  else
+    pass "known-NEGATIVE 3 — the transport's own banner is not counted as divergence"
+  fi
 else
-  pass "known-NEGATIVE 3 — the transport's own banner is not counted as divergence"
+  premise_bad "known-NEGATIVE 3 — FIXTURE PREMISE: destination is not newer; the lane is SKIPPED, not passed"
 fi
 
 # known-POSITIVE: the actual incident — someone edits the mirror
@@ -186,6 +212,10 @@ else
 fi
 
 echo
+if [ "$premise_fail" -ne 0 ]; then
+  echo "sync_guard_check: FIXTURE ERROR ($premise_fail) — a lane's input state was never created; this run proves nothing (exit 3 ≠ guard failure)"
+  exit 3
+fi
 if [ "$fail" -eq 0 ]; then
   echo "sync_guard_check: PASS"
   exit 0

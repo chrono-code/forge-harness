@@ -466,9 +466,18 @@ if [ -x "$REPO_ROOT/scripts/session_close_check.sh" ] || [ -f "$REPO_ROOT/script
     echo "  ✅ FH Session-Close Check: close state consistent."
   elif [ "$_SC_RC" -ne 0 ]; then
     # Not a close push: surface the violations, never block.
-    printf '%s\n' "$_SC_OUT" | grep '❌' || true
+    printf '%s\n' "$_SC_OUT" | grep -E '❌|⚠️  ⑤ tie' || true
     echo "  ⚠️  FH Session-Close Check: close invariant(s) violated (advisory — this is not a close push)."
     echo "     At session close, enforce with:  FH_SESSION_CLOSE=1 git push …"
+  else
+    # rc == 0 on an ordinary push printed NOTHING before 2026-08-02, which silently swallowed the ⑤
+    # tie advisory — a diagnostic whose entire job is to accumulate a measurement across real closes,
+    # placed where no real close would ever display it. Cross-family audit named the general blind
+    # spot: caller-surface optimism — the subject was tested directly and the production wrapper was
+    # assumed to expose the same signal. It did not. Only the tie line is surfaced here; this branch
+    # stays silent on a healthy push, because a line that prints every time trains skimming past the
+    # lines that matter (the same argument that made ② discharge-able).
+    printf '%s\n' "$_SC_OUT" | grep '⚠️  ⑤ tie' || true
   fi
 fi
 
