@@ -163,7 +163,7 @@ New S-grade blockers: N (from AI-specific vectors: N)
 | Hallucination cumulative contamination | Mandate citing original file, commit hash, measured value — "LLM-reconstructed" not accepted |
 | Tool Dependency Lock-in | Checklist for core function after tool removal (degraded mode possible?) |
 
-**Wave 4 Convergence Criteria** (additional, beyond Wave 3 zero new S-grade):
+**Wave 4 Convergence Criteria** (additional, beyond the Wave 3+ clean-and-no-repair criterion):
 1. At least 3 AI-specific vectors actually reviewed — not simply "no attacks"
 2. Hallucination defense arguments based on original file references
 3. Context Collapse scenario simulated at least once (waivable if session is short)
@@ -444,7 +444,7 @@ Running steel-quench in a meta-harness environment structurally lowers devil's a
 
 Devil attacks only static code in an isolated environment; the defender pulls evidence from the living system outside that isolated environment — this asymmetry is the basis for Wave 2 being structurally superior to Wave 1.
 
-As Wave N deepens, decreasing new S-grade blockers = evidence of the system genuinely becoming more robust. Zero new S-grade = fundamental flaws exhausted → termination condition.
+As Wave N deepens, decreasing new S-grade blockers = evidence of the system genuinely becoming more robust. Zero new S/A AND no repairs made in response (B included) = fundamental flaws exhausted → termination condition. Repairing a B and declaring convergence is the measured failure this replaced.
 
 **Wave Deepening Principle**:
 
@@ -460,7 +460,7 @@ As Wave N deepens, decreasing new S-grade blockers = evidence of the system genu
 ```
 ## steel-quench Complete
 
-Wave N converged. Zero new S-grade blockers confirmed.
+Wave N converged. Zero new S/A-grade findings, and NO repairs were made in response to this round at any grade.
 
 Residual Risk Card:
 - [List only A-grade · B-grade residual items]

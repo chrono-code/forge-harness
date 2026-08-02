@@ -54,15 +54,18 @@ Round 1
     │  → FAIL occurs: List FAIL items → Execute FIX → Round 2
     │
     ▼
-Round 2
+Round N (N ≥ 2)
     │  Re-execute same gate (with FIX applied + search for new FAILs)
-    │  → All items pass: ✅ Round 2 passed → Round 3 (final check)
-    │  → New FAIL: List → FIX → Round 3
+    │  → All items pass AND no FIX was applied in response to THIS round:
+    │        ✅ Declare truly passed  ← the only terminating exit
+    │  → All items pass BUT you fixed something this round (any severity):
+    │        the fix is unverified → Round N+1
+    │  → New FAIL: List → FIX → Round N+1
     │
     ▼
-Round 3 (final)
-    │  → All items pass: ✅ Declare truly passed
-    │  → FAILs remain: "Structural redesign required" → Escalate
+    │  → FAILs remain after N rounds: "Structural redesign required" → Escalate
+    │  → Rounds clean but each keeps producing fixes: the fixes are manufacturing the
+    │    findings → REDUCE THE DESIGN, then re-run (steel-quench §Convergence Criteria 4)
     │
     ▼ (if not converged within N rounds)
 Escalation
@@ -100,10 +103,18 @@ Escalation:      [who to escalate to / how, if not converged within N rounds]
 ### Convergence Judgment
 
 ```
-Convergence = 0 new FAILs across 2 consecutive rounds
+Convergence = a round returns 0 new FAILs AND no FIX was applied in response to it
 Conditions to declare truly passed:
   1. All items pass AND
-  2. At least 2 rounds executed (single-round pass treated as "provisionally passed" only)
+  2. Nothing was changed in response to THIS round, at any severity
+     (a FAIL you accept as residual is terminal; a FAIL you fix is not — the fix is unverified) AND
+  3. At least 2 rounds executed (a single clean round is "provisionally passed" only)
+     ← condition 3 is NOT redundant with 2 and was nearly lost when 2 replaced it: freezing answers
+       "did the artifact change under the audit", min-2 answers "is one look enough". Independent
+       questions, both still open. Done When and the pipeline diagram enforce min-2 as well.
+NOT "0 new FAILs across 2 consecutive rounds": while every round ships fixes that can never fire,
+so it reads as permanently not-converged and gets shipped past anyway. Stricter form for quench
+waves: steel-quench §Convergence Criteria.
 ```
 
 ### Escalation Root Cause Classification
@@ -141,7 +152,7 @@ Max rounds: N | Actual convergence round: M
 | Situation | Related Skill |
 |---|---|
 | Applied to skill diagnostic gate | `harness-doctor` → convergence-loop wrapper |
-| Applied to quench wave | `steel-quench` Wave 3+ convergence criteria (same principle) |
+| Applied to quench wave | `steel-quench` Wave 3+ — **stricter**: S/A grade + the no-repair clause. Defer to its §Convergence Criteria, do not re-derive |
 | Applied to session harvest loop | `harvest-loop` extract→attack→synthesize cycle |
 | When gate redesign is needed | `meta-prompt-builder` |
 
@@ -150,7 +161,11 @@ Max rounds: N | Actual convergence round: M
 ```
 Setup complete (gate name, pass criteria, max rounds confirmed)
 + Minimum 2 rounds executed
-+ Convergence declared (all items pass for 2 consecutive rounds) or escalation triggered
++ Convergence declared (a round returns zero new failures AND you make no repairs in response to
+  it, at any grade) or escalation triggered
+  ⚠️ NOT "2 consecutive rounds": while every round ships repairs that criterion can never fire, so
+  it reads as permanently not-converged and gets shipped past. Adjudicated with measured evidence in
+  `steel-quench` §Convergence Criteria (2026-08-02).
 + Per-round result table output
 ```
 
