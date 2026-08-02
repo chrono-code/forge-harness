@@ -68,6 +68,11 @@ FH asset modified → Axis 1 (templates/regression_guard.sh --pr {BRANCH})
   → Axis 2 (/steel-quench) → Axis 3 (/phantom-quench)
   → marker: tracks/_meta/.axes_23_passed_{branch}_{date}.marker
      (required fields: axis2-engine / axis2-model / floor-status / axis2-evidence;
+      **recorded-by-convention, validated by nothing**: `axis2-rounds` (per-round yield vector) —
+      steel-quench §Convergence Criteria consumes it, and a hook check for it was built and then
+      REMOVED the same day for firing on 100% of markers. The convergence claim it supports is
+      self-attested; that residual is named in §Convergence Criteria, not hidden. Mechanize on the
+      first recurrence of a false convergence claim, not before;
       hook validates mechanically: below-floor blocks without below-floor-ack, and axis2-evidence
       must be non-vacuous — a recorded verdict/count, not "it ran". Marker scope is form +
       non-vacuity + auditability, NOT provenance — a fabricated marker is the weekly-audit + operator
@@ -199,6 +204,45 @@ judge-only path**, no weak-local-judge regression of the judge-robustness princi
 > **Detail**: See `knowledge/shared/harness-core/claude_md_gate_details.md §Floor-Tier-Canary` — the local
 > model/panel options, the blind-probe procedure, dogfood evidence, and the FAIL-triage (real salience gap
 > vs floor-model quirk) — read when running a floor canary.
+
+### Added-Scope Gate — before you attach anything to a fix
+
+A fix arrives with a stated job. Everything you attach beyond that job is **new surface that the
+adversarial rounds must then verify**, and it is charged to the fix's schedule and to whatever the fix
+was blocking. Before adding, answer two questions in writing:
+
+1. **"What can I not do without this?"** — no immediate concrete answer means it is not needed *here*.
+2. **"Is this the same change?"** — a real answer to (1) that names a *different* job means it is a
+   separate change, not an addition. Ship the fix; open the other thing.
+
+Both must pass. (1) alone is the trap: a genuinely useful addition passes (1) and still belongs
+elsewhere.
+
+**A construct and the wiring that makes it reachable are ONE change.** Question (2) answers *same
+job* for a caller, a hook line, a package-manifest entry, or a propagated copy of the fix — none of
+those is separable scope. Splitting them is not scope discipline, it is
+[[feedback_built_but_not_wired]] and [[feedback_half_fix_propagation_boundary]], which this repo has
+already self-reproduced. If you build a checker and defer its caller, you shipped prose. The gate
+below trims what you *attached*; it never licenses shipping something unreachable.
+
+**Measured 2026-08-02 (PR #231).** The stated job was one flaky test lane — a blocker holding two
+other PRs. Attached to it: a production advisory probe, its hook surfacing, a new caller wiring, and a
+measurement probe. Each passed (1) on its own. Round-by-round attribution of the 12 adversarial
+findings: round 1's 4 were in the original fix; **rounds 2, 3 and 5 found defects exclusively in code
+the previous round had added**, and 2 of the cross-family round's 3 traced to the attached scope. The
+original fix needed roughly one round. The other four rounds were the bill for scope that would have
+passed (2) as its own change. The additions were not wrong — bundling them was.
+
+Read that example precisely: the splittable items were the **advisory probe and its measurement** —
+a new capability with its own job. The *hook line that surfaced the probe* and the *caller that
+invoked the new anchor* were not splittable and were correctly shipped **with the probe, into
+whichever change carries the probe** — not left behind in the fix, which would ship a hook line that
+surfaces nothing.
+
+**Relationship to Wave-T (`steel-quench`)**: Wave-T measures complexity the *quench* added, after
+convergence. This fires earlier and on a different axis — scope the *author* added, at authoring time.
+Do not collapse them; a change can pass Wave-T (every construct traces to a finding) and still have
+been the wrong change to bundle.
 
 **Axis ownership** (each skill is already complete — orchestrator only coordinates):
 
