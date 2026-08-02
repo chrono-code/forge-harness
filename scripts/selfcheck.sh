@@ -295,6 +295,27 @@ else
   fail=1
 fi
 
+# sync_from_be_lanes.sh — the RETURN path's anchor. Wired in the same change that ships it: the
+# script had an operator-side caller (a SessionStart hook outside this repo) while its 70 lanes had
+# NO caller anywhere, which is the shape this repo keeps re-finding — a transport that writes into
+# the hub, guarded by a suite nothing runs. Same subject-presence idiom as the block above: the
+# subject is operator-private and does not ship, so package mode legitimately skips; subject present
+# with the anchor gone is a deleted calibration, not a skip.
+if [ ! -f scripts/sync-from-be.sh ]; then
+  echo "SKIP  sync_from_be_lanes.sh (subject scripts/sync-from-be.sh absent)"
+elif [ -f scripts/sync_from_be_lanes.sh ]; then
+  if ! bash scripts/sync_from_be_lanes.sh >/dev/null 2>&1; then
+    echo "FAIL  sync_from_be_lanes.sh: return-path lanes failed"
+    bash scripts/sync_from_be_lanes.sh 2>&1 | tail -20
+    fail=1
+  else
+    echo "PASS  sync_from_be_lanes.sh (return-path lanes)"
+  fi
+else
+  echo "FAIL  sync_from_be_lanes.sh: sync-from-be.sh present but its anchor is missing"
+  fail=1
+fi
+
 # Referenced-path existence is a source-tree check. The npm package intentionally
 # ships a narrower runtime surface, so package-mode selfcheck skips this section.
 if [ -d ".claude/rules" ]; then
