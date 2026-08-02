@@ -24,6 +24,24 @@
 #   post-commit hook, sync daemon, or CI workflow publishes from that commit, the chain crossed
 #   go-public and the class must be marked tainted. Declare `feeds:` honestly — the whole point
 #   is that no single step in a bad chain looks dangerous on its own.
+#
+# WHAT A GRANT AGAINST ONE OF THESE LOOKS LIKE (UAP frontmatter, gitignored)
+#   Consent binds to the action's SHAPE, not its name, so the grant records the fingerprint it was
+#   given for and ALL FIVE scope fields are mandatory — R6 refuses a grant missing any of them,
+#   because a fingerprint that omits a field cannot detect drift in that field. `sinks: []` is a
+#   real recorded fingerprint, not an omission.
+#
+#     standing_consent:
+#       dispatch-readonly-sim-local-artifact:
+#         granted: 2026-07-31
+#         expires: 2026-08-30            # a lease, max 365 days
+#         owner:  fh-meta:sim-conductor  # must still match the registry entry below
+#         mode:   blind-target-tier-sim  # ...and so must this
+#         target: a single local file under the current repo
+#         effects: [read, dispatch]      # must be a subset of `capabilities`
+#         sinks:  []                     # the class may not later declare sinks not listed here
+#
+#   Re-point the class's `owner` or `mode` after the grant and the join fails: that is the point.
 
 classes:
   # ---- promotion-eligible example -------------------------------------------------

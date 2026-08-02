@@ -75,10 +75,20 @@ referent. Record the human-readable grounds in the body, the value in the frontm
 
 **Mechanical floor**: `scripts/consent_registry_check.sh` — joins `standing_consent` against the
 registry and enforces schema, eligibility soundness (a class naming an irreversible or unlisted sink
-**cannot** declare itself promotable), registration, expiry, and recorded scope. Missing registry → N/A
-+ promotion disabled; unparseable → fail-closed. Run it before trusting any grant; the prose above is
+**cannot** declare itself promotable), registration, expiry, and the full recorded scope
+(owner · mode · target · effects · sinks).
+
+**Read the exit code, never the printed words** — the code is the only machine-readable channel, and
+prose that says "DISABLED" disables nothing: **`0` = VERIFIED** (a real grant was joined; the ONLY code
+on which a prompt may be skipped) · **`3` = UNMEASURED** (nothing to join — no registry, zero classes,
+no UAP, **or a UAP recording no active grant**: keep asking) · **`1` = BROKEN** (unparseable or invalid;
+cannot decide == not allowed). `if scripts/consent_registry_check.sh; then run_unprompted; fi` is
+**wrong** — it reads 3 as success. Test `-eq 0` explicitly.
+
+Run it before trusting any grant; the prose above is
 the salience layer over this check, not the enforcement. Anchor: `scripts/test_consent_registry.sh`
-(64 lanes, incl. the `F*` storage-form lanes). Four mutants were run against it — each false-clean
+(75 lanes, incl. the `F*` storage-form lanes and the round-9 `P-F3*`/`D3*` fingerprint + exit-channel
+lanes; each `P`/`D` lane was measured returning the fail-open verdict against the pre-fix script). Four mutants were run against it — each false-clean
 net, the fence regex, and the falsy-laundering guard — and each turned its lanes red, so the green is
 measured rather than assumed. Cross-family review found the first draft's green was partly vacuous
 (one lane called `ok` in both branches; three others passed via a path other than the one they named).
@@ -103,7 +113,17 @@ sessions from the UAP outcome log. Refinements that keep the count honest:
 The offer **quotes the three approvals and the exact scope**; a grant the user cannot audit is not
 consent. Then:
 
-- **granted** → write `standing_consent: <class>: {granted: <date>, expires: <date+N>, effects: [...]}`.
+- **granted** → write `standing_consent: <class>: {granted: <date>, expires: <date+N>, owner: <gate/skill>,
+  mode: <mode>, target: <target scope>, effects: [...], sinks: [...]}`.
+  **All five scope fields are mandatory, not illustrative** — they are the fingerprint §Consent binds to
+  the action's SHAPE requires, and `scripts/consent_registry_check.sh` R6 refuses a grant missing any of
+  them (a fingerprint that omits a field cannot detect drift in that field). `sinks: []` is a real
+  recorded fingerprint, not an omission. *Origin (cross-family round 9, 2026-07-31)*: this line listed
+  only `effects`, so the shape a grant was told to write did not contain the fields the same document's
+  fingerprint rule binds to — and the checker, written from this line, read only what it listed. A
+  class's `owner` or `mode` could then be swapped underneath a live grant and the required re-ask never
+  fired. When the write-instruction and the invariant disagree, the write-instruction wins in practice,
+  because it is the one someone follows.
   Later instances run unprompted, each **states in one line what it did**, and each **appends a durable
   entry to `tracks/_meta/consent_runs.log`**. *Post-action chat notice is not a control* (cross-family
   round 2): a line the user scrolls past has stopped the prompt without replacing it. The chat line is
@@ -139,10 +159,13 @@ Their cost is not the prompt, it is that the thing cannot be undone — grain-in
 answer "yes" to once, knowingly and in scope, which is why it does not contradict the "acceptance alone
 never auto-runs" rule above.
 
-**Degrade direction (fail-closed), three ways**: no UAP (ephemeral/cloud session, wiped profile) → **no
-promotion, keep asking**. No registry entry → **no promotion, keep asking**. Expired or unparseable
+**Degrade direction (fail-closed), four ways**: no UAP (ephemeral/cloud session, wiped profile) → **no
+promotion, keep asking**. No registry entry → **no promotion, keep asking**. A UAP that exists but
+records **no active grant** — empty, or holding only `declined`/`revoked`/`unset` — → **no promotion,
+keep asking** (this is the same state as the two above and gets the same answer; it was the one branch
+that used to report success). Expired or unparseable
 record → **`unset`, keep asking**. A missing consent record is never `granted` — an absent measurement is
-not a yes.
+not a yes, and a refusal is never the reason a prompt is skipped.
 
 **Named residual — the ledger is self-attested (cross-family, 2026-07-29, HIGH, NOT closed).** The UAP
 outcome log is written by the same agent that benefits from fewer prompts, and it is gitignored, so there
@@ -158,9 +181,12 @@ on the assumption the ledger is trustworthy.**
 a class name is a string, and the action behind it can change after consent is granted. A sim that
 merely returned a report when you said "stop asking" may, ten sessions later, write into shared memory
 and trigger a downstream commit — same label, different blast radius, HITL skipped. So a grant records
-**what it was granted for**: the owning gate/skill, and the set of **effect classes** the action had at
+**what it was granted for**: the owning gate/skill (`owner`) **and its `mode`** — the two fields that say
+*who* acts and *what it does* when it acts — and the set of **effect classes** the action had at
 grant time (reads · local writes · network · dispatch · repo-mutation) **plus the `target` scope and
-the `sinks` fingerprint**. On any later run whose fingerprint is **not a subset** of the granted one,
+the `sinks` fingerprint**. That is the same five-field scope the offer above quotes to the user, and the
+same five `consent_registry_check.sh` R6/R7 enforce; the three lists must not drift apart. On any later
+run whose fingerprint is **not a subset** of the granted one,
 standing consent **reverts to `unset` and asks again**, naming what widened. Effect classes alone are
 too coarse to be the whole test (cross-family round 2): "local write" stays "local write" whether the
 target is a scratch report or a policy file — the *target* is where that drift shows, which is why it

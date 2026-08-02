@@ -453,7 +453,7 @@ Claude agents feature
 
 | Skill | What it does | Say this |
 |---|---|---|
-| `steel-quench` | All-angle adversarial attack on a design/output, then defense, until zero new blockers | "run the quench", "attack from the root", "shake out the design anxiety" |
+| `steel-quench` | All-angle adversarial attack on a design/output, then defense, until a round finds nothing new AND needs no repair | "run the quench", "attack from the root", "shake out the design anxiety" |
 | `phantom-quench` | Back-traces every claim to its declared source; flags **Phantom Claims** (present in the artifact, not in the source). *Old name: `source-grounding-audit`.* | "verify the source", "where did this come from", "grounding audit", "phantom check" |
 | `verify-bidirectional` | Re-checks a decision from the opposite direction + folds your counter-argument into the baseline | "is that right?", "double-check this", "give me the counterargument" |
 | `convergence-loop` *(commons)* | Re-runs a gate until a round adds zero new failures — "truly passed", not "passed once" | "a single pass seems suspicious", "loop until it converges" |

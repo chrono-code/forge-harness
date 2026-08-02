@@ -33,7 +33,13 @@ UNPUSHED=$(git -C "$FH" log --oneline @{u}.. 2>/dev/null | wc -l | tr -d ' ')
 
 # ①-b open-PR sweep (surface-not-auto — requires gh; skip silently offline)
 if command -v gh >/dev/null 2>&1; then
-  PRS=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || true)
+  # `gh --json` emits COMPACT single-line JSON when piped, so counting LINES returned 1 for ANY
+  # non-zero number of open PRs — the sweep hid every PR after the first, in the exact step CLAUDE.md
+  # pairs with count consistency. Count OCCURRENCES instead. Measured 2026-08-02 with a known pair:
+  # `[{"number":227},{"number":226},{"number":225}]` → old 1, new 3; `[]` → 0 both ways — which is
+  # why an environment with zero open PRs can never surface this, and why the 0-case alone is not a
+  # calibration. Observed live the same day: 2 open PRs reported as 1.
+  PRS=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -o '"number"' | wc -l | tr -d ' ' || true)
   [ "${PRS:-0}" -gt 0 ] && echo "⚠️  ①-b $PRS open PR(s) by you — classify: self-mergeable vs awaiting-external"
 fi
 
@@ -134,6 +140,51 @@ if [ -f "$CARD" ]; then
   else
     echo "✅ ⑤ card is the newest close artifact (card-last holds)"
   fi
+
+  # ⑤ tie probe (ADVISORY — never changes the verdict, never blocks).
+  # `-newer` is a STRICT comparison, so an artifact whose mtime exactly equals the card's is invisible
+  # to the check above: ⑤ reports card-last holds when the ordering was never actually established.
+  # That is the same blind spot that made the ⑤-N *lane* flake in CI on 2026-08-02, one layer down —
+  # and the lane repair hardened the fixture, not this production path, which still runs against
+  # ordinary session writes with no deterministic separation.
+  # Why advisory and not a verdict: tightening ⑤ to treat a tie as a violation would BLOCK a healthy
+  # close whose two writes happened to land in one clock tick, and an over-blocking close gate trains
+  # the override reflex that disarms it (the same reasoning the ⑤-P lane already encodes). Whether
+  # real closes ever tie is UNMEASURED — so this line measures it instead of guessing at a fix.
+  # Diagnosis, not prevention; promote it to a verdict only on evidence that ties actually occur.
+  #
+  # COST, measured before shipping (this runs on every push via the pre-push hook, so an unbounded
+  # per-file cost is a live regression, not a design risk). `! -newer "$CARD"` does the only safe
+  # narrowing: strictly-newer files are already reported by ⑤ above, so the in-loop "is it newer?"
+  # check is redundant and dropped — one fork per candidate, not two.
+  # A `-mtime -1` bound was tried and REMOVED: it scopes the window to *now*, but the invariant is
+  # anchored to the *card*, and this script runs on every push — routinely against a card written
+  # days ago. Two artifacts tied with an old card then fall outside the window and ⑤ reports
+  # card-last holds on an ordering never established, with the probe scoped out of seeing it. Speed
+  # that hides the thing being measured is not speed. Measured cost of the correct form on the
+  # current corpus: 140 candidates, 0.57s. Linear in tracks/_meta; revisit if that reaches thousands.
+  #
+  # Both emitted lines start with the same literal `⚠️  ⑤ tie` on purpose — the pre-push hook greps
+  # for it, and when the two lines carried different prefixes the hook surfaced the warning while
+  # dropping the sentence that says what to do about it, leaving a reader with only "⑤'s strict
+  # comparison cannot see it" — precisely the misreading the summary line exists to prevent.
+  # Keep the shared prefix; test_session_close_lanes.sh ⑤-T asserts the hook's exact pattern.
+  TIES=0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    [ -n "$(find "$CARD" -newer "$f" 2>/dev/null)" ] && continue      # strictly older → fine
+    TIES=$((TIES + 1))
+    echo "⚠️  ⑤ tie: ${f#"$FH"/} shares the card's exact mtime — ⑤'s strict comparison cannot see it"
+  done <<EOF
+$(find "$FH/tracks/_meta" -maxdepth 1 -type f \( -name "fh_completed_*.md" -o -name "fh_signal_*.md" \) ! -newer "$CARD" 2>/dev/null)
+EOF
+  # What a recurring tie would actually license (cross-family correction, 2026-08-02): NOT making ⑤'s
+  # comparison non-strict. Ties do not show the comparison is too strict — they show **mtime is not a
+  # reliable witness of close ordering on this machine**. A non-strict ⑤ would convert every same-tick
+  # healthy close into a false block, which is the failure mode ⑤-P exists to prevent. The fix that
+  # ties would justify is an explicit ordering record (the card writing a marker ①–④ can be compared
+  # against) or a deterministic close write sequence — not a looser comparison.
+  [ "$TIES" -gt 0 ] && echo "⚠️  ⑤ tie → $TIES artifact(s) ordering-ambiguous. If this recurs, mtime is not a sound ordering witness here; the fix is an explicit ordering record, NOT making ⑤ non-strict (that would false-block every healthy same-tick close)."
 else
   echo "❌ ⑤ session card missing: $CARD"
   FAIL=1
