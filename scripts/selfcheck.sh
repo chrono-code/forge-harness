@@ -330,6 +330,19 @@ else
   fail=1
 fi
 
+# ④-e dispatch-log reconciliation + its tally hook. Wired in the same commit that ships them: the
+# obligation they mechanize lost 20/20 in a single session, so leaving the checker itself unrun
+# would be the same defect one layer up.
+if [ -f scripts/test_dispatch_log_lanes.sh ]; then
+  if ! bash scripts/test_dispatch_log_lanes.sh >/dev/null 2>&1; then
+    echo "FAIL  test_dispatch_log_lanes.sh: the dispatch-log reconciliation would mis-report"
+    bash scripts/test_dispatch_log_lanes.sh 2>&1 | tail -14
+    fail=1
+  else
+    echo "PASS  test_dispatch_log_lanes.sh (date-spelling + verdict + tally-hook lanes)"
+  fi
+fi
+
 # selfcheck's own subject-presence discriminators. Every other guard under scripts/ has a lane suite;
 # this decision had none, and it shipped two mis-routings in one session — a two-arm form that fell
 # through in silence, then a package discriminator keyed on a file that actually ships. Both are

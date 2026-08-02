@@ -1,0 +1,17 @@
+{
+  "_readme": "FH dispatch-tally hook. Merge the `hooks.SubagentStop` block below into your .claude/settings.json (that file is gitignored, which is why this template exists). It feeds session_close_check.sh ④-e, which blocks a close push when sub-agents were dispatched and the day's invocation-log entries are zero. The hook TALLIES ONLY — it never writes a log entry, because a fabricated outcome/evidence field would poison the 60/40 promotion gate worse than a missing one.",
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'HUB=\"${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}\"; T=\"$HUB/tracks/_meta/.subagent_dispatch_tally\"; mkdir -p \"$(dirname \"$T\")\" 2>/dev/null; printf \"%s\\n\" \"$(date +%Y-%m-%d)\" >> \"$T\" 2>/dev/null; exit 0'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
