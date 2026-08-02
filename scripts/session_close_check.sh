@@ -117,6 +117,57 @@ if [ -n "$LAST_TAG" ] && [ -f "$FH/package.json" ]; then
   fi
 fi
 
+# ④-e DISPATCH-LOG RECONCILIATION — mechanical, because prose failed completely.
+# CLAUDE.md makes an invocation-log entry MANDATORY immediately after any custom sub-agent
+# invocation (it feeds the 60/40 promotion gate and the UAP loop). Measured 2026-08-02: a single
+# session dispatched 20+ subagents and logged ZERO — not a marginal lapse, a total one, in the same
+# session that RECOVERED that very log file from a branch about to be deleted. An obligation that
+# loses 20 times out of 20 is not under-emphasised; it is unmechanized. Per this repo's own rule
+# (1-2 occurrences -> prose; N>=3 or a repeat on another surface -> mechanize), this is well past it.
+#
+# The check is a RECONCILIATION, not an auto-writer. A hook cannot fill `outcome` or `evidence`
+# without fabricating judgment, and a fabricated log entry is worse than a missing one — it would
+# poison the promotion gate with invented outcomes. So the hook only TALLIES (SubagentStop appends a
+# date line) and this step compares the tally against today's entries.
+#
+# It deliberately does NOT demand 1:1. Consolidating twenty challenger rounds into one entry with
+# measured counts is better bookkeeping than twenty stubs, and punishing it would train stub-spam.
+# What it catches is the failure that actually happened: dispatches occurred and NOTHING was written.
+# ABSENCE IS NOT ZERO. The tally comes from a SubagentStop hook configured in `.claude/settings.json`,
+# which is GITIGNORED by design (it also carries local permissions). So a fresh clone, another
+# machine, or a wiped settings file has no hook — and without this branch the check would read an
+# empty tally as "no dispatches today" and pass in silence. That is the exact fail-open this whole
+# step exists to close, re-created inside it; caught before commit by asking where the tally comes
+# from. Installable snippet: templates/subagent-tally-hook.json.
+TALLY="$FH/tracks/_meta/.subagent_dispatch_tally"
+LOG="$FH/knowledge/shared/learnings/subagent_invocations_log.yaml"
+HOOK_OK=0
+if [ -f "$FH/.claude/settings.json" ]; then
+  grep -q '"SubagentStop"' "$FH/.claude/settings.json" 2>/dev/null && HOOK_OK=1
+fi
+if [ "$HOOK_OK" -eq 0 ]; then
+  echo "⚠️  ④-e dispatch log NOT MEASURED — no SubagentStop tally hook in .claude/settings.json"
+  echo "     (that file is gitignored, so a fresh clone has none). An unmeasured dispatch count is"
+  echo "     NOT a count of zero. Install: templates/subagent-tally-hook.json → .claude/settings.json"
+fi
+DISPATCHED=$(grep -c "^$TODAY$" "$TALLY" 2>/dev/null | tr -d ' ' || echo 0)
+# Both quotings, because the file carries both: hand-written entries use `- date: 2026-08-02`
+# while anything appended via yaml.dump renders `- date: '"'"'2026-08-02'"'"'`. Matching one form counted
+# half the entries as absent — a divergent-normalizer miss inside the check that exists to catch
+# missing records. Known-pair calibrated below in test_dispatch_log_lanes.sh.
+LOGGED=$(grep -cE "^- date: *'?$TODAY'?" "$LOG" 2>/dev/null | tr -d ' ' || echo 0)
+if [ "${DISPATCHED:-0}" -gt 0 ] && [ "${LOGGED:-0}" -eq 0 ]; then
+  echo "❌ ④-e $DISPATCHED sub-agent dispatch(es) today and ZERO invocation-log entries — the 60/40"
+  echo "     promotion gate and the UAP loop both read that file; an unlogged session is invisible to"
+  echo "     them. Append to knowledge/shared/learnings/subagent_invocations_log.yaml (consolidated"
+  echo "     per class is fine — record counts and outcomes, not one stub per dispatch)."
+  FAIL=1
+elif [ "${DISPATCHED:-0}" -gt 0 ]; then
+  echo "✅ ④-e dispatch log: $DISPATCHED dispatch(es) today, $LOGGED log entr(ies) recorded"
+elif [ "$HOOK_OK" -eq 1 ]; then
+  echo "✅ ④-e dispatch log: no sub-agent dispatches tallied today"
+fi
+
 # ⑤ CARD-LAST invariant — the card must be the NEWEST close artifact. A card older than
 # fh_completed / signal files written this session = ⑤ ran before ①–④ finished (the bug class).
 if [ -f "$CARD" ]; then

@@ -595,10 +595,18 @@ Default operation is a **standard interactive session**. Agent dispatch (single 
 
 Mapped paths: check `auto_project_mapping.md` or `find ~/projects -maxdepth 1 -type d` for actuals.
 
-**Invocation log obligation (always-loaded — do not rely on recall)**: immediately after any custom
-sub-agent invocation, append to `knowledge/shared/learnings/subagent_invocations_log.yaml` (8 fields ·
-outcome: `accepted`/`partial`/`rejected`/`sustained` — `sustained` = decided NOT to invoke, also recorded).
-This feeds the 60/40 promotion gate + UAP loop; detail: `knowledge/shared/rules/operations.md`.
+**Invocation log obligation — now mechanically reconciled, not recall-dependent**: immediately after
+any custom sub-agent invocation, append to `knowledge/shared/learnings/subagent_invocations_log.yaml`
+(8 fields · outcome: `accepted`/`partial`/`rejected`/`sustained` — `sustained` = decided NOT to invoke,
+also recorded). This feeds the 60/40 promotion gate + UAP loop; detail:
+`knowledge/shared/rules/operations.md`.
+**Floor (2026-08-02)**: a `SubagentStop` hook tallies every dispatch and `session_close_check.sh` ④-e
+blocks a close push when dispatches happened and the day's entries are ZERO. Consolidating a class of
+dispatches into one entry with measured counts is fine and is not penalised — the check catches the
+total miss, not imperfect bookkeeping. **Why it needed a floor**: this line was prose-only and a single
+session dispatched 20+ subagents and logged none of them, in the same session that recovered this very
+log file from a branch queued for deletion. The hook only tallies; it never writes an entry, because a
+fabricated `outcome`/`evidence` would poison the promotion gate worse than a missing one.
 
 ### Context Card — Required Format for Dispatch
 ```
