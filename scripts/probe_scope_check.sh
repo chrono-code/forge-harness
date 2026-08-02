@@ -18,6 +18,24 @@
 # number is GONE and only the check that kept proving useful remains. Coverage measurement is a
 # separate problem; it is NOT solved here and should not be reported as if it were.
 #
+# HOW TO ACTUALLY ABLATE (the cheap loop that works, measured 2026-08-02). The coverage number was
+# the wrong shape; a per-section verdict with a known pair is the right one, and it costs ~2 minutes:
+#   1. pick a section that has >=1 probe (this script tells you the Scopes resolve; grep probes.md
+#      for the section name to find its probes)
+#   2. write two copies of the asset — arm A unchanged, arm B with that section cut
+#   3. dispatch TWO isolated agents pinned to the FLOOR tier, each given ONE arm and forbidden to
+#      read anything else, and ask them the probe's own question
+#   4. arm A answers it and arm B cannot -> the section is load-bearing, KEEP. Both answer -> the
+#      section is redundant with whatever else is resident, and it is a deletion candidate.
+# The file-access ban is the whole experiment: ablation asks "is this knowable without the resident
+# text", not "can an agent find it".
+#
+# FIRST RUN, recorded so the method is not re-derived: CLAUDE.md §New Skill Creation Pre-Commit Gate
+# (1,310 chars). Arm A returned all 6 bar items + the Done-When consequence + the routing/gate
+# obligation, all GROUNDED; arm B returned NOT IN MY CONTEXT for all three. VERDICT: KEEP — it is not
+# redundant with `.claude/rules/fh_4axis_gate.md`, because that rule is `paths:`-scoped to a *read* of
+# a SKILL.md and a from-scratch Write never triggers it. Both arms cited that residual independently.
+#
 # Usage:  bash scripts/probe_scope_check.sh [--self-test]     (both forms run the same checks)
 # Exit 0 = every Scope resolves · 1 = instrument error (missing input) · 3 = a Scope does not resolve.
 

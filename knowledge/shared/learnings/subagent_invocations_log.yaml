@@ -764,3 +764,51 @@
     in parallel turns overlap into cross-confirmation instead of waste. Its mtime-sort prescription was
     REJECTED with grounds (git checkout resets mtime — filename-date parsing is the honest key), and it
     accepted the refutation direction in its own verdict framing.'
+
+- date: '2026-08-02'
+  agent: fh-commons:quench-challenger (isolated Agent, opus)
+  task: 'Axis-2 adversarial rounds across 4 changes: ⑤ lane fixture (PR #231, 4 rounds), convergence criterion (PR
+    #232, 6 rounds incl. the terminating one), probe-scope instrument (PR #233, 5 rounds)'
+  mode: isolated Agent, target fingerprint pinned in every dispatch (Step 0 WRONG-TARGET contract)
+  outcome: accepted
+  evidence: 15 rounds, ~30 findings, all closed or named as residuals. Yield vectors recorded per change in the
+    Axis-2 markers. Two rounds returned findings that reversed a prior repair's direction, which is what drove criterion
+    4 (reduce the design) firing three times.
+  note: 'Highest-value catches were the ones a same-family author structurally could not self-generate: exit code
+    2 colliding with bash''s syntax-error code; the pre-push hook dropping an advisory''s remediation line while
+    keeping its warning; a control validating a different code path than the number it certified.'
+- date: '2026-08-02'
+  agent: codex gpt-5.5 (cross-family sidecar, headless exec)
+  task: 'Cross-family adversarial leg on the ⑤ lane fixture change (PR #231) — the load-bearing half of the session'
+  mode: headless `codex exec -m gpt-5.5 -` with a fingerprint-pinned Step 0
+  outcome: accepted
+  evidence: '0 S/A + 3 B, all accepted and closed. Named the cross-round blind spot the same-family rounds kept
+    re-creating: caller-surface optimism — the subject is tested directly and the production wrapper is assumed
+    to expose the same signal (it did not, twice).'
+  note: The one finding no Claude round produced. Cost ~128k tokens for one round; the decorrelation axis matched
+    the failure mode (blind spot, not scale).
+- date: '2026-08-02'
+  agent: general-purpose pinned to sonnet (target-tier sim)
+  task: 'Sonnet-floor sim on the new convergence criterion (PR #232) — does a base-floor session actually follow
+    the rule?'
+  mode: isolated Agent, model:sonnet, blind scenario (4-round history, asked to judge convergence)
+  outcome: accepted
+  evidence: '6/6 correct with file+section citations: judged NOT converged for the right reason (the clean round
+    followed a repair), mapped the scenario onto the repo''s measured example structurally, separated hook-validated
+    marker fields from convention-only axis2-rounds, and named criterion 4''s forbidden move.'
+  note: 'Closes the named residual on PR #232''s marker (target-tier sim NOT RUN). The rule holds at the base floor
+    without opus-tier reasoning.'
+
+- date: '2026-08-02'
+  agent: general-purpose x2 pinned to sonnet (ablation known pair)
+  task: 'First real ablation in this repo: is CLAUDE.md §New Skill Creation Pre-Commit Gate (1,310 chars) redundant
+    with the paths-scoped rule file that holds its detail?'
+  mode: two isolated agents, one given the asset WITH the section and one WITHOUT, both forbidden any other file
+    access; asked the section's own regression probe question
+  outcome: accepted
+  evidence: 'Arm A: all 6 bar items + the Done-When consequence + the routing/gate Step-0.5 obligation, all self-labelled
+    GROUNDED. Arm B: NOT IN MY CONTEXT for all three. VERDICT KEEP.'
+  note: 'The file-access ban is the experiment — ablation asks whether the text is knowable without residency, not
+    whether an agent can locate it. Both arms independently cited the same residual (the paths: trigger is a READ,
+    so a from-scratch Write never loads the detail rule), which is exactly the path the probe encodes. Method costs
+    ~2 min/section and replaces the coverage number that was cut for being wrong four times.'
