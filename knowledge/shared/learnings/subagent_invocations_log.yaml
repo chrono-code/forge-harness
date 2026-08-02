@@ -685,3 +685,82 @@
   outcome: accepted
   evidence: "5 findings (HIGH1 MED3 LOW1): governor grounding -> 1 registered-residual (option shell-escape, threat-model boundary), 3 confirmed-fixed same session (|& matcher+join, newline-after-wrapper join, budget cap 150), 1 confirmed-accepted (quoted-data FP inherited mention-as-data class, lane-pinned). Round-2 convergence pass dispatched."
   note: "UAP routing first live validation: terra found real bypasses on a lanes-green diff at -60% of sol price."
+
+# ── recovered 2026-08-02 from unmerged branches before deletion (Destructive-Op gate, step ② recover)
+- date: 2026-07-31
+  agent: openhuman:pr-reviewer (cross-project cast, via general-purpose + persona-load)
+  task: 'Synergy #4 dogfood — openhuman PR #5302 (flows per-item fan-out) CodeRabbit-style review, review-only
+    scope'
+  mode: background Agent, sonnet (per cast definition), FH cwd cross-dispatch with Context Card + scope
+    gate
+  outcome: accepted
+  evidence: 'M0/S0/R3 + 1 author question. Contract honored: no gh review/comment, no commit/push, returned
+    to main. 3 files read full-context (caps.rs 6157L targeted), diff +113/-5. R findings all style/test-integrity
+    class; the sharpest catch: a new test asserting on a throwaway local Semaphore instead of the real
+    HARNESS_AGENT_SLOTS static (green-for-the-wrong-reason class — same defect family as yesterday''s
+    N=4).'
+  note: 'First cross-project cast dispatch on the air node. Mechanism validated: read field agent def
+    as persona + Context Card + scope-gate overrides ranked above the def (the def''s apply/commit/push
+    tail was cleanly suppressed). 118K tokens / ~3.3min.'
+- date: 2026-07-31
+  agent: codex sidecar (gpt-5.6-sol @ high, headless exec, read-only sandbox)
+  task: 'Cross-family adversarial review of pipe_verdict_guard delivery-channel rewrite (load-bearing:
+    fires on every Bash call)'
+  mode: manual auto-decorrelation dispatch, governor keeps terminal verdict, every finding source-verified
+    before acting
+  outcome: accepted
+  evidence: '1 MEDIUM + 4 LOW. MEDIUM (block-mode fail-open on dead python3) accepted as named residual
+    with doctrine grounds. LOW ascii-codec kill reproduced locally then fixed — and the first fix (PYTHONUTF8=1)
+    was refuted by the new lane C4, measured not assumed: PYTHONIOENCODING wins over UTF8 mode. LOW non-atomic
+    emission and LOW two-invocation lane predicate fixed. LOW NUL-blindness accepted with note. 125K tokens.'
+  note: 'Second consecutive day the cross-family pass found real defects in a fresh fix (yesterday 3,
+    today effectively 2 fixed + 1 refuted-fix). The pattern holds: same-family author optimism does not
+    see its own emission/codec edge cases.'
+- date: 2026-07-31
+  agent: general-purpose (frontier research) + fh-meta:persona-innovator (Mode F) — parallel pair
+  task: qasp 총동원 캠페인 Phase 1 — agentic mobile QA SOTA 조사 + 1.5/2/3막 갭/네이밍/흡수 스캔
+  mode: background parallel, Context Card, residency guard (외부 검색 일반용어만)
+  outcome: accepted
+  evidence: '조사: EcoAgent=이원화 학술 쌍둥이(독립수렴) + 흡수델타 5(전건 출처) + 정직한 앞섬/뒤짐 분리 + OSS 후보(라이선스). 이노베이터: 갭 6(에스컬레이션
+    무명·휘발복구 빈자리·vision 부재 binding·문서드리프트 등) + 네이밍 + 외부신호 4(출처). 갭1·6은 같은 세션에서 즉시 배선/정정됨.'
+  note: 87K+87K tokens, ~1.5-3분. 둘 다 fan-in 계약 준수. 조사의 미검증 잔여 표기(2차출처·라이선스 미확정)가 정직 규율대로 왔다.
+- date: 2026-07-31
+  agent: codex sidecar (gpt-5.6-sol @ high, read-only)
+  task: qasp dual_router/runner/healer 배선 diff cross-family 리뷰 (verdict-인접 필드코드 게이트)
+  mode: manual dispatch, invariant-attack 프롬프트 (fail-closed/독트린/opt-in/에스컬레이션/HITL)
+  outcome: accepted
+  evidence: S5/A1/B1 — substring 양방향 오류·@오해석·유일성 부재·비앵커 파싱·disabled 미필터·빈text 우회·전역 tie 오탐. 전건 수정 + 정책
+    자체 개선(후보-국소 에스컬레이션). 검증확인 3건(verdict 소유권·힐러 무적용·opt-in)도 명시 리턴. 92K tokens.
+  note: 3일 연속 동일 패턴 — cross-family가 갓 작성된 fail-closed 경계 코드에서 실결함을 잡는다. 이제 통계가 아니라 운영 전제로 승격할 만함.
+- date: 2026-08-01
+  agent: fh-meta:challenger
+  task: qasp-dev PR#47 Wave 1+2 adversarial review — independent-context leg of a 3-family panel (agy
+    Gemini-Pro + local qwen3.6:35b + this challenger) substituting for exhausted codex
+  mode: isolated Agent, inherit-tier, same-family-but-independent-context (family diversity carried by
+    the two non-Claude sidecar legs)
+  outcome: accepted
+  evidence: '9 attacks incl. 2 HIGH-confidence real defects the other two legs missed: an empty-canonical-key
+    fall-through that re-opened the exact monolith FP this PR had just closed, and a fabricated ''expected:
+    PASS'' value in the non-developer report. Also flagged gate exit-code collision with argparse(2) →
+    moved to 4. Axis-clean verdicts came with measured anchors (overall whitelist-PASS, auto=False aggregation
+    isolation).'
+  note: 'Panel shape worked: cheap legs (qwen) produced only refutable findings (2/2 refuted with source
+    anchors), the paid multimodal leg (agy) found 1 real HIGH, the independent-context same-family leg
+    found the subtlest 2. Governor source-grounded every finding; 9 accepted / 3 refuted; suite 1534 green
+    after fixes.'
+- date: 2026-08-01
+  agent: fh-meta:challenger
+  task: qasp-dev PR#48 (Wave 3 external backlog) adversarial review — independent-context leg alongside
+    agy Gemini-Pro
+  mode: isolated Agent, inherit-tier, same-family-but-independent-context; ran against the COMMIT while
+    the worktree carried in-progress fixes from the other leg
+  outcome: accepted
+  evidence: '10 attacks; 5 independently converged with the agy leg''s uncommitted fixes (cross-confirmation
+    of both legs'' validity). Unique catches: a doc-insertion that split an exit-1 bullet from its sub-bullets
+    AND collided step IDs (A-grade — would misroute the skill''s correction loop), cross-target flaky-score
+    contamination (instrument-validity class), --deliver writing outside out_dir, and a published test-count
+    that no longer matched its own commit.'
+  note: 'The dirty-worktree accident produced a useful pattern: reviewing the commit while fixes land
+    in parallel turns overlap into cross-confirmation instead of waste. Its mtime-sort prescription was
+    REJECTED with grounds (git checkout resets mtime — filename-date parsing is the honest key), and it
+    accepted the refutation direction in its own verdict framing.'
