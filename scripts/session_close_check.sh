@@ -33,7 +33,13 @@ UNPUSHED=$(git -C "$FH" log --oneline @{u}.. 2>/dev/null | wc -l | tr -d ' ')
 
 # ①-b open-PR sweep (surface-not-auto — requires gh; skip silently offline)
 if command -v gh >/dev/null 2>&1; then
-  PRS=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || true)
+  # `gh --json` emits COMPACT single-line JSON when piped, so counting LINES returned 1 for ANY
+  # non-zero number of open PRs — the sweep hid every PR after the first, in the exact step CLAUDE.md
+  # pairs with count consistency. Count OCCURRENCES instead. Measured 2026-08-02 with a known pair:
+  # `[{"number":227},{"number":226},{"number":225}]` → old 1, new 3; `[]` → 0 both ways — which is
+  # why an environment with zero open PRs can never surface this, and why the 0-case alone is not a
+  # calibration. Observed live the same day: 2 open PRs reported as 1.
+  PRS=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -o '"number"' | wc -l | tr -d ' ' || true)
   [ "${PRS:-0}" -gt 0 ] && echo "⚠️  ①-b $PRS open PR(s) by you — classify: self-mergeable vs awaiting-external"
 fi
 
