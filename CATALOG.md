@@ -131,7 +131,7 @@ Two operator insights forged into doctrine. **Intent Marshaling** (PR #161, mirr
 > **Backfill note (2026-07-15):** the 07-12 / 07-13 / 07-14 entries below were reconstructed from git
 > history + the session card's completion log during the 2026-07-15 harness-doctor run, which found that
 > CATALOG had stopped at 07-10 while 30 FH-asset commits landed — i.e. 5 days of work were invisible to
-> the CATALOG-first search protocol (CLAUDE.md §Searching Past Work). They are commit-grounded, but they
+> the CATALOG-first search protocol (CLAUDE.md §Autonomous Initiative (CATALOG-first recall row)). They are commit-grounded, but they
 > are *reconstructions*, not first-hand session records: the "Decision/Open" lines carry only what the
 > commits and card state, so a judgment made in-session but never written down is not recoverable here.
 > The gap itself is the lesson — Comprehension Debt accrues silently when the close chain's CATALOG step

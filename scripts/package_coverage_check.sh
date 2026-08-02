@@ -73,6 +73,10 @@ ACCEPTED_ABSENT=(
   # anchor but guards on the subject's presence, so package mode SKIPs rather than falling through.
   "scripts/sync-from-be.sh"
   "scripts/sync_from_be_lanes.sh"
+  # Its only input is `.claude/regression/probes.md`, itself ACCEPTED_ABSENT above (a consumer's
+  # regression run must not compare against this harness's probe set). Shipping the reader without
+  # its corpus would put a script in the package that can only ever report "instrument error".
+  "scripts/probe_scope_check.sh"
 )
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'

@@ -117,7 +117,7 @@ Scan artifact quickly to classify claim distribution:
 | `risk_level` | external publish / arXiv citations → all claim types, max depth, **and Step 2-E (external fetch+support) is mandatory** |
 | `source_count` | 0 declared sources → S-grade blocker immediately (skip to Step 3 prescription) |
 | `quantitative_density` | > 3 numerical claims → focus numerical+range types first |
-| `external_citation` | artifact (or its diff) contains `arXiv:` / `DOI` / `http(s)://` / a version token (`x.y.z`) → **route those claims to Step 2-E** (governance binding: these are the load-bearing external claims FH's substantive carve-out already gates — `CLAUDE.md §Substantive carve-out`) |
+| `external_citation` | artifact (or its diff) contains `arXiv:` / `DOI` / `http(s)://` / a version token (`x.y.z`) → **route those claims to Step 2-E** (governance binding: these are the load-bearing external claims FH's substantive carve-out already gates — `.claude/rules/fh_4axis_gate.md §Substantive carve-out`) |
 
 Scope recommendation output:
 ```
