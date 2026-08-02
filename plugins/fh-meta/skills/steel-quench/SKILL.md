@@ -46,10 +46,10 @@ A designer's anxiety is most dangerous when vague. steel-quench breaks that anxi
 | **Phase 0** (optional) | Counterexample calibration — extract patterns from external bad cases, merge into Wave 1 | No external case → skip |
 | **Wave 1** | Challenger attack (quench-challenger) — surface critical flaws, no defense | — |
 | **Wave 2** | Defense — defend or state as residual risk | — |
-| **Wave 3+** | Convergence — repeat until zero new S-grade | Zero new S-grade |
-| **Wave 4** (optional) | Meta-Aware Adversary — AI uses its own nature as attack vector | Zero new S-grade + AI-specific criteria |
+| **Wave 3+** | Convergence — repeat until a round is clean AND triggers no repair | Zero new S/A **and no repairs made in response, B included** (§Convergence Criteria) |
+| **Wave 4** (optional) | Meta-Aware Adversary — AI uses its own nature as attack vector | Wave 3+ criterion (clean + no-repair) + AI-specific criteria |
 | **Wave-P3** (optional) | Gate-passage re-attack — when an upstream gate declares PASS, re-attack the just-passed artifact on Coverage / Narrative / False-confidence | All 3 dimensions Attack Failed |
-| **Wave 5** (optional) | Multi-Team Adversarial Panel — external CLIs or cross-session Claude | Zero new S-grade cross-team |
+| **Wave 5** (optional) | Multi-Team Adversarial Panel — external CLIs or cross-session Claude | Wave 3+ criterion, cross-team |
 | **Wave-T** (after convergence) | Temper — measure complexity the quench *added*; flag over-hardening | τ-PASS or named τ-FAIL |
 
 ---
@@ -310,7 +310,7 @@ domain-coupled (a spec→test-case gate) form to a gate-agnostic boundary hook. 
 ## Wave-T — Temper (post-convergence)
 
 Quench hardens, but quenched steel is brittle — no smith ships it un-tempered. steel-quench attacks
-until zero new S-grade; nothing in that loop asks whether the hardening itself **introduced complexity
+until a frozen-artifact round is clean; nothing in that loop asks whether the hardening itself **introduced complexity
 beyond what the fixes required** (defense scaffolding, decorative wiring). Wave-T is that inverse
 corrective. It runs **after Wave 3+ convergence, before Done When**. It does not attack; it measures
 the cost of the convergence just achieved.
@@ -381,21 +381,89 @@ Add new rows as new patterns are discovered.
 ## Done When
 
 ```
-Wave convergence criteria met: zero new S-grade blockers
+Wave convergence criteria met: zero new S/A-grade findings in a round that triggered NO repairs at
+  any grade (B included — a repaired B is an unverified change, and that is the measured way a
+  'clean' round has already leaked an A) — see §Convergence Criteria
 + Residual risk card output (A-grade · B-grade items)
 + "steel-quench Complete" declaration output
 ```
 
-Verdict: PASS (zero S-grade, convergence reached) | CONDITIONAL_PASS (A/B-grade remain) | FAIL (S-grade persist) | ESCALATE (structural ambiguity requiring human judgment)
+Verdict: PASS (zero new S/A **and no repairs made in response, at any grade** — §Convergence Criteria; repairing even a B and then declaring convergence is the measured round-4 failure) | CONDITIONAL_PASS (A/B-grade remain) | FAIL (S-grade persist) | ESCALATE (structural ambiguity requiring human judgment)
 
 ---
 
 ## Convergence Criteria + Downstream Chaining
 
 ### Convergence Criteria
-1. **Zero new S-grade blockers** → terminate
-2. A-grade or higher complex improvements → skill-ize with `/meta-prompt-builder`
-3. Full Wave results → recommend persisting to `tracks/_meta/steel_quench_YYYY_MM_DD_{slug}.md`
+
+**Convergence is measured over a FROZEN artifact.** A round that produced repairs did not verify the
+artifact you are shipping — it verified the previous one. So the terminating round must be a round
+over **unchanged** code:
+
+1. **Terminate** when a round returns **zero new S/A-grade** findings **AND you make no repairs in
+   response to it — at ANY grade, B included**. A round whose B findings you *accept as residual* is
+   terminal; a round whose B findings you *fix* is not, because the fix is unverified.
+   Why the B clause is the load-bearing half, not a formality: in the measured history below, round 4
+   returned `0A+3B` — clean by every S/A-based criterion, and the old rule would have stopped there.
+   The three B's were repaired, and round 5 found a genuine **A inside those repairs**. So "zero new
+   S/A" is not the discriminator; "nothing was changed in response" is. The loop ends when you stop
+   repairing, not when the challenger runs out of ideas.
+   **A post-convergence Wave-T de-brittling edit counts as a repair for this purpose.** Wave-T runs
+   after convergence and before Done When, so trimming a construct there is an unaudited edit that
+   the completion declaration would still describe truthfully ("no repairs were made in response to
+   this round") while the invariant it certifies — the shipped artifact is the audited one — is
+   false. Either ship the τ-FAIL as a **named** τ-FAIL (the pipeline table's own alternative, and
+   terminal) or run one more round over the trimmed artifact before declaring Done.
+2. **Record the per-round yield vector** in the Axis-2 marker — `axis2-rounds: 4A / 3A+1B / 2A /
+   0A+3B / 1A+2B`. It is what makes the stop decision auditable afterwards, and a flat or rising
+   vector is criterion 4's only input.
+
+   **PIN THE TARGET — mandatory on every dispatched Wave, and the reason criterion 1 can be trusted
+   at all.** The dispatch prompt carries a measured fingerprint and orders the agent to report
+   `WRONG-TARGET` and stop on mismatch:
+
+   ```bash
+   git rev-parse --short HEAD; git diff HEAD | wc -l; git status --porcelain | grep -c '^??'
+   ```
+
+   An audit that did not pin its target **cannot be counted as a terminating round** — it may have
+   read a tree that changed under it, which voids the verdict wholesale
+   ([[feedback_audit_target_must_be_frozen]]). This lives HERE, inline, next to the claim it holds
+   up: the first draft put it in `SKILL_detail.md §Wave5`, reachable only when `--sidecar` is
+   active — gate-locality on the very fix that was closing a gate-locality gap, caught by the round
+   that audited it.
+
+   > **Named residual — the freeze claim is currently SELF-ATTESTED, and deliberately not
+   > mechanized.** Criterion 1 turns on "unmodified since the previous audit", and nothing checks
+   > that. Two attempts to mechanize it on the day the rule was written were both wrong: a hook
+   > advisory that fired on 100% of markers (noise, and its convergence detector could not match the
+   > hook's own prescribed evidence vocabulary), and a `base-SHA + diff-line-count` fingerprint that
+   > is **invariant under an in-place edit** — the modal shape of a prose repair — and structurally
+   > blind to untracked files. Both were removed rather than patched. This repo mechanizes at
+   > **repetition**, not at first sight, and a one-day-old rule that has already produced two wrong
+   > machines is telling you which side of that line it is on. What holds the claim honest today is
+   > practice, not mechanism: a dispatched audit pins the target fingerprint in its Step 0 and
+   > reports `WRONG-TARGET` on mismatch ([[feedback_audit_target_must_be_frozen]]). **Mechanize on
+   > the first recurrence of a convergence claim that turns out to be false** — and when you do,
+   > content-address the full working state (tracked diff **and** untracked files), because that is
+   > the specific hole the discarded attempt fell into.
+3. A-grade or higher complex improvements → skill-ize with `/meta-prompt-builder`
+4. **If the yield does not fall across rounds, stop tightening and REDUCE THE DESIGN.** A vector that
+   stays flat is not telling you to review harder; it is telling you that each round's repairs are
+   manufacturing the next round's findings. Cut the scope that is generating them (see the
+   Added-Scope Gate in `.claude/rules/fh_4axis_gate.md`) and re-audit the smaller artifact.
+5. Full Wave results → recommend persisting to `tracks/_meta/steel_quench_YYYY_MM_DD_{slug}.md`
+
+> **Why this replaced "zero new S-grade → terminate" (measured 2026-08-02, PR #231).** A single
+> change ran 5 rounds with yields `4A / 3A+1B / 2A / 0A+3B(cross-family) / 1A+2B`. The old criterion
+> would have terminated at round 4 (zero S/A) — and round 5, run over round 4's repairs, found a
+> genuine A. Meanwhile the competing criterion carried in operator memory ("two consecutive rounds
+> with zero new") can never fire while every round ships repairs, so it read as permanently
+> not-converged and the change shipped with that stated instead. **Both criteria were wrong in the
+> same way: they counted rounds instead of asking whether anything had changed underneath.** Rounds
+> 2, 3 and 5 found defects exclusively in code the previous round had added. Freezing is the fix that
+> both were reaching for — the same discipline the single-audit rule already requires of its target,
+> applied to the convergence loop itself.
 
 ### Connected Skills
 
@@ -414,7 +482,7 @@ Verdict: PASS (zero S-grade, convergence reached) | CONDITIONAL_PASS (A/B-grade 
 ### Required Pre-External-Deployment Sequence
 
 ```
-steel-quench convergence (zero new S-grade)
+steel-quench convergence (zero new S/A over a frozen artifact)
         ↓  pass residual risk list
 sim-conductor Area A (external user perspective)
         ↓  new items found that steel-quench missed?
