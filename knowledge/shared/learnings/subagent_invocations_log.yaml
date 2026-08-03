@@ -828,3 +828,43 @@
     B answered the full chain and the order invariant correctly from the gate''s own section (719 chars, ablatable).
     And the headline: three measurements, three KEEPs. The ''CLAUDE.md is bloated'' premise is not surviving contact
     — the earlier 46%-unmeasured framing measured probe coverage, which is not necessity.'
+
+- date: 2026-08-03
+  agent: general-purpose x5 pinned to sonnet (ablation arms + isolation control)
+  task: Re-run the ablation sweep on §Pre-Publish Surface Gate and §FH Improvement 4-Axis Auto-Gate;
+    then, when arm B quoted text that grep proved absent from its own arm file, one control agent given
+    NO file and forbidden every tool.
+  mode: paired arms per section, floor tier, "read only the one arm file" — i.e. the method recorded in
+    the 2026-08-02 entry above
+  outcome: rejected
+  evidence: 'The method does not work. The control agent, given no file and zero tool calls, reproduced
+    the ablated section verbatim and named its own source: "project instructions / CLAUDE.md included in
+    my system prompt". A Claude Code subagent inherits the project CLAUDE.md, so "all file access denied
+    except the one arm file" (the 2026-08-02 entry''s own mode line) never produced a blind arm. Behaviour
+    is non-deterministic: in the same run one arm answered from the injected copy while another reported
+    the section missing — so the method can return a false KEEP or a false CUT by luck.'
+  note: 'Consequence for the entry above: its 3 KEEPs are UNCALIBRATED, not disproved. Its by-product
+    claim — the Pre-Publish table row is "719 chars, ablatable" — was re-measured today on a repaired
+    instrument and REJECTED: the row is redundant on both retrievability and trigger-firing, but arm A
+    stopped for a second confirmation before publishing while arm B proceeded, and that direction is not
+    worth 719 bytes on an irreversible surface.'
+
+- date: 2026-08-03
+  agent: fh-commons:quench-challenger (isolated Agent, opus) + codex gpt-5.5 (cross-family, stdin form)
+  task: Axis 2 of the 4-axis gate on the repair itself — scripts/probe_scope_check.sh (ablation procedure
+    canon replacement + control C, which gates the script's exit code)
+  mode: isolated dispatch with a measured target fingerprint in Step 0; codex leg piped on stdin per the
+    recorded sidecar form
+  outcome: accepted
+  evidence: '19 findings (challenger 4S/4A/4B, codex 2S/4A/1B, overlapping roots). Both families
+    independently found the env kill switch (PROBE_SCOPE_FIXTURE ran a 2-row fixture instead of the real
+    corpus, silently skipped control C, printed the green line, exit 0 — reproduced). The challenger
+    produced a FALSE GREEN in control C using a nonexistent-asset fixture, and measured the second leak
+    channel: claude -p retains Bash/Read/Glob, and an arm run from a scratch dir recovered the ablated
+    section from the real CLAUDE.md and cited the file. codex reproduced a trap syntax break on a TMPDIR
+    containing an apostrophe. It also caught a regression I had just introduced: my new option parser
+    rejected --self-test, breaking scripts/selfcheck.sh:317.'
+  note: 'The value here is not the count — it is that the findings landed exactly where self-review had
+    just declared success. Adversarial review does not substitute for first use; today is the mirror:
+    self-repair does not substitute for adversarial review. Axis 2 shipped NOT CONVERGED with the open
+    leak channel declared in the header rather than closed by assertion.'

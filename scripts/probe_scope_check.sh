@@ -23,25 +23,97 @@
 #   1. pick a section that has >=1 probe (this script tells you the Scopes resolve; grep probes.md
 #      for the section name to find its probes)
 #   2. write two copies of the asset — arm A unchanged, arm B with that section cut
-#   3. dispatch TWO isolated agents pinned to the FLOOR tier, each given ONE arm and forbidden to
-#      read anything else, and ask them the probe's own question
+#   3. run each arm through a HEADLESS runtime whose cwd is OUTSIDE this repo, feeding the arm on
+#      stdin, WITH TOOLS STRIPPED, and ask the probe's own question:
+#        cd <scratch-dir-outside-repo>
+#        { echo '=== RULESET ==='; cat armB.md; echo; echo "$QUESTION"; } \
+#          | claude -p --model sonnet \
+#              --disallowedTools Bash,Read,Glob,Grep,WebFetch,WebSearch,Task,Agent
+#      ⚠️ cwd alone is NOT isolation and the flag above is NOT yet calibrated — read LEAK CHANNEL 2
+#      below before you trust anything this produces.
 #   4. arm A answers it and arm B cannot -> the section is load-bearing, KEEP. Both answer -> the
 #      section is redundant with whatever else is resident, and it is a deletion candidate.
-# The file-access ban is the whole experiment: ablation asks "is this knowable without the resident
-# text", not "can an agent find it".
+# The isolation is the whole experiment: ablation asks "is this knowable without the resident text",
+# not "can an agent find it".
 #
-# FIRST RUN, recorded so the method is not re-derived: CLAUDE.md §New Skill Creation Pre-Commit Gate
-# (1,310 chars). Arm A returned all 6 bar items + the Done-When consequence + the routing/gate
-# obligation, all GROUNDED; arm B returned NOT IN MY CONTEXT for all three. VERDICT: KEEP — it is not
-# redundant with `.claude/rules/fh_4axis_gate.md`, because that rule is `paths:`-scoped to a *read* of
-# a SKILL.md and a from-scratch Write never triggers it. Both arms cited that residual independently.
+# ⚠️ THIS PROCEDURE IS NOT VERIFIED YET. Read the two leak channels before you trust any verdict it
+# produces. Both were measured on 2026-08-03; one is closed, one is OPEN.
+#
+# LEAK CHANNEL 1 -- system prompt (CLOSED by the cwd move). The first version of step 3 said
+# "dispatch TWO isolated agents ... forbidden to read anything else". A Claude Code subagent is
+# handed the project CLAUDE.md as part of its SYSTEM PROMPT, so a file-access ban buys nothing: arm B
+# already holds the uncut original and the trimmed arm file is decoration. Caught by a control that
+# gave an agent NO file and banned every tool -- it reproduced the ablated section verbatim and named
+# its own source, "project instructions / CLAUDE.md included in my system prompt". In the same run one
+# arm answered from the injected copy while another reported the section missing, so the method could
+# return a false KEEP or a false CUT by luck. Running headless from outside the repo removes this
+# channel (verified: no arm supplied -> NOT IN MY CONTEXT).
+#
+# LEAK CHANNEL 2 -- tools (OPEN. This is why the procedure is not verified). `claude -p` still holds
+# Bash/Read/Glob/Grep, and cwd does not stop them: adversarial review ran the arm from a scratch dir
+# with the section removed and the arm FOUND IT IN THE REAL CLAUDE.md AND CITED THE FILE. So step 3
+# must also strip tools -- and the mitigation below is prescribed but NOT known-pair calibrated:
+#   * `--tools ''` (empty allowlist) failed its POSITIVE control -- an arm that DID contain the answer
+#     still returned NOT IN MY CONTEXT. An instrument that always says "arm B cannot answer" scores
+#     every section as load-bearing: silent, uniform false KEEP. Do not ship it uncalibrated.
+#   * `--disallowedTools Bash,Read,Glob,Grep,WebFetch,WebSearch,Task,Agent` passes the negative
+#     control, but its positive control is UNRESOLVED (the fixture used to test it was itself
+#     defective -- it failed with the flag AND without it, which exonerates the flag and indicts the
+#     fixture). It is also a DENYLIST: a tool added later leaks again by default.
+# Direction of error matters here and it is the dangerous one: arm B answering scores as
+# "redundant -> deletion candidate", so a tool leak manufactures FALSE CUT on load-bearing sections.
+#
+# BEFORE THE NEXT SWEEP, in this order: (1) build a known pair -- one arm that CONTAINS the answer and
+# one that does not -- and confirm the runner answers the first and declines the second; the pair
+# gates the runner, the runner does not gate itself. (2) only then re-run the arms.
+#
+# CONSEQUENCE FOR EVERY VERDICT ON RECORD:
+#   - Subagent-method verdicts are UNCALIBRATED, including the FIRST RUN this header used to record as
+#     settled (CLAUDE.md §New Skill Creation Pre-Commit Gate, VERDICT: KEEP). Not disproved -- unqualified.
+#   - The two runs below came from the headless method with channel 2 still open. They are PROVISIONAL,
+#     not findings. The CUT one especially: do not act on it.
+#       * CLAUDE.md §Pre-Publish Surface Gate -> provisionally KEEP. Arm B recovered the trigger and the
+#         two audit skills from the Autonomous-Initiative row plus the Degrade Invariant, but lost
+#         /security-review, the docs-only applicability rule, the order invariant and the hook-coverage
+#         map. A leak would only have made arm B look MORE capable, so KEEP is the safe direction here.
+#       * CLAUDE.md §FH Improvement 4-Axis Auto-Gate -> provisional CUT CANDIDATE. DO NOT CUT. Both arms
+#         answered probe G-GATE-02, but "both answered" is exactly the reading a tool leak fabricates.
+#         Re-run after the known pair exists. Independently of the leak, the section's asset-type list
+#         and its "go read the rule file" obligation are defended by NO probe -- unmeasured surface,
+#         not proven redundant -- so a probe for them is owed before any cut.
+# Full record: tracks/_meta/ablation_method_correction_2026-08-03.md
 #
 # Usage:  bash scripts/probe_scope_check.sh [--self-test]     (both forms run the same checks)
-# Exit 0 = every Scope resolves · 1 = instrument error (missing input) · 3 = a Scope does not resolve.
+#         bash scripts/probe_scope_check.sh --fixture-corpus <path>   (control C only — not for humans)
+# Exit 0 = every Scope resolves AND control C held
+#      1 = instrument error (missing probe set · unknown option · control C could not run)
+#      3 = a CONTROL FAILED — either a Scope does not resolve, or control C's ambiguous-basename
+#          term did not hold. Both mean 'this instrument is not currently trustworthy'; the printed
+#          line above the exit says which. (Callers that map 3 to 'a probe Scope no longer resolves'
+#          are now imprecise — scripts/selfcheck.sh is the one such caller.)
 
 set -uo pipefail
 FH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROBES="$FH/.claude/regression/probes.md"
+# Fixture mode exists ONLY so the ambig-gate arm below can point the same code at a fixture corpus.
+# It is an ARGV flag, deliberately not an environment variable: cross-family review measured the env
+# form as a fail-open kill switch — `PROBE_SCOPE_FIXTURE=<2-row file> bash probe_scope_check.sh`
+# validated two probes instead of the real corpus, silently skipped control C, and still printed
+# "every probe Scope resolves" with exit 0. An exported variable travels into every child process and
+# nobody sees it; an argv flag has to be typed at the call site. A floor that a stray env var can
+# switch off is not a floor ([[feedback_non_defeasible_floor]]).
+FIXTURE_CORPUS=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --fixture-corpus) FIXTURE_CORPUS="${2:?--fixture-corpus needs a path}"; shift 2 ;;
+    # `--self-test` is what selfcheck.sh passes. It has always been a no-op (both forms run the same
+    # checks) but it must be ACCEPTED: the first draft of this parser rejected unknown options, which
+    # turned the shipped `selfcheck.sh` call into `exit 1 unknown option` — a self-inflicted break of
+    # the one caller, caught by adversarial review before commit.
+    --self-test) shift ;;
+    *) echo "❌ probe-scope: unknown option '$1'" >&2; exit 1 ;;
+  esac
+done
+PROBES="${FIXTURE_CORPUS:-$FH/.claude/regression/probes.md}"
 
 # ── Section matching ──────────────────────────────────────────────────────────
 # A probe writes a section SHORT (`CLAUDE.md §Autonomous Initiative`); the asset's real anchor may be
@@ -141,10 +213,12 @@ _control() {
   # Third arm: a basename that really is duplicated in-tree must resolve to AMBIGUOUS. This anchors
   # the RESOLVER (reverting it to "pick the first hit" now turns this red — measured), which guards
   # the fail-open of validating a scope against the WRONG same-named file.
-  # NAMED RESIDUAL: the `[ "$ambig" -eq 0 ]` term in the exit gate below is NOT anchored — no live
-  # Scope uses a duplicated basename, so nothing drives `ambig` above 0, and dropping that term keeps
-  # the controls green (measured). Anchoring it would mean mutating the probe corpus from inside the
-  # control, which is not the control's business. Stated rather than papered over.
+  # The `[ "$ambig" -eq 0 ]` term in the exit gate below used to be unanchored: no live Scope uses a
+  # duplicated basename, so nothing drove `ambig` above 0 and dropping the term kept the controls
+  # green (measured). The objection recorded here was that anchoring it would mean mutating the probe
+  # corpus from inside the control — correct, and the reason the arm lives OUTSIDE the control
+  # instead: `_ambig_gate_arm` re-invokes this script against a FIXTURE corpus via
+  # PROBE_SCOPE_FIXTURE. The real corpus is never touched. See below.
   local dup; dup=$(_resolve_asset "plugin.json")
   echo "  control A (known pair): positive='${head:0:34}…'=$pos (need >0) · path-qualified positive=$pos2 (need >0) · negative=$neg (need 0)"
   echo "  control A (duplicate-basename): plugin.json → ${dup:-<empty>} (need AMBIGUOUS)"
@@ -183,9 +257,63 @@ _control() {
   return $rc
 }
 
+# ── AMBIG-GATE ARM ────────────────────────────────────────────────────────────
+# Anchors the `[ "$ambig" -eq 0 ]` term of control B's exit gate, which no live Scope exercises.
+# A semantic-stub known pair: two fixture corpora identical except for ONE row whose Scope names a
+# basename that really is duplicated in-tree. Both fixtures carry the rows control A needs, so the
+# ONLY thing that differs between the two exits is `ambig` — without those rows the ambiguous fixture
+# would exit 3 via a failed control A and the arm would pass for the wrong reason.
+# Skipped when already running against a fixture (no recursion).
+_ambig_gate_arm() {
+  local d rc_pos rc_neg out_pos amb_pos
+  d=$(mktemp -d) || { echo "  ❌ ambig-gate arm: mktemp failed — arm NOT RUN (instrument error)"; return 2; }
+  # Single-quoted trap body: `$d` expands when the trap FIRES, inside the function where `d` is still
+  # in scope. The first version was `trap "rm -rf '$d'" RETURN`, which pastes the path into a
+  # single-quoted string at definition time — a TMPDIR containing an apostrophe closes the quote and
+  # the trap becomes a syntax error. Cross-family review reproduced exactly that on a directory named
+  # `/tmp/probe quote ' dir` ("return trap: unexpected EOF while looking for matching `''").
+  trap 'rm -rf "$d"' RETURN
+  {
+    printf '| Probe | Trigger | Expect | Scope | Class |\n|---|---|---|---|---|\n'
+    printf '| `X-CTRL-01` | t | e | CLAUDE.md §Autonomous Initiative Layer | mandatory-pass |\n'
+    printf '| `X-CTRL-02` | t | e | fh_4axis_gate.md §Lightweight exception | mandatory-pass |\n'
+  } > "$d/clean.md"
+  cp "$d/clean.md" "$d/ambig.md"
+  printf '| `X-AMBIG-01` | t | e | plugin.json §Anything | mandatory-pass |\n' >> "$d/ambig.md"
+
+  bash "$0" --fixture-corpus "$d/clean.md" >/dev/null 2>&1; rc_neg=$?
+  # Keep the positive arm's OUTPUT, not just its exit code. Exit 3 is the generic "a Scope does not
+  # resolve" code, so `rc_pos == 3` alone proves only that the child failed *somehow* — a fixture that
+  # went stale or unresolvable for an unrelated reason would satisfy it and the arm would certify a
+  # gate that never fired. Cross-family review named this: an untyped child exit accepted as proof.
+  # So the arm asserts the typed reason too: the child must report ambiguous-basename >= 1.
+  out_pos=$(bash "$0" --fixture-corpus "$d/ambig.md" 2>&1); rc_pos=$?
+  amb_pos=$(printf '%s\n' "$out_pos" | sed -n 's/.*ambiguous-basename: \([0-9][0-9]*\).*/\1/p' | head -1)
+  amb_pos=${amb_pos:-0}
+  echo "  control C (ambig gate): clean fixture exit=$rc_neg (need 0) · duplicated-basename fixture exit=$rc_pos (need 3) · its ambiguous-basename count=$amb_pos (need >0 — the typed reason, not just the code)"
+  [ "$rc_neg" -eq 0 ] && [ "$rc_pos" -eq 3 ] && [ "$amb_pos" -gt 0 ]
+}
+
 [ -f "$PROBES" ] || { echo "❌ probe-scope: probe set missing: $PROBES — instrument error, NOT an empty result"; exit 1; }
 
 echo "── probe-scope check — does every Scope still name a real section? ──"
+if [ -z "$FIXTURE_CORPUS" ]; then
+  _ambig_gate_arm; _arm_rc=$?
+  # Distinguish the two failures instead of collapsing them. Returning 2 means the arm could not RUN
+  # (mktemp failed) — an instrument error, which this file's contract maps to exit 1. Returning 1
+  # means the arm RAN and the gate term did not hold — that is a real control failure, exit 3.
+  # The first draft mapped both to exit 3 with the message "the ambiguous-basename term is not
+  # holding", so a broken TMPDIR accused the code under test of a defect it did not have.
+  if [ "$_arm_rc" -eq 2 ]; then
+    echo "❌ probe-scope: ambig-gate arm could not run (instrument error, exit 1) — NOT a finding about the probe corpus."
+    exit 1
+  elif [ "$_arm_rc" -ne 0 ]; then
+    echo "❌ AMBIG-GATE ARM FAILED (exit 3) — the ambiguous-basename term of the exit gate is not"
+    echo "   holding: a fixture whose Scope names a duplicated basename did not fail the check with"
+    echo "   ambiguous-basename > 0."
+    exit 3
+  fi
+fi
 if ! _control; then
   echo "❌ SCOPE CHECK FAILED (exit 3) — a probe points at a section that is not there."
   echo "   Fix the scope strings (or the probe) named above, then re-run. probes.md's own maintenance"
