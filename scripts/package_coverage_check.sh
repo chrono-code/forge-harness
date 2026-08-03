@@ -88,6 +88,10 @@ ACCEPTED_ABSENT=(
   # selfcheck in front of every 1.4.85/1.4.86 consumer. selfcheck's block SKIPs when the subject is
   # missing, so the package stays green without pretending the lanes ran.
   "scripts/test_ablation_calibrate_lanes.sh"
+  # Anchor for probe_scope_check.sh, which is ACCEPTED_ABSENT above for want of its corpus. Same
+  # pairing rule: an anchor whose subject does not ship must not ship either, or the consumer's
+  # selfcheck goes red on a subject they do not have.
+  "scripts/test_probe_scope_lanes.sh"
 )
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'

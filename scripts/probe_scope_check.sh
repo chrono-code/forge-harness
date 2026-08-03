@@ -257,7 +257,22 @@ _control() {
           echo "  ⚠️  UNCHECKABLE $a §$n — not a markdown asset; this extractor cannot resolve section anchors in it"
           nonmd=$((nonmd+1)); continue ;;
     esac
-    if ! _anchors "$path" | awk -v n="$n" 'substr($0,1,length(n))==n{f=1} END{exit !f}'; then
+    _anchors_out="$(_anchors "$path")"; _anchors_rc=$?
+    # DIAGNOSTIC-ONLY, MEASURED: the verdict is unchanged with and without this branch — `pipefail`
+    # already propagated awk's nonzero, so both forms exit 3. What changes is that the operator is
+    # told "instrument error" instead of "STALE", which sends them to the file instead of to a probe
+    # that was fine. Recorded as a message improvement, NOT as a closed fail-open.
+    # ANY nonzero from the extractor is an instrument error, not a finding. Routing on `-ne 0`
+    # rather than a sentinel: an explicit `[ -r ]` guard was added here first and measured to be
+    # observably INERT — awk already exits 2 on an unreadable file, so the guard changed nothing and
+    # only looked like coverage. Reverting it left behaviour identical, which is the test that
+    # caught it. The direction that matters is that an unreadable asset must not be scored STALE:
+    # that would send the next reader to edit a probe that was fine.
+    if [ "$_anchors_rc" -ne 0 ]; then
+      echo "  ⚠️  UNREADABLE $a §$n — the asset exists but cannot be read; this is an instrument error, NOT a stale probe"
+      nofile=$((nofile+1)); continue
+    fi
+    if ! printf '%s\n' "$_anchors_out" | awk -v n="$n" 'substr($0,1,length(n))==n{f=1} END{exit !f}'; then
       echo "  ❌ STALE   $a §$n — no section by that name in the asset (renamed, or relocated by a split)"
       stale=$((stale+1))
     fi
@@ -296,13 +311,13 @@ _ambig_gate_arm() {
   cp "$d/clean.md" "$d/ambig.md"
   printf '| `X-AMBIG-01` | t | e | plugin.json §Anything | mandatory-pass |\n' >> "$d/ambig.md"
 
-  bash "$0" --fixture-corpus "$d/clean.md" >/dev/null 2>&1; rc_neg=$?
+  bash "${BASH_SOURCE[0]}" --fixture-corpus "$d/clean.md" >/dev/null 2>&1; rc_neg=$?
   # Keep the positive arm's OUTPUT, not just its exit code. Exit 3 is the generic "a Scope does not
   # resolve" code, so `rc_pos == 3` alone proves only that the child failed *somehow* — a fixture that
   # went stale or unresolvable for an unrelated reason would satisfy it and the arm would certify a
   # gate that never fired. Cross-family review named this: an untyped child exit accepted as proof.
   # So the arm asserts the typed reason too: the child must report ambiguous-basename >= 1.
-  out_pos=$(bash "$0" --fixture-corpus "$d/ambig.md" 2>&1); rc_pos=$?
+  out_pos=$(bash "${BASH_SOURCE[0]}" --fixture-corpus "$d/ambig.md" 2>&1); rc_pos=$?
   amb_pos=$(printf '%s\n' "$out_pos" | sed -n 's/.*ambiguous-basename: \([0-9][0-9]*\).*/\1/p' | head -1)
   amb_pos=${amb_pos:-0}
   echo "  control C (ambig gate): clean fixture exit=$rc_neg (need 0) · duplicated-basename fixture exit=$rc_pos (need 3) · its ambiguous-basename count=$amb_pos (need >0 — the typed reason, not just the code)"
@@ -336,5 +351,20 @@ if ! _control; then
   exit 3
 fi
 
-echo "✅ every probe Scope resolves to a real section"
+# Recomputed here, NOT read from control B's `local skipped` — that variable is function-scoped and
+# reads as unset at this point, so `${skipped:-0}` silently took the "nothing unvalidated" branch and
+# printed the unqualified success line while four cells were unchecked. An instrument that cannot see
+# its own number is the failure this file exists to report, committed by this file.
+unparsed_n=$(_all_scopes 2>&1 >/dev/null | grep -c '^UNPARSED' || true)
+# BOTH classes are unvalidated, and the first version of this line counted only the first — so it
+# said "4 UNVALIDATED" when 5 cells were unchecked, and a corpus of only non-markdown scopes printed
+# ⚠️ UNCHECKABLE and then the UNQUALIFIED success line on the very next row. That is the defect this
+# conditional exists to remove, reproduced one axis over inside the fix for it.
+nonmd_n=$(_all_scopes 2>/dev/null | awk -F'\t' '{print $1}' | grep -vc '\.md$' || true)
+unvalidated=$((unparsed_n + nonmd_n))
+if [ "${unvalidated:-0}" -gt 0 ]; then
+  echo "✅ every probe Scope this parser could decompose resolves to a real section — ${unvalidated} cell(s) UNVALIDATED (${unparsed_n} in a notation this parser cannot split + ${nonmd_n} non-markdown; neither proven sectionless nor proven fine)"
+else
+  echo "✅ every probe Scope resolves to a real section"
+fi
 exit 0
