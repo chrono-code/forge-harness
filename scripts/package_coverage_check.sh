@@ -77,6 +77,17 @@ ACCEPTED_ABSENT=(
   # regression run must not compare against this harness's probe set). Shipping the reader without
   # its corpus would put a script in the package that can only ever report "instrument error".
   "scripts/probe_scope_check.sh"
+  # The known-pair precondition for `probe_scope_check.sh`'s ablation procedure. Absent for the same
+  # reason as its subject — the procedure ablates THIS repo's resident CLAUDE.md, so a consumer has
+  # nothing to point it at — plus one of its own: every run spends API calls against the consumer's
+  # account. Shipping a script whose only effect on a consumer's machine is a bill is worse than
+  # omitting it.
+  "scripts/ablation_calibrate.sh"
+  # Its anchor. Absent for exactly one reason — its SUBJECT is absent — and that pairing is the whole
+  # rule: shipping an anchor whose subject is not in the package is the defect that put a red
+  # selfcheck in front of every 1.4.85/1.4.86 consumer. selfcheck's block SKIPs when the subject is
+  # missing, so the package stays green without pretending the lanes ran.
+  "scripts/test_ablation_calibrate_lanes.sh"
 )
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'

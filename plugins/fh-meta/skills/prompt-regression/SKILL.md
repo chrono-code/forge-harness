@@ -58,7 +58,7 @@ ls .claude/regression/probes.md 2>/dev/null || echo "NO_CUSTOM_PROBES"
 ```
 
 **If custom probes exist**: load and use them. The hub repo ships its golden probe set
-(known-answer offline eval, 28 probes with check classes) at exactly this path — when
+(known-answer offline eval, 32 probes with check classes) at exactly this path — when
 present it is canonical and supersedes the default matrix below.
 
 **If no custom probes** (e.g. Mode C install without the hub repo): use the default
