@@ -146,6 +146,8 @@
     "templates/settings.PreToolUse.snippet.json",
     "scripts/halffix_propagation_scan.sh",
     "scripts/test_halffix_lanes.sh",
-    "scripts/test_ollama_panel_lanes.sh"
+    "scripts/test_ollama_panel_lanes.sh",
+    "scripts/test_tag_version_lanes.sh",
+    "templates/subagent-tally-hook.json"
   ]
 }
