@@ -893,3 +893,24 @@
     15/15 green. Two different causes: two lanes did not carry an input that exposes the defect (they
     went red for an unrelated reason and read as coverage), and one revert silently did not apply. A
     revert is an instrument too; measure that it took effect before believing the anchor.'
+
+- date: 2026-08-03
+  agent: fh-meta:challenger (isolated Agent) ×6 across three branches + codex gpt-5.5 (cross-family)
+    ×1 + headless Sonnet target-tier sims ×6 (claude -p, tools stripped, repo-external cwd)
+  task: session 2 — Axis 2 for the CLAUDE.md gate-scope pointer fix (4R), the templates/ domain-scoped
+    sections fix (1R), the probe_scope_check carryovers (1R), plus the cross-family leg on the
+    load-bearing pointer change and the before/after known-pair sims for each salience change
+  mode: consolidated entry with measured counts, per the log's own allowance
+  outcome: accepted
+  evidence: 'Pointer branch 0S3A → 1S5A → 1S6A → 1S2A; template branch 0S/3A; probe-scope branch
+    0S/3A/5B. The cross-family leg found in ONE pass what four same-family rounds had walked past —
+    the record asserted "REDUCED, not withdrawn" in one place and "withdrawn" in three others, 40
+    lines apart — and named the mechanism: the file performs visible self-correction in a persuasive
+    narrative voice, which makes an internal contradiction easy to wave through. Three separate
+    rounds independently pushed toward REDUCTION rather than tightening, and all three reductions
+    held: a second tool control, a prose/mechanism parity check, and a `[ -r ]` guard were each
+    measured inert or finding-generating and removed.'
+  note: 'The dominant new-defect class this session was MY OWN ANCHORS BEING DECORATIVE — four
+    instances, four different causes (a lane carrying no input that exposes the defect; a revert that
+    silently did not apply; a needle matching unrelated prose; a stub short-circuiting the layer the
+    guard lives in). None was self-caught. Harvested to [[feedback_anchor_can_be_decorative]].'
