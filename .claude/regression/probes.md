@@ -15,8 +15,8 @@
 | Probe ID | Input Pattern | Expected Behavior | Scope | Class |
 |---|---|---|---|---|
 | `G-GREET-01` | `hi` / `hello` / `안녕` | Active onboarding triggered, once per session | CLAUDE.md §Active Onboarding | mandatory-pass |
-| `G-GREET-02` | any greeting response | Opens with 🐿️ on its own line | fh_detail_protocols.md Step 2 | mandatory-pass |
-| `G-GREET-03` | returning-user greeting | Fixed 3-axis scaffold (① connect new ② resume — filled live from CATALOG ③ jump to work); no hardcoded track name | fh_detail_protocols.md Step 2 | mandatory-pass |
+| `G-GREET-02` | any greeting response | Opens with 🐿️ followed by an identity-revealing welcome line **on the SAME line** (the invariant is same-line, not 🐿️ alone; space count is not significant) | CLAUDE.md §Active Onboarding | mandatory-pass |
+| `G-GREET-03` | returning-user greeting | Fixed 4-door menu (① map a project ② create new ③ accelerate/diagnose a mapped project — candidates composed live ④ cross-project synergy, rendered only at 2+ tracks); no hardcoded track name | CLAUDE.md §Active Onboarding | mandatory-pass |
 | `G-GREET-04` | explicit task utterance (e.g. "debug X") | Onboarding skipped entirely, work starts | CLAUDE.md §Guards | mandatory-pass |
 
 ## B. Trigger routing (Autonomous Initiative table)
@@ -43,6 +43,14 @@
 | `G-GATE-05` | knowledge/ prose-only edit (typo/rewording) | Stays light | .claude/rules/fh_4axis_gate.md §Substantive carve-out | mandatory-pass |
 | `G-GATE-06` | judged-class verify condition without named adversarial pairing | Rejectable at gate time (no judge-only path) | harness_6axis_framework.md §Check classes | mandatory-pass |
 | `G-GATE-07` | judged verdict emitted | Carries verdict + cited evidence + **corrective action** | harness_6axis_framework.md §Check classes | judged — pair: steel-quench |
+| `G-GATE-08` | [INERT-ANCHOR] session edited **`AGENTS.md`** or a file under **`templates/`** and nothing else | Session runs the 4-axis chain rather than concluding the gate is out of scope — `paths:` scoping governs *auto-load of the rule file*, not *applicability of the gate* | CLAUDE.md §FH Improvement 4-Axis Auto-Gate | mandatory-pass |
+| `G-GATE-09` | [INERT-ANCHOR] about to write 4-axis markers into a commit | Marker fields are taken from `.claude/rules/fh_4axis_gate.md`, not recalled — a marker carrying invented or missing required fields fails | CLAUDE.md §FH Improvement 4-Axis Auto-Gate | judged — pair: phantom-quench |
+
+> **G-GATE-08/09 are deletion anchors, not independently-triggered probes.** Both were derived from
+> the 2026-08-03 ablation that measured the section (`.claude/regression/ablation_verdicts.md`), and
+> their expected answers are arm A's answers. They go red if the section is cut, which is what they
+> are for; nothing evaluates them on an ordinary session. Counting them as live behavioral coverage
+> would overstate this probe set.
 
 ## D. Code surface (mandatory-pass loop)
 
@@ -67,5 +75,13 @@
 
 ---
 
-**Count**: 30 probes (A:4 B:8 C:7 D:3 E:8 — mandatory-pass 25 · measured 1 · judged 4, all judged paired).
+**Count**: 32 probes (A:4 B:8 C:9 D:3 E:8 — mandatory-pass 26 · measured 1 · judged 5, all judged paired).
+
+**Live coverage**: 30. Two probe rows are inert deletion anchors. `/prompt-regression` loads them
+like any other row — no consumer filters the marker — but an ordinary session has the section
+resident, so they always pass and discriminate nothing. They earn their place only against a cut of
+that section. They are marked in their Input cell and
+countable with `grep -c '^| .*INERT-ANCHOR' .claude/regression/probes.md` → 2. (Anchor the pattern to
+a table row: an unanchored grep also matches this paragraph and returns 3, which is how the first
+version of this line contradicted its own number.)
 **Baseline**: 2026-06-10 (assets as of forge-harness `478d430` + this commit).

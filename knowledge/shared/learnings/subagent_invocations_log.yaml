@@ -868,3 +868,28 @@
     just declared success. Adversarial review does not substitute for first use; today is the mirror:
     self-repair does not substitute for adversarial review. Axis 2 shipped NOT CONVERGED with the open
     leak channel declared in the header rather than closed by assertion.'
+
+- date: 2026-08-03
+  agent: codex gpt-5.5 (cross-family, stdin form) + fh-meta:challenger (isolated Agent) + one headless
+    Sonnet blind sim (claude -p, tools stripped, repo-external cwd)
+  task: Axis 2 + target-tier sim for the ablation known-pair calibration — scripts/ablation_calibrate.sh
+    (new), scripts/probe_scope_check.sh header, .claude/regression/probes.md rows G-GATE-08/09
+  mode: two families dispatched on the same diff; consolidated here as one entry with measured counts
+  outcome: accepted
+  evidence: 'Codex 4 critical / 4 high / 3 medium; challenger 2S / 7A / 2B. The two families found
+    DIFFERENT classes and only partly overlapped. Codex: stderr merged into the scored stream, so a
+    single input echo passes P, N and T at once (every control token lives in the input); no runner
+    exit-status check; unanchored grep -q 47 accepting 470/1147; baseline gated on a shared fail flag.
+    Challenger (executed against the shipped script, not reasoned): control T conflated "could not read"
+    with "read it and the answer was not there" and certified a fully tool-enabled runner as calibrated;
+    the two arms shared one cwd so the negative arm could read the answer off its neighbour; probes.md
+    Count line shipped stale INSIDE this diff (30/mp25 vs actual 32); G-GATE-09 typed mandatory-pass
+    while being mechanically unobservable; the public script cited gitignored tracks/** records four
+    times as its evidence. All reproduced before acting. Sonnet blind sim of the repaired header: PASS —
+    recovered calibrate-first, pre-registration, reps>=3, the allowlist form, and answered "no" to
+    "one rep, arm B answered, can you record CUT?".'
+  note: 'Second time in one day that the miss landed where self-repair had just declared success. New
+    this round: the ANCHOR ITSELF was decorative on first try — reverting three fixes left the lane file
+    15/15 green. Two different causes: two lanes did not carry an input that exposes the defect (they
+    went red for an unrelated reason and read as coverage), and one revert silently did not apply. A
+    revert is an instrument too; measure that it took effect before believing the anchor.'

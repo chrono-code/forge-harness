@@ -23,21 +23,47 @@
 #   1. pick a section that has >=1 probe (this script tells you the Scopes resolve; grep probes.md
 #      for the section name to find its probes)
 #   2. write two copies of the asset — arm A unchanged, arm B with that section cut
-#   3. run each arm through a HEADLESS runtime whose cwd is OUTSIDE this repo, feeding the arm on
-#      stdin, WITH TOOLS STRIPPED, and ask the probe's own question:
-#        cd <scratch-dir-outside-repo>
+#   3. CALIBRATE THE RUNNER FIRST: `bash scripts/ablation_calibrate.sh` must exit 0. The pair gates
+#      the runner; the runner never gates itself. Skipping this is how both leaks below shipped.
+#   4. run each arm through a HEADLESS runtime whose cwd is OUTSIDE this repo, feeding the arm on
+#      stdin, WITH TOOLS STRIPPED, and ask the probe's own question. Give EACH ARM ITS OWN
+#      DIRECTORY -- an arm that runs beside a copy containing the answer can read it off the
+#      neighbour instead of failing, which is a false CUT ([[feedback_half_fix_propagation_boundary]]:
+#      the calibrator fixed this in itself first, and this line is the propagation):
+#        mkdir -p <scratch-outside-repo>/A <scratch-outside-repo>/B   # armA.md and armB.md, apart
+#        cd <scratch-outside-repo>/B
 #        { echo '=== RULESET ==='; cat armB.md; echo; echo "$QUESTION"; } \
-#          | claude -p --model sonnet \
-#              --disallowedTools Bash,Read,Glob,Grep,WebFetch,WebSearch,Task,Agent
-#      ⚠️ cwd alone is NOT isolation and the flag above is NOT yet calibrated — read LEAK CHANNEL 2
-#      below before you trust anything this produces.
-#   4. arm A answers it and arm B cannot -> the section is load-bearing, KEEP. Both answer -> the
+#          | claude -p --model sonnet --tools ''
+#      Use `--tools ''` (empty ALLOWLIST), not the denylist form. Both pass calibration today, but a
+#      denylist re-opens the channel by default the day Claude Code ships a new tool.
+#   5. RUN AT reps>=3. The runner is nondeterministic: on 2026-08-03 an arm A that CONTAINED the
+#      answer returned NOT IN MY CONTEXT in 1 of 3 reps. A single rep is not a measurement.
+#   6. arm A answers it and arm B cannot -> the section is load-bearing, KEEP. Both answer -> the
 #      section is redundant with whatever else is resident, and it is a deletion candidate.
+#      A third outcome exists and is the worst: arm B answers CONFIDENTLY AND WRONGLY. That is not
+#      redundancy, it is the section doing load-bearing work by preventing a wrong inference. Score
+#      it KEEP. (Measured: cutting §FH 4-Axis made every rep conclude the gate does NOT apply to
+#      `AGENTS.md`/`templates/` edits — the exact opposite of the rule.)
+#      ⚠️ THAT THIRD OUTCOME MAKES **CUT UNREACHABLE** UNLESS ALL THREE HOLD -- with an unbounded
+#      question space and a nonzero model error rate, any section can be rescued by hunting for a
+#      question arm B fumbles, and a shed procedure that cannot shed has inverted its purpose:
+#        (a) PRE-REGISTER the question set before any arm runs, and report k tried / k that flipped
+#            the verdict, in `.claude/regression/ablation_verdicts.md` §Pre-registration log;
+#        (b) arm A's answer must be GREP-VERIFIABLE in the cut text -- right because of the section,
+#            not right by luck;
+#        (c) arm B's wrong answer must be CONSEQUENTIAL -- name the behavior it changes. "Wrong but
+#            harmless" is not a KEEP.
 # The isolation is the whole experiment: ablation asks "is this knowable without the resident text",
 # not "can an agent find it".
 #
-# ⚠️ THIS PROCEDURE IS NOT VERIFIED YET. Read the two leak channels before you trust any verdict it
-# produces. Both were measured on 2026-08-03; one is closed, one is OPEN.
+# PROCEDURE STATUS: CALIBRATED 2026-08-03 (session 2), WITH TWO NAMED RESIDUALS. Channel 1 is closed.
+# Channel 2 is closed AGAINST THE ONE PATH LOCALITY THE CONTROL PROBES ($TMPDIR) -- not proven closed
+# against a permission layer that treats project paths differently -- and the lane file that guards
+# the calibrator covers its SCORING only, so `--tools ''` itself can be deleted with every lane still
+# green. Both residuals are stated in full in `scripts/ablation_calibrate.sh` (NAMED RESIDUAL 1 and 2);
+# read them before quoting this line as coverage. Re-run `scripts/ablation_calibrate.sh` before a
+# sweep rather than trusting this status -- the flags are Claude Code surface and can move.
+# Full record: tracks/_meta/ablation_calibration_2026-08-03_session2.md
 #
 # LEAK CHANNEL 1 -- system prompt (CLOSED by the cwd move). The first version of step 3 said
 # "dispatch TWO isolated agents ... forbidden to read anything else". A Claude Code subagent is
@@ -49,39 +75,28 @@
 # return a false KEEP or a false CUT by luck. Running headless from outside the repo removes this
 # channel (verified: no arm supplied -> NOT IN MY CONTEXT).
 #
-# LEAK CHANNEL 2 -- tools (OPEN. This is why the procedure is not verified). `claude -p` still holds
+# LEAK CHANNEL 2 -- tools (CLOSED for the probed locality; see NAMED RESIDUAL 1). `claude -p` holds
 # Bash/Read/Glob/Grep, and cwd does not stop them: adversarial review ran the arm from a scratch dir
-# with the section removed and the arm FOUND IT IN THE REAL CLAUDE.md AND CITED THE FILE. So step 3
-# must also strip tools -- and the mitigation below is prescribed but NOT known-pair calibrated:
-#   * `--tools ''` (empty allowlist) failed its POSITIVE control -- an arm that DID contain the answer
-#     still returned NOT IN MY CONTEXT. An instrument that always says "arm B cannot answer" scores
-#     every section as load-bearing: silent, uniform false KEEP. Do not ship it uncalibrated.
-#   * `--disallowedTools Bash,Read,Glob,Grep,WebFetch,WebSearch,Task,Agent` passes the negative
-#     control, but its positive control is UNRESOLVED (the fixture used to test it was itself
-#     defective -- it failed with the flag AND without it, which exonerates the flag and indicts the
-#     fixture). It is also a DENYLIST: a tool added later leaks again by default.
+# with the section removed and the arm FOUND IT IN THE REAL CLAUDE.md AND CITED THE FILE. Both
+# `--tools ''` and the denylist form now pass a three-control known pair (positive / negative /
+# tool-channel), and the calibration run agreed across all 3 reps -- which is a statement about the
+# CALIBRATION, not about the arms: step 5 above says the runner is nondeterministic and it is, on a
+# 68k-char asset. `--tools ''` is the shipped form because it is
+# an allowlist. The tool control still FIRES with no flags -- verified, so a green run means the
+# flag worked, not that the control went blind.
+#   * The earlier claim that `--tools ''` fails its positive control was WRONG. That verdict came
+#     from a fixture that failed with the flag AND without it -- the fixture was the defect, and it
+#     indicted both flags. Rebuilding the fixture exonerated both.
 # Direction of error matters here and it is the dangerous one: arm B answering scores as
 # "redundant -> deletion candidate", so a tool leak manufactures FALSE CUT on load-bearing sections.
 #
-# BEFORE THE NEXT SWEEP, in this order: (1) build a known pair -- one arm that CONTAINS the answer and
-# one that does not -- and confirm the runner answers the first and declines the second; the pair
-# gates the runner, the runner does not gate itself. (2) only then re-run the arms.
-#
-# CONSEQUENCE FOR EVERY VERDICT ON RECORD:
-#   - Subagent-method verdicts are UNCALIBRATED, including the FIRST RUN this header used to record as
-#     settled (CLAUDE.md §New Skill Creation Pre-Commit Gate, VERDICT: KEEP). Not disproved -- unqualified.
-#   - The two runs below came from the headless method with channel 2 still open. They are PROVISIONAL,
-#     not findings. The CUT one especially: do not act on it.
-#       * CLAUDE.md §Pre-Publish Surface Gate -> provisionally KEEP. Arm B recovered the trigger and the
-#         two audit skills from the Autonomous-Initiative row plus the Degrade Invariant, but lost
-#         /security-review, the docs-only applicability rule, the order invariant and the hook-coverage
-#         map. A leak would only have made arm B look MORE capable, so KEEP is the safe direction here.
-#       * CLAUDE.md §FH Improvement 4-Axis Auto-Gate -> provisional CUT CANDIDATE. DO NOT CUT. Both arms
-#         answered probe G-GATE-02, but "both answered" is exactly the reading a tool leak fabricates.
-#         Re-run after the known pair exists. Independently of the leak, the section's asset-type list
-#         and its "go read the rule file" obligation are defended by NO probe -- unmeasured surface,
-#         not proven redundant -- so a probe for them is owed before any cut.
-# Full record: tracks/_meta/ablation_method_correction_2026-08-03.md
+# VERDICTS ARE NOT KEPT HERE. `.claude/regression/ablation_verdicts.md` (TRACKED) holds the verdict
+# table, the reps, and the pre-registration log. This header used to carry them, which put a public
+# script's load-bearing safety claims behind citations to `tracks/**` -- gitignored, so unreadable to
+# every reviewer who is not the operator. A verdict a reviewer cannot open is a phantom citation.
+# Narrative record (operator-local, not required to read the table):
+#              tracks/_meta/ablation_calibration_2026-08-03_session2.md
+#              tracks/_meta/ablation_method_correction_2026-08-03.md (the two leaks, as found)
 #
 # Usage:  bash scripts/probe_scope_check.sh [--self-test]     (both forms run the same checks)
 #         bash scripts/probe_scope_check.sh --fixture-corpus <path>   (control C only — not for humans)

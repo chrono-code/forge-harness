@@ -202,6 +202,24 @@ else
   fail=1
 fi
 
+# And the ablation calibrator, for the third instance of the same reason. Its whole job is telling
+# apart states that look identical from outside — "the arm could not answer" vs "the runner is dead"
+# vs "the runner read the answer off disk" — and round 2 of its own adversarial review found that
+# three of its round-1 fixes had no discriminating lane at all. Unwired lanes are green on one
+# machine and nowhere else, which is the case this file exists to prevent. Stub runners, no API
+# spend, so running them here costs nothing. Not hermetic w.r.t. the filesystem: two isolation lanes
+# create and remove an empty, per-PID, git-invisible directory in the worktree.
+if [ ! -f scripts/ablation_calibrate.sh ]; then
+  echo "SKIP  test_ablation_calibrate_lanes.sh (subject scripts/ablation_calibrate.sh absent)"
+elif [ -f scripts/test_ablation_calibrate_lanes.sh ]; then
+  if ! bash scripts/test_ablation_calibrate_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_ablation_calibrate_lanes.sh: ablation_calibrate.sh present but its anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/fh_node_check.sh ]; then
   echo "SKIP  test_node_check_lanes.sh (subject scripts/fh_node_check.sh absent)"
 elif [ -f scripts/test_node_check_lanes.sh ]; then
