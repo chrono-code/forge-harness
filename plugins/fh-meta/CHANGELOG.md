@@ -10,6 +10,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [1.4.86] — 2026-08-03
+
+**fix: 격리를 자칭하던 어블레이션 절차 + ambig 게이트 앵커 + 밀린 출하 자산 반영**
+
+- `scripts/probe_scope_check.sh` — 어블레이션 절차 정본을 교체했다. 서브에이전트에는 프로젝트
+  CLAUDE.md 가 **시스템 프롬프트로 주입**되므로 "다른 파일 읽기 금지"는 블라인드 arm 을 만들지
+  못한다(파일 0개·툴 0회 컨트롤이 잘린 절을 verbatim 재현하며 출처를 자백). 헤더는 이제
+  **"이 절차는 아직 검증되지 않았다"**로 시작한다 — 적대 검증이 두 번째 누출 채널(`claude -p`
+  가 Bash/Read/Glob 을 쥐고 있어 arm 이 진짜 CLAUDE.md 를 찾아 인용)을 실측했고, 툴 차단 처방은
+  known-pair 가 없다(`--tools ''` 는 양성 컨트롤 실패 = 전 구간 거짓 KEEP). 기존 판정은
+  UNCALIBRATED, 오늘 판정 2건은 PROVISIONAL, CUT 후보는 **DO NOT CUT**.
+- 같은 파일 — control B 의 `ambig` 항을 **control C**(픽스처 코퍼스 자기 재호출)로 앵커. 실 코퍼스는
+  건드리지 않는다. 게이트 항을 되돌리면 arm 이 빨개지는 것까지 검증.
+- 같은 파일 — 적대 검증이 잡은 자기결함 5건 봉합: env 킬스위치(`PROBE_SCOPE_FIXTURE` export 시
+  픽스처를 실 코퍼스 대신 검사하고 control C 를 무음으로 끄고도 초록 + exit 0) → argv 플래그로
+  교체 · 타입 없는 exit 3 을 증거로 받던 control C → 자식의 `ambiguous-basename` 카운트 동반 요구 ·
+  따옴표 불안전한 RETURN trap · mktemp 실패가 exit 3 으로 대상 코드를 무고하던 것 → exit 1 ·
+  새 옵션 파서가 `--self-test` 를 거부해 `selfcheck.sh` 를 깨뜨리던 자초 회귀.
+- `knowledge/shared/learnings/subagent_invocations_log.yaml` — 호출 로그 2건. 그중 하나가
+  전날 엔트리를 `rejected` 로 뒤집는다(그 엔트리의 mode 줄 "all file access denied except the one
+  arm file" 이 성립하지 않는다).
+- 밀려 있던 출하 자산 반영(#239, 어제): `scripts/selfcheck.sh` · `scripts/package_coverage_check.sh` ·
+  `templates/.git-hooks/pre-push` — 태그가 자기 버전을 가리키는지 검사하는 가드.
+
+
 ### [1.4.1] — 2026-06-08
 
 **docs: repo-root declutter + pre-commit gate hardening**
