@@ -152,7 +152,6 @@
     "templates/subagent-tally-hook.json",
     "scripts/test_session_close_chain_lanes.sh",
     "scripts/test_node_infra_delta_lanes.sh",
-    "scripts/test_sessionstart_multihook_lanes.sh",
     "scripts/test_wizard_snippet_merge_lanes.sh"
   ]
 }

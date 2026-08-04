@@ -98,6 +98,12 @@ ACCEPTED_ABSENT=(
   # pairing rule: an anchor whose subject does not ship must not ship either, or the consumer's
   # selfcheck goes red on a subject they do not have.
   "scripts/test_probe_scope_lanes.sh"
+  # Measures what the LIVE `claude` CLI does with several SessionStart hooks on one matcher —
+  # so every run needs the CLI, auth, and spends tokens on the consumer's account. Same reason
+  # `ablation_calibrate.sh` is absent: shipping a script whose only effect on a consumer's
+  # machine is a bill is worse than omitting it. selfcheck reports it NOT EXERCISED (exit 2)
+  # where the CLI is missing, so the package stays green without pretending the lanes ran.
+  "scripts/test_sessionstart_multihook_lanes.sh"
 )
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'

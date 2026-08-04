@@ -269,7 +269,21 @@ do
   if [ ! -f "$_subj" ]; then
     echo "SKIP  ${_anc##*/} (subject $_subj absent)"
   elif [ -f "$_anc" ]; then
-    if ! bash "$_anc"; then
+    # THREE-valued, like the session-close anchors above — and for a third reason they do not have.
+    # test_sessionstart_multihook_lanes.sh measures what the LIVE `claude` CLI does with several
+    # SessionStart hooks on one matcher. It declares exit 2 = NOT EXERCISED (no CLI / no auth /
+    # opt-out). A CI runner structurally cannot have that CLI, so collapsing 2 into fail=1 makes
+    # every Linux run red forever — over-blocking, which is how a red CI stops being read at all
+    # (the same reasoning that keeps the session-close check advisory on ordinary pushes).
+    # 2 does NOT set fail, and it prints a line that cannot be misread as a pass. On a machine that
+    # DOES have the CLI the suite runs in full and a real failure still exits 1.
+    # Measured 2026-08-04: the first draft of this wiring flattened 2 into fail=1 and turned CI red
+    # while the suite had correctly reported "NOT EXERCISED — the `claude` CLI is not on PATH" —
+    # i.e. it rebuilt, ten lines below the comment warning against it, the exact flattening defect.
+    bash "$_anc"; _rc=$?
+    if [ "$_rc" -eq 2 ]; then
+      echo "NOT EXERCISED  ${_anc##*/}: this environment cannot run the measurement (exit 2 — never a pass)"
+    elif [ "$_rc" -ne 0 ]; then
       fail=1
     fi
   else
