@@ -914,3 +914,33 @@
     instances, four different causes (a lane carrying no input that exposes the defect; a revert that
     silently did not apply; a needle matching unrelated prose; a stub short-circuiting the layer the
     guard lives in). None was self-caught. Harvested to [[feedback_anchor_can_be_decorative]].'
+
+- date: 2026-08-04
+  agent: codex (gpt-5.5) — cross-family adversarial sidecar
+  invoked_by: FH self-dev session (card carry-over autopilot)
+  task: >-
+    Two separate adversarial audits. (1) A pre-commit hook trigger split plus a new known-pair
+    section in scripts/gate_pathspec_check.sh. (2) The §ⓐ restriction-union merge spec in
+    knowledge/shared/harness-core/capability_composition_contract.md.
+  outcome: accepted
+  evidence: >-
+    Audit (1): 3 defects, same-family inline pass found 0. The load-bearing one was a worktree-vs-
+    staged FAIL-OPEN — the checker read the worktree copy of CLAUDE.md, so staging a broken asset
+    line and then repairing the worktree WITHOUT staging passed the gate; reproduced before fixing
+    (index 0 occurrences / worktree 1 / anchor exit 0) and re-measured closed after (exit 1 both
+    directions). The other two: an `agents/` needle that passed on a partial class drop, and a stale
+    comment instructing the next maintainer to restore the exact coupling the change removed.
+    Codex explicitly CLEARED the LOADBEARING separation and the bash-3.2 quoting — a negative result
+    recorded because "found nothing here" is also evidence.
+    Audit (2): 5 defects, inline pass found 4 of them independently. The one net-new finding was the
+    worst of the set — §ⓐ.3 check 2 was written `merged ⊒ l` while §ⓐ.1 defined `a ⊑ b` as "a is at
+    least as strict as b", i.e. the spec's only mechanical direction check asserted the INVERSE of
+    its own invariant. Fixed by removing the glyph and writing every strictness claim as a
+    `permits(...) ⊆` relation.
+  note: >-
+    Second consecutive session where the cross-family leg produced net-new findings that same-family
+    rounds walked past, and where the net-new finding was the most severe one. Counted 5 dispatches
+    in the SubagentStop tally (2 codex audits plus 3 harness-side spawns); consolidated into this one
+    entry per the "counts and outcomes, not one stub per dispatch" rule.
+    Instrument note: the invocation form matters — `| codex exec -` (stdin) as recorded in
+    [[feedback_sidecar_liveness_not_passive_wait]]; the argv form hangs nondeterministically.

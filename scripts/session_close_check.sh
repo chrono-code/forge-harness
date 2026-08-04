@@ -156,12 +156,20 @@ if [ "$HOOK_OK" -eq 0 ]; then
   echo "     (that file is gitignored, so a fresh clone has none). An unmeasured dispatch count is"
   echo "     NOT a count of zero. Install: templates/subagent-tally-hook.json → .claude/settings.json"
 fi
-DISPATCHED=$(grep -c "^$TODAY$" "$TALLY" 2>/dev/null | tr -d ' ' || echo 0)
+# `grep -c` PRINTS 0 and EXITS 1 when the count is zero. Under `set -o pipefail` (line 16) that
+# makes the pipeline fail, `|| echo 0` appends a SECOND line, and the value becomes "0\n0" — which
+# `[ -eq ]` rejects as a bash error, so the branch it guards is skipped. The guard was therefore
+# disarmed in EXACTLY the case it exists for (zero log entries). Measured 2026-08-04 during a close:
+# the check printed ✅ while `[: 0\n0: integer expression expected` went to stderr.
+# Fix = no `|| echo`, plus integer sanitation. This is the documented prescription for this class
+# ([[feedback_pipefail_fallback_disarms_guard]]) applied to the checker that cited it.
+_int() { case "${1:-}" in (''|*[!0-9]*) echo 0 ;; (*) echo "$1" ;; esac; }
+DISPATCHED=$(_int "$(grep -c "^$TODAY$" "$TALLY" 2>/dev/null | tr -d ' ' || true)")
 # Both quotings, because the file carries both: hand-written entries use `- date: 2026-08-02`
 # while anything appended via yaml.dump renders `- date: '"'"'2026-08-02'"'"'`. Matching one form counted
 # half the entries as absent — a divergent-normalizer miss inside the check that exists to catch
 # missing records. Known-pair calibrated below in test_dispatch_log_lanes.sh.
-LOGGED=$(grep -cE "^- date: *'?$TODAY'?" "$LOG" 2>/dev/null | tr -d ' ' || echo 0)
+LOGGED=$(_int "$(grep -cE "^- date: *'?$TODAY'?" "$LOG" 2>/dev/null | tr -d ' ' || true)")
 if [ "${DISPATCHED:-0}" -gt 0 ] && [ "${LOGGED:-0}" -eq 0 ]; then
   echo "❌ ④-e $DISPATCHED sub-agent dispatch(es) today and ZERO invocation-log entries — the 60/40"
   echo "     promotion gate and the UAP loop both read that file; an unlogged session is invisible to"
