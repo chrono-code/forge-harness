@@ -261,17 +261,17 @@ Every new `SKILL.md` must clear a **6-item bar** (role-duplication via `/asset-p
 
 **Consequence (kept resident on purpose)**: a skill shipped **without a `Done When` definition automatically qualifies as harness-doctor L2 M-tier** — the bar has teeth, and those teeth stay in the always-loaded layer even though the bar's detail does not. Each `Done When` condition must also declare its check class (mandatory-pass / measured / judged); a **judged** condition names its adversarial pairing — no judge-only path.
 
-> **정본**: `.claude/rules/fh_4axis_gate.md §New Skill Creation Pre-Commit Gate` — the full 6-item table, the judged→measured upgrade path, and the routing/gate test. It is `paths:`-scoped to `plugins/**/SKILL.md`, so it **auto-loads when you read a SKILL.md**. **Creating a skill from scratch reads no SKILL.md — go read it explicitly.** Mechanical floor either way: `templates/.git-hooks/pre-commit` runs the full 4-axis gate on any `SKILL.md` path plus a new-skill count-consistency slice.
+> **정본**: `.claude/rules/fh_4axis_gate.md §New Skill Creation Pre-Commit Gate` — the full 6-item table, the judged→measured upgrade path, and the routing/gate test. **`paths:` governs only when that rule file AUTO-LOADS, and it covers just *some* gated assets — never read it as the gate's scope; applicability is the asset list in §FH Improvement 4-Axis Auto-Gate below.** **Creating a skill from scratch reads no SKILL.md, and several gated assets are outside the globs — go read it explicitly.** Mechanical backstop: `templates/.git-hooks/pre-commit` fires on **every asset class listed below — not only `SKILL.md`** — plus a count-consistency slice whenever a skill is added, removed or renamed. It blocks on a **missing or vacuous marker**, never on proof the axes ran; provenance is yours.
 
 ---
 
 ## FH Improvement 4-Axis Auto-Gate (Self-Verification Orchestrator)
 
-**FH 자산을 수정하면**(SKILL.md · **SKILL_detail.md** · `.claude/rules/*.md` · `knowledge/shared/rules/*.md` · `templates/` · `CLAUDE.md` · substantive `knowledge/`·`docs/*.md` · `AGENTS.md`) **4축 검증 체인이 그 세션 첫 커밋 전에 자동 실행된다.** 사용자 요청 불요 — 제안이 아니라 의무 단계다.
+**FH 자산을 수정하면**(SKILL.md · **SKILL_detail.md** · `.claude/rules/*.md` · `knowledge/shared/rules/*.md` · `templates/` · `CLAUDE.md` · substantive `knowledge/`·`docs/*.md` · `AGENTS.md` · **`scripts/**/*.sh`** · **에이전트 정의**(`plugins/*/agents/**/*.md` · `.claude/agents/**/*.md`)) **4축 검증 체인이 그 세션 첫 커밋 전에 자동 실행된다.** 사용자 요청 불요 — 제안이 아니라 의무 단계다.
 
 **기계 floor**: `git commit` 은 `templates/.git-hooks/pre-commit` 이 **하드 차단**한다. 축이 전부 PASS 할 때까지 커밋 자체가 안 된다. 아래 상세가 로드되지 않아도 **훅이 막는다** — 이 산문은 훅 위의 살리언스 층이지 유일 floor 가 아니다.
 
-> **상세 정본**: `.claude/rules/fh_4axis_gate.md` — 4축 정의·마커 필수 필드·경량 예외·substantive carve-out·target-tier sim 게이트·Mode D 모델 공지·cross-family 보완. **`paths:` 로 FH 자산 경로에 스코핑돼 있어 그 파일들을 *읽을 때* 자동 로드된다** (공식 트리거는 read — `code.claude.com/docs/en/memory.md` §Path-specific rules).
+> **상세 정본**: `.claude/rules/fh_4axis_gate.md` — 4축 정의·마커 필수 필드·경량 예외·substantive carve-out·target-tier sim 게이트·Mode D 모델 공지·cross-family 보완. **`paths:` 로 *일부* FH 자산 경로에 스코핑돼 있어 그 파일들을 *읽을 때* 자동 로드된다 — 로드 조건이지 게이트 적용 범위가 아니다** (공식 트리거는 read — `code.claude.com/docs/en/memory.md` §Path-specific rules).
 > (2026-07-20 분리. **파일 char 실측**: 이 절 자체가 76,706자 중 **10,331자(13.5%)**로 단일 최대였다. 그 분리 + 같은 세션의 중복 3건 제거 + New-Skill 게이트 편입까지 **합산**해 파일은 **76,706 → 67,611 (순감 9,095자, 11.9%)** — 합산치이지 이 절 하나의 성과가 아니다 — 이건 파일 크기지 `/context` 상주 실측이 아니다(계기≠대상, [[feedback_resident_memory_measured_fresh_toplevel]]: 상주는 톱레벨 새 세션 `/context` 로만 잰다 — 미측정). 트리거가 *파일*이고 *기계 백스톱*이 있어 1순위 후보였다. 같은 이유로 **비가역 게이트 3종은 이동 불가** — 의도 트리거라 경로 스코핑하면 fail-open 이 된다.)
 > **의무**: 이 요약에는 **축 이름·마커 필수 필드·경량 예외 기준이 없다.** 4축을 실제로 실행하거나 마커를 쓰기 전에 위 파일을 **반드시 직접 읽어라** — 안 읽고 마커를 쓰면 필드를 지어내게 된다(2026-07-20 Sonnet sim 이 스스로 지목한 실패 모드).
 > **잔여(살리언스 층에 한함, 훅은 무관)**: ⓐ 트리거가 read 라서 **신규 SKILL.md 를 Write 로 새로 만드는** 경로는 규칙이 안 실린다 ⓑ `CLAUDE.md` 는 glob 에서 의도적 제외라 CLAUDE.md-only 세션은 이 요약 + 훅만 본다. **두 경로에선 위 "반드시 읽어라"가 유일한 살리언스 층이다** — 단, 둘 다 pre-commit 훅이 여전히 커밋을 하드 차단한다.
