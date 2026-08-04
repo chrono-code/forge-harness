@@ -41,6 +41,32 @@ The hub audits and improves itself weekly.
 
 ---
 
+## Flaky-lane triage — re-running erases the evidence you need
+
+**Before you re-run a red CI job, pull the failing lane name out of its log.** A re-run overwrites the
+run's `conclusion`, and GitHub's summary then shows the whole history as green — including the run
+that failed. The failure is not hidden behind a filter; it no longer exists as a queryable state.
+
+Measured 2026-08-03: a `sync_from_be_lanes.sh` flake was recorded and, when someone went looking the
+next day, **all 14 runs that day reported `success`**. The re-runs had rewritten the conclusions and
+the failing job's lane name had never been captured anywhere. There was nothing left to diagnose, so
+nothing was diagnosed — a guessed diagnosis was correctly refused rather than written down.
+
+Order, on the next occurrence:
+
+```bash
+gh run list --workflow <wf> --limit 30 --json databaseId,conclusion,headSha   # find the red run FIRST
+gh run view <id> --log-failed | grep -E '❌|FAIL|not ok' | head -20           # capture the lane NAME
+# only now consider re-running
+```
+
+Record the lane name in the session log even if the re-run goes green — **a flake that cannot be named
+cannot be fixed**, and the second occurrence is the one that gets fixed only if the first was named.
+
+This is prose on purpose. N=1: one flake, one lost diagnosis. The mechanization threshold in this repo
+is N≥3 or the same class recurring on another surface; a scheduled log-capture job built on a single
+occurrence would be the speculative build the evidence-threshold rule forbids.
+
 ## 3-Phase Maturity Roadmap
 
 The hub's long-term evolution path is managed as a 3-stage model: **Phase I (entering maturity) → Phase II (frontier following) → Phase III (frontier leading)**. Phase transition gates have the simplification principle ("A good harness gets simpler over time") as a common condition.
