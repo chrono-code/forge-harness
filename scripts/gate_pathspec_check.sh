@@ -107,7 +107,12 @@ spec_matches() {  # $1 = path
 for pair in \
   "plugins/fh-meta/skills/frontier-digest/SKILL_detail.md|tracks/_meta/x.md|PATHSPEC covers SKILL_detail.md" \
   "plugins/fh-meta/skills/frontier-digest/SKILL.md|README.md|PATHSPEC still covers SKILL.md" \
-  "CLAUDE.md|CLAUDE.local.md|PATHSPEC covers CLAUDE.md but not the local override"
+  "CLAUDE.md|CLAUDE.local.md|PATHSPEC covers CLAUDE.md but not the local override" \
+  "scripts/selfcheck.sh|README.md|PATHSPEC covers scripts/*.sh (seam #1 — the HEAVY term already gated it, this array did not)" \
+  "scripts/sub/nested.sh|package.json|PATHSPEC covers scripts/ recursively (git/bash globs cross '/')" \
+  "templates/regression_guard.sh|package-lock.json|PATHSPEC covers templates/*.sh — i.e. the guard can guard ITSELF" \
+  "templates/.git-hooks/pre-commit|.gitignore|PATHSPEC covers the git-hook floor (the hook that hard-blocks commits)" \
+  "plugins/fh-meta/agents/challenger.md|tracks/_meta/y.md|PATHSPEC covers agent definitions (seam #3)"
 do
   IFS='|' read -r pos neg label <<< "$pair"
   ok=1
