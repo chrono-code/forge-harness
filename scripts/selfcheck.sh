@@ -209,6 +209,21 @@ fi
 # machine and nowhere else, which is the case this file exists to prevent. Stub runners, no API
 # spend, so running them here costs nothing. Not hermetic w.r.t. the filesystem: two isolation lanes
 # create and remove an empty, per-PID, git-invisible directory in the worktree.
+# probe-scope lanes — the subject had 15 sibling checkers with an anchor and none of its own, so
+# three repairs shipped on 2026-08-03 that could each be reverted with nothing turning red. Same
+# SKIP/FAIL shape as the blocks above: a missing SUBJECT is a legitimate skip, a present subject with
+# a missing anchor is a real failure.
+if [ ! -f scripts/probe_scope_check.sh ]; then
+  echo "SKIP  test_probe_scope_lanes.sh (subject scripts/probe_scope_check.sh absent)"
+elif [ -f scripts/test_probe_scope_lanes.sh ]; then
+  if ! bash scripts/test_probe_scope_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_probe_scope_lanes.sh: probe_scope_check.sh present but its anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/ablation_calibrate.sh ]; then
   echo "SKIP  test_ablation_calibrate_lanes.sh (subject scripts/ablation_calibrate.sh absent)"
 elif [ -f scripts/test_ablation_calibrate_lanes.sh ]; then
