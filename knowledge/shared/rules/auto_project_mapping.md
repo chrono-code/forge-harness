@@ -91,11 +91,74 @@ governance depth to condition 4 (mechanical-anchor / 4-axis gate) — the litmus
 
 | # | Item | Source → target | Effect |
 |---|---|---|---|
-| 1 | Session rules | `templates/.claude/rules/session.md` → `{project}/.claude/rules/session.md` | Session-start auto-read, backup, rule hierarchy |
+| 1 | Session rules | `templates/.claude/rules/session.md` → `{project}/.claude/rules/session.md` **→ then §6-b prune + substitute (the copy is not the install)** | Session-start auto-read, backup, rule hierarchy |
 | 2 | Context filter | `templates/.claudeignore` → `{project}/.claudeignore` | Token footprint control |
 | 3 | Env card | `templates/fh_env_context.jsonc` → `{project}/.claude/rules/fh_env_context.jsonc` | Environment context for sessions |
 | 4 | **MCP tool gating** (conditional — offered only when the project mounts an external MCP server: `.mcp.json`/`mcp.json` present, or the user is adding one) | `templates/.claude/rules/mcp_tool_gating.md` → `{project}/.claude/rules/mcp_tool_gating.md` | Name-keyed ask/allow tiers for external MCP tools — server annotations are unreliable (measured 2026-06-11: a live server shipped all-None hints incl. its irreversible send tool); §3 table filled at mount time |
 | 5 | **Official-plugin scan** (recommend list only — **never auto-install**) | plugin-recommender Tier 0/1 pass on the project's stack | No-reinvention acceleration: matching `*-lsp` for the project's language + workflow plugins (code-review · commit-commands · feature-dev …) from `claude-plugins-official` — see `knowledge/shared/plugin-catalog/recommended_plugins.md` §Category 0.5. Each install user-approved |
+
+### 6-b. Prune + substitute — the step that was missing, and the measurement that says so
+
+**A copy is not an install.** Item 1 above used to end at the copy, and the field result was measured
+on 2026-08-04 across every repo that inherited this template:
+
+| Repo | `{FH_ROOT}` raw | `[CUSTOMIZE]` raw |
+|---|---|---|
+| A (bash/python wiki engine) | 1 | 3 |
+| B | 2 | 6 |
+| C (a *template* repo — identical is correct here) | 2 | 6 |
+| D | **0** | **0** — the one that was customized by hand |
+
+Three of four shipped with the hub-path placeholder unresolved. The earlier repair went to the
+*template* (marking domain-scoped sections for deletion, 2026-08-04) and measured a real gain — but
+only *when someone asked*. The field failure is that **there was no moment of asking**. This is that
+moment; it is a step, not a better sentence.
+
+Run immediately after each `templates/` copy, in the target repo:
+
+```bash
+TGT={project}/.claude/rules/session.md
+# 1. SUBSTITUTE — the hub path this project should point at
+FH_ROOT_ABS=${FH_ROOT_ABS:-$HOME/projects/forge-harness}   # adjust if the hub lives elsewhere on this machine
+sed -i.bak "s|{FH_ROOT}|$FH_ROOT_ABS|g" "$TGT" && rm -f "$TGT.bak"   # -i.bak = the form BSD requires and GNU accepts
+
+# 2. PRUNE — one ask per SECTION-HEADING marker, then delete the whole section (not just the marker)
+grep -n '<!-- \[CUSTOMIZE\] DOMAIN-SCOPED' "$TGT"
+
+# 3. VERIFY — Done-When. BOTH must print 0.
+grep -c '{FH_ROOT}' "$TGT"
+grep -c '<!-- \[CUSTOMIZE\] DOMAIN-SCOPED' "$TGT"
+```
+
+**Step 3 is the Done-When** *[mandatory-pass]* — and the two counts are deliberately narrow.
+
+- **Why `{FH_ROOT}`**: an unresolved substitution token. It is the exact thing three of four inherited
+  repos shipped raw.
+- **Why only the `<!-- ... -->` form of `DOMAIN-SCOPED`**: those three markers head a deletable
+  section. The template also *mentions* the phrase in prose ("TWO are DOMAIN-SCOPED and belong only
+  to…"), which is documentation and must survive — counting every occurrence would make the target
+  unreachable.
+- **Why `[CUSTOMIZE]` is NOT counted**: the template's own instruction line reads "Change sections
+  marked with [CUSTOMIZE] comments to match your project". A zero target for that string can never be
+  met while the file explains itself, and an unreachable Done-When trains exactly one behaviour —
+  **deleting the marker instead of doing the work** — which is the defect this step exists to prevent.
+  `[CUSTOMIZE]` stays an editing hint, judged by the installer, not a counted gate.
+
+> That distinction is not theory. The first draft of this step counted all three strings and demanded
+> zero; running it on a fresh copy of the template returned **2 after a full prune** — both from lines
+> that must stay. The instrument was checked against a known pair before this step shipped, which is
+> the only reason the unreachable target did not become the rule (`§Instrument-Calibration`).
+
+Do **not** silence a count by deleting the marker alone: the markers are attached to sections, and a
+marker removed from a section that stayed is the same defect with its evidence erased.
+
+**Do not split the template into core+domain modules.** The 2026-08-04 measurement pointed at the
+*install step*, not at the file's shape, and this repo's own history says a new mechanism introduced
+speculatively generates its own defects. The markers plus this step are the fix.
+
+**Residency**: run this inside the target repo only. One of the counted repos is company-adjacent —
+it was counted and left untouched, and its contents are not reproduced here or anywhere outside its
+own environment.
 
 **Field-asset scaffold (on-demand — NOT a `templates/` install)**: harness-ification surfaces field-specific skills/agents *as needed* — the field's domain work produces them. FH accelerates their *creation*: not the domain content (the field team authors that), but the **gate-compliant structure**. When a skill-worthy recurring pattern appears (3+ reps → `#skill-candidate` tag · `field-harvest` signal · a repeated manual workflow), offer to scaffold a skeleton:
 
