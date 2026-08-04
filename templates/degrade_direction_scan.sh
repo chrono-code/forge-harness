@@ -164,9 +164,41 @@ for f in "${FILES[@]}"; do
     # yields "9\n0" and the `-gt` guard goes silent. Verified as a known pair (both directions) in
     # scripts/test_degrade_scan_shell_probes.sh; narrowing without that anchor would just trade a
     # noisy probe for a blind one.
+    #
+    # WIDENED 2026-08-04 — the narrowing had gone one step too far, and the proof is that this
+    # probe was BLIND to the live instance that bit us the day before. PR #251 fixed
+    # `grep -c … | tr -d ' ' || echo 0` in session_close_check.sh ④-e; running this scanner over
+    # the pre-#251 file produced ZERO hits (re-measured: fixed rule = 2, old rule = 0).
+    #
+    # THE ANCHOR WAS ON THE WRONG PROPERTY. The old regex asked "is there an upstream pipe" and
+    # required the counter to be the LAST stage. Neither is the discriminator. The discriminator
+    # is: **does the failing side still EMIT?** `grep -c` prints "0" and exits 1 on no-match, so it
+    # disarms with no upstream pipe at all, and any trailing stage that passes that "0" through
+    # keeps the "0\n0" intact.
+    #
+    # A first fix widened to a NAMED filter list (tr|head|sed|…). Cross-family review (gpt-5.5,
+    # 2026-08-04) refuted it with reproduced counter-examples, and the refutation held on
+    # measurement in BOTH directions:
+    #   · still missed, all verified to yield "0\n0": `grep -Ec …`, `grep --count …`, `grep -Fcx …`
+    #     (combined/long flag forms the `-c` literal never matched) and `| cat`.
+    #   · newly over-matched: `| tail -n +2` after the counter yields ONE line — not a disarm.
+    # Name-based approximation produced under-match and over-match simultaneously. So the trailing
+    # chain is no longer enumerated: the rule keys on the COUNTER (grep with a `c` in any flag
+    # cluster or `--count`; or `wc` behind a real pipe) plus the `|| echo 0` fallback, and accepts
+    # any chain between them.
+    #
+    # PRESERVED from the 2026-07-28 narrowing, still pinned as known-negatives: (a) `a || b ||
+    # echo 0` has no pipeline, and (b) a stage that emits NOTHING on failure (`| jq -r … ||
+    # echo 0`) — there the fallback supplies the only line, as intended.
+    # KNOWN RESIDUAL, stated not hidden: a trailing stage that can swallow the counter's output
+    # (`| tail -n +2`, `| sed -n '/[1-9]/p'`) is now flagged though it is not a disarm. That is a
+    # deliberate recall-over-precision trade on an ADVISORY probe, taken because the measured cost
+    # of the other direction was a real defect shipping. Revisit if non-fixture FPs appear.
+    # Known pair: scripts/test_degrade_scan_shell_probes.sh (9 positives / negatives silent).
+    # Reverting this line turns the positive lane red — checked by applying the revert.
     while IFS= read -r m; do
-      emit "$f" "${m%%:*}" "S5:pipefail-fallback(sh)" "\`|| echo 0\` fallback on a pipeline ending in a counter (grep -c/wc) — that stage emits even when an upstream stage fails, so under \`set -o pipefail\` the value gains a SECOND line, the integer comparison errors out, and the guard passes silently; split the pipeline and sanitize to an integer"
-    done < <(grep -nE '[^|]\|[[:space:]]*([a-z]+[[:space:]]+)*(grep[^|]*-c|wc)[^|]*\|\|[[:space:]]*echo[[:space:]]+[\"'"'"']?0' "$f" 2>/dev/null \
+      emit "$f" "${m%%:*}" "S5:pipefail-fallback(sh)" "\`|| echo 0\` fallback after a COUNTER (grep with -c / --count, or wc) — the counter PRINTS \"0\" and exits non-zero on no-match, so the fallback appends a SECOND line, the value becomes \"0\\n0\", the integer test dies with 'integer expression expected' (stderr only) and the guard goes silent; split it and sanitize: n=\$(...); n=\${n:-0}; case \$n in *[!0-9]*) n=0;; esac. VERIFY the trailing stage can actually emit — if it swallows the count (| tail -n +2), this is a known false positive"
+    done < <(grep -nE '(([^|]\|[[:space:]]*([a-z]+[[:space:]]+)*wc[^|]*)|(grep([[:space:]]+-[A-Za-z]*c[A-Za-z]*|[[:space:]]+--count)[^|]*))([^|]*\|[^|]*)*\|\|[[:space:]]*echo[[:space:]]+[\"'"'"']?0' "$f" 2>/dev/null \
              | grep -vE '^[0-9]+:[[:space:]]*#' \
              | grep -vE '#[[:space:]]*noqa[:[:space:]]*degrade')
   fi

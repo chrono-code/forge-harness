@@ -75,7 +75,14 @@ PY
     [ "$ok" -eq 0 ] ; chk $? "hook ends in exit 0 — a non-zero hook exit discards its stdout SILENTLY"
     # run it against a scratch HUB and confirm it appends today's date
     CLAUDE_PROJECT_DIR="$T/hub" bash -c "$cmd" >/dev/null 2>&1
-    [ "$(grep -c "$(date +%Y-%m-%d)" "$T/hub/tracks/_meta/.subagent_dispatch_tally" 2>/dev/null || echo 0)" -ge 1 ]
+    # Split + sanitize, not `grep -c … || echo 0`: on no-match `grep -c` PRINTS "0" and exits 1, so
+    # the fallback appends a SECOND line and `[ -ge ]` dies with "integer expression expected".
+    # Here that error happens to land on the FAIL branch — honest scope: this was never a live
+    # fail-open, it was a verdict reached by a bash error instead of a comparison, one refactor
+    # away from flipping. Found by the S5 sweep after the rule was widened (2026-08-04).
+    _tally_n=$(grep -c "$(date +%Y-%m-%d)" "$T/hub/tracks/_meta/.subagent_dispatch_tally" 2>/dev/null); _tally_n=${_tally_n:-0}
+    case "$_tally_n" in (*[!0-9]*|'') _tally_n=0 ;; esac
+    [ "$_tally_n" -ge 1 ]
     chk $? "hook actually appends a dated line when run (not merely present)"
   fi
 else

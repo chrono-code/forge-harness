@@ -163,6 +163,15 @@ cat > "$TMP/s5_positive.sh" <<'EOF'
 set -uo pipefail
 N=$(find /nope . -maxdepth 1 2>/dev/null | grep -c . || echo 0)
 M=$(git log --oneline 2>/dev/null | wc -l || echo 0)
+# WIDENED 2026-08-04. Every line below was INVISIBLE to the narrowed rule, and each was verified to
+# actually produce "0\n0" before being pinned here (line count measured, not assumed):
+P=$(cat /etc/hosts | grep -c . | tr -d ' ' || echo 0)   # transparent filter after the counter
+Q=$(grep -c "^nosuchline$" /etc/hosts 2>/dev/null | tr -d ' ' || echo 0)  # the PR #251 shape
+R=$(grep -Ec "^nosuchline$" /etc/hosts || echo 0)       # combined flag cluster -Ec
+S=$(grep --count "^nosuchline$" /etc/hosts || echo 0)   # long option
+T=$(grep -Fcx "nosuchline" /etc/hosts || echo 0)        # -Fcx
+U=$(false | grep -c . | cat || echo 0)                  # trailing stage that always emits
+V=$(false | grep -c . | grep -v nosuch || echo 0)       # trailing grep whose pattern misses the "0"
 EOF
 cat > "$TMP/s5_negative.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -174,8 +183,8 @@ J=$(printf '%s' "$x" | jq -r '.a // 0' 2>/dev/null || echo 0)
 # A comment describing the defect must not be scored as the defect: cmd | grep -c . || echo 0
 EOF
 n=$(s_hits "$TMP/s5_positive.sh")
-[ "$n" -eq 2 ] && ok "S5 known-positive: counter-stage fallbacks (grep -c, wc) detected 2/2" \
-                || bad "S5 known-positive: expected 2 S-hits, got $n — the pipefail disarm is invisible"
+[ "$n" -eq 9 ] && ok "S5 known-positive: 9/9 — incl. -Ec/--count/-Fcx flag clusters, trailing \`| cat\`/\`| grep -v\`, and the no-upstream-pipe form" \
+                 || bad "S5 known-positive: expected 9 S-hits, got $n — 2 = the pre-2026-08-04 rule (pipe-presence anchor); 4 = the first widening, which still missed every combined flag cluster (\`-Ec\`, \`--count\`, \`-Fcx\`) and any trailing stage outside a hardcoded name list"
 
 n=$(s_hits "$TMP/s5_negative.sh")
 [ "$n" -eq 0 ] && ok "S5 known-negative: \`||\` chains, empty-on-failure pipelines and comments stay silent" \
