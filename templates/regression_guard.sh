@@ -117,6 +117,31 @@ GUARD_PATHSPEC=(
   'AGENTS.md'
   'docs/*.md'
   'templates/*.md'
+  # ── Added 2026-08-04 — the pathspec had drifted from the 4-axis ASSET LIST it exists to gate.
+  # Measured that day by mechanically walking every asset class in CLAUDE.md §FH Improvement
+  # 4-Axis against this array: four classes had NO covering pattern, and two of them are this
+  # repo's own mechanical floor — `templates/.git-hooks/*` (the hook that hard-blocks commits)
+  # and `templates/*.sh` (THIS FILE — the guard could not guard itself). The pre-commit HEAVY
+  # classifier already listed `^scripts/.*\.sh$`, so a scripts-only change entered the heavy
+  # path and then met Axis 1 returning `SKIP (not-checked, NOT a pass)`. Observed three times
+  # on 2026-08-04 alone, the third being the S5 fix (PR #253) — a change to a verdict-surface
+  # scanner that shipped with zero Axis-1 coverage.
+  #
+  # Calibrated before shipping, both directions (a widened copy, run against real history):
+  #   · 12 consecutive historical commits touching scripts/*.sh → M=0 S=0 (no FP storm), and a
+  #     control confirmed the files were actually SELECTED (4 files checked) rather than the
+  #     zero coming from an inert pathspec — the unwired-instrument reading of a clean 0.
+  #   · known-positive: truncating a shipped .sh by 60% → M-TIER BLOCK (`BLOCK` token dropped
+  #     100%, 60% line reduction). The md-shaped checks (F1 frontmatter, F2 sections, F3 fences)
+  #     are inert on shell files; F4 keyword / F5 xref / F6 line-loss / F7 syntax are the ones
+  #     that carry, and they are exactly the regressions that matter in a gate script.
+  # NOTE on globbing: git pathspec `*` crosses `/` (verified here — `templates/*.md` matches
+  # `templates/.claude/rules/session.md`), so these single-star forms are recursive.
+  'scripts/*.sh'
+  'templates/*.sh'
+  'templates/.git-hooks/*'
+  'plugins/*/agents/*.md'
+  '.claude/agents/*.md'
 )
 
 # 계기 무결: base ref 가 안 풀리면 diff 실패가 2>/dev/null 로 삼켜져 CHANGED 공백 →
