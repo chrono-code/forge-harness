@@ -79,7 +79,10 @@ EOF
 
 ### Automatic Response to Issues
 
-<!-- [CUSTOMIZE] Adjust report tool/path to match your project -->
+<!-- [CUSTOMIZE] DOMAIN-SCOPED — delete this whole section if the project has no test-report
+     artifact to analyse. The old wording here said "adjust report tool/path", which assumes the
+     tool exists and reads as a config note rather than a delete instruction; the same measurement
+     that found the two sections below inert found this one inert for the same reason. -->
 
 #### Automatic Check Trigger
 
@@ -98,9 +101,27 @@ When the user mentions a problem, **automatically** locate and analyze the lates
 
 ### Code Writing Principles
 
-<!-- [CUSTOMIZE] Adjust to match your project's coding conventions. The 5 principles below are universal and valid for any project. -->
+<!-- [CUSTOMIZE] Adjust to match your project's coding conventions.
+     THREE of the five below are universal (#1 #2 #5). TWO are DOMAIN-SCOPED and belong only to
+     UI/mobile-QA projects (#3 locator stability, #4 flakiness) — DELETE them outright if this
+     project has no UI automation. Do not keep them "just in case": measured 2026-08-03 across
+     THREE repos that inherited this file. One (a bash/python wiki engine) carried both for its
+     entire 11-day life before being pruned; the other two are byte-identical to this template
+     right now and still carry them.
+     If you delete a section, also fix any sentence that counts them — the wiki engine shipped
+     "all 5 principles" over three for an hour before an outside reviewer caught it.
+     What the fix here does and does NOT do, measured as a before/after pair (Sonnet, reps=3).
+     The gain depends on how explicitly the asker names what the project lacks:
+       * question naming no-UI/no-mobile only  -> before: #3 3/3, #4 **1/3**;  after: both 3/3
+       * question also naming no-test-reports  -> before: 8 of 9 cells;        after: 9 of 9
+     So the honest claim is narrow: the old wording is mostly adequate for someone who spells out
+     every absence, and loses a section for someone who does not. Both numbers are recorded because
+     citing only the first would overstate this edit.
+     THE FIELD CAUSE IS STILL OPEN, and it is a different moment: the wiki engine did not prune
+     either section, which means nobody was asked. `light-harness init` copies this file whole,
+     with no pruning step. A marker only works on a reader who has stopped to read it. -->
 
-Be conscious of all 5 principles **before** writing code — directly reduces back-and-forth where Claude rushes to create something and the user has to correct it.
+Be conscious of every principle below **before** writing code — directly reduces back-and-forth where Claude rushes to create something and the user has to correct it.
 
 #### 1. Reference Existing Code (Consistency First)
 
@@ -116,7 +137,7 @@ Be conscious of all 5 principles **before** writing code — directly reduces ba
 
 #### 3. Locator and Identifier Stability (UI code only)
 
-<!-- [CUSTOMIZE] Can be removed for non-mobile QA / non-web QA projects -->
+<!-- [CUSTOMIZE] DOMAIN-SCOPED — delete this whole section for non-UI projects (see the note above #1) -->
 
 - Do not depend on dynamically generated attributes (auto-generated id, timestamps in content-desc)
 - Avoid absolute XPath — fragile to structural changes
@@ -124,6 +145,8 @@ Be conscious of all 5 principles **before** writing code — directly reduces ba
 - If the project has `.claude/rules/LOCATOR_*` guides, those take precedence
 
 #### 4. Flakiness Risk Management
+
+<!-- [CUSTOMIZE] DOMAIN-SCOPED — delete this whole section for projects without UI automation -->
 
 - **No `time.sleep`** — use explicit waits (implicit/explicit wait) + condition-based polling
 - No unbounded waits without a timeout
