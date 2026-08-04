@@ -117,3 +117,11 @@ control; FH supplies the quality gate after goal completion.
 
 > **Detail**: See `knowledge/shared/harness-core/agents_md_runtime_details.md §Adding-agents`
 > — creation gate, registry synchronization, and post-use thresholds — read before adding an agent.
+
+> **Removing resident text**: if you are considering deleting a section from `CLAUDE.md` (or any
+> always-loaded asset) because it looks redundant, this repo settles that by measurement rather than
+> by reading. The procedure — two arms, an isolated runtime, `reps>=3`, a question set fixed before
+> the arms run — is documented in the header of `scripts/probe_scope_check.sh`; the runner must first
+> pass `bash scripts/ablation_calibrate.sh` (exit 0), and verdicts are recorded in
+> `.claude/regression/ablation_verdicts.md`. Worth knowing before you propose a cut: a section whose
+> removal makes a reader answer *confidently wrong* counts as load-bearing, not as safe to drop.
