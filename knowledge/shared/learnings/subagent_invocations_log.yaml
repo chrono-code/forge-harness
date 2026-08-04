@@ -944,3 +944,55 @@
     entry per the "counts and outcomes, not one stub per dispatch" rule.
     Instrument note: the invocation form matters — `| codex exec -` (stdin) as recorded in
     [[feedback_sidecar_liveness_not_passive_wait]]; the argv form hangs nondeterministically.
+
+- date: '2026-08-04'
+  agent: codex/gpt-5.5 (cross-family sidecar, auto-decorrelation)
+  context: >-
+    FH self-dev — two load-bearing gate changes (PR #253 degrade-scan S5 rule, PR #254/#255 Axis-1
+    pathspec parity + anchor wiring). Pre-push gate demanded a cross-family leg on both.
+  dispatches: '3 (2 completed, 1 killed on timeout and re-run)'
+  outcome: accepted
+  evidence: >-
+    Round 1 (PR #253): REFUTED the author's own fix. The first repair widened the S5 rule with a
+    NAMED filter list; codex produced reproduced counter-examples in BOTH directions — still-missed
+    real disarms (`grep -Ec`, `grep --count`, `grep -Fcx`, `| cat`) and a NEW false positive the
+    repair introduced (`| tail -n +2` yields one line, not a disarm). It also caught that a fixture
+    labelled known-NEGATIVE was in fact a positive, because its upstream succeeded and therefore
+    never exercised the failure path it claimed to pin. All four re-run locally before acceptance.
+    Round 2 (PR #255 wiring): no blocker; one residual raised ("a distribution that SHOULD be
+    complete but drops a subject reports SKIP, not FAIL"), which was then TESTED and confirmed
+    uncovered by any existing anchor. Recorded as a WEAK signal — the auditor stated it could not
+    trace F1-F3 because those implementations were not in the diff it was given, and that residual
+    was closed locally by measurement, not by the auditor.
+  note: >-
+    Third consecutive session where the cross-family leg produced net-new findings the same-family
+    round walked past. New this session: the two rounds differed in SIGNAL STRENGTH (refutation vs
+    nothing-found), and both markers record which one it was — recording them at equal weight would
+    launder a weak pass into a strong one.
+    Instrument note: the FIRST attempt derailed into its own sidecar-availability exploration and
+    timed out (exit 124, ~7 min). Re-running with an explicit "Do NOT run shell commands, do NOT use
+    tools, answer ONLY from the text below" preamble fixed it. Stdin form `codex exec -m gpt-5.5
+    --skip-git-repo-check -` as recorded in [[feedback_sidecar_liveness_not_passive_wait]].
+    These were CLI sidecars, not Agent-tool spawns, so the SubagentStop hook tallied ZERO — the
+    ④-e check passed on a true zero while three real dispatches had happened. Named gap: the tally
+    is blind to CLI-invoked sidecars.
+
+- date: '2026-08-05'
+  agent: (unattributed — SubagentStop tally only)
+  context: >-
+    Close chain of the 2026-08-04 session, which crossed midnight. The tally file recorded ONE
+    dispatch dated 2026-08-05; this session made no Agent-tool spawn that it is aware of.
+  dispatches: '1 (tallied, origin not attributable)'
+  outcome: sustained
+  evidence: >-
+    Recorded rather than guessed. The substantive sidecar work of this session is the 2026-08-04
+    entry above (3 codex CLI dispatches). MEASURED here, after the claim had already been written
+    into a commit message and the session card: a `codex exec` call does NOT increment the tally
+    (before=1, after=1 on `grep -c '^2026-08-05$'`), and the hook matcher is `SubagentStop`, i.e.
+    Agent-tool spawns only. So the CLI-blindness claim holds — but its evidence arrived AFTER
+    publication, which is the ordering CLAUDE.md §Instrument-Calibration forbids.
+  note: >-
+    What produced the 4 tallies dated 2026-08-04 and this 1 dated 2026-08-05 is UNKNOWN. Not
+    invented: a fabricated outcome would poison the 60/40 promotion gate worse than a missing one,
+    which is the stated reason the hook only tallies and never writes an entry. Open question for
+    the next session that touches the tally: which tool events actually fire SubagentStop here.
