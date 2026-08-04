@@ -155,6 +155,91 @@ else
   fail=$((fail + 1))
 fi
 
+# ── 5. CLAUDE.md asset-list parity — the FIXED per-class needle table ─────────
+# WHY A TABLE, AND WHY FIXED. A parity check was attempted for this on 2026-08-03 and CUT the same
+# day: it guessed its needles per run, produced four findings in one adversarial round, and — the
+# decisive part — never fired on `CLAUDE.md` at all, because `CLAUDE\.md` was not in the hook's
+# GATE_IMPL trigger. Both defects are addressed here and neither is optional: the needles below are
+# FIXED (a literal table, reviewed as data), and the hook gained a SEPARATE trigger
+# (`ASSETLIST_IMPL`) so this anchor actually runs when the list it guards is edited. The trigger is
+# deliberately NOT `GATE_IMPL`: that variable also feeds `$LOADBEARING`, and enrolling every
+# CLAUDE.md prose edit into cross-family review is a different job. Retrying without both the
+# fixed table AND a trigger repeats the cut.
+#
+# WHAT IT GUARDS. `CLAUDE.md` §FH Improvement 4-Axis Auto-Gate carries a canonical asset list, and
+# `.claude/rules/fh_4axis_gate.md` carries another. When a class is added to the hook but not to a
+# prose list (or dropped from one list only), the divergence is silent — the gate still blocks, so
+# nothing goes red, while the resident text tells readers a class is not covered. That is the exact
+# shape measured on 2026-08-03, when two classes were added to both lists with no anchor behind them.
+#
+# SCOPE, deliberately narrow: this asserts the asset-list SENTENCE names each class. It does not
+# assert the hook and the sentence are equal sets — that stronger claim needs a parse of the regex
+# into classes, which is the guessing this table replaces. Narrow and mechanical beats broad and
+# self-generating; the enumeration sweep in §4 is where breadth lives.
+CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
+# Read the STAGED blob as well as the worktree, and require BOTH to declare the class.
+# Cross-family review (2026-08-04, codex/gpt-5.5) reproduced the fail-open: reading only the worktree
+# lets a commit stage a broken asset line, repair the worktree WITHOUT staging, and pass — the hook
+# sees CLAUDE.md in $STAGED, runs this anchor, and validates content that is not what is being
+# committed. Measured before the fix: index 0 occurrences / worktree 1 / anchor exit 0.
+# Checking only the index would invert the same hole (a broken UNSTAGED edit would pass a manual
+# run), so both are required. `git show :CLAUDE.md` fails outside a repo or with nothing in the
+# index; that is a skip of the staged leg, never a pass of it.
+_asset_line_of() {  # $1 = file-or-'-' content source label; reads stdin
+  grep -m1 '^\*\*FH 자산을 수정하면\*\*' || true
+}
+ASSET_LINE=$(_asset_line_of < "$CLAUDE_MD" 2>/dev/null || true)
+# Distinguish "not in the index" (a real skip) from "git failed" (an instrument error). The advisory
+# degrade lint flagged the first draft here, and correctly: a bare `|| true` let the staged leg
+# silently abstain on ANY git failure, which half-reopens the fail-open this section was just fixed
+# for. Tracked files always have an index entry, so for this repo the abstain branch is unreachable
+# in normal operation — it exists for a clone where CLAUDE.md is untracked.
+if git -C "$REPO_ROOT" ls-files --error-unmatch CLAUDE.md >/dev/null 2>&1; then
+  ASSET_LINE_STAGED=$(git -C "$REPO_ROOT" show :CLAUDE.md 2>/dev/null | _asset_line_of)
+  if [ -z "$ASSET_LINE_STAGED" ]; then
+    echo "  ❌ CLAUDE.md is tracked but its staged blob yielded no declaration line —"
+    echo "     instrument error (or the staged content dropped the line entirely), NOT a pass."
+    fail=$((fail + 1))
+  fi
+else
+  ASSET_LINE_STAGED=""   # untracked clone — worktree leg is the only measurable one
+fi
+if [ -z "$ASSET_LINE" ]; then
+  echo "  ❌ CLAUDE.md asset-list declaration line not found — instrument error, NOT a pass"
+  echo "     (looked for a line starting '**FH 자산을 수정하면**' in $CLAUDE_MD)"
+  fail=$((fail + 1))
+else
+  # label|needle (ERE, matched against the declaration line only)
+  for entry in \
+    'SKILL.md|SKILL\.md' \
+    'SKILL_detail.md|SKILL_detail\.md' \
+    '.claude/rules|\.claude/rules/' \
+    'knowledge/shared/rules|knowledge/shared/rules/' \
+    'templates/|templates/' \
+    'CLAUDE.md|CLAUDE\.md' \
+    'AGENTS.md|AGENTS\.md' \
+    'scripts/**/*.sh|scripts/\*\*/\*\.sh' \
+    'agent definitions (plugins/*/agents)|plugins/\*/agents/' \
+    'agent definitions (.claude/agents)|\.claude/agents/'
+  do
+    lbl="${entry%%|*}"; needle="${entry#*|}"
+    _hit=1
+    printf '%s' "$ASSET_LINE" | grep -qE "$needle" || _hit=0
+    # The staged leg only votes when it exists — an empty index blob is "not measured", not "absent".
+    if [ -n "$ASSET_LINE_STAGED" ]; then
+      printf '%s' "$ASSET_LINE_STAGED" | grep -qE "$needle" || _hit=0
+    fi
+    if [ "$_hit" -eq 1 ]; then
+      echo "  ✅ CLAUDE.md asset list declares: $lbl"; pass=$((pass + 1))
+    else
+      echo "  ❌ CLAUDE.md asset list no longer declares: $lbl"
+      echo "     The hook still gates it, so nothing goes red — the resident text now tells readers"
+      echo "     a gated class is not covered. Re-add it, or retire the class from the hook too."
+      fail=$((fail + 1))
+    fi
+  done
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "gate_pathspec_check: PASS ($pass pairs)"

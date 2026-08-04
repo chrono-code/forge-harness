@@ -706,8 +706,15 @@ run_universal_guards
 # not a reversible-surface concern — it disables the commit gate itself.
 GATE_IMPL=$(echo "$STAGED" \
   | grep -E '(templates/\.git-hooks/pre-commit|templates/regression_guard\.sh|\.claude/rules/fh_4axis_gate\.md|scripts/gate_pathspec_check\.sh)' || true)
-if [ -n "$GATE_IMPL" ]; then
-  echo "[Gate] gate implementation staged — path-coverage known-pair anchor..."
+# CLAUDE.md carries a canonical asset list that gate_pathspec_check §5 verifies, so editing it must
+# RUN the anchor. It is deliberately NOT added to GATE_IMPL: that variable also feeds $LOADBEARING,
+# which demands a cross-family acknowledgment line in the marker. Enrolling every CLAUDE.md prose
+# edit into cross-family review is a different job from path coverage, and over-blocking is how an
+# override becomes muscle memory (CLAUDE.md §Destructive-Op — the same reasoning that keeps the
+# session-close check advisory on ordinary pushes). Separate trigger, same anchor.
+ASSETLIST_IMPL=$(echo "$STAGED" | grep -E '^CLAUDE\.md$' || true)
+if [ -n "$GATE_IMPL" ] || [ -n "$ASSETLIST_IMPL" ]; then
+  echo "[Gate] gate implementation or asset list staged — path-coverage known-pair anchor..."
   PSCHECK="$REPO_ROOT/scripts/gate_pathspec_check.sh"
   if [ ! -f "$PSCHECK" ]; then
     echo "  ❌ FAIL — scripts/gate_pathspec_check.sh missing while a gate file is being changed."
