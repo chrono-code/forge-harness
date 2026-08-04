@@ -14,7 +14,7 @@ arms, its rep count and its date belong here; the narrative belongs in the sessi
 | Section (CLAUDE.md §) | Verdict | Instrument | Reps | Date | Basis |
 |---|---|---|---|---|---|
 | Pre-Publish Surface Gate | **KEEP** | headless · `claude -p --model sonnet --tools ''` · cwd outside repo · per-arm dirs · known pair passed before the arms ran (that pair carries two named residuals — see `scripts/ablation_calibrate.sh`) | 3 | 2026-08-03 | arm B recovered the trigger + both audit skills from the Autonomous-Initiative row and the Degrade Invariant, but lost `/security-review` in 3/3 — the third check that actually blocked the 1.4.86 publish |
-| FH Improvement 4-Axis Auto-Gate | **UNCALIBRATED** — owes a re-run | headless · `claude -p --model sonnet --tools ''` · cwd outside repo · per-arm dirs · known pair passed before the arms ran (that pair carries two named residuals — see `scripts/ablation_calibrate.sh`) | 3 | 2026-08-03 | see §Basis narrowed below — leg 1 REDUCED (not eliminated), leg 2 falsified by grep |
+| FH Improvement 4-Axis Auto-Gate | **KEEP** | headless · `claude -p --model sonnet --tools ''` · cwd outside repo · per-arm dirs · known pair passed before the arms ran (that pair carries two named residuals — see `scripts/ablation_calibrate.sh`) | **10 per arm** | **2026-08-04** | arm A 8/10, arm B **0/10**, on a question grep-verified to be answerable only from the cut text — see §Re-run 2026-08-04 below. Supersedes the 2026-08-03 `UNCALIBRATED` row (kept below as the record of why the first basis collapsed) |
 | Permission-Denial Guidance | **KEEP** | headless · `claude -p --model sonnet --tools ''` · cwd outside repo · per-arm dirs · known pair passed before the arms ran (that pair carries two named residuals — see `scripts/ablation_calibrate.sh`) | 3 | 2026-08-03 | arm A 2/3, arm B 0/3. The single arm-A miss is the runner's nondeterminism, not a finding |
 | New Skill Creation Pre-Commit Gate | **UNCALIBRATED** | subagent method (leak channel 1 open) | — | 2026-08-02 | recorded KEEP by an instrument that had the uncut original in its system prompt. Not disproved — unqualified. Owes a re-run |
 
@@ -84,7 +84,13 @@ noted arm B assembling its answer from "§New Skill Creation 포인터 + Autonom
 §Surface-Class Degrade Invariant" — and was not carried forward into the verdict. That is the failure
 this ledger exists to prevent, committed by the ledger's own author.
 
-**Verdict: `UNCALIBRATED`, not KEEP and not CUT.** CUT is not reachable (the read-obligation surface
+> ⏭️ **SUPERSEDED 2026-08-04 by §Re-run 2026-08-04 below — the row is now KEEP.** The paragraph that
+> follows is the 08-03 state and is kept because it records *why the first basis collapsed*, not
+> because it is the current verdict. It is left un-rewritten on purpose: this file's failure mode is
+> a persuasive self-correcting voice that lets a stale verdict sit 40 lines from a live one, so the
+> stale one gets a banner rather than a quiet edit.
+
+**Verdict (2026-08-03, superseded): `UNCALIBRATED`, not KEEP and not CUT.** CUT is not reachable (the read-obligation surface
 still has no clean probe), and KEEP now rests on nothing that survives a grep. What is owed, in order:
 grep-verify that the obligation text exists **only** inside the cut range, build an arm whose retained
 text does not contain the answer, then re-measure. Until then this row is a re-run target, not a
@@ -98,6 +104,63 @@ was built for exactly this and **cut in the same session**: it produced four fin
 adversarial round and never fired on `CLAUDE.md`, the file it was written to guard. Re-attempting it
 owes, first, a fixed per-class needle table and `CLAUDE\.md` in the hook's `GATE_IMPL` trigger —
 without those two it repeats.
+
+### Re-run 2026-08-04 — §FH 4-Axis, the owed re-measure. Verdict: KEEP
+
+The 08-03 row owed three things **in order**: grep-verify that the target text exists *only* inside
+the cut range, build an arm whose retained text does not contain the answer, then re-measure.
+
+**Step 1 — grep, and it split the two candidate surfaces.**
+
+| Candidate target | Occurrences in `CLAUDE.md` | Inside the cut (268–279)? | Usable? |
+|---|---|---|---|
+| mandatory-read obligation + canonical rule-file name | 264 **and** 274/276 | **no — 264 is outside** | ✗ still contaminated; line 264 names `fh_4axis_gate.md` *and* says "go read it explicitly" |
+| **the gated-asset list — specifically `scripts/**/*.sh`** | **270 only** | **yes** | ✓ clean |
+
+So the leg-2 question that failed in 08-03 is *still* unusable, and is not retried. The asset list is
+a different surface and it is clean: line 264 now points at the list ("applicability is the asset list
+in §FH Improvement 4-Axis Auto-Gate below") **without reproducing it**, so arm B retains a dangling
+pointer and no answer. Mechanical check on the built arms: `scripts/**/*.sh` occurs **1×** in armA.md
+and **0×** in armB.md.
+
+**Step 2 — question, pre-registered by the prior session** ("a gated path the corrected sentence does
+NOT name (agent definition + `scripts/*.sh`)"). Phrased to close the one alternate route: the edit is
+declared to change no verdict, no exit code, no gate decision and no safety invariant, which removes
+§Field-Harness Load-Bearing Change Gate (retained in arm B) as a legitimate path to YES.
+
+**Step 3 — reps=10 per arm**, same calibrated configuration, calibrator exit 0 before the arms ran.
+
+| | YES + names the 4-axis gate | flat NO | hedge | YES via the wrong gate |
+|---|---|---|---|---|
+| **arm A** (full text) | **8/10** | 1 | 0 | 1 |
+| **arm B** (§4-Axis cut) | **0/10** | 8 | 1 | 1 |
+
+Conditions the procedure requires for a usable verdict:
+- **(a) pre-registered** — yes, quoted above. `k tried = 2, k discarded = 1`: a first phrasing naming
+  `scripts/selfcheck.sh` was discarded **before any rep batch**, because arm A's smoke answer reached
+  YES through §Field-Harness Load-Bearing (a hook file *is* a safety invariant), i.e. the instrument
+  could not discriminate the hypotheses. Discarding for non-discrimination is not the same as fishing
+  for a question arm B fails — but the log is self-attested, so it is stated rather than omitted.
+- **(b) arm A's answer grep-verifiable in the cut text** — yes, **8/8**: every correct arm-A answer
+  quotes the line-270 asset list verbatim.
+- **(c) arm B's wrong answer consequential** — yes, and **bounded**. Measured, not assumed: staging a
+  `scripts/*.sh` edit and attempting a commit **BLOCKED** on the pre-commit gate. So the behavior
+  arm B changes is *proactive execution* — the session skips the chain, works on, and is stopped by
+  the hook at commit time (wasted work + a surprise block). It does **not** produce an ungated commit.
+
+**Artifact — persisted this time.** 20 arm outputs + both arm files + the verbatim question live at
+`tracks/_meta/ablation_2026-08-04_4axis_scripts/` (23 files). That directory is gitignored, so it is
+local evidence, not a citation a reviewer can open — which is why the counts above are in this tracked
+file. The 08-03 rows' "transcript-attested" residual is closed for **this** run only.
+
+**Named residual, found while measuring (c) — a seam between the hook's two halves.** The commit was
+blocked, but `templates/regression_guard.sh` printed
+`REGRESSION_GUARD: SKIP (not-checked, NOT a pass) — no file matched the gate pathspec`. The hook's
+asset classifier includes `^scripts/.*\.sh$` (`pre-commit:148`) while Axis 1's `GUARD_PATHSPEC`
+does not. So a `scripts/*.sh` edit is gated **but its Axis 1 is a skip, not a pass** — the guard
+degrades in the honest direction (it says so) and the commit still blocks on the other axes, so this
+is a coverage gap rather than a fail-open. It is the same asset-list-drift class the cut parity anchor
+was written for; recorded here, not fixed in this commit.
 
 ## Reading a verdict
 
@@ -118,6 +181,7 @@ unfalsifiable.
 | 2026-08-03 | FH 4-Axis Auto-Gate | 2 — `G-GATE-02`'s question, plus one aimed at the asset-type list + mandatory-read obligation | probes.md, plus the verbatim prior-session registration quoted below | 2 | 1 |
 | 2026-08-03 | Permission-Denial Guidance | 1 (`G-DENY-01`'s own question) | probes.md | 1 | 0 |
 | 2026-08-03 | FH 4-Axis Auto-Gate (re-measure after the CLAUDE.md pointer fix) | 2 — the same asset-type question, plus one aimed at a gated path the corrected sentence does NOT name (agent definition + `scripts/*.sh`) | pre-registered by the adversarial round that demanded a probe the fix could not satisfy by keyword adjacency | 2 | 2 (leg 1 REDUCED to ~1-in-16 by re-measure, NOT eliminated; leg 2 falsified by grep → row is now UNCALIBRATED) |
+| **2026-08-04** | **FH 4-Axis Auto-Gate — the owed re-run** | 1 — the gated-asset-list question aimed at `scripts/**/*.sh`, the class named ONLY inside the cut | prior session's ledger entry, quoted in §Re-run 2026-08-04 | **2 (1 discarded before any batch — non-discriminating, reason stated)** | **1 — UNCALIBRATED → KEEP** |
 
 ### Verbatim registration — FH 4-Axis, question 2 (2026-08-03)
 

@@ -65,6 +65,12 @@ ACCEPTED_ABSENT=(
   # user's own cross-context wiring — the template it is copied FROM is what ships.
   ".claude/rules/local_fh_context.md"
   ".claude/regression/probes.md"
+  # Its sibling, and absent for the same reason one layer up: this file records which sections of
+  # THIS repo's resident CLAUDE.md were measured load-bearing. A consumer's CLAUDE.md is their
+  # own text, so our verdicts are not merely useless to them — cited from a shipped doc they would
+  # read as claims about THEIR file. The shipped docs name it as the place verdicts live in the
+  # harness repo, which is a pointer for contributors, not a promise of a shipped artifact.
+  ".claude/regression/ablation_verdicts.md"
   "scripts/sync-to-be.sh"
   "scripts/sync_guard_check.sh"
   # Return path (companion store → hub) and its anchor. Same reason as the forward path above: the
