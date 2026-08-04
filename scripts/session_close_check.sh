@@ -39,6 +39,7 @@ if command -v gh >/dev/null 2>&1; then
   # `[{"number":227},{"number":226},{"number":225}]` → old 1, new 3; `[]` → 0 both ways — which is
   # why an environment with zero open PRs can never surface this, and why the 0-case alone is not a
   # calibration. Observed live the same day: 2 open PRs reported as 1.
+  # Anchored by scripts/test_session_close_chain_lanes.sh lane ①-b-P3.
   PRS=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -o '"number"' | wc -l | tr -d ' ' || true)
   [ "${PRS:-0}" -gt 0 ] && echo "⚠️  ①-b $PRS open PR(s) by you — classify: self-mergeable vs awaiting-external"
 fi
@@ -72,11 +73,16 @@ if [ "${FH_CHANGED:-0}" -gt 0 ]; then
   fi
 fi
 
-# ④ real-time completion log — required whenever any commit landed today
+# ④-log real-time completion log — required whenever any commit landed today.
+# NAMING: this block does NOT implement CLAUDE.md's ④ (memory hygiene). It implements the
+# "Real-time completion tracking" paragraph that sits above the chain. Labelling it ④ meant a green
+# "④" told a reader memory hygiene had been verified when nothing had checked it — false coverage,
+# the same class as a summary line that prints PASS while the exit code refuses. The label now says
+# what it checks. (Numbering mismatch found 2026-08-02 by the lane-writing pass.)
 COMMITS_TODAY=$(git -C "$FH" log --since="today 00:00" --oneline 2>/dev/null | wc -l | tr -d ' ')
 FC="$FH/tracks/_meta/fh_completed_${TODAY}.md"
 if [ "$COMMITS_TODAY" -gt 0 ] && [ ! -f "$FC" ]; then
-  echo "❌ ④ commits landed today but tracks/_meta/fh_completed_${TODAY}.md is missing"
+  echo "❌ ④-log commits landed today but tracks/_meta/fh_completed_${TODAY}.md is missing"
   FAIL=1
 fi
 

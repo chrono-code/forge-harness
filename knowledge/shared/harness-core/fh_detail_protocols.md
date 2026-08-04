@@ -38,6 +38,10 @@ ls .claude/registry/LOCAL_SKILL_REGISTRY.md 2>/dev/null
 ```
 - File exists and modified within 7 days → load into session
 - Missing or older than 7 days → regenerate.
+- **Typed-capability entries** (a field harness's mechanical layer, callable rather than dispatched)
+  carry the extra schema in `knowledge/shared/harness-core/capability_composition_contract.md §ⓑ.2`
+  and must clear its M1–M5 registration bar. An entry that cannot show a typed channel stays
+  dispatch-only — registering it as callable is what makes a model-synthesized verdict look mechanical.
 
 **No hardcoded root — derive the install location (users install FH anywhere).** The projects root is
 the *parent of the FH repo*, discovered at runtime, never a literal `~/projects` / `~/PycharmProjects`
