@@ -224,6 +224,38 @@ else
   fail=1
 fi
 
+# gate-pathspec anchor — wired here 2026-08-04. It was reachable ONLY from templates/.git-hooks/
+# pre-commit, i.e. only in a clone where the operator had run `git config core.hooksPath`. Every
+# other clone, every CI run, and the npm package carried the anchor file and never executed it —
+# the built-but-not-wired shape, one layer up: the anchor for the gate had no anchor of its own.
+# That mattered the same day: PR #254 added five known-pairs to it, all of which would have been
+# unexecuted outside the author's machine.
+# Subject = the two implementations it reads (the hook's HEAVY term and the guard's GUARD_PATHSPEC).
+# Absent subject → package/partial surface → legitimate SKIP; present subject with the anchor gone
+# → FAIL, same shape as every block above.
+# NAMED RESIDUAL (cross-family, gpt-5.5, 2026-08-04): if a distribution that SHOULD be complete
+# accidentally drops one subject, this reports SKIP, not FAIL — silent non-coverage. Measured the
+# same day: removing `templates/.git-hooks` from package.json `files[]` and running
+# scripts/package_coverage_check.sh still PASSED, so no existing anchor catches that omission
+# either. Deliberately NOT patched with a stricter branch: the only discriminator available
+# ("templates/ exists but the hook does not") would be built on an UNMEASURED assumption about how
+# a narrower package is shaped, and this repo's rule is not to build before the constraint is
+# measured. What is cheap and honest is naming WHICH subject is missing, so a SKIP is diagnosable
+# instead of opaque. Revisit when a real partial distribution is observed.
+_gps_missing=""
+[ -f templates/.git-hooks/pre-commit ] || _gps_missing="templates/.git-hooks/pre-commit"
+[ -f templates/regression_guard.sh ] || _gps_missing="${_gps_missing:+$_gps_missing, }templates/regression_guard.sh"
+if [ -n "$_gps_missing" ]; then
+  echo "SKIP  gate_pathspec_check.sh (subject absent: $_gps_missing) — not-checked, NOT a pass"
+elif [ -f scripts/gate_pathspec_check.sh ]; then
+  if ! bash scripts/gate_pathspec_check.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  gate_pathspec_check.sh: the gate implementations are present but their coverage anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/ablation_calibrate.sh ]; then
   echo "SKIP  test_ablation_calibrate_lanes.sh (subject scripts/ablation_calibrate.sh absent)"
 elif [ -f scripts/test_ablation_calibrate_lanes.sh ]; then
