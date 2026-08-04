@@ -51,6 +51,7 @@
     "CHEATSHEET.md",
     "CLAUDE.md",
     ".claude/registry/agent_cards.json",
+    ".claude/registry/README.md",
     "docs/CONTRIBUTING.md",
     "bin/fh-codex-doctor.js",
     "bin/fh-gate.js",
@@ -148,6 +149,10 @@
     "scripts/test_halffix_lanes.sh",
     "scripts/test_ollama_panel_lanes.sh",
     "scripts/test_tag_version_lanes.sh",
-    "templates/subagent-tally-hook.json"
+    "templates/subagent-tally-hook.json",
+    "scripts/test_session_close_chain_lanes.sh",
+    "scripts/test_node_infra_delta_lanes.sh",
+    "scripts/test_sessionstart_multihook_lanes.sh",
+    "scripts/test_wizard_snippet_merge_lanes.sh"
   ]
 }

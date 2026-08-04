@@ -246,6 +246,38 @@ else
   fail=1
 fi
 
+# The infra-delta half of the same subject. Separate suite, same pairing rule: it exists only because
+# fh_node_check.sh does, so its absence beside a present subject is a FAIL, not a skip.
+if [ ! -f scripts/fh_node_check.sh ]; then
+  echo "SKIP  test_node_infra_delta_lanes.sh (subject scripts/fh_node_check.sh absent)"
+elif [ -f scripts/test_node_infra_delta_lanes.sh ]; then
+  if ! bash scripts/test_node_infra_delta_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_node_infra_delta_lanes.sh: fh_node_check.sh present but its anchor is missing"
+  fail=1
+fi
+
+# SessionStart multi-hook + install-wizard snippet merge. Subject for both = the shipped settings
+# snippets; a clone without them is a legitimate SKIP, a clone with them and no anchor is not.
+for _pair in \
+  "templates/settings.SessionStart.snippet.json|scripts/test_sessionstart_multihook_lanes.sh" \
+  "templates/settings.SessionStart.snippet.json|scripts/test_wizard_snippet_merge_lanes.sh"
+do
+  _subj="${_pair%%|*}"; _anc="${_pair#*|}"
+  if [ ! -f "$_subj" ]; then
+    echo "SKIP  ${_anc##*/} (subject $_subj absent)"
+  elif [ -f "$_anc" ]; then
+    if ! bash "$_anc"; then
+      fail=1
+    fi
+  else
+    echo "FAIL  ${_anc##*/}: $_subj present but its anchor is missing"
+    fail=1
+  fi
+done
+
 # Two guards that read the AUTHOR's own actions rather than the repo's files. Both were added
 # 2026-07-31; the pipe-verdict lane shipped in PR #209 WITHOUT this wiring, which is itself the
 # half-fix class the second guard exists to catch — found by running that guard on this repo.
@@ -282,7 +314,7 @@ else
   fail=1
 fi
 
-for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh; do
+for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh scripts/test_session_close_chain_lanes.sh; do
   if [ ! -f scripts/session_close_check.sh ]; then
     echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"
   elif [ -f "$_anchor" ]; then

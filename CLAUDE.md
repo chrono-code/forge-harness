@@ -145,7 +145,17 @@ single hand-check collapsed it to **3**. Each was caught by looking at one real 
 > Detailed procedure: `knowledge/shared/rules/auto_project_mapping.md` (5-step mapping + §6 Full-Harness Mode)
 
 1. `mkdir tracks/{project_name}/` — track name = project root name
-2. Hub common principles outrank project rules (scope hierarchy)
+2. Hub common principles outrank project rules (scope hierarchy).
+   **Exception — capability composition only**: when FH *invokes a field harness's registered
+   capability*, that capability's declared constraints merge **strictest-wins**
+   (`capability_composition_contract.md §ⓐ`) — FH may tighten a capability call, never loosen one.
+   The exception is scoped to that surface on purpose. An earlier draft of this line qualified the
+   whole sentence with "non-safety properties only", and an adversarial round showed that inverts it:
+   an ordinary project rule ("run the linter first", "docs in Korean") matches none of the contract's
+   eight capability axes, falls through its "unclassified → constraint" default, and therefore
+   *outranks the hub* — the opposite of this line's intent. Worse, a project declaring a stricter
+   `tier_floor` or `approval` would delete an FH floor (Sonnet-floor, autonomy floor) by being
+   stricter. An FH floor is never overridable by a field constraint.
 3. Reference `ai_dialogue_playbook.md` + `claude_code_runtime_flow.md` at top of project CLAUDE.md (Layer ③)
 
 **Light vs full**: steps 1–3 register lightly. For project-local harness assets (session rules + context filter + env card), run **Full-Harness Mode** (`auto_project_mapping.md §6`) — approval-gated, never overwrites. FH self-gate is **not** installed into projects.
@@ -649,6 +659,12 @@ Based on LOCAL_SKILL_REGISTRY (Step 1-c), **propose and connect skills from othe
 - **Direct execution** (no project files needed): Read SKILL.md → execute steps directly
 - **Agent dispatch** (project files needed): dispatch via Agent tool + Context Card, absolute path, no cwd switch; 2+ independent tasks → parallel dispatch
 
+**Typed capability (cockpit lane)**: a field harness's **mechanical** layer may additionally be
+registered as a **typed capability** and called directly; its prose layer stays at dispatch. Before
+composing, read `knowledge/shared/harness-core/capability_composition_contract.md` — constraints merge
+**strictest-wins regardless of layer** (FH may tighten a field harness, never loosen one), and an
+untyped or silent channel is `HARNESS_ERROR`, never PASS.
+
 **Guard**: FH native skill takes priority over cross-project proposal for the same signal.
 
 ## FH Improvement Signal Recording Protocol
@@ -690,7 +706,14 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
        *surface for tracking only*. (Origin PR#111 + count-consistency pairing → §detail below.)
   → ② If FH assets changed: harvest-loop
   → ③ Sync local/gitignored session state to your durable companion store, if you keep one
-  → ④ Memory hygiene — update stale entries + record new session findings
+  → ④ Memory hygiene — update stale entries + record new session findings.
+       **Deliberately unmechanized, and stated so rather than left ambiguous**: hygiene is a judged
+       step (is this entry still true?), and the only cheap proxy — "did any memory file change?" —
+       would pass on a touched file. A check that can be satisfied without doing the work is a
+       decoration that reports coverage it does not have. `session_close_check.sh` therefore carries
+       NO ④ check; its similarly-numbered block is `④-log` (the real-time completion log) and is
+       labelled as such. Revisit if skipped-hygiene is ever *measured* to recur — build on evidence,
+       not on the discomfort of an unchecked step.
   → ④-b npm freshness — if any npm-shipped asset changed (`package.json` `files[]`: skills · agents ·
        knowledge/ · docs/ · README · AGENTS.md · CLAUDE.md · CHEATSHEET · CATALOG.md): **first an entry-point
        drift check — BIDIRECTIONAL** — the script (`session_close_check.sh`) auto-*fires a candidate reminder*
