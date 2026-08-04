@@ -189,7 +189,21 @@ _asset_line_of() {  # $1 = file-or-'-' content source label; reads stdin
   grep -m1 '^\*\*FH 자산을 수정하면\*\*' || true
 }
 ASSET_LINE=$(_asset_line_of < "$CLAUDE_MD" 2>/dev/null || true)
-ASSET_LINE_STAGED=$(git -C "$REPO_ROOT" show :CLAUDE.md 2>/dev/null | _asset_line_of || true)
+# Distinguish "not in the index" (a real skip) from "git failed" (an instrument error). The advisory
+# degrade lint flagged the first draft here, and correctly: a bare `|| true` let the staged leg
+# silently abstain on ANY git failure, which half-reopens the fail-open this section was just fixed
+# for. Tracked files always have an index entry, so for this repo the abstain branch is unreachable
+# in normal operation — it exists for a clone where CLAUDE.md is untracked.
+if git -C "$REPO_ROOT" ls-files --error-unmatch CLAUDE.md >/dev/null 2>&1; then
+  ASSET_LINE_STAGED=$(git -C "$REPO_ROOT" show :CLAUDE.md 2>/dev/null | _asset_line_of)
+  if [ -z "$ASSET_LINE_STAGED" ]; then
+    echo "  ❌ CLAUDE.md is tracked but its staged blob yielded no declaration line —"
+    echo "     instrument error (or the staged content dropped the line entirely), NOT a pass."
+    fail=$((fail + 1))
+  fi
+else
+  ASSET_LINE_STAGED=""   # untracked clone — worktree leg is the only measurable one
+fi
 if [ -z "$ASSET_LINE" ]; then
   echo "  ❌ CLAUDE.md asset-list declaration line not found — instrument error, NOT a pass"
   echo "     (looked for a line starting '**FH 자산을 수정하면**' in $CLAUDE_MD)"
