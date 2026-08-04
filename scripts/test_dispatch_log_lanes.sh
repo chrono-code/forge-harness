@@ -93,6 +93,39 @@ hookless_verdict() { # $1=hook_configured -> MEASURED | NOT-MEASURED
 grep -q "NOT MEASURED" "$CHECK" ; chk $? "the subject actually carries that branch (not just this lane)"
 [ -f "$SCRIPT_DIR/../templates/subagent-tally-hook.json" ] ; chk $? "installable snippet exists for a clone that has no settings.json"
 
+echo "── pipefail disarm (the guard was dead in EXACTLY its target case) ──"
+# `grep -c` PRINTS 0 and EXITS 1 on a zero count. Under `set -o pipefail` the old
+# `grep -c … | tr -d ' ' || echo 0` therefore produced "0\n0", `[ -eq ]` threw, and the ❌ branch
+# was skipped — so ④-e reported ✅ whenever the log had ZERO entries, which is the one situation it
+# exists to block. Measured live 2026-08-04 during a session close.
+# Lane 1: reproduce the OLD form and assert it is broken (a control — if this ever passes, the
+# premise changed and the fix below is measuring nothing).
+old_form=$(bash -c 'set -uo pipefail; grep -c "^NOSUCHDATE$" '"$CHECK"' 2>/dev/null | tr -d " " || echo 0')
+[ "$(printf %s "$old_form" | grep -c "")" -eq 2 ] ; chk $? "control: the old \`|| echo 0\` form really does yield TWO lines under pipefail"
+# Lane 2: the shipped form yields a single sanitised integer.
+new_form=$(bash -c 'set -uo pipefail; _int() { case "${1:-}" in (""|*[!0-9]*) echo 0 ;; (*) echo "$1" ;; esac; }; _int "$(grep -c "^NOSUCHDATE$" '"$CHECK"' 2>/dev/null | tr -d " " || true)"')
+[ "$new_form" = "0" ] ; chk $? "shipped form yields a single sanitised 0"
+( set -uo pipefail; [ "$new_form" -eq 0 ] ) 2>/dev/null ; chk $? "and \`[ -eq ]\` accepts it (the old form threw here)"
+# Lane 3-5: BEHAVIOUR, not spelling. The first draft of these lanes string-matched the old form and
+# went GREEN on a revert — the needle did not match `tr -d ' '` (quotes), so the anchor was
+# decorative in the way this repo already named ([[feedback_anchor_can_be_decorative]], cause:
+# "needle matching unrelated text"). Extract the subject's OWN assignment lines and evaluate them.
+_eval_subject_assign() {  # $1 = variable name; echoes what the SUBJECT computes for a zero match
+  local var="$1" line
+  line=$(grep -E "^${var}=" "$CHECK" | head -1)
+  [ -n "$line" ] || { echo "NOLINE"; return; }
+  bash -c "set -uo pipefail
+    _int() { case \"\${1:-}\" in (''|*[!0-9]*) echo 0 ;; (*) echo \"\$1\" ;; esac; }
+    TODAY=NOSUCHDATE; TALLY='$CHECK'; LOG='$CHECK'
+    $line
+    printf %s \"\$$var\"" 2>/dev/null
+}
+for _v in DISPATCHED LOGGED; do
+  _got=$(_eval_subject_assign "$_v")
+  [ "$(printf %s "$_got" | grep -c '')" -le 1 ] ; chk $? "subject's \$$_v is ONE line on a zero match (was two: the disarm)"
+  ( set -uo pipefail; [ "${_got:-x}" -eq 0 ] ) 2>/dev/null ; chk $? "subject's \$$_v survives \`[ -eq 0 ]\` (the disarm threw here)"
+done
+
 echo ""
 if [ "$FAILED" -ne 0 ]; then echo "DISPATCH-LOG LANES: FAIL"; exit 1; fi
 echo "DISPATCH-LOG LANES: PASS ($PASS/$PASS)"
