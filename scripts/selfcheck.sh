@@ -25,6 +25,74 @@ check() { # check <label> <cmd...>
     fail=1
   fi
 }
+# ⚠️ KNOWN DEFECT, NOT FIXED HERE — `check()` above has the same evidence-discarding shape the
+# lane blocks below were repaired for (2026-08-05): it decides on `"$@" 2>/dev/null` (stderr of the
+# DECIDING run is destroyed) and then re-runs to print. It is left alone deliberately: `check()` is
+# called by every `node --check` / `bash -n` line in this file, so changing it changes the whole
+# surface at once, which is a different job from repairing the four lane blocks (CLAUDE.md
+# §Added-Scope Gate question 2). `scripts/probe_scope_check.sh`'s caller near the probe-scope block
+# carries the same shape. Both are tracked separately — do NOT read the lane-block repair below as
+# having cleared this file.
+
+# _show_failure <captured-output> — print a FAILING suite's evidence without truncating it away.
+# Single source for all four lane blocks (a second copy would drift; the divergent-normalizer class).
+# WHY NOT `tail -N`: measured 2026-08-05 on sync_from_be_lanes.sh — output is 98 lines and a planted
+# lane failure at line ~22 is INVISIBLE to `tail -20` (0 hits), while the summary banner still reads
+# "1 failed". The reader gets a FAIL verdict sitting on top of passing log lines — the exact shape
+# this whole repair exists to remove. The failing-line extraction finds it (1 hit, known pair).
+# All four suites mark failures with `❌` (`no()` in sync_from_be_lanes.sh:21, `chk()` in the other
+# three) or an early `FAIL ` line when a subject is missing; grep handles the multi-byte glyph
+# (known pair: 1 hit on a ❌ line, 0 on a ✅-only line — verified, not assumed).
+_show_failure() {
+  local out="$1" fails n banner shown nonblank
+  # Whitespace-only counts as empty: guarding with [ -z "$out" ] alone let a suite emitting "   "
+  # fall into the died-early branch and print indented blank lines — silence rendered as evidence.
+  # SHELL PATTERN, NOT `tr`: the obvious `tr -d '[:space:]'` is a measured defect on BSD. Given a
+  # line containing invalid UTF-8, macOS `tr` aborts with `tr: Illegal byte sequence` and emits
+  # NOTHING, so the guard concludes "empty" and reports "no output captured" while real evidence is
+  # sitting in $out — the exact mis-report this helper exists to prevent, reintroduced by the guard
+  # against it. (GNU tr passes the bytes through; the arms disagree, and the failing arm is the
+  # author's own machine.) Case-matching is a shell builtin: no subprocess, no charset decoding, so
+  # invalid bytes cannot make it lie. Known pair: invalid-byte→nonblank, spaces/tabs/newlines→blank,
+  # ""→blank, "hello"→nonblank (4/4), while the tr form returns 0 bytes on arm 1.
+  case "$out" in *[![:space:]]*) nonblank=1 ;; *) nonblank= ;; esac
+  # NO LOCALE PIN HERE, and its absence is a measured result — same disposition, and same reasoning,
+  # as the pin `.github/workflows/validate.yml` removed after refuting its own locale hypothesis.
+  # Two model families independently suspected that matching the multi-byte `❌` would break under a
+  # C/POSIX locale (one filed it as UNCALIBRATED for the GNU arm, the other as an unpinned-locale
+  # defect), so `LC_ALL=C` was added — then both arms were actually measured:
+  #   BSD grep (macOS)      : C, UTF-8              → 1 hit each
+  #   GNU grep 3.12 (Linux) : C, C.UTF-8, unset     → 1 hit each; and with invalid UTF-8 bytes mixed
+  #                                                   in, the ❌ line still extracts (no binary-file
+  #                                                   collapse, the specific feared mode)
+  # The hypothesis is REFUTED on both arms, so the pin demonstrated nothing and was removed rather
+  # than kept as insurance — a knob retained because it might help is indistinguishable from one
+  # that does, and the next reader would inherit it as evidence that the danger is real.
+  fails=$(printf '%s\n' "$out" | grep -E '❌|^FAIL ' || true)
+  banner=$(printf '%s\n' "$out" | grep -E '════' | tail -1 || true)
+  if [ -n "$fails" ]; then
+    shown=$(printf '%s\n' "$fails" | head -25)
+    printf '%s\n' "$shown" | sed 's/^/     /'
+    n=$(printf '%s\n' "$fails" | wc -l | tr -d ' ')
+    [ "$n" -gt 25 ] && echo "     … ($((n - 25)) more failing lines not shown)"
+  elif [ -z "$nonblank" ]; then
+    echo "     (no output captured — the suite produced nothing before failing)"
+  else
+    echo "     (no ❌/FAIL line found — suite likely died early; showing tail)"
+    printf '%s\n' "$out" | tail -12 | sed 's/^/     /'
+  fi
+  # Summary banner: matched by shape, not by position. A blind `tail -2` re-printed lines already
+  # shown above (measured: a ❌ within the last 2 lines appeared twice, and the "N more not shown"
+  # notice was immediately followed by one of the lines it had just declined to show), and on empty
+  # input it emitted a stray indented line. Print it only when it exists and is not already on screen.
+  # Dedupe against what was ACTUALLY PRINTED ($shown), not against the full $fails set. Searching
+  # $fails suppressed the banner whenever a failing line beyond the head -25 cut merely contained
+  # the banner text — i.e. it hid the banner precisely because a line the reader never saw mentioned
+  # it. $shown is empty in the non-fails branches, so the banner prints there as before.
+  if [ -n "$banner" ] && ! printf '%s\n' "${shown:-}" | grep -qF -- "$banner"; then
+    printf '     %s\n' "$banner"
+  fi
+}
 
 # Node executables (npm-shipped)
 for f in bin/*.js; do
@@ -34,7 +102,18 @@ done
 # Codex adapter drift: the thin Codex runtime must keep reading canonical FH
 # skill/agent surfaces without silently accepting Claude-native primitives as
 # Codex-native.
-check "fh-codex-doctor --strict" bash -c 'node bin/fh-codex-doctor.js --strict >/dev/null'
+# NOT via check(): that helper decides on a run whose stderr is discarded, and this call site used to
+# additionally discard the subject's STDOUT (`--strict >/dev/null`). fh-codex-doctor writes 100% of
+# its drift diagnostics to stdout (measured 2026-08-05: 686 B stdout / 0 B stderr), so a failure
+# printed a bare `FAIL` line carrying no diagnosis at all — worse than the truncation this session
+# repaired in the lane blocks. Fixed at the call site; check() itself is a separate job (see above).
+if _out=$(node bin/fh-codex-doctor.js --strict 2>&1); then
+  echo "PASS  fh-codex-doctor --strict"
+else
+  echo "FAIL  fh-codex-doctor --strict"
+  _show_failure "$_out"
+  fail=1
+fi
 
 # Bash surface: npm-shipped scripts + local bin wrappers + gate-chain infra
 for f in scripts/*.sh bin/fh-gate bin/fh-run bin/fh-goal \
@@ -447,12 +526,13 @@ fi
 if [ ! -f templates/.git-hooks/pre-push ]; then
   echo "SKIP  test_tag_version_lanes.sh (subject templates/.git-hooks/pre-push absent)"
 elif [ -f scripts/test_tag_version_lanes.sh ]; then
-  if ! bash scripts/test_tag_version_lanes.sh >/dev/null 2>&1; then
-    echo "FAIL  test_tag_version_lanes.sh: the tag/version guard would mis-route"
-    bash scripts/test_tag_version_lanes.sh 2>&1 | tail -12
-    fail=1
-  else
+  # RUN-ONCE, CAPTURE (2026-08-05) — rationale in the sync_from_be_lanes block later in this file.
+  if _out=$(bash scripts/test_tag_version_lanes.sh 2>&1); then
     echo "PASS  test_tag_version_lanes.sh (mismatch blocks · match silent · scope · override)"
+  else
+    echo "FAIL  test_tag_version_lanes.sh: the tag/version guard would mis-route"
+    _show_failure "$_out"
+    fail=1
   fi
 else
   echo "FAIL  test_tag_version_lanes.sh: pre-push present but its anchor is missing"
@@ -463,12 +543,12 @@ fi
 # obligation they mechanize lost 20/20 in a single session, so leaving the checker itself unrun
 # would be the same defect one layer up.
 if [ -f scripts/test_dispatch_log_lanes.sh ]; then
-  if ! bash scripts/test_dispatch_log_lanes.sh >/dev/null 2>&1; then
-    echo "FAIL  test_dispatch_log_lanes.sh: the dispatch-log reconciliation would mis-report"
-    bash scripts/test_dispatch_log_lanes.sh 2>&1 | tail -14
-    fail=1
-  else
+  if _out=$(bash scripts/test_dispatch_log_lanes.sh 2>&1); then
     echo "PASS  test_dispatch_log_lanes.sh (date-spelling + verdict + tally-hook lanes)"
+  else
+    echo "FAIL  test_dispatch_log_lanes.sh: the dispatch-log reconciliation would mis-report"
+    _show_failure "$_out"
+    fail=1
   fi
 fi
 
@@ -477,12 +557,12 @@ fi
 # through in silence, then a package discriminator keyed on a file that actually ships. Both are
 # known-POSITIVEs in the suite, so neither can come back green.
 if [ -f scripts/test_selfcheck_state_lanes.sh ]; then
-  if ! bash scripts/test_selfcheck_state_lanes.sh >/dev/null 2>&1; then
-    echo "FAIL  test_selfcheck_state_lanes.sh: a subject-presence discriminator would mis-route"
-    bash scripts/test_selfcheck_state_lanes.sh 2>&1 | tail -12
-    fail=1
-  else
+  if _out=$(bash scripts/test_selfcheck_state_lanes.sh 2>&1); then
     echo "PASS  test_selfcheck_state_lanes.sh (four input states + both shipped mis-routings)"
+  else
+    echo "FAIL  test_selfcheck_state_lanes.sh: a subject-presence discriminator would mis-route"
+    _show_failure "$_out"
+    fail=1
   fi
 fi
 
@@ -495,12 +575,34 @@ fi
 if [ ! -f scripts/sync-from-be.sh ]; then
   echo "SKIP  sync_from_be_lanes.sh (subject scripts/sync-from-be.sh absent)"
 elif [ -f scripts/sync_from_be_lanes.sh ]; then
-  if ! bash scripts/sync_from_be_lanes.sh >/dev/null 2>&1; then
-    echo "FAIL  sync_from_be_lanes.sh: return-path lanes failed"
-    bash scripts/sync_from_be_lanes.sh 2>&1 | tail -20
-    fail=1
-  else
+  # ── RUN-ONCE, CAPTURE — canonical note for the four LANE BLOCKS (2026-08-05) ─────────────────
+  # SCOPE, stated precisely because the first draft of this note over-claimed: this covers the four
+  # lane blocks only (tag-version · dispatch-log · selfcheck-state · sync_from_be). The same
+  # evidence-discarding shape SURVIVES in `check()` at the top of this file and in the
+  # probe_scope_check caller — both named there, both deliberately out of scope, both still open.
+  # An adversarial round caught the original "all four sites in this file" wording as a false
+  # completion claim: it would have stopped the next reader from re-searching. Half a fix with a
+  # done-label on it is worse than half a fix.
+  # The old form ran the suite twice: once discarded to /dev/null to decide, once re-run to print.
+  # For a DETERMINISTIC suite that is merely wasteful. For a non-deterministic one it destroys the
+  # evidence: the failing run's output goes to /dev/null and the reader is shown the SECOND run,
+  # which may pass. Measured here 2026-08-04 (run 30955950695) — CI printed
+  #     FAIL  sync_from_be_lanes.sh: return-path lanes failed
+  #     ════ lanes: 70 passed · 0 failed ════
+  # i.e. a FAIL verdict over a PASSING transcript, and the actual failure was never recorded
+  # anywhere. That is why this lane sat "flaky, cause unknown" on the session card for two days:
+  # the instrument was discarding the only evidence that could close it. Reproduced as a known
+  # pair before this edit (arm A run-twice → evidence lost + self-contradiction; arm B run-once →
+  # evidence preserved), so the fix is anchored, not asserted.
+  # NOTE this does NOT make the suite deterministic — the underlying non-determinism is still
+  # UNDIAGNOSED and stays an open item. It makes the next occurrence diagnosable instead of
+  # self-erasing. Do not read a green CI after this change as the flake being fixed.
+  if _out=$(bash scripts/sync_from_be_lanes.sh 2>&1); then
     echo "PASS  sync_from_be_lanes.sh (return-path lanes)"
+  else
+    echo "FAIL  sync_from_be_lanes.sh: return-path lanes failed"
+    _show_failure "$_out"
+    fail=1
   fi
 else
   echo "FAIL  sync_from_be_lanes.sh: sync-from-be.sh present but its anchor is missing"

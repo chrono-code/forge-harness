@@ -602,6 +602,42 @@ Default operation is a **standard interactive session**. Agent dispatch (single 
 
 **Why not Agent View by default**: Agent View introduces worktree isolation (blocks settings.json writes, Stop hook timing differs), session context gaps (session card stale content bug), and path friction — with no benefit unless the user is actively managing multiple agent sessions. Parallel agents via `Agent` tool work identically in a standard session.
 
+**Fourth reason — gate-integrity in a worktree, and the answer is CONDITIONAL on how `core.hooksPath`
+was set (measured 2026-08-05, both arms).** Do not carry a single verdict here; the two installs
+behave differently:
+
+| `core.hooksPath` | Which hook actually runs in a worktree | Consequence |
+|---|---|---|
+| **relative** — `templates/.git-hooks`, the form every FH doc installs (`CHEATSHEET.md`, `.claude/rules/fh_4axis_gate.md`, `install-wizard`, `self_evolution_routine.md`) | the **worktree's own copy** | Editing that copy *inside the worktree* disables the gate for that worktree — measured: neutralized hook → FH-asset commit with no marker succeeded (`rc=0`). The verifier becomes the verified, and the edit is invisible to `git status` in the main tree. |
+| **absolute** — a hand-set full path (this operator's machine; **not** what any doc tells you to run) | the **main tree's copy** | A worktree-local edit has no effect; a known-positive is blocked there exactly as in the main tree (`rc=1`). |
+
+An earlier draft of this section reported only the absolute-path arm and declared the
+"worktree bypasses the gates" hypothesis *refuted* — from **n=1 on a non-canonical setting**, with a
+do-not-revisit label attached. The relative-path arm, which is what everyone else runs, reproduces
+the bypass. Freezing a conclusion is a defect when the measurement did not cover the shipped
+configuration.
+
+Separately and in **both** arms, the **evidence side** breaks: `tracks/` is gitignored, so it does not
+follow into a worktree, so the Axis 2+3 marker and the Axis 4 `edit_manifest.yaml` are *structurally
+absent* — an FH-asset commit in a worktree fails on evidence it has no way to have. That degrades
+fail-closed (correct), but a gate that **cannot** be satisfied is what trains the bypass. Note the
+hook itself prints `mkdir -p …/tracks/_meta` on that failure, i.e. the actor's own error message
+teaches the marker-creation path — so "just don't fabricate it" is prose sitting under a machine
+instruction pointing the other way.
+
+**Therefore: do not commit FH assets from a worktree.** Not "carry the evidence in carefully" — a
+carried marker and a fabricated one are byte-identical, so *marker provenance* is unenforceable by
+construction. Land FH-asset changes from the standard session.
+
+**Do not let that unenforceability launder the enforceable part** (caught by an adversarial round on
+the paragraph above, which had used it to do exactly that): *being in a worktree* is trivially
+detectable — `git rev-parse --git-common-dir` differs from `--git-dir` there and matches in the main
+tree — and `templates/.git-hooks/pre-commit` currently has **zero** lines of worktree detection. A
+true statement about one thing (provenance) was standing in for an untested claim about another
+(location). It is left un-mechanized for a *scope* reason, not an impossibility one: measured
+recurrence is 1, below this repo's own N≥3 mechanization threshold. If it recurs, the check is a
+two-line hook addition, not a research problem.
+
 **Forbidden responses**: *"I can't do that — I'm not in that project's cwd"* — self-check Agent dispatch first.
 
 Mapped paths: check `auto_project_mapping.md` or `find ~/projects -maxdepth 1 -type d` for actuals.
