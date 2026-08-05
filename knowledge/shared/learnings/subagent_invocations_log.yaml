@@ -996,3 +996,55 @@
     invented: a fabricated outcome would poison the 60/40 promotion gate worse than a missing one,
     which is the stated reason the hook only tallies and never writes an entry. Open question for
     the next session that touches the tally: which tool events actually fire SubagentStop here.
+
+- date: '2026-08-05'
+  agent: persona-innovator ×2 · quench-challenger ×3 · beginner ×5 (Agent tool) + codex gpt-5.5 ×2 (CLI)
+  context: >-
+    Innovator autopilot session. Two sister-asset absorption scans (innovator); steel-quench Wave 1
+    and Wave 3 on the selfcheck run-twice repair, plus one opus Axis-2 pass on the AGENTS.md change
+    (quench-challenger); five Sonnet-pinned cold-read sims on one AGENTS.md checklist item
+    (beginner); two cross-family audits (codex CLI, tool-use disabled — not counted by the tally
+    hook, which only fires on Agent-tool SubagentStop).
+  dispatches: '10 via Agent tool + 2 CLI sidecars (tally recorded 14 — the delta is unattributed,
+    see the 2026-08-05 entry above about unknown tally sources; not invented here either)'
+  outcome: accepted
+  evidence: >-
+    Every class changed the outcome, which is why this is `accepted` rather than `partial`.
+    quench-challenger: Wave 1 produced 2S/3A/4B and Wave 3 produced 2S/1A/3B on the REPAIR — one of
+    those overturned a judgment already reported to the operator (a "refuted" verdict measured on a
+    non-canonical absolute core.hooksPath; the documented relative-path install reproduces the
+    bypass). The opus Axis-2 pass produced 2S that caused a full revert of the AGENTS.md change.
+    beginner: 5 rounds, each blocking at a DIFFERENT point, each block introduced by the previous
+    round's repair; author self-catch across rounds 1-4 was ZERO. innovator: 4 external repos
+    verified by gh api with known-pair controls, 3 net-new items confirmed by in-repo greps with
+    live controls. codex: round 1 was fed a STALE diff (my error — the target was not frozen) so 2
+    of its findings were already closed and 1 was a misread; round 2 on a fingerprinted target found
+    the BSD `tr -d '[:space:]'` defect that both same-family rounds missed.
+  note: >-
+    Logged at close, after the session_close_check ④-e block caught the omission — the obligation
+    is prose in CLAUDE.md and I did not discharge it during the session despite dispatching 10+
+    agents. That is the same shape the ④-e check was built for. Consolidated per class with counts
+    rather than one stub per dispatch, which the check explicitly permits.
+
+- date: '2026-08-06'
+  agent: beginner ×5 (Sonnet-pinned cold read) · quench-challenger ×1 (opus Axis-2) — same session as 2026-08-05
+  context: >-
+    The innovator autopilot session crossed midnight; the tally records 14 dispatches under
+    2026-08-06 while the substantive description lives in the 2026-08-05 entry above. These are not
+    additional work — they are the same session's later half: the five cold-read rounds on the
+    AGENTS.md worktree item and the opus adversarial pass that ended it.
+  dispatches: '6 attributable here (tally: 14 under this date; the remainder shares the
+    unattributed-source question already recorded on 2026-08-05)'
+  outcome: accepted
+  evidence: >-
+    The opus Axis-2 pass returned 2S — a recipe that commits to the WRONG BRANCH (git forbids two
+    worktrees sharing a branch, so the main checkout and a worktree are always on different
+    branches, and the recipe never aligned them), and a hook that hands out a marker-fabrication
+    one-liner at the exact moment it blocks. Both were reproduced against the live repo, and the
+    change was REVERTED in full rather than patched. The five beginner rounds each blocked at a
+    different point with author self-catch of zero across rounds 1-4.
+  note: >-
+    Written after the close check refused the push a SECOND time: the first correction logged the
+    session under 2026-08-05 while the check counts today's date, so "logged" and "logged where the
+    check looks" came apart. Recorded rather than back-dated — the split is real (the tally itself
+    splits 34/14 across the boundary) and pretending otherwise would misstate when the work ran.
