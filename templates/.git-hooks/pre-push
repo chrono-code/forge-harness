@@ -298,9 +298,21 @@ else
   _pp_why=""
   [ "$_PP_APPLICABLE" -eq 1 ] && [ "$PSA_DEFAULTS_OK" -eq 0 ] && _pp_why="committed pattern defaults unreadable/empty"
   [ "$_PP_APPLICABLE" -eq 1 ] && [ "$PSA_BAD_ROWS" -gt 0 ]    && _pp_why="${_pp_why:+$_pp_why; }$PSA_BAD_ROWS unusable pattern row(s)"
+  # 2026-08-06 — the 07-26 warn stays for the case it was right about, and is SCOPED, not reverted.
+  # An absent override is a legitimate configuration gap in a fresh clone / CI runner / worktree (the
+  # file is gitignored, so it is absent there by construction) → WARN, exactly as 07-26 concluded.
+  # In an operator-configured checkout the same state is missing evidence, not a missing config, and
+  # this is an irreversible surface → BLOCK, matching what `public_surface_scan_files.sh` already does
+  # at `npm publish`. Two irreversible surfaces degrading in opposite directions on the same state was
+  # the actual defect; git push was the lenient one.
+  psa_detect_operator_context "$REPO_ROOT"
   if [ "$_PP_APPLICABLE" -eq 1 ] && [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
-    echo "  ⚠️  operator-literal override absent — only the committed defaults (home paths + credential"
-    echo "     shapes) are active. Populate .claude/rules/.public-surface-patterns for company literals."
+    if [ "$PSA_OPERATOR_CONTEXT" -eq 1 ]; then
+      _pp_why="${_pp_why:+$_pp_why; }operator-literal override absent in an operator-configured checkout (company/companion literals NOT scanned)"
+    else
+      echo "  ⚠️  operator-literal override absent — only the committed defaults (home paths + credential"
+      echo "     shapes) are active. Populate .claude/rules/.public-surface-patterns for company literals."
+    fi
   fi
   if [ -n "$_pp_why" ]; then
     if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then

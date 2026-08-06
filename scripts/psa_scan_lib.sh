@@ -38,6 +38,9 @@
 #   PSA_DEFAULTS_OK       1 = committed defaults present, readable, non-empty
 #   PSA_OVERRIDE_PRESENT  1 = operator override present, readable, non-empty
 #   PSA_BAD_ROWS          count of rows dropped as unusable (uncompilable regex, or no TAB)
+# State set by psa_detect_operator_context (separate call — see that function):
+#   PSA_OPERATOR_CONTEXT  1 = an operator-configured checkout, where an absent override is missing
+#                             evidence rather than a legitimate fresh-clone absence
 # A caller that treats PSA_BAD_ROWS>0 or PSA_DEFAULTS_OK=0 as "clean" has a hole: those states mean
 # the instrument is incomplete, and an incomplete instrument cannot certify anything.
 
@@ -113,6 +116,39 @@ $line"
 $PSA_STREAM
 PSA_ROWS
   PSA_STREAM="$valid"
+}
+
+# psa_detect_operator_context <repo_root>   → sets PSA_OPERATOR_CONTEXT (0/1)
+#
+# Answers ONE question: is an absent operator override a *legitimate absence* (fresh clone, CI
+# runner, worktree — the file is gitignored, so it is absent there by construction) or *evidence
+# missing where evidence is expected* (a checkout the operator has configured, whose literals should
+# be there and are not)?
+#
+# 2026-07-26 changed pre-push from BLOCK to WARN on an absent override, and that change was right for
+# the first case: this repo's own selfcheck flagged the block as over-firing, and over-blocking trains
+# PUBLIC_SURFACE_OK into a reflex, which disarms the same channel the publish gate depends on. It was
+# wrong for the second case, which the flag could not distinguish. This function is that distinction —
+# it does not reopen the reverted block, it scopes it.
+#
+# Signal: CLAUDE.local.md — the operator's own gitignored binding file. Chosen because it is
+# gitignored (verified: `.gitignore:17`), so no clone, CI checkout or worktree carries it.
+#
+# CALIBRATED, and one candidate was REJECTED by that calibration: "tracks/_meta is non-empty" looks
+# like the same signal and is not — `tracks/_meta/.gitkeep` and one more file are TRACKED, so a fresh
+# clone satisfies it and would have been blocked. The discriminator was measured against a known
+# pair before it was trusted, not reasoned about.
+#
+# NAMED RESIDUAL (deliberate, and in the safe direction): an operator who never created a
+# CLAUDE.local.md stays in the WARN arm. This under-blocks rather than over-blocks — the failure mode
+# this scoping exists to avoid is the reflex, not the miss, and the push gate's content scan still
+# runs on the committed defaults in that arm.
+psa_detect_operator_context() {
+  local root="$1"
+  PSA_OPERATOR_CONTEXT=0
+  [ -n "$root" ] || return 0
+  [ -f "$root/CLAUDE.local.md" ] && PSA_OPERATOR_CONTEXT=1
+  return 0
 }
 
 # psa_scan_tagged  — reads "path<TAB>content" lines on stdin, prints one line per reportable hit.
