@@ -85,6 +85,18 @@ _repo() {  # $1=dirname ; makes a git repo with one commit dated $2 (default now
     else
       git commit -qm seed
     fi
+    # A real repo HAS an upstream. Without one the close check now (correctly) reports
+    # `① UNMEASURED — no upstream`, which is not the state any of these lanes means to express —
+    # a fixture with no upstream cannot assert "clean tree, nothing unpushed" because the second
+    # half of that sentence is genuinely unknown. Every lane below therefore runs on a pushed
+    # baseline; upstream ABSENCE is measured on purpose by its own lane (KP-2).
+    git init -q --bare "$TMPROOT/$1.git"
+    git remote add origin "$TMPROOT/$1.git"
+    # `-c core.hooksPath=` : a fixture push must never execute the HOST's git hooks. This repo sets
+    # core.hooksPath locally (so a temp repo does not inherit it) but a machine that sets it GLOBALLY
+    # would run FH's own pre-push Destructive-Op gate against a throwaway fixture — the suite's result
+    # would then depend on the operator's git config rather than on the code under test.
+    git -c core.hooksPath= push -q -u origin HEAD
   ) >/dev/null 2>&1
   mkdir -p "$T/tracks/_meta"
   printf '%s' "$T"
@@ -121,13 +133,10 @@ _line "①-N  uncommitted path → ⚠️ fires"           'uncommitted path'   
 _line "①-N  uncommitted path → clean line absent"  '✅ ① working tree clean' 0 "$OUT"
 _rc   "①-N  uncommitted is ADVISORY, not blocking" "$RC" 0
 
-# unpushed: needs a real upstream, so build a bare remote
+# unpushed: _repo already pushed the seed, so one extra commit is exactly one unpushed commit
 T=$(_repo one_unpushed); _artifacts "$T"
 (
   cd "$T" || exit 1
-  git init -q --bare "$TMPROOT/one_unpushed.git" 2>/dev/null
-  git remote add origin "$TMPROOT/one_unpushed.git"
-  git push -q -u origin HEAD 2>/dev/null
   echo more > second.txt && git add -A && git commit -qm second
 ) >/dev/null 2>&1
 _run "$T"
@@ -140,6 +149,72 @@ _g=0; printf '%s\n' "$OUT" | grep -q '✅ ① working tree clean' && _g=1
 _gap "①  non-repo reports CLEAN" "$_g" \
   "git is unavailable/not a repo → DIRTY=0, UNPUSHED=0 → the check reports '✅ working tree clean'. \
 An instrument that could not look is not a clean result (not found ≠ 0). Should say UNSCANNED."
+
+# ── ① not-found ≠ 0 : the five states where git CANNOT answer ────────────────────
+# Origin: the fix that introduced these five guards (2026-08-06) listed all six known pairs in its
+# COMMIT MESSAGE and shipped none of them as a lane — the code changed, the suite did not, and CI
+# went red on the two lanes the change broke rather than on the five it left unmeasured. Prose in a
+# commit message is not a regression anchor: nothing re-runs it. Each pair below is
+# known-positive (the instrument is blind) + a paired control (the clean line must NOT appear),
+# because "the warning fired" and "the warning fired INSTEAD of a false all-clear" are two claims.
+# KP-1 (the healthy case) is the ①-P lane at the top of this section.
+
+# KP-2 upstream absent — `@{u}..` fails, prints 0 lines, and `wc -l` counts that 0 as "nothing
+# unpushed". A commit that never left the machine reads as pushed. `--unset-upstream` (not
+# `remote remove`) keeps a remote present, so the all-branch scan still runs: this isolates the
+# upstream leg instead of quietly testing two things at once.
+T=$(_repo kp2_no_upstream); _artifacts "$T"
+git -C "$T" branch --unset-upstream >/dev/null 2>&1
+_run "$T"
+_line "KP-2 no upstream → UNMEASURED, not zero"    'unpushed count is UNKNOWN' 1 "$OUT"
+_line "KP-2 → clean line absent (paired)"          '✅ ① working tree clean'   0 "$OUT"
+_rc   "KP-2 → advisory, not blocking"              "$RC" 0
+
+# KP-3 git status itself fails — a corrupt index makes `status` exit non-zero with EMPTY output,
+# and `| wc -l` renders that emptiness as "0 dirty paths" = clean.
+T=$(_repo kp3_broken_index); _artifacts "$T"
+printf 'garbage' > "$T/.git/index"
+_run "$T"
+_line "KP-3 corrupt index → cleanliness UNKNOWN"   'cleanliness is UNKNOWN'    1 "$OUT"
+_line "KP-3 → clean line absent (paired)"          '✅ ① working tree clean'   0 "$OUT"
+# Measured while writing this lane: a corrupt index makes `ls-files -v` exit 128 too, so the
+# assume-unchanged probe (MASKED) silently reads 0 — the same not-found-≠-0 shape, one layer in.
+# It is NOT a false all-clear (DIRTY_KNOWN=0 already suppresses the clean line), so it is recorded
+# as a residual rather than patched here. `rev-parse @{u}` still exits 0 under a corrupt index,
+# which is what keeps this lane measuring cleanliness and not accidentally re-measuring KP-2.
+
+# KP-4 measured scope ≠ claimed scope — `@{u}..` reads the CURRENT branch only, while the message
+# says "nothing unpushed" about the repo. An unpushed commit parked on another local branch is
+# invisible. The current branch stays clean and pushed on purpose: only the other branch is dirty,
+# so a green here would be the exact false all-clear.
+T=$(_repo kp4_other_branch); _artifacts "$T"
+(
+  cd "$T" || exit 1
+  git checkout -q -b side
+  echo side > side.txt && git add -A && git commit -qm side
+  git checkout -q -
+) >/dev/null 2>&1
+_run "$T"
+_line "KP-4 unpushed on ANOTHER branch → ⚠️ fires" 'never pushed anywhere'     1 "$OUT"
+_line "KP-4 → clean line absent (paired)"          '✅ ① working tree clean'   0 "$OUT"
+
+# KP-5 `status.showUntrackedFiles=no` — git succeeds and stays SILENT (exit 0, empty output), so
+# the exit-code guard of KP-3 cannot catch this one. Only `--untracked-files=all` overrides it.
+T=$(_repo kp5_untracked_off); _artifacts "$T"
+git -C "$T" config status.showUntrackedFiles no
+echo hidden > "$T/hidden.txt"
+_run "$T"
+_line "KP-5 showUntrackedFiles=no → still counted"  'uncommitted path'         1 "$OUT"
+_line "KP-5 → clean line absent (paired)"           '✅ ① working tree clean'  0 "$OUT"
+
+# KP-6 assume-unchanged / skip-worktree — edits to a marked TRACKED file never reach porcelain at
+# all, so `-uall` does not help either. A separate instrument (`ls-files -v`) has to surface it.
+T=$(_repo kp6_assume_unchanged); _artifacts "$T"
+git -C "$T" update-index --assume-unchanged unrelated.txt
+echo edited >> "$T/unrelated.txt"
+_run "$T"
+_line "KP-6 assume-unchanged edit → surfaced"       'INVISIBLE here'           1 "$OUT"
+_line "KP-6 → clean line absent (paired)"           '✅ ① working tree clean'  0 "$OUT"
 
 echo
 echo "══ ①-b open-PR sweep ══"

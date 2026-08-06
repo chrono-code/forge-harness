@@ -1048,3 +1048,24 @@
     session under 2026-08-05 while the check counts today's date, so "logged" and "logged where the
     check looks" came apart. Recorded rather than back-dated — the split is real (the tally itself
     splits 34/14 across the boundary) and pretending otherwise would misstate when the work ran.
+
+- date: 2026-08-06
+  agent: general-purpose ×2 (블라인드 응시자), fh-commons:quench-challenger ×2 (Axis 2)
+  purpose: >-
+    qasp 풀체인 단련 — 출제자/응시자 분리 블라인드 실행 2회(2막 대조 · 3층 난이도)와,
+    FH 마감 체커 fail-open 수리에 대한 Axis 2 적대검증 2라운드(sonnet → at-floor opus).
+  model: sonnet ×3, opus ×1
+  outcome: accepted
+  evidence: >-
+    블라인드 2회가 계기 결함 2건을 직접 산출했다 — 1차는 두 런 차이를 "플레이키"로 오귀속해
+    리포트에 코드 상태 지문이 없음을 드러냈고(#84→PR #86), 2차는 counts 만 대조해 "변화 없음"이라
+    결론내 집계가 개별을 가리는 문제를 드러냈다(→PR #87). 두 오귀속 모두 **주어진 산출물만 보고는
+    그렇게 결론낼 수밖에 없었다** — 그래서 결함이 응시자가 아니라 계기 쪽임이 판별됐다.
+    챌린저 R1(sonnet)은 수리 대상 바로 윗줄에 같은 fail-open 이 남아 있음을 재현으로 잡았고,
+    게이트가 floor 미달로 거부해 R2(opus, at-floor)를 돌리자 R1 이 못 본 4건이 추가로 나왔다
+    (재발견 0건, 전부 실제 재현). known-pair 6/6.
+  note: >-
+    45 dispatch 대 1 로그 항목으로 ④-e 가 통과한 상태였다 — 이 항목이 그 간극을 메운다.
+    카운트가 큰 것은 Explore 등 내부 에이전트가 함께 집계되기 때문이고, 의미 있는 위임은 위 4건이다.
+    ★방법론 소득이 결함보다 크다: 출제자=응시자면 "잘 나온다"로 끝나고, 분리하면 매 라운드
+    계기 결함이 나온다. 그리고 floor 는 장식이 아니었다 — sonnet R1 이 놓친 HIGH 를 opus R2 가 잡았다.
