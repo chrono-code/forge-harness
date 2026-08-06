@@ -257,12 +257,34 @@ HOME="$FAKEHOME" HUB_DIR="$HUB" BE_DIR="$BEX" FH_MACHINE_ID=lanetest bash "$SCRI
 echo "── L21 reported backup path is the one that actually exists ──"
 new_env l21
 printf 'orig\n' > "$HUB/tracks/_meta/b.md"; sleep 1; printf 'newer\n' > "$BEX/tracks-meta/b.md"
-printf 'hublocal\n' >> "$HUB/tracks/_meta/b.md"     # force a REVIEW so the path is printed
+printf 'hublocal\n' >> "$HUB/tracks/_meta/b.md"     # differ in content
+# ★ FLAKE FIXED HERE (2026-08-06, diagnosed from a CI-only failure of unknown attribution).
+# The REVIEW this lane needs comes from the TIE branch of sync-from-be.sh: `[ ! "$f" -ot "$h" ]`
+# lets EQUAL-mtime through, content then differs, and a tie is forced into REVIEW. So the lane
+# depends on the two files landing on the SAME mtime — which it left to chance. The append above
+# usually lands in the same second as the companion write, but not always: the Linux runner's own
+# probe in this suite measures ~193/200 consecutive write-pairs as indistinguishable, i.e. roughly
+# 3-4% DO cross a second boundary. When that happens hub is strictly newer, `! -ot` is false, the
+# file is skipped entirely, no REVIEW is printed, and this lane fails — CI-only, unreproducible
+# locally, no code change involved. That is exactly the reported flake signature.
+# Reproduced deliberately by forcing hub-newer (`sleep 1` before the append): this lane goes ❌
+# while every other lane stays green.
+# Fix: state the intent instead of racing for it — pin the two mtimes equal.
+touch -r "$BEX/tracks-meta/b.md" "$HUB/tracks/_meta/b.md"
 out="$(run 2>&1)"
 rp="$(printf '%s' "$out" | sed -n 's|.*originals in \(tracks/_meta/logs/sync_restore/[^)]*\)/):.*|\1|p' | head -1)"
 [ -n "$rp" ]; chk $? "CONTROL: a restore path was actually reported"
-[ -d "$HUB/$rp" ]; chk $? "the reported backup directory exists (not a \$STAMP-vs-\$STAMP.\$\$ mismatch)"
-[ -n "$(find "$HUB/$rp" -name 'b.md' 2>/dev/null)" ]; chk $? "and the backup file is really in it"
+# The two assertions below are only meaningful when a path was reported. Without this guard an
+# empty `$rp` makes them test "$HUB/" — the hub root, which of course exists and of course contains
+# b.md — so they printed ✅ in the very run where the control printed ❌. An assertion that passes
+# hardest when its premise failed is not evidence; it is decoration.
+if [ -n "$rp" ]; then
+  [ -d "$HUB/$rp" ]; chk $? "the reported backup directory exists (not a \$STAMP-vs-\$STAMP.\$\$ mismatch)"
+  [ -n "$(find "$HUB/$rp" -name 'b.md' 2>/dev/null)" ]; chk $? "and the backup file is really in it"
+else
+  chk 1 "the reported backup directory exists — SKIPPED: no path was reported (premise failed)"
+  chk 1 "and the backup file is really in it — SKIPPED: no path was reported (premise failed)"
+fi
 
 echo "── L22 nested symlinked parent: no directory is created outside the hub ──"
 new_env l22
