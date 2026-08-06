@@ -539,6 +539,25 @@ else
   fail=1
 fi
 
+# Shipped-manifest version lockstep. Distinct from the tag lane above: that one compares the git TAG
+# to package.json; this one compares package.json to every version string it SHIPS — including the
+# per-plugin entries inside marketplace.json, which the tag lane never opens. Measured 2026-08-06:
+# a bump left the second marketplace entry behind and the tag lane passed 8/8 straight through it.
+if [ ! -f scripts/version_lockstep_check.sh ]; then
+  echo "SKIP  test_version_lockstep_lanes.sh (subject scripts/version_lockstep_check.sh absent)"
+elif [ -f scripts/test_version_lockstep_lanes.sh ]; then
+  if _out=$(bash scripts/test_version_lockstep_lanes.sh 2>&1); then
+    echo "PASS  test_version_lockstep_lanes.sh (drift blocks · aligned silent · unreadable = exit 2, not pass)"
+  else
+    echo "FAIL  test_version_lockstep_lanes.sh: the shipped-manifest lockstep guard would mis-route"
+    _show_failure "$_out"
+    fail=1
+  fi
+else
+  echo "FAIL  test_version_lockstep_lanes.sh: version_lockstep_check.sh present but its anchor is missing"
+  fail=1
+fi
+
 # ④-e dispatch-log reconciliation + its tally hook. Wired in the same commit that ships them: the
 # obligation they mechanize lost 20/20 in a single session, so leaving the checker itself unrun
 # would be the same defect one layer up.
