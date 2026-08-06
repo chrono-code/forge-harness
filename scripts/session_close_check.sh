@@ -15,6 +15,9 @@
 
 set -uo pipefail
 
+# 상속된 git 환경변수를 끊는다 — export 된 GIT_DIR 이 있으면 `git -C "$FH"` 가 인자로 받은
+# 레포가 아니라 그 레포를 잰다(Axis 2 at-floor LOW, 2026-08-06). READ-ONLY 체커라 부작용 없음.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 FH="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 TODAY=$(date +%Y-%m-%d)
 CARD="$FH/tracks/_meta/reference_next_session_starter.md"
@@ -25,11 +28,58 @@ _mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0;
 echo "── session close check: $FH ($TODAY) ──"
 
 # ① status snapshot — uncommitted / unpushed work must be known, not forgotten
-DIRTY=$(git -C "$FH" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-UNPUSHED=$(git -C "$FH" log --oneline @{u}.. 2>/dev/null | wc -l | tr -d ' ')
-[ "$DIRTY" -gt 0 ] && echo "⚠️  ① $DIRTY uncommitted path(s) — decide: commit or leave deliberately"
-[ "$UNPUSHED" -gt 0 ] && echo "⚠️  ① $UNPUSHED unpushed commit(s) — push before close or record why"
-[ "$DIRTY" -eq 0 ] && [ "$UNPUSHED" -eq 0 ] && echo "✅ ① working tree clean, nothing unpushed"
+# DIRTY 도 같은 형태였다 — `status --porcelain 2>/dev/null | wc -l` 은 git 이 죽어도 0 을 세어
+# "깨끗함"으로 승격된다(재현: `.git/index` 손상 → exit 128, 출력 0줄). 종료코드를 먼저 본다.
+# ⚠️ 이 줄은 **바로 아래 UNPUSHED 수리와 같은 결함**이었고, 처음엔 아래만 고쳤다 —
+# 반쪽 수리를 고치는 커밋에서 반쪽 수리를 할 뻔했다(Axis 2 챌린저가 잡음, 2026-08-06).
+# `--untracked-files=all` 은 `status.showUntrackedFiles=no` config 를 덮어쓴다. 그 config 아래에서는
+# git 이 **성공적으로 침묵**해(exit 0 · 빈 출력) 종료코드 가드로도 안 잡힌다 — 부재가 다시
+# "깨끗함"으로 렌더된다(Axis 2 at-floor MED, 재현: 미추적 파일 1건이 0 으로 보고됨).
+if _st=$(git -C "$FH" status --porcelain --untracked-files=all 2>/dev/null); then
+  DIRTY_KNOWN=1
+  DIRTY=$(printf '%s' "$_st" | grep -c . || true)
+else
+  DIRTY_KNOWN=0
+  DIRTY=0
+fi
+# upstream 유무를 **먼저 판정**한다. `@{u}..` 는 upstream 이 없으면 실패해 0줄을 내고, 그 0을
+# `wc -l` 이 0으로 세어 "nothing unpushed" 로 승격된다 — **한 번도 머신을 떠난 적 없는 커밋이
+# '푸시할 것 없음'으로 읽히는 fail-open**. 부재를 깨끗함으로 읽는 것이라 0 을 신뢰하면 안 된다.
+# (downstream fork's review lane caught it first; this file is the upstream original — 2026-08-06.)
+if git -C "$FH" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+  UPSTREAM_KNOWN=1
+  UNPUSHED=$(git -C "$FH" log --oneline @{u}.. 2>/dev/null | wc -l | tr -d ' ')
+else
+  UPSTREAM_KNOWN=0
+  UNPUSHED=0
+fi
+[ "$DIRTY_KNOWN" -eq 0 ] && echo "⚠️  ① UNMEASURED — git status failed; working-tree cleanliness is UNKNOWN, not clean"
+[ "$DIRTY_KNOWN" -eq 1 ] && [ "$DIRTY" -gt 0 ] && echo "⚠️  ① $DIRTY uncommitted path(s) — decide: commit or leave deliberately"
+[ "$UPSTREAM_KNOWN" -eq 0 ] && echo "⚠️  ① UNMEASURED — no upstream for this branch; unpushed count is UNKNOWN, not zero"
+[ "$UPSTREAM_KNOWN" -eq 1 ] && [ "$UNPUSHED" -gt 0 ] && echo "⚠️  ① $UNPUSHED unpushed commit(s) — push before close or record why"
+# "as of last fetch" — 원격을 조회하지 않는다. 로컬 remote-tracking ref 가 낡았으면 이 0 도 낡은 값이다
+# (Axis 2 챌린저 MED, 2026-08-06). fetch 를 넣지 않은 것은 마감 체커가 READ-ONLY·오프라인 안전이기 때문.
+# 추적 파일이 assume-unchanged/skip-worktree 로 마킹돼 있으면 그 수정은 porcelain 에 **안 뜬다** —
+# `-uall` 로도 안 잡히는 별개 계기다(Axis 2 at-floor MED, 재현 확인).
+MASKED=$(git -C "$FH" ls-files -v 2>/dev/null | grep -c '^[a-z]' || true)
+[ "${MASKED:-0}" -gt 0 ] \
+  && echo "⚠️  ① $MASKED file(s) assume-unchanged/skip-worktree — their edits are INVISIBLE here"
+
+# ★ 잰 범위 ≠ 주장 범위 (Axis 2 at-floor HIGH, 2026-08-06).
+# `@{u}..` 는 **현재 브랜치만** 잰다. 다른 로컬 브랜치에만 있는 미푸시 커밋은 통째로 안 보이는데
+# 화면 문구는 "nothing unpushed"(레포 전체)라고 말한다 — 이 파일의 존재 이유 정중앙이다.
+# 재현: 다른 브랜치에 미푸시 커밋 1건 → `✅ nothing unpushed` 가 그대로 떴다.
+# 원격이 하나도 없으면 이 값이 전 커밋 수로 부풀므로 원격 존재를 먼저 가드한다.
+OTHER_UNPUSHED=0
+if [ -n "$(git -C "$FH" remote 2>/dev/null)" ]; then
+  OTHER_UNPUSHED=$(git -C "$FH" log --branches --not --remotes --oneline 2>/dev/null | wc -l | tr -d ' ')
+fi
+[ "${OTHER_UNPUSHED:-0}" -gt 0 ] \
+  && echo "⚠️  ① $OTHER_UNPUSHED commit(s) on local branches never pushed anywhere (all-branch scan)"
+
+[ "$DIRTY_KNOWN" -eq 1 ] && [ "$DIRTY" -eq 0 ] && [ "$UPSTREAM_KNOWN" -eq 1 ] && [ "$UNPUSHED" -eq 0 ] \
+  && [ "${OTHER_UNPUSHED:-0}" -eq 0 ] && [ "${MASKED:-0}" -eq 0 ] \
+  && echo "✅ ① working tree clean, nothing unpushed anywhere (as of last fetch)"
 
 # ①-b open-PR sweep (surface-not-auto — requires gh; skip silently offline)
 if command -v gh >/dev/null 2>&1; then
