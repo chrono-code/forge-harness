@@ -303,6 +303,14 @@ else
         echo "  → '~' or '{project}'), or PUBLIC_SURFACE_OK=1 git commit … for a reviewed mention."
         FAILED=1
       fi
+    elif [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
+      # NOT `✅ PASS`. The scan found nothing, but one whole layer of it — the operator/company
+      # literals — never ran. A missing measurement is not a zero (CLAUDE.md §Instrument
+      # Calibration), and a verdict that reads identically whether a layer ran or not is the
+      # fail-open this repo names. The commit is still allowed: a commit is reversible, so the
+      # degrade here is advisory by the Surface-Class Degrade Invariant. Push and publish, which
+      # are the acts that make content public, block this same state.
+      echo "  ⚠️  PARTIAL — no hit in the committed defaults; company/companion literals UNMEASURED."
     else
       echo "  ✅ PASS"
     fi

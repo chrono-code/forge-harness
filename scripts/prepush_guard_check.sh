@@ -166,6 +166,21 @@ check "operator override absent (per-operator) → PASS " "$R" pass \
       "refs/heads/f $(cd "$R" && git rev-parse HEAD) refs/heads/f $B"
 rm -rf "$R"
 
+# ── Pair 6-b (2026-08-06): the OTHER arm of the same state, which the 07-26 flag could not see.
+# Identical to 6-a except the checkout carries CLAUDE.local.md — the operator's gitignored binding
+# file, absent in every clone/CI/worktree by construction. There the missing override is not an
+# unset per-operator config, it is evidence missing where evidence is expected, on a surface that
+# publishes. This is what `npm publish` already blocked while `git push` waved through; the two
+# irreversible surfaces now degrade in the same direction.
+# The PAIR is what makes it a measurement: 6-a (no CLAUDE.local.md → PASS) is the known-negative and
+# must keep passing, or this is not a scoped block, it is the 07-26 over-block re-shipped. ──
+R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
+( cd "$R" && echo ok > g2.md && git add g2.md && git commit -qm g2 >/dev/null \
+  && rm -f .claude/rules/.public-surface-patterns && printf '# operator binding\n' > CLAUDE.local.md )
+check "override absent + operator checkout    → BLOCK" "$R" block \
+      "refs/heads/f $(cd "$R" && git rev-parse HEAD) refs/heads/f $B"
+rm -rf "$R"
+
 R=$(newrepo); B=$(cd "$R" && git rev-parse HEAD)
 ( cd "$R" && echo ok > g.md && git add g.md && git commit -qm g >/dev/null \
   && : > .claude/rules/.public-surface-patterns.defaults )   # present but EMPTY = broken, not unconfigured

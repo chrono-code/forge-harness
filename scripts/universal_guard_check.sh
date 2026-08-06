@@ -196,8 +196,12 @@ run_case "placeholder BEFORE real, one line → BLOCK" \
 # Each of these previously passed at commit time while BLOCKING at publish time — the two copies
 # of this logic had diverged in leniency. run_state_case swaps the pattern source rather than the
 # staged content, so it needs its own runner.
-run_state_case() {  # <name> <override-content|__NONE__> <defaults:keep|drop> <expect-exit: block|pass>
-  local name="$1" ovc="$2" defmode="$3" expect="$4" out rc got
+run_state_case() {  # <name> <override-content|__NONE__> <defaults:keep|drop> <expect-exit: block|pass> [expect-verdict-substring]
+  # The 5th arg exists because exit code alone cannot see this defect class: a scan whose
+  # operator-literal layer never ran exits 0 and used to print the same `✅ PASS` as a scan where
+  # every layer ran. Identical verdicts for different amounts of measurement is the fail-open —
+  # so the anchor has to read the verdict LINE, not just the status.
+  local name="$1" ovc="$2" defmode="$3" expect="$4" want="${5:-}" out rc got
   printf 'operator literal zzsynthoperator\n' > "$SANDBOX/README.md"
   git -C "$SANDBOX" add -- README.md >/dev/null 2>&1
   local ov="$SANDBOX/.psa_state_override"
@@ -208,17 +212,26 @@ run_state_case() {  # <name> <override-content|__NONE__> <defaults:keep|drop> <e
   if [ "$defmode" = drop ]; then mv "$defbak" "$SANDBOX/.claude/rules/.public-surface-patterns.defaults" 2>/dev/null; fi
   git -C "$SANDBOX" rm -q --cached -- README.md >/dev/null 2>&1; rm -f "$SANDBOX/README.md" "$ov"
   if [ "$rc" -ne 0 ]; then got=block; else got=pass; fi
-  if [ "$got" = "$expect" ]; then
-    echo "  ✅ $name (expected $expect)"
-  else
+  if [ "$got" != "$expect" ]; then
     echo "  ❌ $name — expected $expect, got $got (exit $rc)"
     printf '%s\n' "$out" | sed 's/^/       | /' | head -10
     FAILED=1
+  elif [ -n "$want" ] && ! printf '%s' "$out" | grep -qF "$want"; then
+    echo "  ❌ $name — exit was $got but the verdict line did not say: $want"
+    printf '%s\n' "$out" | grep -E 'PASS|PARTIAL|Confidentiality' | sed 's/^/       | /' | head -5
+    FAILED=1
+  else
+    echo "  ✅ $name (expected $expect${want:+, verdict names \"$want\"})"
   fi
 }
 run_state_case "no patterns at all (instrument down) → BLOCK" "__NONE__" drop  block
 run_state_case "malformed regex in override          → BLOCK" "HIGH	zzsynth[" keep block
-run_state_case "empty override + defaults present    → PASS " ""              keep pass
+# 2026-08-06 — this state still PASSES (a commit is reversible; blocking every fresh clone's first
+# commit is what trains the override into a reflex), but it may no longer CLAIM a clean scan. Pinned
+# as a pair so the label cannot drift back to a bare PASS, and so an unconditional PARTIAL — which
+# would be just as wrong — is caught by the control below it.
+run_state_case "empty override + defaults present    → PASS " ""              keep pass "PARTIAL"
+run_state_case "control: override PRESENT, no hit    → PASS " "HIGH	zzunrelatedliteral" keep pass "✅ PASS"
 
 # ── Pair 7: pattern-ROW malformations that are not invalid regex. Each of these used to be skipped
 # in silence, i.e. a detector the author believed in that never existed, and a scan that certified

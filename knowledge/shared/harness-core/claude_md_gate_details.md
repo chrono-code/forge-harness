@@ -196,6 +196,13 @@ destroys live state without anyone noticing. This is why the loss class is calle
   plaintext only (encoded tokens out of scope); a line-split backstop catches a token wrapped across
   lines; `PUBLIC_SURFACE_OK=1` overrides and is logged to a gitignored audit trail for the weekly audit.
   Residuals (split-encoding, override-not-populated, override abuse) are documented, not silent.
+  **Verdict labelling (2026-08-06)**: with the override absent, a clean scan reports
+  `⚠️ PARTIAL — company/companion literals UNMEASURED`, **never `✅ PASS`**. The commit still
+  proceeds (reversible surface → advisory degrade), but a run whose operator-literal layer never
+  executed may not present the same verdict as one where it did — a missing measurement is not a
+  zero. Anchored in `universal_guard_check.sh` as a **pair**: absent override must say `PARTIAL`,
+  and the control (override present, no hit) must still say `✅ PASS`, so the label cannot drift
+  back to a bare PASS *or* become an unconditional warning.
 - **(c) `npm publish`** — mechanically gated by `scripts/public_surface_scan_files.sh`, wired into
   `prepublishOnly` (`npm run release` also runs it *outside* the lifecycle). Unlike (b) it scans the
   **full content of the exact npm-published file set** (`npm pack --dry-run`), *not* a commit diff — so a
@@ -203,6 +210,36 @@ destroys live state without anyone noticing. This is why the loss class is calle
   registry boundary. HIGH/MED block; `PUBLIC_SURFACE_OK=1` overrides + logs. **Fail-closed** when patterns
   or the file set are unresolved, when the parse looks partial, **or when the gitignored operator override
   is absent** — defaults-only would otherwise green-PASS a HIGH company literal on a fresh clone or CI runner.
+
+**The git-push surface, and why it was the lenient one (2026-08-06).** (c) blocked on an absent
+override; the `git push` gate in `templates/.git-hooks/pre-push` only warned. Both make content
+public, so two irreversible surfaces were degrading in **opposite directions on the same state** —
+the actual defect, and `git push` (the one nobody publishes through deliberately) was the permissive
+side. The 2026-07-26 reasoning behind that warn was not wrong, it was **unscoped**: an absent
+override in a fresh clone / CI runner / worktree is a legitimate per-operator configuration gap (the
+file is gitignored, so it is absent there *by construction*), and blocking it trains
+`PUBLIC_SURFACE_OK` into a reflex — which disarms the same channel the publish gate depends on.
+
+So the warn is **scoped, not reverted**. `psa_detect_operator_context` (`scripts/psa_scan_lib.sh`)
+splits the state: in an **operator-configured checkout** an absent override is *evidence missing
+where evidence is expected* → BLOCK; everywhere else → WARN, exactly as before. The signal is
+`CLAUDE.local.md`, the operator's own gitignored binding file.
+
+**Calibration matters here more than the rule** — a second candidate signal, "`tracks/_meta` is
+non-empty", reads as the same test and is not: `tracks/_meta/.gitkeep` and one sibling are
+**tracked**, so a fresh clone satisfies it and would have been blocked, re-shipping the 07-26
+over-block under a new name. It was rejected by measuring it against a known pair, not by reasoning
+about it. **Named residual, deliberately in the under-blocking direction**: an operator who never
+created a `CLAUDE.local.md` stays in the WARN arm. **Second residual, and it is the sharper one**:
+deleting `CLAUDE.local.md` drops this checkout back into the WARN arm, and unlike `PUBLIC_SURFACE_OK=1`
+that bypass **writes no log line**. It is a conscious act on the operator's own file, so it is not a
+weak-model fail-open — but it is a quieter exit than the sanctioned one, which is the wrong ordering
+for a bypass. Not closed here: making it loud means the hook must distinguish "never had one" from
+"had one and lost it", and that needs state the hook does not currently keep. Named rather than
+mechanized, per this repo's own threshold — mechanize on the first measured recurrence.
+Anchored as a pair in `prepush_guard_check.sh`
+(6-a absent override → PASS · 6-b absent override + operator checkout → BLOCK); both arms are
+required, since 6-b passing alone would not distinguish a scoped block from a blanket one.
 
 **Named residuals for (c)** — it is a denylist **on the npm CLI path with scripts enabled**, not a
 universal secret-scanner:
