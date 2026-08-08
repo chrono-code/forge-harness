@@ -1368,3 +1368,36 @@
     restricted-env 자산명 때문에 기밀 스캔 HIGH 로 커밋이 막혔고(남의 기록이라 고치지 않고 보고), 그 뒤
     `git reset --hard origin/main` 이 **미커밋 워킹트리를 함께 지웠다**. 병렬 세션 환경에서
     reset 은 남의 미커밋 작업을 지운다 — 공유 파일에 append 했으면 **먼저 커밋**해야 한다.
+
+- date: 2026-08-08
+  session: qasp AX-레디 고도화 (홈, 저녁)
+  agents: [general-purpose (벤치 TC 팬텀 전수), fh-meta:challenger (적격 가드 적대검토)]
+  why: >-
+    ① 벤치 채점 자산 오염 검사는 12 TC × 앵커값 back-trace 라 넓고 기계적이다 — 이
+    컨텍스트에 담으면 다리 설계 갈래를 밀어낸다. ② 적격 가드는 **verdict 표면**이라
+    Field-Harness Load-Bearing Change Gate 대상이고, 저자(=나)가 그 diff 를 이미 읽고
+    "잘 짜였다" 로 기운 상태라 **출제자=응시자**였다. 반증을 사는 게 목적.
+  dispatch_count: 2
+  outcome: accepted
+  evidence: >-
+    ② 가 이 세션 최대 성과. **M-1**: `instruct$` 단독 수용이 임베딩 4종(gte-Qwen2-7B-
+    instruct · e5-mistral-7b-instruct · multilingual-e5-large-instruct ·
+    voyage-large-2-instruct)을 통과시킨다 — **직전 수리(f84eb5f)가 고쳤다는 그림이 id 만
+    바뀌어 재현**. family_of 가 셋을 서로 다른 3계열로 계상해 다양성 검사까지 만족.
+    **M-2**: MODEL_CATALOG 에 type/tags 지상진실 19개가 있는데 sidecar_panel 참조 0회
+    (컨트롤 = 형제 클라이언트 모듈 7회). **M-3**: 카탈로그 조회가 대소문자 구분이라 이름은 적격인데
+    라우팅이 다른 모델로 간다(→ #127). **S-8**: 이 앵커들이 CI 에 하나도 안 걸려 있었다.
+    셋 다 거버너가 자체 앵커로 재확인 후 수리(926ce1b) — 동의로 받지 않았다.
+    ① 은 **발주 전제를 반증**해 왔다: #126 이 "앱에도 부재" 라 한 `가맹점-001` 이
+    src/data.json:5 에 실재. 거버너 확인 결과 둘 다 참이고 어긋난 건 "앱" 의 코퍼스
+    정의(렌더 표면 vs 소스)였다 — **팬텀이 아니라 도달불가**이고 처방이 달라진다(#126 정정).
+    12 TC 전수에서 엄밀한 PHANTOM 0건.
+  note: >-
+    ★ ①이 자기 계기를 두 번 죽였다가 세 번째에 컨트롤로 살렸다(zsh word-split → 전
+    앵커 PHANTOM 오탐 직전). 컨트롤 한 줄이 없었으면 거짓 결함 12건을 받을 뻔했다.
+    ★ ②의 finding 중 하나(TC_N1 라벨 불일치)를 내가 "장식 앵커"로 **과확대 해석**했다가
+    증거(safe_mode 사유 문자열 + candidates_considered 0)로 자기 반증했다 — 서브에이전트는
+    "위장될 수 있다"까지만 말했고 밀고 간 건 나였다. 소스 확인 안 했으면 없는 결함으로
+    이슈를 열 뻔했다([[feedback_challenger_verify_before_act]] 가 실제로 걸린 사례).
+    ⚠️ **둘 다 Claude = same-family.** cross-family 는 restricted-env 호스트명 residency 때문에
+    홈에서 못 돌렸다 — PR #121 에 `DEGRADED_PANEL_UNUSED` 로 명시하고 restricted-env 이월.
