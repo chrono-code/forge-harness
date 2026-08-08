@@ -1335,3 +1335,36 @@
     본다([[feedback_lane_vocabulary_blind_to_its_own_fix]] 의 인접 판본).
     ★ ②의 발견은 대외 발표 리스크라 비공개 컴패니언 스토어로 착지시켜야 한다
     (이 로그는 위임 원장이지 정본이 아니고, 공개 표면이라 내용은 여기 적지 않는다).
+
+- date: 2026-08-08
+  session: 엔진 4요소 / 챔버 순서 증인 (홈, 야간 자율주행)
+  agent: codex exec (gpt-5.5) — cross-family sidecar, nohup + timeout 600 + 파일 출력
+  why: >-
+    신규 `chamber_witness.sh` 는 **verdict enum 을 반환하는 load-bearing 변경**이고,
+    그 verdict 가 identity ② 승격 근거로 쓰인다. 저자(=나)가 방금 짜고 self-test 8 레인을
+    초록으로 만든 직후라 **출제자=응시자** 상태였다 — 같은 손이 배선과 검사를 쓰면 배선 축만
+    본다. 운영자가 이 세션에 "탈상관 팍팍 쓰라"고 명시 승인.
+  dispatch_count: 1
+  outcome: accepted
+  evidence: >-
+    **11 findings, 자력 적발 0, 그중 4건은 말이 아니라 실행으로 재현**
+    (record_writefail_rc=0 · same_commit_rc=0 · mixed_rc=0 · dup_pending_rc=0).
+    최악은 F1 — **verdict 해시가 없는데 verify 가 rc=0** 을 냈고, 러너가 그걸
+    "② 승격 근거 사용 가능" 으로 렌더했다. 증인 채널이 증인 없이 초록을 낸 것으로,
+    이 자산의 존재 이유와 정반대 방향이다. 나머지: 원장 쓰기 실패가 witnessed+0 (F2) ·
+    같은 초 역순 통과 (F3) · pre 최솟값만 비교해 부분 게이트 통과 (F4) · sha 문자열 단위
+    커밋 판정이라 재사용 해시가 PENDING 을 숨김 (F5) · 해시 도구 장애가 무결 통과 (F6) ·
+    주석이 코드보다 큰 주장 (F7·F9) · EMIT 증인 실패가 exit 0 (F8) · 원장 escaping 부재
+    (F10) · self-test 사각 6종 (F11). **전건 소스 확인 후 수리 + 회귀 레인 동반**,
+    self-test 8 → 16 레인. 비장식 증명 2건(F1·F3 각각 되돌리면 대응 레인 하나만 적색).
+  note: >-
+    ★ 계기 폼 실측 — Bash 툴이 2분 상한이라 codex 를 **포그라운드로 걸면 잘린다**(첫 시도
+    exit 143). 정답 폼 = `nohup sh -c "timeout 600 codex exec -m gpt-5.5 - < in > out"` +
+    `until grep -q DONE_rc` 백그라운드 완료 감지. hung 판정 전 mtime 확인 규율이 여기서도
+    유효했다(출력이 두 번 정체했지만 mtime age 162초 + CPU 1.1% 로 살아있음 확인).
+    ★ 이번에도 **cross-family 가 세션 최대 성과**다. 내 self-review 는 "1인자 경로 unbound"
+    까지 갔지만 **판정 로직의 fail-open 7종은 하나도 못 봤다**.
+    ★ 이 엔트리는 **두 번 쓰였다.** 1차 append 는 같은 파일에 있던 타 세션 엔트리의
+    restricted-env 자산명 때문에 기밀 스캔 HIGH 로 커밋이 막혔고(남의 기록이라 고치지 않고 보고), 그 뒤
+    `git reset --hard origin/main` 이 **미커밋 워킹트리를 함께 지웠다**. 병렬 세션 환경에서
+    reset 은 남의 미커밋 작업을 지운다 — 공유 파일에 append 했으면 **먼저 커밋**해야 한다.
