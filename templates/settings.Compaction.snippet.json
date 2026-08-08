@@ -1,0 +1,56 @@
+{
+  "_README": [
+    "Compaction hook snippet — TRACKED, so it arrives with a clone. Every .claude/settings*.json path",
+    "in this repo is gitignored (confirm with `git check-ignore -v .claude/settings.json`), so the hook",
+    "registration itself cannot be tracked. This is the tracked SOURCE that install-wizard merges into",
+    "the user's local settings. Without the merge step the hooks do not run — shipping the script is not",
+    "the same proposition as wiring it.",
+    "",
+    "What it does: seals a POINTER ledger of what the session holds just BEFORE compaction, then",
+    "re-injects it once on the next prompt. FH's structural advantage over generic compaction memory is",
+    "that the originals are already on disk — what compaction destroys is not the context but the",
+    "pointers to it, and a pointer is cheap to restore.",
+    "",
+    "Why the second hook is UserPromptSubmit and not PostCompact — this is a MEASURED constraint, not a",
+    "style choice: PostCompact does NOT support `additionalContext` (official hooks reference, verified",
+    "2026-08-08), so a PostCompact hook physically cannot put anything back into the session. It can only",
+    "write files. UserPromptSubmit is one of the three events whose exit-0 stdout becomes context Claude",
+    "can read. Wiring the re-injection to PostCompact would install a hook that runs and changes nothing.",
+    "",
+    "Both entries carry NO private path, so both belong in .claude/settings.json (project-local).",
+    "Merge, do not overwrite: preserve any PreCompact / UserPromptSubmit entries the user already has;",
+    "replace only the FH ones, keyed by script name.",
+    "",
+    "Never blocks: PreCompact CAN block compaction (exit 2) and this deliberately does not — compaction",
+    "is a reversible surface, and a gate that fires in the user's way is a gate that gets switched off.",
+    "The script always exits 0 for the same reason a non-zero hook exit discards its own stdout."
+  ],
+  "project_settings_json": {
+    "hooks": {
+      "PreCompact": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash -c 'HUB=\"${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}\"; bash \"$HUB/scripts/compaction_probe.sh\" seal; exit 0'",
+              "timeout": 15
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash -c 'HUB=\"${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}\"; bash \"$HUB/scripts/compaction_probe.sh\" digest; exit 0'",
+              "timeout": 10
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
