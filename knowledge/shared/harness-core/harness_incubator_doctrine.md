@@ -157,6 +157,106 @@ authored-case baseline (single-draw per case; reps waived per measurement-integr
 first draw matched expected — see the 2026-07-13 subagent-invocations log entry), not a calibrated
 accuracy estimate.
 
+### 3-a. What is born, and what it must be able to do on day one (operator-forged, 2026-08-09)
+
+**We are not raising a person. We are shipping a harness that does one thing well.** The founding
+image is a calf or a foal: it is born in a laboratory sense — brand new, thin, nowhere near an adult
+— but it **stands and walks in the place where it was born.** That is the incubator's bar, and it is
+much lower and much clearer than "finished."
+
+```
+depth / density   altricial  — like an infant. Filled in only by real use. Takes a long time.
+basic locomotion  precocial  — like a calf. Works from the moment it is set down.
+```
+
+The two axes are independent, and confusing them is what made this look far away. Aiming at an adult
+(a complete judgment circuit at birth) is **not merely slow — it is unreachable**, because density is
+supplied by usage that has not happened yet. Aiming at a calf is reachable today.
+
+**Operational form**: *born walking* = on the first run, with the user adding nothing, the thing
+produces something useful. This maps onto the existing rungs without inventing a scale —
+`🔵 RC` = it stood up in the lab; `🟢 REALIZED` = it walked outside.
+
+**The opposite of this doctrine has a name we already use: `built-but-not-wired`.** A harness that
+was born but does not walk is one whose parts exist and whose call sites do not — measured instances
+exist (a field harness with a judgment-circuit file and **zero callers**; a sibling meta-harness with
+none at all). So *"born walking"* is not a metaphor about vitality; it is the engineering claim that
+**wiring is part of the birth**, not a follow-up task. Being born and running are different events,
+and the incubator is answerable for the second.
+
+#### What the seed contains — a coordinate system, not a declaration
+
+The seed is **not** an identity sentence. `"You are a world-class QA expert"` is an artifact of the
+prompt-engineering era and is actively harmful here: the 105-run measurement scored a bare identity
+declaration as a **net loss on the weak tier** (removing it recovered +0.67), while a judgment
+circuit gained on the frontier tier. Told only *what it is*, a newborn harness still does not know
+what to do, and the gaps show up as arbitrary decisions.
+
+What a newborn actually needs is closer to *how to see, how to walk, how to speak*:
+
+| Layer | What it fixes | Note |
+|---|---|---|
+| **Seeing** | what counts as a signal at all | inputs — without this the circuit has nothing to run on |
+| **Judging** | success · which way to lean under uncertainty · out of scope · never | = the `judgment-circuit` definition |
+| **Speaking** | how it reports, what shape its output takes | outputs |
+| **Walking** | how it actually executes | wiring, call sites |
+
+Shipping the middle layer alone is the common failure: the circuit is present and has no input or
+output attached, which is exactly the zero-caller symptom above. **Form is machine-checkable today**
+(`scripts/judgment_circuit_lint.sh` — branch rules, self-sealing, conflict resolution, lean
+direction, mandated shape; FH's own `CLAUDE.md` measures `CIRCUIT 4/5`). Density is not, and should
+not be given a scale yet — see 3-a-2.
+
+#### 3-a-1. Field ⊥ meta — and meta is out of this incubator's scope
+
+The two kinds have **opposite profiles**, which is why one method cannot birth both:
+
+```
+field harness   hard to birth (design · seed · wiring)   │ walks on day one      precocial
+meta harness    easy to birth (a declaration starts one) │ needs endless tending  altricial
+```
+
+A meta-harness cannot clear a bar that reads *"walks on day one"* — not because it is worse, but
+because unbounded growth is its point. FH itself is the standing evidence: it is tended continuously,
+by design. **Therefore a meta-harness candidate is not a chamber candidate.**
+
+⚠️ **Retrospective observation, not a finding.** Re-reading the run ledger along this axis: of the
+KILLed candidates, those aimed at chamber-internal metering, hub-internal orchestration, cluster
+wizardry and org relay are all **meta**-shaped, while the single EMIT (`forge-wiki`) is **field**-shaped
+— a tool that does one thing. If that holds, several KILLs were not the chamber being strict but
+**the wrong kind of candidate entering it**. The classification was made *after the fact* by the same
+session that proposed the axis, over n=9; it is a hypothesis to pre-register and predict against, not
+a result. The way to test it is to fix the classification first and call the next run before its
+verdict — the ordering witness now makes that checkable.
+
+**Proposed consequence (not yet applied)**: give the chamber's entry reason a field/meta axis and
+retire meta candidates as **`NOT-APPLICABLE`** rather than `KILL`. Today both land in the same bucket,
+so when the ledger says *"the chamber screens"* it is summing two different events.
+
+#### 3-a-2. Density is measured by comparison, never by an absolute scale
+
+Density — how filled-in a circuit is — has no honest unit. Counting clauses, counting cases, or
+counting how often the circuit answers all measure different things, and picking one invites the
+failure where a metric scores presence instead of the relation it was meant to capture. The way
+around it is to **not define the unit**: clone versions (seed only / seed + some usage / seed + more)
+and run them against one task set **in parallel**, then read the *shape of the curve* rather than any
+version's score. **Where the curve flattens is the interesting point** — that plateau is the practical
+floor for "enough of a soul."
+
+Two conditions carry over from the decorrelation work: the clones must be **independent** (run
+sequentially in one context and the earlier one bleeds into the later), and the **scorer must be a
+different party than the forger**.
+
+🟥 **Named limit — synthesized history yields synthesized density.** Density is defined as accruing
+from *real* use; injecting simulated usage into a clone measures something else, and it can fill in a
+different direction than real use would. So the question this experiment can answer is narrowed on
+purpose: **not** "does the soul grow?" but **"if it grows, where does it plateau?"** That is enough
+for a minimum-condition verdict and does not overclaim.
+
+Internal version comparison gives a **growth curve**; comparison against an outside harness gives an
+**absolute position**. Both are relative, but their reference points differ — and they can share one
+task set, which lets a standing external dominance pre-registration ride along instead of waiting.
+
 ### 3-b. The nursery also verifies what it births
 
 The incubator's arc does not end at emission: FH **reviews, accelerates, and verifies** the harnesses
