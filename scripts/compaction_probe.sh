@@ -12,16 +12,18 @@
 #   digest  UserPromptSubmit — 봉인분을 1회 되주입하고 소비 표시
 #   score   advisory    — 🟥 **UNCALIBRATED**. 아래 §계기 타당성 참조
 #
-# ── §계기 타당성 — `score` 가 왜 UNCALIBRATED 인가 (숨기지 않는다) ──
-# 채점하려면 *압축 후 transcript 파일이 무엇을 담는지* 를 알아야 한다. 두 가능성이 있다:
+# ── §계기 타당성 — `score` 는 UNCALIBRATED 가 아니라 **반증됐다** (2026-08-08 실측) ──
+# 채점하려면 *압축 후 transcript 파일이 무엇을 담는지* 를 알아야 했고, 두 가능성이 있었다:
 #   ⓐ 파일이 히스토리를 그대로 보존하고 모델 컨텍스트만 압축된다
-#      → grep 은 전건 생존을 보고 **손실 0 을 영원히 보고**한다. fail-open 계기다
 #   ⓑ 파일에 압축 요약 레코드가 남고 그 이후가 실컨텍스트다
-#      → 경계 레코드를 찾아야 하는데, 그 레코드의 타입명을 모른다
-# 로컬 전사본 14개에서 압축 구조 필드(`summary`/`isCompactSummary` 류)는 **0건**이다.
-# 이건 "압축이 안 일어난다"가 아니라 **검증된 사례가 없다**는 뜻이다(`not found ≠ 0`).
-# 그래서 `score` 는 **advisory 이고 아무것도 이 판정에 의존하지 않는다.** 실압축이 한 번
-# 관측되면 그때 ⓐ/ⓑ 를 판별하고 캘리브레이션한다. 그전까지 이 레그는 근거가 아니다.
+#
+# **첫 실압축 관측(2026-08-08 15:51:28, 이 훅이 스스로 남긴 seal 이 증거)에서 ⓐ로 확정됐다**:
+# 압축 직후 전사본은 user 109 · assistant 238 레코드를 전부 보존하고 있었고 압축 구조 필드는
+# 0건이었다. 즉 **전사본을 grep 하는 채점기는 손실 0 을 영원히 보고한다 — fail-open 계기다.**
+# 설계 정본의 "압축 후 프로브 채점"은 이 경로로는 성립하지 않는다. 캘리브레이션이 덜 된 게
+# 아니라 **가정이 틀렸다.** 채점을 하려면 전사본이 아니라 *모델이 여전히 답할 수 있는가*를
+# 물어야 하고, 그건 훅이 못 한다(격리 채점자 필요 — 미건축).
+# `score` 는 그 사실을 인쇄하는 자리로만 남긴다. 아무 판정도 여기에 의존하지 않는다.
 #
 # 추가로, 설령 ⓑ 라도 grep 이 재는 것은 **축자 생존**이지 의미 보존이 아니다. 요약되어 살아남은
 # 항목은 미생존으로 잡힌다 — **과보고 방향**이라 안전하지만(fail-open 아님), 그 숫자를
@@ -113,6 +115,7 @@ PY
     done
     echo
     echo "---"
+    echo "payload: ${PAYLOAD_STATUS:-unknown}   (parsed=훅 JSON · fallback-cwd=cwd로 자력 탐색 · unresolved=전사본 못 찾음)"
     echo "생성: scripts/compaction_probe.sh seal"
   } > "$out" 2>/dev/null
 
@@ -155,12 +158,12 @@ do_digest() {
 do_score() {
   local transcript="$1" outdir="$2"
   local latest; latest="$(ls -t "$outdir"/seal_*.md 2>/dev/null | head -1)"
-  echo "🟥 UNCALIBRATED — 이 레그는 근거가 아니다. 아무 판정도 여기에 의존하지 않는다."
-  echo "   이유: 압축 후 transcript 가 히스토리를 보존하는지(ⓐ) 요약 경계를 남기는지(ⓑ) 미확인."
-  echo "   로컬 전사본 14개에서 압축 구조 필드 0건 — 미측정이지 0 이 아니다."
+  echo "🟥 REFUTED — 전사본 grep 채점은 성립하지 않는다. 아무 판정도 여기에 의존하지 않는다."
+  echo "   실측(2026-08-08 첫 실압축): 압축 후에도 전사본이 전 레코드를 보존한다(ⓐ)."
+  echo "   → grep 은 손실 0 을 영원히 보고한다 = fail-open 계기. 캘리브레이션 부족이 아니라 가정 오류."
+  echo "   채점하려면 '모델이 여전히 답하는가'를 물어야 하고 훅은 못 한다 — 격리 채점자 필요(미건축)."
   [ -n "$latest" ] && echo "   최근 봉인: $latest" || echo "   봉인 없음."
   [ -f "$transcript" ] && echo "   대상 전사본: $transcript ($(wc -c < "$transcript" | tr -d ' ') bytes)"
-  echo "   실압축 1회 관측 시 할 일: ⓐ/ⓑ 판별 → known-pair 캘리브레이션 → 그때 advisory 해제."
   return 0
 }
 
@@ -224,8 +227,21 @@ self_test() {
   do_seal "$T/NOPE.jsonl" "$T/out2" "sess2" >/dev/null 2>&1; rc=$?
   t "전사본 부재에도 exit 0 (훅 안전)" 0 "$rc"
 
+  # ── 회귀 레인: 빈/불량 페이로드 (2026-08-08 첫 실발화 실측) ──
+  # 실발화가 session=unknown · transcript 빈 값으로 돌아 **빈 봉인**을 남겼다.
+  # 훅 페이로드 모양은 런타임 버전에 딸린 외부 의존이라, 거기에 기능 전체를 걸면 안 된다.
+  local out_empty
+  out_empty="$(printf '%s' '{}' | bash "$0" seal --dir "$T/pl" 2>&1)"
+  case "$out_empty" in *sealed:*) rc=YES ;; *) rc=NO ;; esac
+  t "빈 페이로드에도 봉인은 생성된다" YES "$rc"
+  [ -f "$T/pl/.last_payload" ] && rc=YES || rc=NO
+  t "원본 페이로드가 기록된다 (원인 추적 가능)" YES "$rc"
+  local sf2; sf2="$(ls -t "$T/pl"/seal_*.md 2>/dev/null | head -1)"
+  grep -qE 'payload: (fallback-cwd|unresolved)' "$sf2" 2>/dev/null && rc=YES || rc=NO
+  t "payload 상태가 typed 로 남는다 (무음 아님)" YES "$rc"
+
   echo
-  [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍) — seal/digest 레그 한정. score 는 UNCALIBRATED." \
+  [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍) — seal/digest 레그 한정. score 는 실측으로 **반증**됐다(§계기 타당성)." \
                  || echo "❌ 캘리브레이션 실패 ($n 쌍)"
   return "$f"
 }
@@ -248,8 +264,12 @@ while [ "$#" -gt 0 ]; do
 done
 
 # 훅 경로: stdin 의 JSON 에서 읽는다. 인자로 준 값이 있으면 그쪽이 이긴다(테스트용).
+PAYLOAD_STATUS="args"
 if [ -z "$TRANSCRIPT" ] && [ ! -t 0 ]; then
   HOOK_JSON="$(cat 2>/dev/null)"
+  # 원본 페이로드를 항상 남긴다. 2026-08-08 첫 실발화가 session=unknown · transcript 빈 값으로
+  # 돌았는데, 원본을 안 남겨서 **왜 그런지 알 방법이 없었다.** 미측정을 빈 값으로 렌더하지 않는다.
+  mkdir -p "$OUTDIR" 2>/dev/null && printf '%s' "$HOOK_JSON" > "$OUTDIR/.last_payload" 2>/dev/null
   if [ -n "$HOOK_JSON" ]; then
     eval "$(printf '%s' "$HOOK_JSON" | python3 -c '
 import json,sys,shlex
@@ -260,6 +280,21 @@ sid=(d.get("session_id") or "unknown")[:12]
 print(f"TRANSCRIPT={shlex.quote(tp)}; SESSION={shlex.quote(sid)}")
 ' 2>/dev/null)"
   fi
+fi
+
+# 페이로드에서 전사본을 못 얻었으면 **cwd 로 스스로 찾는다.** 빈 봉인은 봉인이 아니다 —
+# 훅 페이로드 모양은 런타임 버전에 딸린 외부 의존이고, 거기에 기능 전체를 걸면 안 된다.
+if [ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]; then
+  _slug="$(printf '%s' "$REPO_ROOT" | sed 's|/|-|g')"
+  _cand="$(ls -t "$HOME/.claude/projects/$_slug"/*.jsonl 2>/dev/null | head -1)"
+  if [ -n "$_cand" ] && [ -f "$_cand" ]; then
+    TRANSCRIPT="$_cand"; PAYLOAD_STATUS="fallback-cwd"
+    [ "$SESSION" = "unknown" ] && SESSION="$(basename "$_cand" .jsonl | cut -c1-12)"
+  else
+    PAYLOAD_STATUS="unresolved"
+  fi
+elif [ "$PAYLOAD_STATUS" = "args" ]; then
+  PAYLOAD_STATUS="parsed"
 fi
 
 case "$MODE" in
