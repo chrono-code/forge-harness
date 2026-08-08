@@ -1,0 +1,124 @@
+# reviewer_capability_corpus.tsv — SHARED known-pair corpus for "can this model be an
+
+# adversarial reviewer?". Language-neutral DATA, deliberately not code.
+#
+# WHY DATA AND NOT A SHARED LIBRARY. The same judgment lives in at least three places, in
+# three languages, across a public/private repo boundary: a public gate hook (bash), a
+# field probe (shell), and a review backend (python). They cannot import each other —
+# different repos, and the private side's vocabulary contains identifiers that must not
+# reach a public repo. So the shareable artifact is the CORPUS, not the classifier: each
+# side implements in its own language and proves agreement by running these rows.
+#
+# Measured drift 2026-08-08, before this file existed: 19 probe ids, **10 disagreements**
+# between two of the implementations — and asymmetrically, 9 of them were the private side
+# reading INCAPABLE models as CAPABLE. A permissive drift on the side that faces a real
+# model catalog is the dangerous direction: it inflates panel size and family-diversity
+# counts simultaneously, so the defense reports green while the panel cannot review.
+#
+# RESIDENCY: this file is PUBLIC. Generic capability classes and publicly-documented model
+# families only. A corp/internal model id NEVER goes here — carry those in a local overlay
+# corpus alongside (gitignored), same two-layer shape as the public-surface pattern file.
+#
+# NAMESPACES — declare what you own, skip what you do not (OPA-bundle `roots` shape).
+# Two different things get classified under the same question and they are NOT interchangeable:
+#   ns:cli       sidecar / CLI names a panel is composed of  — `codex`, `gemini`, `agy`
+#   ns:model-id  concrete served model identifiers            — `voyage-3`, `glm-ocr`
+# A consumer that classifies model ids has no opinion on `codex`; a consumer that composes
+# panels has no opinion on `bge-m3`. Mixing them silently is a defect: measured 2026-08-08,
+# the first draft of this corpus put both in one list and a model-id classifier failed the
+# `codex` row — reported as implementation drift when it was corpus scope error. An adapter
+# MUST declare its namespaces and SKIP rows outside them EXPLICITLY (a skipped row is
+# reported, never silently counted as passing — unmeasured is not clean).
+#
+# FORMAT (tab-separated):  id <TAB> expected <TAB> ns:<namespace>/<class> <TAB> why
+#   expected ∈ CAPABLE | INCAPABLE | UNDECIDABLE
+#     CAPABLE      a generative model of a family known to return prose findings
+#     INCAPABLE    emits vectors / scores / labels / transcripts — cannot return a finding
+#     UNDECIDABLE  unrecognised. NOT "capable by default" — default-deny, because a
+#                  denylist cannot know that `voyage-3` is an embedding model. An
+#                  implementation that answers CAPABLE here is failing open.
+#
+#   THE CORPUS STATES GROUND TRUTH, NOT WHAT ANY IMPLEMENTATION CAN SEE. `voyage-3` IS an
+#   embedding model, so the row says INCAPABLE — even though a pattern classifier cannot
+#   tell from the string. Grading is therefore on OUTCOME SAFETY, not label identity:
+#
+#     hard FAIL   want ∈ {INCAPABLE, UNDECIDABLE} and got = CAPABLE     (permissive — ships a
+#                 broken panel; the only direction that can actually hurt)
+#     hard FAIL   want = CAPABLE and got ≠ CAPABLE                      (over-block — an
+#                 always-red gate teaches --no-verify)
+#     DEVIATION   INCAPABLE ↔ UNDECIDABLE in either direction           (reported, not failed:
+#                 both BLOCK under default-deny, so the outcome is identical)
+#
+#   This rule exists because the first draft graded on label identity and was silently fitted
+#   to one implementation's regex — `armorm` was written UNDECIDABLE and `voyage-3` INCAPABLE
+#   purely because that regex caught one and not the other. Two ids with the same property,
+#   two different standards, and the corpus was grading itself. Worse, it made "delete the
+#   row" the rational move for whoever maintained the weaker classifier.
+#
+# ORDERING INVARIANT the rows enforce: ineligibility must be tested BEFORE eligibility.
+# Rows marked `overlap` match a valid family AND an incapable class simultaneously; an
+# eligibility-first implementation admits them silently. They are the anchor for the ORDER,
+# not for the list.
+
+# ── CONTRACT PIN ───────────────────────────────────────────────────────────────
+#CORPUS-VERSION	2
+#CORPUS-SHA256	e0d8d83b9ae042e4
+#  Hash covers the DATA rows only (comments/format may be reworded without a version bump).
+#  Recompute EXACTLY this way — two ways of computing it is itself a drift source, and the
+#  first draft of this pin failed on a trailing-newline difference between two implementations:
+#      grep -E '^[^#[:space:]]' reviewer_capability_corpus.tsv | shasum -a 256 | cut -c1-16
+#  Every consumer recomputes it and compares. A mismatch is HARNESS_ERROR — not PASS, not FAIL:
+#  it means the consumer is reading a DIFFERENT corpus than the one this contract names, and a
+#  drifted local copy is the failure mode that makes every downstream instrument report healthy
+#  while nothing is actually shared. (Independent precedent: OPA bundle `roots`, test262/CNCF
+#  conformance-suite-as-contract; failure taxonomy: local-first resolution · silent skipping ·
+#  drifted duplicates.)
+
+# ── capable: generative families ────────────────────────────────────────────────
+codex	CAPABLE	ns:cli/generative	GPT-family agent CLI
+gpt-5.5	CAPABLE	ns:model-id/generative	GPT family
+gemini	CAPABLE	ns:cli/generative	Gemini family
+qwen3-32b	CAPABLE	ns:model-id/generative	Qwen family, generative variant
+glm-4.6	CAPABLE	ns:model-id/generative	GLM family, generative variant
+deepseek-v3	CAPABLE	ns:model-id/generative	DeepSeek family
+mistral-large	CAPABLE	ns:model-id/generative	Mistral family
+llama-4-70b	CAPABLE	ns:model-id/generative	Llama family
+
+# ── incapable: named by class token ─────────────────────────────────────────────
+text-embedding-3-large	INCAPABLE	ns:model-id/embedding	emits vectors
+some-reranker-v1	INCAPABLE	ns:model-id/reranker	emits scores
+generic-ocr-2b	INCAPABLE	ns:model-id/ocr	emits transcribed text, not judgment
+acme-safeguard-8b	INCAPABLE	ns:model-id/safeguard	classifier — emits labels
+text-moderation-latest	INCAPABLE	ns:model-id/moderation	classifier — emits labels
+whisper-large-v3	INCAPABLE	ns:model-id/speech	speech-to-text
+
+# ── incapable WITHOUT a class token in the name (the denylist's blind spot) ─────
+# These are why a denylist alone is insufficient and default-deny is required: nothing in
+# the string says "embedding". Every one is a real, publicly-documented model.
+voyage-3	INCAPABLE	ns:model-id/embedding	embedding model; name carries no class token
+bge-m3	INCAPABLE	ns:model-id/embedding	embedding model; name carries no class token
+gte-large	INCAPABLE	ns:model-id/embedding	embedding model; name carries no class token
+all-minilm-l6-v2	INCAPABLE	ns:model-id/embedding	embedding model; name carries no class token
+armorm	INCAPABLE	ns:model-id/reward	reward model — emits a scalar; opaque name, no class token
+starling-rm	INCAPABLE	ns:model-id/reward	reward model — emits a scalar
+cohere-rank-v3	INCAPABLE	ns:model-id/reranker	reranker named `rank`, not `rerank`
+
+# ── overlap: matches a VALID family AND an incapable class (ordering anchor) ────
+glm-ocr	INCAPABLE	ns:model-id/overlap	matches `glm` (capable) and `ocr` (incapable) — order decides
+qwen3-embedding-8b	INCAPABLE	ns:model-id/overlap	matches `qwen` (capable) and `embed` (incapable)
+snowflake-arctic-embed-l-v2.0	INCAPABLE	ns:model-id/overlap	family prefix unrecognised; `embed` decides
+
+# ── undecidable: unrecognised → default-deny, never assumed capable ─────────────
+some-new-model-x	UNDECIDABLE	ns:model-id/unknown	no known family; answering CAPABLE here is fail-open
+internal-model-7	UNDECIDABLE	ns:model-id/unknown	no known family
+codeguardian	UNDECIDABLE	ns:cli/unknown	NOT auto-incapable — a bare `guard` substring rule blocks this legitimately-named review tool; unrecognised, so default-deny applies, but as UNDECIDABLE not INCAPABLE
+
+# ── same-family exclusion (decorrelation, not capability) ──────────────────────
+# Capable models that must still be REJECTED as panel members when the governor is of that
+# family. Capability and decorrelation are different axes; an implementation that only
+# checks capability passes a same-family panel. Marked separately so an adapter that does
+# not own the decorrelation axis can skip this block explicitly rather than silently.
+#SAMEFAMILY	claude
+#SAMEFAMILY	opus
+#SAMEFAMILY	sonnet
+#SAMEFAMILY	haiku
