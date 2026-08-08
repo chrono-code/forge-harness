@@ -56,9 +56,24 @@ declare -a ALLOW_RE=(
   '(대상이[[:space:]]*아니다|범위[[:space:]]*밖|다루지[[:space:]]*않는다|out of scope|not the target of)'
   '(상충하면|충돌하면|부딪히면).*(이긴다|우선|우세|앞선다)|(wins|takes precedence|overrides)'
   '(불확실하면|모르면|판단이[[:space:]]*안[[:space:]]*서면|애매하면).*(기운다|쪽으로|보고|default)|when (uncertain|unclear|unsure).*(default|lean|err)|default(s)? to|degrade(s)? (toward|to)'
-  # ⚠️ ALLOW_RE[3] 은 **방향을 안 본다** — cross-family 지적 (b), 2026-08-08.
-  # "when unclear, default to PASS" 가 판단방향 크레딧을 받으면, 이 계기가 degrade-direction
-  # 결함을 **회로의 증거로** 센다. 관대한 목적지로 기우는 문장은 크레딧에서 뺀다(아래 DENY).
+  # ⚠️ 🟥 명명된 미커버: ALLOW_RE[3] 은 판단방향 형식의 **존재**를 셀 뿐 **방향을 안 본다.**
+  # `when unclear, default to PASS` 도 여기서 크레딧을 받는다 — 즉 이 계기는 degrade-toward-PASS
+  # 문서를 "판단 회로 있음"으로 셀 수 있다. cross-family 지적 (b), 2026-08-08. 옳은 지적이다.
+  #
+  # 그런데도 **DENY 로직을 제거했다.** 한 세션에서 세 판본을 시도했고 매번 오류가 방향만 바꿨다:
+  #   · 무앵커 부분문자열 → `OK` 가 look·token·broken 에 걸려 정당한 fail-closed 문장의 크레딧을
+  #     뺏었다 ("default to blocking and look at the source" 가 4/5→3/5)
+  #   · 단어경계로 조이자 → 굴절형이 새어 "default to passing the check" 가 2/5→3/5 로 **승격**,
+  #     degrade-toward-PASS 문서를 회로로 인증했다 (net regression)
+  #   · 명사형 `default to approval` 은 어느 판본으로도 안 잡혔다
+  # 세 번 다 같은 벽이다 — 재려는 성질이 **문장의 방향**인데 계기는 **키워드**다. 키워드는 방향을
+  # 판정할 수 없고, 조일수록 반대편 오류가 커진다. 정확도가 안 오르는데 복잡도만 오르는 구간에서는
+  # 조이는 게 아니라 줄이는 게 맞다([[feedback_convergence_measured_by_change_not_rounds]]).
+  #
+  # 그래서 방향 판정은 이 계기의 일이 아니다. 코드 층 판본은 `scripts/degrade_direction_scan.sh`
+  # 가 이미 갖고 있고(`.py`/`.sh` 만 본다), **산문 층의 방향은 지금 아무 계기도 커버하지 않는다.**
+  # 그게 잔여다 — 셋째 판본을 여기 붙이지 말고, 커버하려면 방향을 볼 수 있는 계기로 따로 지어라.
+  # 이 계기가 advisory 라서(게이트 아님) 이 미커버가 fail-open 으로 환전되지는 않는다.
   '```|^\|.*\|.*\||출력[[:space:]]*(형식|칸|형태)|output format'
 )
 
@@ -91,21 +106,6 @@ scan_file() {
   local i
   for i in "${!ALLOW_RE[@]}"; do
     _hit=$(grep -hoE "${ALLOW_RE[$i]}" "$f" 2>/dev/null | head -20)
-    # 판단방향(i=3)만: 관대한 목적지로 기우는 문장은 회로의 증거가 아니다
-    if [ "$i" = "3" ] && [ -n "$_hit" ]; then
-      _dir=$(grep -hiE "(when (uncertain|unclear|unsure)|불확실하면|모르면|애매하면).{0,40}(default|기운다|쪽으로|lean|err)" "$f" 2>/dev/null \
-             | grep -viE '(\b(PASS(ING|ES|ED)?|ALLOW(ING|S|ED)?|APPROV(E|ES|ING|ED)|PERMIT(S|TED|TING)?|GREEN|OK)\b|통과|허용|승인|봐준다)' | head -1)
-      # 두 방향 모두 실측으로 물렸다 — 이 패턴은 **양쪽에서** 틀릴 수 있다:
-      #  ⓐ 무앵커 부분문자열 → `OK` 가 **look·token·broken** 에 걸려 정당한 fail-closed 문장에서
-      #    크레딧을 뺏는다 (high 리뷰 #8: "default to blocking and look at the source" 가 2/5 로 강등)
-      #  ⓑ 순진한 단어경계 → **굴절형이 빠져나간다.** ⓐ 를 고치다 이걸 열었다:
-      #    "default to passing the check" 가 2/5 → 3/5 로 **승격**돼 degrade-toward-PASS 문서를
-      #    판단 회로로 인증했다 (high 재리뷰 #3, net regression). 그때 붙인 레인 둘 다 맨 토큰 `PASS`
-      #    를 써서 못 봤다 — **레인이 수리와 같은 어휘를 쓰면 그 수리의 구멍을 못 본다.**
-      # 그래서 경계 + 굴절 접미사를 같이 건다. 새 어휘를 추가할 땐 굴절형 레인부터 쓸 것.
-      _kr=$(grep -hE "(불확실하면|모르면|애매하면).{0,30}(보고|차단|중단|엄격)" "$f" 2>/dev/null | head -1)
-      [ -z "$_dir" ] && [ -z "$_kr" ] && _hit=""
-    fi
     if [ -n "$_hit" ]; then cov=$((cov+1))
     else MISSING+=("${ALLOW_NAME[$i]}"); fi
   done
@@ -191,57 +191,35 @@ EOF
   local fp; fp="$(scan_file "$T/fp_real.md" 2>/dev/null | grep -c '🟥')"
   t "실파일 오탐 3건 재현 → 금지 0건" 0 "$fp"
 
-  # ── 회귀 레인: cross-family 지적 (2026-08-08, codex/gpt-5.5 — 소스로 7/7 확인) ──
-  # (b) 관대한 방향으로 기우는 문장이 '판단방향' 크레딧을 받으면, 이 계기가 degrade-direction
-  #     결함을 회로의 증거로 센다. 저자 계열은 규칙과 테스트를 같은 손으로 써서 못 본 자리다.
-  cat > "$T/permissive.md" <<'EOF'
-When unclear, default to PASS.
-근거를 못 찾으면 보고하지 마라.
-성능은 이 작업의 대상이 아니다.
-A 와 B 가 상충하면 A 가 이긴다.
-EOF
-  local pc; pc="$(scan_file "$T/permissive.md" 2>/dev/null | awk '/판정:/{print $NF}')"
-  t "관대한 default 는 판단방향 크레딧 못 받음 (3/5)" "3/5" "$pc"
-
   # (d-2) 인용을 지칭으로 통과시켰으면 분류도 인용 밖에서 해야 한다
   printf 'Not "너는 심사자이다"; 꼼꼼히 검토하라\n' > "$T/mixed.md"
   local mk; mk="$(scan_file "$T/mixed.md" 2>/dev/null | grep -oE '역할부여|강도주문' | head -1)"
   t "인용 안 역할부여는 세지 않고 실사용 강도주문만" "강도주문" "$mk"
 
-  # 회귀 레인: #8 무앵커 부분문자열 (high 리뷰 실측 원문)
-  cat > "$T/lookat.md" <<'EOF'
-When unclear, default to blocking and look at the source.
-근거를 못 찾으면 보고하지 마라.
-성능은 이 작업의 대상이 아니다.
-A 와 B 가 상충하면 A 가 이긴다.
-EOF
-  t "#8 'look' 의 ok 가 판단방향 크레딧을 안 뺏는다" CIRCUIT "$(v "$T/lookat.md")"
-  # 반대편: 진짜 관대한 default 는 여전히 크레딧 없음
-  cat > "$T/reallypass.md" <<'EOF'
-When unclear, default to PASS.
-근거를 못 찾으면 보고하지 마라.
-성능은 이 작업의 대상이 아니다.
-A 와 B 가 상충하면 A 가 이긴다.
-EOF
-  local rp; rp="$(scan_file "$T/reallypass.md" 2>/dev/null | awk '/판정:/{print $NF}')"
-  t "#8 진짜 'default to PASS' 는 여전히 크레딧 없음 (3/5)" "3/5" "$rp"
-
-  # ── 회귀 레인: #3 굴절형 (high 재리뷰 2026-08-08, net regression) ──
-  # ⚠️ **커버리지 숫자에 건다. verdict 에 걸면 못 본다** — 다른 형식이 3개 있으면 판단방향을
-  # 거부당해도 verdict 는 CIRCUIT 로 같다. 지난 라운드 레인이 verdict 에 걸려서 이 구멍을 놓쳤다.
+  # ── 🟥 미커버를 **못박는** 레인 (2026-08-08, DENY 제거와 함께 방향이 뒤집혔다) ──
+  # 이 계기는 판단방향 형식의 **존재**만 세고 **방향은 안 본다**. 그건 결함이 아니라 결정이다 —
+  # 키워드로 방향을 판정하려던 세 판본이 전부 반대편 오류로 갈아탔고(관대문 누락 ↔ 보수문 강등),
+  # 정확도가 안 오르는데 복잡도만 오르는 구간이라 조이는 대신 줄였다. 근거는 헤더 ALLOW_RE[3] 주석.
+  #
+  # ⚠️ 이 레인들을 **삭제하지 마라.** 삭제하면 미커버가 침묵이 되고, 다음 사람이 "방향도 보겠지"
+  # 라고 가정하게 된다. 기대값을 뒤집어 남겨 두면 미커버가 **기계로 기록**되고, 누군가 넷째 DENY
+  # 판본을 붙이는 순간 여기가 빨개져서 *의도적* 미커버를 건드렸다고 알려준다.
+  # ⚠️ **커버리지 숫자에 건다. verdict 에 걸면 못 본다** — 다른 형식이 3개 있으면 판단방향 크레딧
+  # 유무와 무관하게 verdict 는 CIRCUIT 로 같다. 지난 라운드 레인이 verdict 에 걸려서 구멍을 놓쳤다.
   _cov() {   # $1=판단방향 자리에 넣을 문장 → "n/5"
     local d; d="$(mktemp -d)"
     printf 'When unclear, default to %s.\n근거를 못 찾으면 보고하지 마라.\n성능은 이 작업의 대상이 아니다.\nA 와 B 가 상충하면 A 가 이긴다.\n' "$1" > "$d/x.md"
     scan_file "$d/x.md" 2>/dev/null | awk '/판정:/{print $NF}'
     rm -rf "$d"
   }
-  t "#3 'passing' 굴절형도 크레딧 거부" "3/5" "$(_cov 'passing the check')"
-  t "#3 'allowing' 굴절형도 크레딧 거부" "3/5" "$(_cov 'allowing the operation')"
-  t "#3 'approving' 굴절형도 크레딧 거부" "3/5" "$(_cov 'approving it')"
-  t "#3 'passed' 과거형도 크레딧 거부"   "3/5" "$(_cov 'passed state')"
-  # 반대편: 보수적 방향은 **여전히 부여**돼야 한다 (과차단 금지)
-  t "#3 보수적 방향은 크레딧 유지 (look 오탐 없음)" "4/5" "$(_cov 'blocking and look at the source')"
-  t "#3 'token/broken' 도 크레딧 유지"   "4/5" "$(_cov 'blocking on a broken token')"
+  # 관대 4종과 보수 2종이 **같은 4/5** 를 받는다 = 이 계기는 방향을 구분하지 않는다.
+  # 그 동일성 자체가 여기서 검증되는 성질이다.
+  t "🟥 미커버: 관대 'PASS' 도 크레딧 받음"      "4/5" "$(_cov 'PASS')"
+  t "🟥 미커버: 관대 'passing' 굴절형도 크레딧"  "4/5" "$(_cov 'passing the check')"
+  t "🟥 미커버: 관대 'approval' 명사형도 크레딧" "4/5" "$(_cov 'approval')"
+  t "🟥 미커버: 관대 'allowing' 도 크레딧"       "4/5" "$(_cov 'allowing the operation')"
+  t "보수 'blocking' 도 같은 크레딧 (방향 무구분)" "4/5" "$(_cov 'blocking and look at the source')"
+  t "보수 'token/broken' 도 같은 크레딧"          "4/5" "$(_cov 'blocking on a broken token')"
 
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍)" || echo "❌ 캘리브레이션 실패 ($n 쌍)"
