@@ -164,6 +164,55 @@ unchanged and keeps its own 2026-07-14 evidence).
 | ① | 멀티하네스 클러스터 | context-continuity | 🟡 PARTIAL | routing runs for real — 17 nodes mapped, sidecar-orchestrator, Skill Bus routing qasp/dashboard/stockbattle (so NOT 🔴 ideal-only). Missing: continuous 2-node relay channel + external-harness recommend (cluster-wizard parked) → 🟡 not 🟢 |
 | ② | 프로젝트 인큐베이터 | context-continuity + judgment-circuit | 🟡 PARTIAL | incubation is running — **stockbattle is being incubated now** (S1 built, mid-flight) + qasp/pmh spin-out precedent + scaffold-emit shipped (doctrine: "emit shipped today as scaffold+approval; the chamber flow is the named target"). **Corrected 2026-08-08** (the old text read "6 runs, 6 KILL … 0/6", which was stale on both counts, and the ledger itself was missing a run): hand-counted from `tracks/_chamber/INDEX.md` — **9 full runs (#2–#10), 8 KILL, 1 EMIT** (#1 is a trigger probe, not a full run). Runs #5–#6 *measured* the emit-worthiness criterion (net-new ∧ artifact-shaped ∧ real-data-precision-adequate ∧ hub-state-independent); run #6 confirmed the graduation-order principle — hub-internal proof before standalone extraction, never the reverse. **The 🟡 is now held for a different reason than before.** The old reason ("no closed emit-via-incubation yet") is false: run #9 `forge-wiki` emitted and shipped publicly under operator approval with the Pre-Publish gate passed. What is *not* proven is that the **formal chamber flow** produced it — that run's workspace holds only an `EMISSION_VERDICT.md`, with no `INTENT.md`, `BUDGET.md` or `SIM_NOTES.md`, so the intent/budget/blind-persona gates have no artifact and the verdict was written after the fact. The first run to complete the formal flow end-to-end is #10 (2026-08-08, 3 blind isolated personas) and it KILLed. So: **the identity has fired once, the mechanism has not yet been shown to be what fired it**, and the dominance result every 🟢 owes is still outstanding → 🟡 |
 
+### ② promotion criteria — and what the criteria themselves turned out not to be able to check
+
+②'s 🟡 has been re-argued on different grounds each round, every round re-deriving the bar from scratch.
+This section exists so the next round starts from a stated condition. **A first draft of it was refuted by
+cross-family review before it was committed**, and the refutation is more useful than the draft was, so
+both are recorded.
+
+**What the draft got wrong.** It scored run #9 `forge-wiki` as **P1 FAIL** on the grounds that its
+workspace holds only `EMISSION_VERDICT.md` — no `INTENT.md`, `BUDGET.md`, `SIM_NOTES.md`. But that
+verdict file *contains* the substance those files would hold: the net-new determination (two survey
+generations, 15+ systems / 6 standards cross-checked), the artifact-shaped determination, and the
+real-code precision leg with a raw-data anchor (`forge-wiki/tests/sim_data_2026-07-18/`, N=50 concurrent
+writers, A/B/C design contrast, reps=3, contaminated reps voided and re-run). Absent **files** were read
+as an absent **gate** — `[[feedback_not_found_is_not_zero_family]]`, committed by the very section citing
+the rule it broke. The honest score for #9 is **UNKNOWN**, not FAIL.
+
+**What actually holds ② at 🟡, once the formalism is stripped out.** Not the missing filenames — the
+missing **ordering witness**. The claim that would promote ② is *the mechanism screened this, and then it
+emitted*; what #9 can show is *it emitted, and a verdict describes screening*. Nothing distinguishes a
+gate that ran before the outcome from a record written after it.
+
+**And that witness cannot currently be produced.** `tracks/**` is gitignored (`.gitignore:40` — verified
+per file with `git check-ignore -v`), so no chamber artifact is under version control, and mtimes are the
+only ordering evidence there is. Mtimes are trivially forgeable. So the draft's own check — "written
+*before* the verdict, compare mtimes" — **cannot be satisfied by any run, honest or not**. It was an
+unreachable condition, which is the shape that trains people to delete the thing being counted
+(`[[feedback_unreachable_done_when_trains_evasion]]`).
+
+**So the promotion condition is one thing, and it is a build, not a check:**
+
+| | Condition | Check class | Status |
+|---|---|---|---|
+| **P1** | An EMIT run leaves an ordering record that does not depend on trusting the author — the intent/budget/sim record committed, hashed, or otherwise witnessed **outside** the gitignored workspace, before the verdict | mandatory-pass | **not buildable today** — no such channel exists for `tracks/**`. This is the work item, not a test to re-run |
+
+**P2 (dominance) is deliberately NOT listed**, and the reason is a finding about the gate rather than
+about ②. The draft required it, citing §"Gate consequence". Checked against the table: ③ does carry a
+dominance result (moat measured 3–4 family blind, HITL 8/8 ABSENT), but **⑤ is 🟢 on `intent-routing
+probe 94%` — a self-measurement, not a head-to-head**. Requiring dominance of ② while ⑤ holds 🟢 without
+it is a bar invented for one row. The inconsistency is real and it is **the gate's, not ②'s**: either
+§Gate-consequence binds every 🟢 and ⑤ is over-scored, or it is advisory and ② must not be held to it.
+Resolving that is a separate change to the status definitions — flagged here, not silently settled by
+scoring ② against a rule the table does not apply uniformly.
+
+**Recurrence count, stated precisely because the draft muddled it.** The 🟡 has been re-argued **three**
+times; "promotion attempted without stated criteria" has been *recognized as a problem* **once** (today).
+Those count different things, and the draft cited N=1 while asserting three re-arguments in the same
+paragraph. Neither number licenses a checker right now — P1 is not implementable at all until the
+ordering channel exists, so there is nothing to mechanize yet.
+
 **Cross-cutting measured (intent-based autonomous completion)**: blind floor-tier Sonnet trigger-accuracy
 probe (n=10, 2026-07-14): **should-fire 7.5/8 (94%), false-fire 0/2**. One weak trigger (simulate-first /
 incubator entry absorbed into deep-clarify) — the identity-② weakness surfaces in routing too.
