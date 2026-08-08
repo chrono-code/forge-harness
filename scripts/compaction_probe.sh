@@ -142,7 +142,9 @@ PY
   } > "$out" 2>/dev/null
 
   # 되주입 대기 표시 — digest 가 소비한다
-  echo "$out" > "$outdir/.pending" 2>/dev/null
+  # .pending 에 **세션 id 와 시각**을 같이 쓴다. 초판은 경로만 써서, 세션 A 가 봉인하고 그냥 나가면
+  # 며칠 뒤 세션 B 의 첫 프롬프트가 A 의 발화·브랜치·더티파일을 **"직전 압축"이라고 주장하며** 주입했다.
+  printf '%s\t%s\t%s\n' "$out" "$session" "$(date +%s)" > "$outdir/.pending" 2>/dev/null
   echo "sealed: $out"
   return 0
 }
@@ -151,10 +153,12 @@ PY
 # digest — UserPromptSubmit 에서 1회 되주입 (없으면 무출력)
 # ─────────────────────────────────────────────────────────────────────────────
 do_digest() {
-  local outdir="$1"
+  local outdir="$1" DIGEST_SESSION="${2:-unknown}"
   local pending="$outdir/.pending"
   [ -f "$pending" ] || return 0
-  local sealfile; sealfile="$(cat "$pending" 2>/dev/null)"
+  local sealfile sealsess sealts
+  IFS=$'\t' read -r sealfile sealsess sealts < "$pending" 2>/dev/null
+  [ -z "${sealfile:-}" ] && sealfile="$(head -1 "$pending" 2>/dev/null)"   # 구형식 관용
   # ⚠️ 인쇄 **전에** 소비한다. 소비를 뒤에 두면, 소비자가 파이프를 먼저 닫는 순간(SIGPIPE)
   # 마커가 안 지워지고 **매 프롬프트마다 무한 재주입**된다 — 실측 2026-08-08, `| head -12` 로 재현.
   # 트레이드오프는 의도적이다: 최악이 "한 번 못 보여줌"(복구 가능, 파일은 디스크에 남아 있다) 대
@@ -162,7 +166,19 @@ do_digest() {
   rm -f "$pending" 2>/dev/null
   if [ ! -f "$sealfile" ]; then return 0; fi
 
-  echo "🧭 [FH 압축 복구] 직전 압축 전에 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다."
+  # 신선도·세션 정합을 **주장에 반영**한다. 안 맞으면 주입은 하되 "직전 압축"이라고 말하지 않는다.
+  local _now _age _stale="" _xsess=""
+  _now=$(date +%s); _age=$(( _now - ${sealts:-$_now} ))
+  [ "$_age" -gt 43200 ] && _stale=" ⚠️ ${_age}초 전 봉인 — 이 세션의 직전 압축이 아닐 수 있다"
+  if [ -n "${sealsess:-}" ] && [ "${sealsess}" != "unknown" ] && [ -n "$DIGEST_SESSION" ] \
+     && [ "$DIGEST_SESSION" != "unknown" ] && [ "${sealsess}" != "$DIGEST_SESSION" ]; then
+    _xsess=" ⚠️ 다른 세션(${sealsess})의 봉인이다"
+  fi
+  if [ -n "$_stale$_xsess" ]; then
+    echo "🧭 [FH 압축 복구] 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다.$_stale$_xsess"
+  else
+    echo "🧭 [FH 압축 복구] 직전 압축 전에 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다."
+  fi
   echo "   정본: $sealfile"
   echo
   # ⚠️ 초판은 `sed -n '1,80p'` 였다. 봉인 앞부분은 **발화 덤프**라, 긴 세션에서는 80줄이 발화
@@ -270,7 +286,7 @@ self_test() {
   [ -f "$T/pl/.last_payload" ] && rc=YES || rc=NO
   t "원본 페이로드가 기록된다 (원인 추적 가능)" YES "$rc"
   local sf2; sf2="$(ls -t "$T/pl"/seal_*.md 2>/dev/null | head -1)"
-  grep -qE 'payload: (fallback-cwd|unresolved)' "$sf2" 2>/dev/null && rc=YES || rc=NO
+  grep -qE 'payload: (fallback-session|fallback-mtime-UNVERIFIED|unresolved)' "$sf2" 2>/dev/null && rc=YES || rc=NO
   t "payload 상태가 typed 로 남는다 (무음 아님)" YES "$rc"
 
   # ── 회귀 레인: high 리뷰 CONFIRMED (2026-08-08) ──
@@ -292,6 +308,25 @@ self_test() {
   t "#3 digest 가 정본 포인터를 주입한다" YES "$r"
   case "$dg" in *"브랜치:"*) r=YES ;; *) r=NO ;; esac
   t "#3 digest 가 git 상태를 주입한다" YES "$r"
+
+  # #4 세션 교차 주입 — 다른 세션의 봉인을 "직전 압축"이라고 주장하면 안 된다
+  do_seal "$T/tr.jsonl" "$T/out4" "SESSA" >/dev/null 2>&1
+  local d4; d4="$(do_digest "$T/out4" "SESSB" 2>/dev/null)"
+  case "$d4" in *"다른 세션(SESSA)"*) rc=YES ;; *) rc=NO ;; esac
+  t "#4 다른 세션의 봉인이면 그렇게 말한다" YES "$rc"
+  do_seal "$T/tr.jsonl" "$T/out4b" "SESSA" >/dev/null 2>&1
+  local d4b; d4b="$(do_digest "$T/out4b" "SESSA" 2>/dev/null)"
+  case "$d4b" in *"직전 압축 전에"*) rc=YES ;; *) rc=NO ;; esac
+  t "#4 같은 세션이면 직전-압축 주장 유지 (과경고 아님)" YES "$rc"
+  case "$d4b" in *"다른 세션"*) rc=YES ;; *) rc=NO ;; esac
+  t "#4 같은 세션에 교차 경고 안 뜬다" NO "$rc"
+
+  # #5 세션 미상 폴백은 **미검증으로 라벨**돼야 한다 (침묵 추정 금지)
+  local sf5
+  printf '%s' '{}' | bash "$0" seal --dir "$T/out5" >/dev/null 2>&1
+  sf5="$(ls -t "$T/out5"/seal_*.md 2>/dev/null | head -1)"
+  grep -q "fallback-mtime-UNVERIFIED" "$sf5" 2>/dev/null && rc=YES || rc=NO
+  t "#5 세션 미상 폴백은 UNVERIFIED 로 타입된다" YES "$rc"
 
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍) — seal/digest 레그 한정. score 는 실측으로 **반증**됐다(§계기 타당성)." \
@@ -321,11 +356,12 @@ PAYLOAD_STATUS="args"
 # ⚠️ 캡처는 **seal 에서만**. 전 모드에서 돌리면 매 `UserPromptSubmit`(digest)가 PreCompact 페이로드를
 # 덮어써서, 빈 봉인을 진단하라고 만든 증거를 **다음 프롬프트가 파괴**한다. 게다가 사용자 프롬프트
 # 원문이 매 턴 디스크에 남는다. (high 리뷰 실측 재현: seal 직후엔 PreCompact 페이로드, digest 한 번에 교체.)
-if [ "$MODE" = "seal" ] && [ -z "$TRANSCRIPT" ] && [ ! -t 0 ]; then
+if [ -z "$TRANSCRIPT" ] && [ ! -t 0 ]; then
   HOOK_JSON="$(cat 2>/dev/null)"
   # 원본 페이로드를 항상 남긴다. 2026-08-08 첫 실발화가 session=unknown · transcript 빈 값으로
   # 돌았는데, 원본을 안 남겨서 **왜 그런지 알 방법이 없었다.** 미측정을 빈 값으로 렌더하지 않는다.
-  mkdir -p "$OUTDIR" 2>/dev/null && printf '%s' "$HOOK_JSON" > "$OUTDIR/.last_payload" 2>/dev/null
+  # 쓰기는 seal 에서만 — digest 가 쓰면 진단 증거를 다음 프롬프트가 파괴한다(#10). 파싱은 전 모드.
+  [ "$MODE" = "seal" ] && mkdir -p "$OUTDIR" 2>/dev/null && printf '%s' "$HOOK_JSON" > "$OUTDIR/.last_payload" 2>/dev/null
   if [ -n "$HOOK_JSON" ]; then
     eval "$(printf '%s' "$HOOK_JSON" | python3 -c '
 import json,sys,shlex
@@ -342,9 +378,21 @@ fi
 # 훅 페이로드 모양은 런타임 버전에 딸린 외부 의존이고, 거기에 기능 전체를 걸면 안 된다.
 if [ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]; then
   _slug="$(printf '%s' "$REPO_ROOT" | sed 's|/|-|g')"
-  _cand="$(ls -t "$HOME/.claude/projects/$_slug"/*.jsonl 2>/dev/null | head -1)"
+  _dir="$HOME/.claude/projects/$_slug"
+  _cand=""
+  # 세션 id 를 알면 **그 세션의 전사본**을 고른다. mtime 최신을 고르면 같은 레포에 세션이 둘 열려
+  # 있을 때 **남의 발화를 이 세션 것으로 봉인**한다(high 리뷰 #5, 이 디렉토리에 전사본 125개).
+  if [ "$SESSION" != "unknown" ] && [ -n "$SESSION" ]; then
+    _cand="$(ls "$_dir"/"$SESSION"*.jsonl 2>/dev/null | head -1)"
+    [ -n "$_cand" ] && PAYLOAD_STATUS="fallback-session"
+  fi
+  if [ -z "$_cand" ]; then
+    _cand="$(ls -t "$_dir"/*.jsonl 2>/dev/null | head -1)"
+    # 세션 미상 → 최신을 쓰되 **검증 불가임을 타입으로 남긴다.** 침묵 추정 금지.
+    [ -n "$_cand" ] && PAYLOAD_STATUS="fallback-mtime-UNVERIFIED"
+  fi
   if [ -n "$_cand" ] && [ -f "$_cand" ]; then
-    TRANSCRIPT="$_cand"; PAYLOAD_STATUS="fallback-cwd"
+    TRANSCRIPT="$_cand"
     [ "$SESSION" = "unknown" ] && SESSION="$(basename "$_cand" .jsonl | cut -c1-12)"
   else
     PAYLOAD_STATUS="unresolved"
@@ -355,7 +403,7 @@ fi
 
 case "$MODE" in
   seal)   do_seal "$TRANSCRIPT" "$OUTDIR" "$SESSION" ;;
-  digest) do_digest "$OUTDIR" ;;
+  digest) do_digest "$OUTDIR" "$SESSION" ;;
   score)  do_score "$TRANSCRIPT" "$OUTDIR" ;;
   *) echo "usage: $0 {seal|digest|score} [--transcript P] [--dir D] [--session S]"
      echo "       $0 --self-test" ;;

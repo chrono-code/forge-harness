@@ -94,7 +94,11 @@ scan_file() {
     # 판단방향(i=3)만: 관대한 목적지로 기우는 문장은 회로의 증거가 아니다
     if [ "$i" = "3" ] && [ -n "$_hit" ]; then
       _dir=$(grep -hiE "(when (uncertain|unclear|unsure)|불확실하면|모르면|애매하면).{0,40}(default|기운다|쪽으로|lean|err)" "$f" 2>/dev/null \
-             | grep -viE '(PASS|ALLOW|OK|통과|허용|승인)' | head -1)
+             | grep -viE '(\bPASS(ED|ES)?\b|\bALLOW(ED|S)?\b|\bOK\b|통과|허용|승인)' | head -1)
+      # ⚠️ 무앵커 부분문자열이면 `OK` 가 **look·token·broken** 에, `PASS` 가 **passed·bypass** 에 걸려
+      # 정당한 fail-closed 문장에서 판단방향 크레딧을 뺏는다. 실측 known-pair(high 리뷰 #8):
+      # "When unclear, default to blocking and look at the source." → 2/5 PARTIAL,
+      # " and look at the source" 만 지우면 3/5 CIRCUIT. 단어 경계 필수.
       _kr=$(grep -hE "(불확실하면|모르면|애매하면).{0,30}(보고|차단|중단|엄격)" "$f" 2>/dev/null | head -1)
       [ -z "$_dir" ] && [ -z "$_kr" ] && _hit=""
     fi
@@ -199,6 +203,24 @@ EOF
   printf 'Not "너는 심사자이다"; 꼼꼼히 검토하라\n' > "$T/mixed.md"
   local mk; mk="$(scan_file "$T/mixed.md" 2>/dev/null | grep -oE '역할부여|강도주문' | head -1)"
   t "인용 안 역할부여는 세지 않고 실사용 강도주문만" "강도주문" "$mk"
+
+  # 회귀 레인: #8 무앵커 부분문자열 (high 리뷰 실측 원문)
+  cat > "$T/lookat.md" <<'EOF'
+When unclear, default to blocking and look at the source.
+근거를 못 찾으면 보고하지 마라.
+성능은 이 작업의 대상이 아니다.
+A 와 B 가 상충하면 A 가 이긴다.
+EOF
+  t "#8 'look' 의 ok 가 판단방향 크레딧을 안 뺏는다" CIRCUIT "$(v "$T/lookat.md")"
+  # 반대편: 진짜 관대한 default 는 여전히 크레딧 없음
+  cat > "$T/reallypass.md" <<'EOF'
+When unclear, default to PASS.
+근거를 못 찾으면 보고하지 마라.
+성능은 이 작업의 대상이 아니다.
+A 와 B 가 상충하면 A 가 이긴다.
+EOF
+  local rp; rp="$(scan_file "$T/reallypass.md" 2>/dev/null | awk '/판정:/{print $NF}')"
+  t "#8 진짜 'default to PASS' 는 여전히 크레딧 없음 (3/5)" "3/5" "$rp"
 
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍)" || echo "❌ 캘리브레이션 실패 ($n 쌍)"

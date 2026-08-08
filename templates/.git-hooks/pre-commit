@@ -983,6 +983,20 @@ if [ -n "$LOADBEARING" ]; then
   if validate_crossfamily_leg "$MARKER_LB"; then :; else FAILED=1; fi
 fi
 
+# ── staged-blob materializer (advisory linters) ───────────────────────────────
+# 두 advisory 린터는 파일을 직접 grep/sed 한다. 워킹트리 경로를 넘기면 **커밋되는 내용이 아니라
+# 지금 디스크에 있는 내용**을 재게 된다 — 스테이징 후 워킹트리에서 고치면 훅은 깨끗하다 보고하고
+# 문제 있는 blob 이 커밋된다(high 리뷰 #6, 낙관 방향 fail-open). 이 훅의 다른 슬라이스는 전부
+# `git diff --cached` / `git show :file` 로 추론한다. 여기만 예외였다.
+_stage_blob() {   # $1=repo-relative path → echoes temp file holding the STAGED content
+  local _p="$1" _t
+  _t="$(mktemp "${TMPDIR:-/tmp}/fh_staged.XXXXXX")" || return 1
+  if git -C "$REPO_ROOT" show ":$_p" > "$_t" 2>/dev/null; then printf '%s' "$_t"
+  else rm -f "$_t"; return 1; fi
+}
+_STAGE_TMPS=()
+_stage_cleanup() { [ "${#_STAGE_TMPS[@]}" -gt 0 ] && rm -f "${_STAGE_TMPS[@]}" 2>/dev/null; }
+
 # ── Judgment-circuit lint (advisory — the PROMPT-layer sibling of the degrade lint above) ─────
 # Same proposition, different corpus: degrade_direction_scan reads .py/.sh verdict code and skips
 # .md by construction, so identity/circuit DOCUMENTS had no instrument at all. Measured basis
@@ -1003,7 +1017,7 @@ if [ -f "$JC_REG" ] && [ -f "$JC_LINT" ]; then
   while IFS= read -r _jc_line; do
     case "$_jc_line" in ''|'#'*) continue ;; esac
     if printf '%s\n' "$STAGED" | grep -qxF "$_jc_line" 2>/dev/null; then
-      [ -f "$REPO_ROOT/$_jc_line" ] && _jc_targets+=("$REPO_ROOT/$_jc_line")
+      _b="$(_stage_blob "$_jc_line")" && { _jc_targets+=("$_b"); _STAGE_TMPS+=("$_b"); }
     fi
   done < "$JC_REG"
   if [ "${#_jc_targets[@]}" -gt 0 ]; then
@@ -1030,7 +1044,7 @@ NC_CHECK="$REPO_ROOT/scripts/novelty_claim_check.sh"
 if [ -f "$NC_CHECK" ]; then
   _nc_targets=()
   while IFS= read -r _nc_line; do
-    [ -f "$REPO_ROOT/$_nc_line" ] && _nc_targets+=("$REPO_ROOT/$_nc_line")
+    _b="$(_stage_blob "$_nc_line")" && { _nc_targets+=("$_b"); _STAGE_TMPS+=("$_b"); }
   done < <(printf '%s\n' "$STAGED" | grep -E '^(knowledge/|docs/).*\.md$' || true)
   if [ "${#_nc_targets[@]}" -gt 0 ]; then
     _nc_raw=$(bash "$NC_CHECK" "${_nc_targets[@]}" 2>&1); _nc_rc=$?
@@ -1044,6 +1058,7 @@ if [ -f "$NC_CHECK" ]; then
     fi
   fi
 fi
+_stage_cleanup
 
 # SKILL.md ONLY here, deliberately (2026-07-26): the 07-26 sweep widened `SKILL\.md` →
 # `SKILL(_detail)?\.md` in the HEAVY and doc-coupling terms above, but NOT here. This slice asks

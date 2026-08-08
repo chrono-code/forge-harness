@@ -32,6 +32,10 @@
 
 set -uo pipefail
 
+# ⚠️ 레인에서 `cmd | grep -q` 를 쓰지 마라. `grep -q` 는 매치 즉시 파이프를 닫고, `pipefail` 이
+# 그 SIGPIPE(141)를 파이프라인 실패로 렌더한다 — **출력이 맞는데 레인이 빨개지고, 경합이라 flaky 하다**
+# (2026-08-08 실측: 같은 레인이 실행마다 갈렸다). 출력을 변수로 캡처한 뒤 `case` 로 검사한다.
+
 WINDOW=6   # 앵커 탐색 반경(줄). 좁히면 오탐↑, 넓히면 미탐↑ — 6은 FH 문서의 문단 길이 기준
 
 # 강한 신규성·부재 주장만. 일반 부정("없다")은 한국어 문서에 편재해서 넣으면 Grep-Collision
@@ -51,13 +55,16 @@ RE_ANCHOR='(arXiv|arxiv|DOI|doi:|https?://|WebSearch|WebFetch|서베이|외부[[
 RE_META='(❌|🟥|🚫|금지|forbidden|never|안티패턴|anti-pattern|예:|example:|RE_CLAIM|RE_ANCHOR)'
 
 scan_file() {
-  local f="$1" total=0 bad=0
+  local f="$1" total=0 bad=0 meta=0
   local -a HITS=()
   local nlines; nlines=$(wc -l < "$f" 2>/dev/null | tr -d ' ')
 
   while IFS= read -r ln; do
     local num="${ln%%:*}" txt="${ln#*:}"
-    printf '%s' "$txt" | grep -qE "$RE_META" && continue
+    # ⚠️ 초판은 meta 줄을 **아무 데도 안 세고** continue 했다. 그래서 주장 3건이 전부 meta 어휘를
+    # 동반하면 출력이 "주장 없음" 이 된다 — 부분 미스캔을 **깨끗한 코퍼스로** 렌더하는 것이고,
+    # 이 계기가 막으라고 존재하는 `not found ≠ 0` 그 자체다(high 리뷰 #9).
+    if printf '%s' "$txt" | grep -qE "$RE_META"; then meta=$((meta+1)); continue; fi
     # 인용부호 안의 주장은 지칭이지 발화가 아니다 (judgment_circuit_lint 와 동일 규칙)
     local bare; bare="$(printf '%s' "$txt" | sed -E 's/"[^"]*"/ /g; s/“[^”]*”/ /g; s/「[^」]*」/ /g; s/`[^`]*`/ /g')"
     if printf '%s' "$bare" | grep -qE "$RE_CLAIM"; then :
@@ -75,8 +82,16 @@ scan_file() {
   done < <(grep -nE "$RE_CLAIM|net-new" "$f" 2>/dev/null)
 
   echo "── $f"
-  if [ "$total" -eq 0 ]; then echo "   신규성·부재 주장 없음"; return 0; fi
-  printf '   주장 %d건 · 무앵커 %d건 (앵커 반경 ±%d줄)\n' "$total" "$bad" "$WINDOW"
+  if [ "$total" -eq 0 ]; then
+    if [ "$meta" -gt 0 ]; then
+      echo "   신규성·부재 주장 0건 — 단 ${meta}줄을 언급(meta)으로 제외했다. **전수 스캔이 아니다.**"
+      echo "   제외된 줄에 실제 주장이 있을 수 있다 — 미스캔이지 깨끗함이 아니다."
+    else
+      echo "   신규성·부재 주장 없음"
+    fi
+    return 0
+  fi
+  printf '   주장 %d건 · 무앵커 %d건 · 언급제외 %d줄 (앵커 반경 ±%d줄)\n' "$total" "$bad" "$meta" "$WINDOW"
   local h; for h in "${HITS[@]:-}"; do [ -n "$h" ] && echo "$h"; done
   [ "$bad" -eq 0 ] && return 0 || return 2
 }
@@ -112,12 +127,12 @@ self_test() {
 
   # 일반 부정은 잡으면 안 된다 (Grep-Collision 방지)
   printf '이 파일에는 마커가 없다. 훅은 차단하지 않는다.\n' > "$T/plainneg.md"
-  scan_file "$T/plainneg.md" 2>/dev/null | grep -q "주장 없음" && rc=YES || rc=NO
+  _o="$(scan_file "$T/plainneg.md" 2>/dev/null)"; case "$_o" in *"주장 없음"*) rc=YES ;; *) rc=NO ;; esac
   t "일반 부정('마커가 없다')은 주장 아님" YES "$rc"
 
   # 인용 안의 주장은 지칭 (judgment_circuit_lint 와 같은 규칙)
   printf '초판은 "이 패턴은 선례가 없다" 고 적었다가 철회했다.\n' > "$T/quoted.md"
-  scan_file "$T/quoted.md" 2>/dev/null | grep -q "주장 없음" && rc=YES || rc=NO
+  _o="$(scan_file "$T/quoted.md" 2>/dev/null)"; case "$_o" in *"주장 없음"*) rc=YES ;; *) rc=NO ;; esac
   t "인용 안의 주장은 지칭으로 제외" YES "$rc"
 
   # ── 회귀 레인: `net-new` 과부하 (2026-08-08 실측, 손 확인 6/6 오탐) ──
@@ -127,13 +142,23 @@ The one net-new finding was the most severe one.
 terra 6/6 known-positives + 5 net-new (approval-negation regex, heredoc tail-drop)
 Second consecutive session where the cross-family leg produced net-new findings.
 EOF
-  scan_file "$T/netnew_local.md" 2>/dev/null | grep -q "주장 없음" && rc=YES || rc=NO
+  _o="$(scan_file "$T/netnew_local.md" 2>/dev/null)"; case "$_o" in *"주장 없음"*) rc=YES ;; *) rc=NO ;; esac
   t "net-new 로컬 발견 라벨 3건 → 주장 아님" YES "$rc"
 
   # 반대편: 세계-스코프 net-new 는 여전히 잡혀야 한다 (완화가 진짜를 숨기면 안 된다)
   printf 'net-new 다 — 시장에 이런 상용 제품이 하나도 없다.\n' > "$T/netnew_world.md"
   scan_file "$T/netnew_world.md" >/dev/null 2>&1; rc=$?
   t "세계-스코프 net-new 는 여전히 주장" 2 "$rc"
+
+  # 회귀 레인: #9 meta 제외분이 "주장 없음" 으로 렌더되면 안 된다 (high 리뷰 실측)
+  cat > "$T/metahidden.md" <<'EOF'
+이 아키텍처는 선례가 없다 — 그러니 절대 relabel 하지 마라, never.
+시장에 이런 상용 제품은 존재하지 않는다. 금지 사항은 아래와 같다.
+EOF
+  _o="$(scan_file "$T/metahidden.md" 2>/dev/null)"; case "$_o" in *"전수 스캔이 아니다"*) rc=YES ;; *) rc=NO ;; esac
+  t "#9 meta 제외분이 있으면 '깨끗함' 으로 렌더 안 한다" YES "$rc"
+  case "$_o" in *"신규성·부재 주장 없음"*) rc=YES ;; *) rc=NO ;; esac
+  t "#9 '주장 없음' 단독 출력은 안 나온다" NO "$rc"
 
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍)" || echo "❌ 캘리브레이션 실패 ($n 쌍)"
