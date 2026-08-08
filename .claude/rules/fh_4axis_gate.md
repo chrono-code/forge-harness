@@ -68,6 +68,13 @@ FH asset modified → Axis 1 (templates/regression_guard.sh --pr {BRANCH})
   → Axis 2 (/steel-quench) → Axis 3 (/phantom-quench)
   → marker: tracks/_meta/.axes_23_passed_{branch}_{date}.marker
      (required fields: axis2-engine / axis2-model / floor-status / axis2-evidence;
+      + **`crossfamily:`** — required on LOAD-BEARING changes only, and TYPED since 2026-08-08:
+      `panel(<families>)` | `declined` | `DEGRADED_SINGLE_FAMILY` | `DEGRADED_PANEL_UNUSED` |
+      `UNKNOWN`, the three degrade values requiring substantive grounds on the same line.
+      Presence has been required since c1fa459; what was free prose is now a closed enum,
+      because a presence check catches silence but not a confident wrong answer — a sibling
+      harness shipped `crossfamily: none — 도달 불가` that was later found false and then cited
+      as grounds. Fixtures: `scripts/test_marker_crossfamily_lanes.sh`;
       **recorded-by-convention, validated by nothing**: `axis2-rounds` (per-round yield vector) —
       steel-quench §Convergence Criteria consumes it, and a hook check for it was built and then
       REMOVED the same day for firing on 100% of markers. The convergence claim it supports is

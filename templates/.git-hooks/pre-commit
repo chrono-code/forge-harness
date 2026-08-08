@@ -469,6 +469,144 @@ marker_recreate_hint() {
   echo "     printf 'axis2-engine: quench-challenger\\naxis2-model: opus\\nfloor-status: at-floor\\naxis2-evidence: PASS no-S\\n' > \"$1\""
 }
 
+# ── Cross-family leg — typed verdict (see the load-bearing block below for WHY) ──
+# Grammar:  crossfamily: <VALUE>[ — <reason>]
+# VALUE is a closed enum; the three degrade values additionally require a non-vacuous reason
+# on the SAME line (keeping the established one-line marker convention rather than adding a
+# second field). Returns 0 = accepted, 1 = block.
+validate_crossfamily_leg() { # $1 = marker path
+  local m="$1" line val reason fams
+  if [ ! -f "$m" ] || ! grep -qE '^[[:space:]]*crossfamily:[[:space:]]*[^[:space:]]' "$m"; then
+    echo "  ❌ FAIL — load-bearing file staged with no 'crossfamily:' line in the Axes 2-3 marker."
+    echo "     Verdict/gate/irreversible-surface code shares the author's blind spot with a"
+    echo "     same-family reviewer. State the answer, whatever it is — the gate blocks silence:"
+    echo "       crossfamily: panel(codex, gemini) — R1..R4, 16 findings, 15 fixed 1 refuted"
+    echo "       crossfamily: DEGRADED_SINGLE_FAMILY — probed codex/agy/gemini, 0 capable reachable"
+    echo "       crossfamily: DEGRADED_PANEL_UNUSED — codex+agy reachable, not recruited (<why>)"
+    echo "       crossfamily: UNKNOWN — panel not probed this round (<why>)"
+    echo "       crossfamily: declined — operator declined sidecars (UAP), chosen floor"
+    echo "     Append one line to: $m"
+    return 1
+  fi
+  # Duplicate guard (cross-family finding, codex 2026-08-08): a marker is an APPEND-ONLY
+  # file in practice, and `grep -m1` takes the FIRST match — so a later corrected/degraded
+  # value is shadowed by a stale permissive one and the lane reads the wrong verdict. Two
+  # crossfamily lines is an ambiguous marker, not a resolvable one; fail closed rather than
+  # pick a winner, because either choice silently discards a stated verdict.
+  if [ "$(grep -cE '^[[:space:]]*crossfamily:' "$m")" -gt 1 ]; then
+    echo "  ❌ FAIL — marker carries MORE THAN ONE 'crossfamily:' line."
+    grep -nE '^[[:space:]]*crossfamily:' "$m" | sed 's/^/       /'
+    echo "     A later line does not supersede an earlier one here — the reader takes the"
+    echo "     first, so an appended correction would be silently shadowed. Delete the stale"
+    echo "     line and leave exactly one."
+    return 1
+  fi
+  line=$(grep -m1 -E '^[[:space:]]*crossfamily:' "$m" \
+         | sed -E 's/^[[:space:]]*crossfamily:[[:space:]]*//')
+  # Split on the em-dash separator, NOT on first whitespace: a family list legitimately
+  # contains ", " (`panel(codex, gemini)`), and splitting on whitespace truncated it to
+  # `panel(codex,` — a well-formed panel rejected as malformed. An over-block on the
+  # correct shape is the failure that teaches --no-verify, so it is a defect, not strictness.
+  val=$(printf '%s' "$line" | sed -E 's/[[:space:]]*(—|--).*$//' | sed -E 's/[[:space:]]+$//')
+  reason=$(printf '%s' "$line" | sed -E 's/^[^—-]*(—|--)[[:space:]]*//')
+  [ "$reason" = "$line" ] && reason=""
+
+  case "$val" in
+    declined)
+      echo "  ✅ cross-family leg: declined (operator-chosen floor, first-class — not a degrade)" ;;
+    panel*)
+      if ! printf '%s' "$val" | grep -qE '^panel\([^)]+\)$'; then
+        echo "  ❌ FAIL — panel claim without a family list: '$val'"
+        echo "     Write panel(<families>), e.g. panel(codex, gemini). Source the list from"
+        echo "     scripts/sidecar_calibrate.sh's PANEL line rather than recall — that line"
+        echo "     records a pin verified for THIS run."
+        return 1
+      fi
+      fams=$(printf '%s' "$val" | sed -E 's/^panel\(//; s/\)$//')
+      # (a) AUTHOR-FAMILY EXCLUSION. The point of this field is decorrelation; a panel of
+      # the author's own family is a same-family pass wearing a panel label — the exact
+      # substitution the load-bearing block exists to forbid. FH's governor is Claude.
+      if printf '%s' "$fams" | grep -qiE '(^|[,[:space:]])(claude|opus|sonnet|haiku|fable)'; then
+        echo "  ❌ FAIL — panel names the AUTHOR'S OWN family: '$fams'"
+        echo "     A Claude-family auditor shares the governor's blind spots, so it is not"
+        echo "     decorrelation. If that is genuinely all that was reachable, the honest value"
+        echo "     is DEGRADED_SINGLE_FAMILY with a reason — not a panel claim."
+        return 1
+      fi
+      # (b) INELIGIBLE-FIRST. Tokens overlap: GLM-OCR matches both `ocr` and `glm`,
+      # Qwen3-Embedding matches both `embed` and `qwen`. Test capability-eligibility first
+      # and both pass silently (pmh-dev #41 design decision 3, anchored there and here).
+      if printf '%s' "$fams" | grep -qiE 'embed|rerank|[^a-z]rank|ocr|safeguard|moderat|classif|whisper|dall-e|-rm([^a-z]|$)|bge-|voyage|gte-|minilm'; then
+        echo "  ❌ FAIL — panel names a review-INCAPABLE member: '$fams'"
+        echo "     Embedding / reranker / reward-model / moderation / OCR / speech classes emit"
+        echo "     vectors, scores or labels — they cannot return an adversarial finding, so"
+        echo "     counting them inflates BOTH panel size and family-diversity. If nothing capable"
+        echo "     remains, the honest value is DEGRADED_SINGLE_FAMILY with a reason."
+        return 1
+      fi
+      # (c) DEFAULT DENY on unknown families (pmh-dev #41 design decision 1: unmeasured is
+      # not eligible). A denylist alone cannot know `voyage-3` or `armorm` are not reviewers,
+      # so an unrecognised token is UNDECIDABLE, never assumed capable. Matching is by FAMILY
+      # PATTERN, not id enumeration (#41 decision 2), so a new build of a known family passes
+      # without rewiring — which is the reason the CLI route was chosen at all.
+      local unknown="" tok
+      for tok in $(printf '%s' "$fams" | tr ',' ' '); do
+        printf '%s' "$tok" | grep -qiE 'codex|gpt|openai|o[0-9]|gemini|agy|antigravity|glm|qwen|deepseek|mistral|llama|grok|command-|cohere|kimi|copilot|ollama|phi-|yi-' \
+          || unknown="${unknown:+$unknown }$tok"
+      done
+      if [ -n "$unknown" ]; then
+        echo "  ❌ FAIL — panel names unrecognised family/families: '$unknown'"
+        echo "     Default-deny: an unrecognised token is UNDECIDABLE, not capable — that is how"
+        echo "     'panel(none)' and 'panel(unprobed)' would otherwise launder a non-run into a"
+        echo "     pass. Either use the family pattern this runtime belongs to, or add the"
+        echo "     pattern here in the same commit that first uses it."
+        return 1
+      fi
+      echo "  ✅ cross-family leg: $val${reason:+ — $(printf '%s' "$reason" | cut -c1-60)}" ;;
+    DEGRADED_SINGLE_FAMILY|DEGRADED_PANEL_UNUSED|UNKNOWN)
+      # A degrade is allowed; being silent about WHICH degrade, or about its grounds, is not.
+      # Two conditions, because either alone is porous: enough substance to be a statement
+      # (length) AND a token naming what was actually looked at.
+      if [ "${#reason}" -lt 20 ] \
+         || ! printf '%s' "$reason" | grep -qiE 'prob(e|ed|ing)|reachab|unreach|not reachable|0 |none reachable|empty|absent|declin|consent|codex|gemini|agy|copilot|gateway|cli|panel|scope|budget|offline'; then
+        echo "  ❌ FAIL — $val without substantive grounds on the same line."
+        case "$val" in
+          UNKNOWN) echo "     UNKNOWN = the panel was never probed. Undecidable, not zero." ;;
+          DEGRADED_SINGLE_FAMILY) echo "     = probed, nothing CAPABLE reachable (a constraint)." ;;
+          DEGRADED_PANEL_UNUSED) echo "     = a capable panel WAS reachable and was not recruited (a choice)." ;;
+        esac
+        echo "     Name what you probed and what came back — the defect this field exists for"
+        echo "     was a line that announced a state without naming its grounds:"
+        echo "       crossfamily: $val — probed codex/agy/gemini, <what came back>"
+        return 1
+      fi
+      echo "  ⚠️  cross-family leg: $val — recorded, not silent (weekly audit re-queues these)"
+      echo "     $(printf '%s' "$reason" | cut -c1-80)" ;;
+    single-family|none|none-this-round|N/A|n/a)
+      # `single-family` is deliberately NOT accepted HERE. This block runs only on
+      # load-bearing changes, where "decorrelation not required" is a contradiction — and
+      # as a no-ack, no-warning pass it was a free bypass of the whole lane (any degrade
+      # could take this exit instead of DEGRADED_*). `none` is worse: it merges three states.
+      echo "  ❌ FAIL — '$val' is not an accepted value on a LOAD-BEARING change."
+      echo "     This block only runs when gate/verdict/irreversible-surface code is staged, so"
+      echo "     'decorrelation not required' does not apply — and a no-ack pass here would let"
+      echo "     any degrade take this exit instead of naming itself. Say which state holds:"
+      echo "       DEGRADED_SINGLE_FAMILY  probed, nothing capable reachable   (could not)"
+      echo "       DEGRADED_PANEL_UNUSED   panel reachable, not recruited      (did not)"
+      echo "       UNKNOWN                 never probed                        (did not look)"
+      echo "       declined                operator declined sidecars          (chosen floor)"
+      return 1 ;;
+    *)
+      echo "  ❌ FAIL — invalid crossfamily value: '$val'"
+      echo "     Allowed: panel(<families>) | declined |"
+      echo "              DEGRADED_SINGLE_FAMILY | DEGRADED_PANEL_UNUSED | UNKNOWN"
+      echo "     Free prose is rejected on purpose: a prose verdict cannot be consumed by a gate,"
+      echo "     and a later session cites it as though it were measured. That has happened."
+      return 1 ;;
+  esac
+  return 0
+}
+
 validate_marker_floor() {
   local m="$1" fs model
   # Leading whitespace tolerated on field lines (defense-in-depth vs indented writes).
@@ -801,9 +939,28 @@ fi
 #   the Surface-Class Degrade Invariant the fail-closed leg of this gate belongs at the MERGE boundary,
 #   not here; forcing a sidecar dispatch per commit would over-block and train the escape into reflex.
 #   It DOES forbid being SILENT about it. The marker must carry a `crossfamily:` line — either naming
-#   the engine and its verdict, or explicitly recording `none` with a reason. Same shape as the existing
-#   below-floor-ack: the gate blocks on an unstated answer, never on the answer itself. Non-vacuity is
-#   the marker's job; provenance is not (a fabricated line is the weekly-audit residual, as elsewhere).
+#   the engine and its verdict, or explicitly recording the degrade with a reason. Same shape as the
+#   existing below-floor-ack: the gate blocks on an unstated answer, never on the answer itself.
+#   Non-vacuity is the marker's job; provenance is not (a fabricated line is the weekly-audit residual).
+#
+# ── TYPED (2026-08-08) — why presence-only was not enough ─────────────────────────────────────
+# The original check accepted any non-empty value, so the answer was FREE PROSE. That is how a
+# false one got in: a sibling harness's marker recorded `crossfamily: none this round — 도달 불가`
+# (unreachable), the claim was later found FALSE, and a subsequent session CITED it as grounds.
+# A prose verdict laundered itself into evidence — the failure `[[feedback_typed_verdict_channel]]`
+# names. Presence-checking catches silence; it cannot catch a confident wrong answer.
+#
+# The load-bearing split is that `none` is THREE different states, and merging them hides a
+# different thing each time:
+#   DEGRADED_SINGLE_FAMILY   probed, nothing CAPABLE reachable   — could not
+#   DEGRADED_PANEL_UNUSED    panel reachable, not recruited      — did not   (a choice, not a limit)
+#   UNKNOWN                  never probed                        — did not look
+# `UNKNOWN` collapsed into `none` renders an unrun probe as a zero finding (not-found-is-not-zero).
+# `DEGRADED_PANEL_UNUSED` collapsed into it renders an unused panel as an unavailable one — the
+# distinction a sibling harness stated about itself in its own words: "못 한 것이 아니라 안 한 것이다".
+#
+# Scope is unchanged: still load-bearing-only, still reversible-surface (blocks the unstated answer,
+# never demands a dispatch). Only the ANSWER is now typed. Fixtures: scripts/test_marker_crossfamily_lanes.sh
 # The degrade lint runs as an ADVISORY pre-screen, per its own doctrine (FP-tolerant, never a solo block).
 LOADBEARING=$(printf '%s\n%s\n' "$GATE_IMPL" "$UGUARD_IMPL" | grep -v '^[[:space:]]*$' | sort -u || true)
 if [ -n "$LOADBEARING" ]; then
@@ -823,17 +980,7 @@ if [ -n "$LOADBEARING" ]; then
     echo "  ⚠️  degrade lint unavailable (scripts/degrade_direction_scan.sh missing) — advisory leg skipped"
   fi
   MARKER_LB="$REPO_ROOT/tracks/_meta/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
-  if [ -f "$MARKER_LB" ] && grep -qE '^[[:space:]]*crossfamily:[[:space:]]*[^[:space:]]' "$MARKER_LB"; then
-    echo "  ✅ cross-family leg recorded: $(grep -m1 -E '^[[:space:]]*crossfamily:' "$MARKER_LB" | cut -c1-90)"
-  else
-    echo "  ❌ FAIL — load-bearing file staged with no 'crossfamily:' line in the Axes 2-3 marker."
-    echo "     Verdict/gate/irreversible-surface code shares the author's blind spot with a same-family"
-    echo "     reviewer. State the answer, whatever it is — the gate blocks silence, not a 'none':"
-    echo "       crossfamily: codex/gpt-5.5 — R1..R4, 16 findings, 15 fixed 1 refuted, CONVERGED"
-    echo "       crossfamily: none — <why no different-family auditor was reachable/needed>"
-    echo "     Append one line to: $MARKER_LB"
-    FAILED=1
-  fi
+  if validate_crossfamily_leg "$MARKER_LB"; then :; else FAILED=1; fi
 fi
 
 # SKILL.md ONLY here, deliberately (2026-07-26): the 07-26 sweep widened `SKILL\.md` →

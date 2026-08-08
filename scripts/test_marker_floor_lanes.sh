@@ -23,14 +23,15 @@ check() { # $1=fixture $2=expected(PASS|BLOCK) $3=label
   if [ "$got" = "$2" ]; then echo "✅ $3 → $got"; else echo "❌ $3 → $got (expected $2)"; FAIL=1; fi
 }
 
-printf 'axis2-engine: inline\naxis2-model: sonnet\nfloor-status: sonnet-floor\naxis2-anchor: regression test 5/5 pass\naxis2-evidence: PASS no-S, 2B applied\n' > "$T/m1"
-printf 'axis2-engine: inline\naxis2-model: sonnet\nfloor-status: sonnet-floor\naxis2-evidence: PASS no-S\n' > "$T/m2"
-printf 'axis2-engine: inline\naxis2-model: haiku\nfloor-status: sonnet-floor\naxis2-anchor: probe 3/3\naxis2-evidence: PASS no-S\n' > "$T/m3"
-printf 'axis2-engine: inline\naxis2-model: sonnet\nfloor-status: at-floor\naxis2-evidence: PASS no-S\n' > "$T/m4"
-printf 'axis2-engine: inline\naxis2-model: haiku\nfloor-status: below-floor\naxis2-evidence: PASS no-S\n' > "$T/m5"
-printf 'axis2-engine: quench-challenger\naxis2-model: opus\nfloor-status: at-floor\naxis2-evidence: 1S/4A fixed\n' > "$T/m6"
-printf 'axis2-engine: inline\naxis2-model: haiku\nfloor-status: below-floor\nbelow-floor-ack: "approved, proceed" — canary-only change\naxis2-evidence: PASS no-S\n' > "$T/m7"
-printf 'axis2-engine: inline\naxis2-model: opus\nfloor-status: bogus-status\naxis2-evidence: PASS\n' > "$T/m8"
+CF=''
+printf "axis2-engine: inline\naxis2-model: sonnet\nfloor-status: sonnet-floor\naxis2-anchor: regression test 5/5 pass\n${CF}axis2-evidence: PASS no-S, 2B applied\n" > "$T/m1"
+printf "axis2-engine: inline\naxis2-model: sonnet\nfloor-status: sonnet-floor\n${CF}axis2-evidence: PASS no-S\n" > "$T/m2"
+printf "axis2-engine: inline\naxis2-model: haiku\nfloor-status: sonnet-floor\naxis2-anchor: probe 3/3\n${CF}axis2-evidence: PASS no-S\n" > "$T/m3"
+printf "axis2-engine: inline\naxis2-model: sonnet\nfloor-status: at-floor\n${CF}axis2-evidence: PASS no-S\n" > "$T/m4"
+printf "axis2-engine: inline\naxis2-model: haiku\nfloor-status: below-floor\n${CF}axis2-evidence: PASS no-S\n" > "$T/m5"
+printf "axis2-engine: quench-challenger\naxis2-model: opus\nfloor-status: at-floor\n${CF}axis2-evidence: 1S/4A fixed\n" > "$T/m6"
+printf "axis2-engine: inline\naxis2-model: haiku\nfloor-status: below-floor\nbelow-floor-ack: \"approved, proceed\" — canary-only change\n${CF}axis2-evidence: PASS no-S\n" > "$T/m7"
+printf "axis2-engine: inline\naxis2-model: opus\nfloor-status: bogus-status\n${CF}axis2-evidence: PASS\n" > "$T/m8"
 
 check "$T/m1" PASS  "sonnet-floor + anchor + sonnet model (new lane, intended shape)"
 check "$T/m2" BLOCK "sonnet-floor WITHOUT anchor (anchor is the compensating requirement)"

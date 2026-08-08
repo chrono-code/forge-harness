@@ -313,7 +313,19 @@ deconfliction: this gate reviews **field code being authored**; the Irreversibil
 **Degrade direction (fail-closed)**: no different-family auditor reachable → **NOT-CONVERGED** —
 block the autonomous merge / ask the operator / proceed only under an **explicit, logged
 same-family-only acknowledgment**; never a silent same-family pass (§Irreversibility Surface-Class
-Degrade Invariant). **Residency**: sanitize company code before any external-family dispatch; domain data never leaves.
+Degrade Invariant). **That acknowledgment is now typed, not prose**: the Axes 2–3 marker carries
+the marker's **`crossfamily:`** line — required on load-bearing changes since c1fa459, and a closed
+enum since 2026-08-08 — `panel(<families>)` · `declined` · `DEGRADED_SINGLE_FAMILY` ·
+`DEGRADED_PANEL_UNUSED` · `UNKNOWN`, the three degrade values hard-blocked at commit without
+substantive grounds on the same line naming what was probed (`templates/.git-hooks/pre-commit`, fixtures
+`scripts/test_marker_crossfamily_lanes.sh`). *could not* (`DEGRADED_SINGLE_FAMILY`) · *did not*
+(`DEGRADED_PANEL_UNUSED`) · *did not look* (`UNKNOWN`) are **separate values on purpose** — free
+prose collapsed them, which renders an unrun probe as a zero finding and an unused panel as an
+unavailable one. This is also what reconciles this line with `auto-decorrelation`
+Step 6's *"silent degrade, never hard-fail"*: **not-blocking and not-silent are different
+properties**, and only the second is mandatory on a reversible commit surface. Before 2026-08-08
+this axis was convention-only — measured on this repo, 140 markers carried the tier verdict 129
+times and any decorrelation verdict **4** times. **Residency**: sanitize company code before any external-family dispatch; domain data never leaves.
 **Autonomy**: autonomous once UAP-consented; **in autonomous loops the gate is part of the delegated
 pipeline**, not an afterthought, and a below-floor orchestrator RUNS the review by default
 (run-first, ask-last — `sonnet_floor_doctrine.md`).
