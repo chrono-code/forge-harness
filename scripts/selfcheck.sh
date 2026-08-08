@@ -211,6 +211,26 @@ else
   fail=1
 fi
 
+# embedded --self-test suites (compaction_probe · judgment_circuit_lint · novelty_claim_check).
+# These three carry their lanes INSIDE the script (`--self-test`) rather than in a sibling
+# test_*_lanes.sh, so the name-list wiring above skipped them silently: 48 lanes existed and ran
+# only when a human typed the command. That is built-but-not-wired applied to the anchors themselves
+# — a later edit that breaks a lane stays green everywhere the project actually checks
+# (high re-review 2026-08-08). Same shape as the block above: subject absent → SKIP, subject present
+# but self-test missing → FAIL, never a silent pass.
+for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
+  if [ ! -f "scripts/$_subj.sh" ]; then
+    echo "SKIP  $_subj --self-test (subject scripts/$_subj.sh absent)"
+  elif grep -q -- '--self-test' "scripts/$_subj.sh"; then
+    if ! bash "scripts/$_subj.sh" --self-test; then
+      fail=1
+    fi
+  else
+    echo "FAIL  $_subj: script present but its --self-test anchor is missing"
+    fail=1
+  fi
+done
+
 # memory-link-check — the memory store is a GRAPH (memory_intent_recall.md: nodes=files,
 # edges=[[links]], recall walks one hop). Measured 2026-07-28: 50 of 872 edges pointed at a note
 # that existed under a different separator and 22 at nothing — a dead edge returns nothing and is

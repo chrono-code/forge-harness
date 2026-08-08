@@ -94,11 +94,15 @@ scan_file() {
     # 판단방향(i=3)만: 관대한 목적지로 기우는 문장은 회로의 증거가 아니다
     if [ "$i" = "3" ] && [ -n "$_hit" ]; then
       _dir=$(grep -hiE "(when (uncertain|unclear|unsure)|불확실하면|모르면|애매하면).{0,40}(default|기운다|쪽으로|lean|err)" "$f" 2>/dev/null \
-             | grep -viE '(\bPASS(ED|ES)?\b|\bALLOW(ED|S)?\b|\bOK\b|통과|허용|승인)' | head -1)
-      # ⚠️ 무앵커 부분문자열이면 `OK` 가 **look·token·broken** 에, `PASS` 가 **passed·bypass** 에 걸려
-      # 정당한 fail-closed 문장에서 판단방향 크레딧을 뺏는다. 실측 known-pair(high 리뷰 #8):
-      # "When unclear, default to blocking and look at the source." → 2/5 PARTIAL,
-      # " and look at the source" 만 지우면 3/5 CIRCUIT. 단어 경계 필수.
+             | grep -viE '(\b(PASS(ING|ES|ED)?|ALLOW(ING|S|ED)?|APPROV(E|ES|ING|ED)|PERMIT(S|TED|TING)?|GREEN|OK)\b|통과|허용|승인|봐준다)' | head -1)
+      # 두 방향 모두 실측으로 물렸다 — 이 패턴은 **양쪽에서** 틀릴 수 있다:
+      #  ⓐ 무앵커 부분문자열 → `OK` 가 **look·token·broken** 에 걸려 정당한 fail-closed 문장에서
+      #    크레딧을 뺏는다 (high 리뷰 #8: "default to blocking and look at the source" 가 2/5 로 강등)
+      #  ⓑ 순진한 단어경계 → **굴절형이 빠져나간다.** ⓐ 를 고치다 이걸 열었다:
+      #    "default to passing the check" 가 2/5 → 3/5 로 **승격**돼 degrade-toward-PASS 문서를
+      #    판단 회로로 인증했다 (high 재리뷰 #3, net regression). 그때 붙인 레인 둘 다 맨 토큰 `PASS`
+      #    를 써서 못 봤다 — **레인이 수리와 같은 어휘를 쓰면 그 수리의 구멍을 못 본다.**
+      # 그래서 경계 + 굴절 접미사를 같이 건다. 새 어휘를 추가할 땐 굴절형 레인부터 쓸 것.
       _kr=$(grep -hE "(불확실하면|모르면|애매하면).{0,30}(보고|차단|중단|엄격)" "$f" 2>/dev/null | head -1)
       [ -z "$_dir" ] && [ -z "$_kr" ] && _hit=""
     fi
@@ -221,6 +225,23 @@ A 와 B 가 상충하면 A 가 이긴다.
 EOF
   local rp; rp="$(scan_file "$T/reallypass.md" 2>/dev/null | awk '/판정:/{print $NF}')"
   t "#8 진짜 'default to PASS' 는 여전히 크레딧 없음 (3/5)" "3/5" "$rp"
+
+  # ── 회귀 레인: #3 굴절형 (high 재리뷰 2026-08-08, net regression) ──
+  # ⚠️ **커버리지 숫자에 건다. verdict 에 걸면 못 본다** — 다른 형식이 3개 있으면 판단방향을
+  # 거부당해도 verdict 는 CIRCUIT 로 같다. 지난 라운드 레인이 verdict 에 걸려서 이 구멍을 놓쳤다.
+  _cov() {   # $1=판단방향 자리에 넣을 문장 → "n/5"
+    local d; d="$(mktemp -d)"
+    printf 'When unclear, default to %s.\n근거를 못 찾으면 보고하지 마라.\n성능은 이 작업의 대상이 아니다.\nA 와 B 가 상충하면 A 가 이긴다.\n' "$1" > "$d/x.md"
+    scan_file "$d/x.md" 2>/dev/null | awk '/판정:/{print $NF}'
+    rm -rf "$d"
+  }
+  t "#3 'passing' 굴절형도 크레딧 거부" "3/5" "$(_cov 'passing the check')"
+  t "#3 'allowing' 굴절형도 크레딧 거부" "3/5" "$(_cov 'allowing the operation')"
+  t "#3 'approving' 굴절형도 크레딧 거부" "3/5" "$(_cov 'approving it')"
+  t "#3 'passed' 과거형도 크레딧 거부"   "3/5" "$(_cov 'passed state')"
+  # 반대편: 보수적 방향은 **여전히 부여**돼야 한다 (과차단 금지)
+  t "#3 보수적 방향은 크레딧 유지 (look 오탐 없음)" "4/5" "$(_cov 'blocking and look at the source')"
+  t "#3 'token/broken' 도 크레딧 유지"   "4/5" "$(_cov 'blocking on a broken token')"
 
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍)" || echo "❌ 캘리브레이션 실패 ($n 쌍)"

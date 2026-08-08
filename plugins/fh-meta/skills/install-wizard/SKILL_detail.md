@@ -536,7 +536,14 @@ target = os.path.join(hub, ".claude", "settings.json")
 # A new templates/settings.*.snippet.json is picked up with zero edits here: generation, not detection.
 snippets = sorted(glob.glob(os.path.join(hub, "templates", "settings.*.snippet.json")))
 if not snippets:
-    print("no snippets found under templates/ — nothing to register"); raise SystemExit(0)
+    # exit 1, NOT 0. The pre-rewrite code raised FileNotFoundError here, and that loud failure is what
+    # made a broken npm `files[]` detectable — the comment above records it happening for real once.
+    # The first rewrite replaced it with a quiet exit 0, i.e. it deleted the detector while keeping the
+    # bug (high re-review 2026-08-08 #1). Zero snippets means zero hooks registered; that is never a
+    # success, and every other zero-registration path below already exits 1.
+    print("NO SNIPPETS under templates/settings.*.snippet.json — zero hooks registered.")
+    print("  → package `files[]` may have dropped templates/, or this is not an FH hub. NOT a success.")
+    raise SystemExit(1)
 
 d = collections.OrderedDict()
 if os.path.exists(target):
@@ -547,11 +554,15 @@ hooks = d.setdefault("hooks", collections.OrderedDict())
 def fh_keys(entry_groups):
     """FH script basenames this snippet owns — the replace key is DERIVED from the snippet's own
     commands, never hardcoded, so it cannot drift from what is actually being installed."""
+    # Key on the snippet's own PATH FORM (scripts/<name>.sh), not a bare basename. A bare basename
+    # made the survivor filter delete a user's own hook that merely shared a filename — e.g. their
+    # ~/tools/compaction_probe.sh — which is the exact loss the hook-level merge exists to prevent,
+    # reintroduced through key derivation (high re-review 2026-08-08 #2).
     keys = set()
     for g in entry_groups:
         for h in g.get("hooks", []):
-            for m in re.findall(r'([A-Za-z0-9_\-]+\.sh)', h.get("command", "")):
-                keys.add(m)
+            for m in re.findall(r'((?:[A-Za-z0-9_\-]+/)*scripts/[A-Za-z0-9_\-]+\.sh)', h.get("command", "")):
+                keys.add("scripts/" + m.rsplit("scripts/", 1)[1])
     return keys
 
 registered, bad_schema, intended = [], [], {}
@@ -617,6 +628,18 @@ if bad_schema:
 if not registered:
     print("no hook entries registered — nothing to claim"); raise SystemExit(1)
 PY
+# CONSUME the merge block's exit status. It raises SystemExit(1) on a skipped/failed registration,
+# and the surrounding bash has no `set -e` — so without this check the wizard sailed past a failed
+# registration and §Step5 still printed success, which is the exact "reports success while unwired"
+# shape the fail-closed direction was added to prevent (high re-review 2026-08-08 #6).
+# The failure is SURFACED, not swallowed: the operator sees which snippet did not register.
+_MERGE_RC=$?
+if [ "$_MERGE_RC" -ne 0 ]; then
+  echo "🟥 hook registration FAILED (exit $_MERGE_RC) — one or more snippets are UNREGISTERED."
+  echo "   Do not read the completion report below as 'hooks are wired'. Fix the snippet and re-run"
+  echo "   this step; the rest of the wizard continues so the remaining setup is not lost."
+  WIZARD_HOOK_REG_FAILED=1
+fi
 chmod +x "$FH_DIR/scripts/fh_node_check.sh" 2>/dev/null
 # VERIFY against a THROWAWAY state file (FH_NODE_STATE). Verifying against the real state would
 # consume the user's one-shot event report, so their actual first session goes quiet and the notice

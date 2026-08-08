@@ -187,6 +187,35 @@ _merge "$H"
 _eq "MS-5 user's own hook in the same event survives" \
     "$(python3 -c "import json;print('YES' if 'my_own.sh' in json.dumps(json.load(open('$H/.claude/settings.json')).get('hooks',{}).get('PreCompact',[])) else 'NO')" 2>/dev/null)" "YES"
 
+# ══ RE-REVIEW REPAIRS (2026-08-08 round 2) ══
+# 두 건 다 **직전 라운드의 수리가 만든 결함**이다. 레인 없이 고치면 같은 자리로 돌아온다.
+echo "══ re-review repairs ══"
+
+# ZS — 스니펫 0개는 조용한 성공이 아니라 시끄러운 실패여야 한다 (#1)
+ZH="$TMPROOT/zerosnip"; mkdir -p "$ZH/templates" "$ZH/.claude"   # templates/ 는 있고 스니펫만 없다
+_merge "$ZH"
+_rc "ZS-1 스니펫 0개 → non-zero (조용한 성공 금지)" "$RC" 1
+case "$OUT" in *"NO SNIPPETS"*) _pass "ZS-2 무엇이 없는지 이름을 말한다" ;; *) _fail "ZS-2 실패 사유가 불명" ;; esac
+
+# KC — 파생 키가 베이스네임이면 남의 훅을 지운다 (#2)
+KH=$(_hub2 keycollide)
+python3 - "$KH" <<'PY2'
+import json,collections,os,sys
+t=sys.argv[1]+"/.claude/settings.json"
+d=collections.OrderedDict()
+if os.path.exists(t): d=json.load(open(t),object_pairs_hook=collections.OrderedDict)
+h=d.setdefault("hooks",collections.OrderedDict())
+# 사용자 자기 훅 — 파일명은 겹치지만 **경로가 다르다**
+h.setdefault("PreCompact",[]).append({"matcher":"","hooks":[
+  {"type":"command","command":"bash ~/tools/zzz_probe.sh --mine"}]})
+json.dump(d,open(t,"w"),indent=2,ensure_ascii=False)
+PY2
+_merge "$KH"
+_eq "KC-1 파일명만 겹치는 사용자 훅은 살아남는다" \
+    "$(python3 -c "import json;print('YES' if 'tools/zzz_probe.sh' in json.dumps(json.load(open('$KH/.claude/settings.json')).get('hooks',{}).get('PreCompact',[])) else 'NO')" 2>/dev/null)" "YES"
+_eq "KC-2 FH 자기 훅은 여전히 교체된다 (중복 없음)" \
+    "$(python3 -c "import json;print(json.dumps(json.load(open('$KH/.claude/settings.json')).get('hooks',{}).get('PreCompact',[])).count('scripts/zzz_probe.sh'))" 2>/dev/null)" "1"
+
 echo "══ ⓘ GAP lanes ══"
 
 # GAP 1 — the ONLY validation is what `kept + entry` incidentally requires: that entry is a list.

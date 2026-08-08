@@ -57,7 +57,11 @@ RE_META='(❌|🟥|🚫|금지|forbidden|never|안티패턴|anti-pattern|예:|ex
 scan_file() {
   local f="$1" total=0 bad=0 meta=0
   local -a HITS=()
-  local nlines; nlines=$(wc -l < "$f" 2>/dev/null | tr -d ' ')
+  # `wc -l` 은 **개행을 센다** — 마지막 줄에 개행이 없으면 한 줄 적게 나오고, 앵커 창 상한이
+  # 한 줄 짧아져 **주장 자기 줄을 창 밖으로 밀어낸다** → 거짓 무앵커(high 재리뷰 #10).
+  # `git show :file` 이 blob 바이트를 그대로 쓰므로 pre-commit 경로에서 실제로 도달 가능하다.
+  local nlines; nlines=$(awk 'END{print NR}' "$f" 2>/dev/null)
+  [ -z "$nlines" ] && nlines=0
 
   while IFS= read -r ln; do
     local num="${ln%%:*}" txt="${ln#*:}"
@@ -159,6 +163,14 @@ EOF
   t "#9 meta 제외분이 있으면 '깨끗함' 으로 렌더 안 한다" YES "$rc"
   case "$_o" in *"신규성·부재 주장 없음"*) rc=YES ;; *) rc=NO ;; esac
   t "#9 '주장 없음' 단독 출력은 안 나온다" NO "$rc"
+
+  # #10 마지막 줄에 개행이 없어도 앵커 창이 자기 줄을 포함해야 한다 (high 재리뷰)
+  printf '더미 줄\n이 패턴은 선례가 없다 (arXiv 2607.08032 서베이).' > "$T/nonl.md"
+  scan_file "$T/nonl.md" >/dev/null 2>&1; rc=$?
+  t "#10 개행 없는 마지막 줄도 앵커가 잡힌다" 0 "$rc"
+  printf '더미 줄\n이 패턴은 선례가 없다 (arXiv 2607.08032 서베이).\n' > "$T/wnl.md"
+  scan_file "$T/wnl.md" >/dev/null 2>&1; rc=$?
+  t "#10 개행 있는 판본과 동일 판정" 0 "$rc"
 
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍)" || echo "❌ 캘리브레이션 실패 ($n 쌍)"

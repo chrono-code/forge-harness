@@ -144,7 +144,10 @@ PY
   # 되주입 대기 표시 — digest 가 소비한다
   # .pending 에 **세션 id 와 시각**을 같이 쓴다. 초판은 경로만 써서, 세션 A 가 봉인하고 그냥 나가면
   # 며칠 뒤 세션 B 의 첫 프롬프트가 A 의 발화·브랜치·더티파일을 **"직전 압축"이라고 주장하며** 주입했다.
-  printf '%s\t%s\t%s\n' "$out" "$session" "$(date +%s)" > "$outdir/.pending" 2>/dev/null
+  # **세션별 마커.** 하나를 공유하면 다음 프롬프트를 낸 아무 세션이나 그걸 소비하고, 정작 압축당한
+  # 세션은 0바이트를 받는다 — 재주입이 존재하는 유일한 대상이 못 받는 것이다(high 재리뷰 #4).
+  # 라벨링(#4 1차 수리)은 오배달을 *말해줬을 뿐* 라우팅하지 않았다.
+  printf '%s\t%s\t%s\n' "$out" "$session" "$(date +%s)" > "$outdir/.pending_${session}" 2>/dev/null
   echo "sealed: $out"
   return 0
 }
@@ -154,8 +157,17 @@ PY
 # ─────────────────────────────────────────────────────────────────────────────
 do_digest() {
   local outdir="$1" DIGEST_SESSION="${2:-unknown}"
-  local pending="$outdir/.pending"
-  [ -f "$pending" ] || return 0
+  # 내 세션 마커를 먼저 본다. 없으면 (세션 미상 등) 주인 없는 것만 관용으로 집는다 —
+  # 남의 세션 마커를 **소비하지 않는다**. 소비하면 그 세션이 자기 원장을 영영 못 받는다.
+  local pending="$outdir/.pending_${DIGEST_SESSION}"
+  if [ ! -f "$pending" ]; then
+    if [ "$DIGEST_SESSION" = "unknown" ]; then
+      pending="$(ls -t "$outdir"/.pending_* 2>/dev/null | head -1)"
+    else
+      pending="$outdir/.pending"        # 구형식(단일 마커) 관용
+    fi
+  fi
+  [ -n "${pending:-}" ] && [ -f "$pending" ] || return 0
   local sealfile sealsess sealts
   IFS=$'\t' read -r sealfile sealsess sealts < "$pending" 2>/dev/null
   [ -z "${sealfile:-}" ] && sealfile="$(head -1 "$pending" 2>/dev/null)"   # 구형식 관용
@@ -184,7 +196,16 @@ do_digest() {
   # ⚠️ 초판은 `sed -n '1,80p'` 였다. 봉인 앞부분은 **발화 덤프**라, 긴 세션에서는 80줄이 발화
   # 목록 중간에서 끊기고 **정작 포인터(git 상태·정본 경로·payload 상태)는 한 줄도 안 들어갔다** —
   # 계약("포인터 원장이다")의 정반대. 이제 포인터 절을 먼저 주입하고 발화는 뒤에서 잘라 붙인다.
-  awk '/^## 이 세션이 건드린 파일/,0' "$sealfile" 2>/dev/null | head -40
+  # ⚠️ **절마다 개별 상한**을 준다. 범위 하나에 head 를 걸면 앞 절(더티파일 목록)이 길 때 뒤 절
+  # (정본 포인터·payload 상태)이 통째로 잘린다 — 1차 수리는 자르는 위치만 옮겼지 포인터가 그 안에
+  # 든다는 보장을 안 만들었다(high 재리뷰 #8, 더티파일 35개로 재현).
+  # 포인터가 이 원장의 존재 이유이므로 **포인터 절을 먼저, 그리고 절대 안 자른다.**
+  echo "── 열어야 할 정본 ──"
+  awk '/^## 열어야 할 정본/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -v '^$'
+  grep -E '^payload: ' "$sealfile" 2>/dev/null
+  echo
+  echo "── 이 세션이 건드린 파일 (앞 20줄) ──"
+  awk '/^## 이 세션이 건드린 파일/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -v '^$' | head -20
   echo
   echo "── 운영자 발화 (앞 25건) ──"
   awk '/^## 운영자 발화/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -E '^[0-9]+\.|^제외:|^합계:' | head -25
@@ -310,16 +331,29 @@ self_test() {
   t "#3 digest 가 git 상태를 주입한다" YES "$r"
 
   # #4 세션 교차 주입 — 다른 세션의 봉인을 "직전 압축"이라고 주장하면 안 된다
+  # ⚠️ 이 레인은 1차 수리 때 "라벨하면 된다"는 전제로 썼다가 **갱신됐다**. 라벨은 오배달을
+  # 말해줄 뿐 라우팅하지 않았고, 그 사이 압축당한 세션이 0바이트를 받았다(high 재리뷰 #4).
+  # 지금의 정답은 **다른 세션은 아무것도 안 받고, 주인 마커는 남아 있는 것**이다.
   do_seal "$T/tr.jsonl" "$T/out4" "SESSA" >/dev/null 2>&1
-  local d4; d4="$(do_digest "$T/out4" "SESSB" 2>/dev/null)"
-  case "$d4" in *"다른 세션(SESSA)"*) rc=YES ;; *) rc=NO ;; esac
-  t "#4 다른 세션의 봉인이면 그렇게 말한다" YES "$rc"
+  local d4; d4="$(do_digest "$T/out4" "SESSB" 2>/dev/null | wc -c | tr -d ' ')"
+  t "#4 다른 세션은 남의 봉인을 안 받는다" 0 "$d4"
+  local d4o; d4o="$(do_digest "$T/out4" "SESSA" 2>/dev/null | wc -c | tr -d ' ')"
+  [ "$d4o" -gt 100 ] && rc=YES || rc=NO
+  t "#4 ★ 주인 세션은 자기 원장을 받는다 (소비당하지 않았다)" YES "$rc"
   do_seal "$T/tr.jsonl" "$T/out4b" "SESSA" >/dev/null 2>&1
   local d4b; d4b="$(do_digest "$T/out4b" "SESSA" 2>/dev/null)"
   case "$d4b" in *"직전 압축 전에"*) rc=YES ;; *) rc=NO ;; esac
   t "#4 같은 세션이면 직전-압축 주장 유지 (과경고 아님)" YES "$rc"
   case "$d4b" in *"다른 세션"*) rc=YES ;; *) rc=NO ;; esac
   t "#4 같은 세션에 교차 경고 안 뜬다" NO "$rc"
+
+  # #8 포인터 절은 **절대 안 잘린다** — 더티파일 목록이 길어도
+  do_seal "$T/tr.jsonl" "$T/out8" "SESS8" >/dev/null 2>&1
+  local d8; d8="$(do_digest "$T/out8" "SESS8" 2>/dev/null)"
+  case "$d8" in *"열어야 할 정본"*) rc=YES ;; *) rc=NO ;; esac
+  t "#8 정본 포인터 절이 항상 들어간다" YES "$rc"
+  case "$d8" in *"payload:"*) rc=YES ;; *) rc=NO ;; esac
+  t "#8 payload typed 상태가 항상 들어간다" YES "$rc"
 
   # #5 세션 미상 폴백은 **미검증으로 라벨**돼야 한다 (침묵 추정 금지)
   local sf5
