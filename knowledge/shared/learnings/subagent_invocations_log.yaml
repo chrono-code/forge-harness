@@ -1335,3 +1335,65 @@
     본다([[feedback_lane_vocabulary_blind_to_its_own_fix]] 의 인접 판본).
     ★ ②의 발견은 대외 발표 리스크라 비공개 컴패니언 스토어로 착지시켜야 한다
     (이 로그는 위임 원장이지 정본이 아니고, 공개 표면이라 내용은 여기 적지 않는다).
+
+- date: 2026-08-08
+  session: qasp AX-레디 고도화 (홈, 저녁)
+  agents: [general-purpose (벤치 TC 팬텀 전수), fh-meta:challenger (적격 가드 적대검토)]
+  why: >-
+    ① 벤치 채점 자산 오염 검사는 12 TC × 앵커값 back-trace 라 넓고 기계적이다 — 이
+    컨텍스트에 담으면 다리 설계 갈래를 밀어낸다. ② 적격 가드는 **verdict 표면**이라
+    Field-Harness Load-Bearing Change Gate 대상이고, 저자(=나)가 그 diff 를 이미 읽고
+    "잘 짜였다" 로 기운 상태라 **출제자=응시자**였다. 반증을 사는 게 목적.
+  dispatch_count: 2
+  outcome: accepted
+  evidence: >-
+    ② 가 이 세션 최대 성과. **M-1**: `instruct$` 단독 수용이 임베딩 4종(gte-Qwen2-7B-
+    instruct · e5-mistral-7b-instruct · multilingual-e5-large-instruct ·
+    voyage-large-2-instruct)을 통과시킨다 — **직전 수리(f84eb5f)가 고쳤다는 그림이 id 만
+    바뀌어 재현**. family_of 가 셋을 서로 다른 3계열로 계상해 다양성 검사까지 만족.
+    **M-2**: MODEL_CATALOG 에 type/tags 지상진실 19개가 있는데 sidecar_panel 참조 0회
+    (컨트롤 = 형제 클라이언트 모듈 7회). **M-3**: 카탈로그 조회가 대소문자 구분이라 이름은 적격인데
+    라우팅이 다른 모델로 간다(→ #127). **S-8**: 이 앵커들이 CI 에 하나도 안 걸려 있었다.
+    셋 다 거버너가 자체 앵커로 재확인 후 수리(926ce1b) — 동의로 받지 않았다.
+    ① 은 **발주 전제를 반증**해 왔다: #126 이 "앱에도 부재" 라 한 `가맹점-001` 이
+    src/data.json:5 에 실재. 거버너 확인 결과 둘 다 참이고 어긋난 건 "앱" 의 코퍼스
+    정의(렌더 표면 vs 소스)였다 — **팬텀이 아니라 도달불가**이고 처방이 달라진다(#126 정정).
+    12 TC 전수에서 엄밀한 PHANTOM 0건.
+  note: >-
+    ★ ①이 자기 계기를 두 번 죽였다가 세 번째에 컨트롤로 살렸다(zsh word-split → 전
+    앵커 PHANTOM 오탐 직전). 컨트롤 한 줄이 없었으면 거짓 결함 12건을 받을 뻔했다.
+    ★ ②의 finding 중 하나(TC_N1 라벨 불일치)를 내가 "장식 앵커"로 **과확대 해석**했다가
+    증거(safe_mode 사유 문자열 + candidates_considered 0)로 자기 반증했다 — 서브에이전트는
+    "위장될 수 있다"까지만 말했고 밀고 간 건 나였다. 소스 확인 안 했으면 없는 결함으로
+    이슈를 열 뻔했다([[feedback_challenger_verify_before_act]] 가 실제로 걸린 사례).
+    ⚠️ **둘 다 Claude = same-family.** cross-family 는 restricted-env 호스트명 residency 때문에
+    홈에서 못 돌렸다 — PR #121 에 `DEGRADED_PANEL_UNUSED` 로 명시하고 restricted-env 이월.
+
+- date: 2026-08-08
+  session: 엔진 4요소 / 챔버 순서 증인 (홈, 야간 자율주행)
+  agent: codex exec (gpt-5.5) — cross-family sidecar, nohup + timeout 600 + 파일 출력
+  why: >-
+    신규 `chamber_witness.sh` 는 **verdict enum 을 반환하는 load-bearing 변경**이고,
+    그 verdict 가 identity ② 승격 근거로 쓰인다. 저자(=나)가 방금 짜고 self-test 8 레인을
+    초록으로 만든 직후라 **출제자=응시자** 상태였다 — 같은 손이 배선과 검사를 쓰면 배선 축만
+    본다. 운영자가 이 세션에 "탈상관 팍팍 쓰라"고 명시 승인.
+  dispatch_count: 1
+  outcome: accepted
+  evidence: >-
+    **11 findings, 자력 적발 0, 그중 4건은 codex 가 말이 아니라 실행으로 재현**
+    (record_writefail_rc=0 · same_commit_rc=0 · mixed_rc=0 · dup_pending_rc=0).
+    최악은 F1 — **verdict 해시가 없는데 verify 가 rc=0** 을 냈고, 러너가 그걸
+    "② 승격 근거 사용 가능" 으로 렌더했다. 증인 채널이 증인 없이 초록을 낸 것으로,
+    이 자산의 존재 이유와 정반대 방향이다. 나머지: 원장 쓰기 실패가 witnessed+0 (F2) ·
+    같은 초 역순 통과 (F3) · pre 최솟값만 비교해 부분 게이트 통과 (F4) · sha 문자열 단위
+    커밋 판정이라 재사용 해시가 PENDING 을 숨김 (F5) · 해시 도구 장애가 무결 통과 (F6) ·
+    주석이 코드보다 큰 주장 (F7·F9) · EMIT 증인 실패가 exit 0 (F8) · 원장 escaping 부재
+    (F10) · self-test 사각 6종 (F11). **전건 소스 확인 후 수리 + 회귀 레인 동반**,
+    self-test 8 → 16 레인. 비장식 증명 2건(F1·F3 각각 되돌리면 대응 레인 하나만 적색).
+  note: >-
+    ★ 계기 폼 실측 — Bash 툴이 2분 상한이라 codex 를 **포그라운드로 걸면 잘린다**(첫 시도
+    exit 143). 정답 폼 = `nohup sh -c "timeout 600 codex exec -m gpt-5.5 - < in > out"` +
+    `until grep -q DONE_rc` 백그라운드 완료 감지. hung 판정 전 mtime 확인 규율이 여기서도
+    유효했다(출력이 두 번 정체했지만 mtime age 162초 + CPU 1.1% 로 살아있음 확인).
+    ★ 이번에도 **cross-family 가 세션 최대 성과**다. 내 self-review 는 "1인자 경로 unbound"
+    까지 갔지만 **판정 로직의 fail-open 7종은 하나도 못 봤다**.
