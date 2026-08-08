@@ -1293,6 +1293,14 @@
     접촉 diff·스위트 직접 실행·되돌림 9 failed 독립 재현). 상세는 08-07 항목.
 
 - date: 2026-08-08
+  agent: codex exec (gpt-5.5) — cross-family sidecar, foreground
+  context: "엔진 4요소 RC 세션 — pre-commit 신규 블록 2개 + 신규 계기 3종(compaction_probe·judgment_circuit_lint·novelty_claim_check) load-bearing 감사"
+  ask: "결함만. fail-open · degrade direction · 셸 이식성/인용 무음사망 · 주석이 말하는데 코드가 안 하는 것"
+  outcome: accepted
+  evidence: "7 findings, 소스로 7/7 확인, 7/7 수리 + 회귀 앵커. 저자 계열 미검출 2건이 핵심 — (b) 판단방향 허용형식이 'default to PASS' 를 회로 증거로 크레딧(계기 내부의 degrade-direction 구멍) · (d-2) 인용을 지칭으로 통과시키고 분류는 원문으로 해서 인용 안 역할부여를 히트 기록. 나머지 5: 배열 미사용 공백경로 분할 · shift 2 무한루프 · rc=10 삼킴 · 「」 누락 · 미설치 무음(기존 훅 독트린과 일치해 유지)"
+  note: "첫 시도는 `&` 배경잡으로 띄웠다가 Bash 호출 셸 리셋과 함께 죽었다(ps 에 프로세스 없음, stdout 0B). 하네스 기전 문제지 사이드카 hung 이 아니었다 — 포그라운드 + timeout 420 으로 재실행해 EXIT=0. 다음부터 사이드카는 포그라운드 하드타임아웃 폼."
+
+- date: 2026-08-08
   agent: "consolidated — workflow code-review ×3 (34+38+39 agents) · fh-meta personas ×3 (beginner·main-player·challenger) · Sonnet target-tier sim ×2 · codex cross-family sidecar ×1"
   context: "엔진 4요소 RC 세션 — 3라운드 high 리뷰 + 챔버 런 #10 페르소나 시뮬 + 서브에이전트 정책 살리언스 sim"
   ask: "리뷰=수리가 결함을 옮겼는지 · 페르소나=EMIT 가치/실패비용/안 보이는 것 · sim=텍스트가 따라와지는지"

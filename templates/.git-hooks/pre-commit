@@ -983,6 +983,99 @@ if [ -n "$LOADBEARING" ]; then
   if validate_crossfamily_leg "$MARKER_LB"; then :; else FAILED=1; fi
 fi
 
+# ── staged-blob materializer (advisory linters) ───────────────────────────────
+# 두 advisory 린터는 파일을 직접 grep/sed 한다. 워킹트리 경로를 넘기면 **커밋되는 내용이 아니라
+# 지금 디스크에 있는 내용**을 재게 된다 — 스테이징 후 워킹트리에서 고치면 훅은 깨끗하다 보고하고
+# 문제 있는 blob 이 커밋된다(high 리뷰 #6, 낙관 방향 fail-open). 이 훅의 다른 슬라이스는 전부
+# `git diff --cached` / `git show :file` 로 추론한다. 여기만 예외였다.
+_stage_blob() {   # $1=repo-relative path → echoes temp file holding the STAGED content
+  local _p="$1" _t
+  _t="$(mktemp "${TMPDIR:-/tmp}/fh_staged.XXXXXX")" || return 1
+  if git -C "$REPO_ROOT" show ":$_p" > "$_t" 2>/dev/null; then printf '%s' "$_t"
+  else rm -f "$_t"; return 1; fi
+}
+_STAGE_TMPS=()
+_STAGE_MAP=()      # "tmpfile=repopath" — 보고를 사람이 읽을 수 있게 되돌리는 데 쓴다
+# 히트를 익명 mktemp 경로로 인쇄하면, 그 파일은 _stage_cleanup 이 곧 지워서 **읽는 순간 이미 없다**.
+# 대상이 둘 이상이면 어느 파일 얘긴지 귀속조차 안 된다. advisory 의 목적은 사람을 그 줄로 보내는 것이다.
+_unmap() { local _o="$1" _m; for _m in "${_STAGE_MAP[@]:-}"; do
+    [ -n "$_m" ] && _o="${_o//${_m%%=*}/${_m#*=}}"; done; printf '%s' "$_o"; }
+_stage_cleanup() { [ "${#_STAGE_TMPS[@]}" -gt 0 ] && rm -f "${_STAGE_TMPS[@]}" 2>/dev/null; }
+
+# ── Judgment-circuit lint (advisory — the PROMPT-layer sibling of the degrade lint above) ─────
+# Same proposition, different corpus: degrade_direction_scan reads .py/.sh verdict code and skips
+# .md by construction, so identity/circuit DOCUMENTS had no instrument at all. Measured basis
+# (105 runs, 2026-08-07~08): role-assignment ("너는 ~이다") is a net loss on the weak tier and
+# intensity orders ("꼼꼼히") multiply phantoms 3.1x — both are prose granting discretion with an
+# unconstrained degrade direction, the doctrine's prompt-layer form.
+#
+# Trigger is an EXPLICIT REGISTRY, not a guess: `.claude/judgment_circuits.txt` (one path per line).
+# Which documents are judgment circuits is a decision someone makes, not something a glob infers —
+# an inferred trigger here would fire on every .md and get itself disabled.
+# ADVISORY by construction: grep-heuristic, false positives expected, never blocks a commit.
+JC_REG="$REPO_ROOT/.claude/judgment_circuits.txt"
+JC_LINT="$REPO_ROOT/scripts/judgment_circuit_lint.sh"
+if [ -f "$JC_REG" ] && [ -f "$JC_LINT" ]; then
+  # Array, not a space-joined string: a tracked path CAN contain a space, and the string form
+  # silently splits `docs/first known.md` into two nonexistent args (cross-family, 2026-08-08).
+  _jc_targets=()
+  while IFS= read -r _jc_line; do
+    case "$_jc_line" in ''|'#'*) continue ;; esac
+    if printf '%s\n' "$STAGED" | grep -qxF "$_jc_line" 2>/dev/null; then
+      _b="$(_stage_blob "$_jc_line")" && { _jc_targets+=("$_b"); _STAGE_TMPS+=("$_b"); _STAGE_MAP+=("$_b=$_jc_line"); }
+    fi
+  done < "$JC_REG"
+  if [ "${#_jc_targets[@]}" -gt 0 ]; then
+    echo "[Gate] registered judgment-circuit doc staged — circuit lint (advisory)..."
+    _jc_out="$(bash "$JC_LINT" "${_jc_targets[@]}" 2>&1)"; _jc_rc=$?
+    printf '%s\n' "$(_unmap "$_jc_out")" | sed 's/^/  /'
+    echo "  (경로는 스테이징 blob 을 레포 경로로 되돌려 표기했다 — 줄번호는 staged 내용 기준)"
+    # exit 10 = the scanner's own HARNESS-ERROR (bad input / unreadable target). Neither PASS nor
+    # FAIL — surfacing it is the whole point of having a typed exit; swallowing it would render a
+    # dead instrument as a clean run.
+    [ "$_jc_rc" = "10" ] && echo "  🟥 circuit lint HARNESS-ERROR (rc=10) — instrument did not measure"
+    echo "  (advisory — does not block. A hit means 'prove this is a circuit, not a persona'.)"
+  fi
+fi
+
+# ── Novelty-claim ledger (advisory) ───────────────────────────────────────────
+# "Ask the world before asserting novelty" is an INTENT trigger — un-hookable, like the
+# repo-go-public surface. So this does not force the asking; it makes NOT having asked visible
+# at commit time (shift-left ledger, not one more rule: the rule already existed and still failed).
+# Direction matters: defect claims (FAIL) have long required source-grounding while novelty/strength
+# claims (PASS) passed unchecked — the optimistic direction is the one that leaks. And an absence
+# claim is structurally worse: with nothing cited, phantom-detection cannot engage at all.
+# Scope = the same substantive doc surface the 4-axis carve-out already treats as claim-bearing.
+NC_CHECK="$REPO_ROOT/scripts/novelty_claim_check.sh"
+if [ -f "$NC_CHECK" ]; then
+  _nc_targets=()
+  while IFS= read -r _nc_line; do
+    _b="$(_stage_blob "$_nc_line")" && { _nc_targets+=("$_b"); _STAGE_TMPS+=("$_b"); _STAGE_MAP+=("$_b=$_nc_line"); }
+  done < <(printf '%s\n' "$STAGED" | grep -E '^(knowledge/|docs/).*\.md$' || true)
+  if [ "${#_nc_targets[@]}" -gt 0 ]; then
+    _nc_raw=$(bash "$NC_CHECK" "${_nc_targets[@]}" 2>&1); _nc_rc=$?
+    # Same typed-exit rule as above: rc=10 is a dead instrument, not a clean corpus.
+    [ "$_nc_rc" = "10" ] && echo "  🟥 novelty check HARNESS-ERROR (rc=10) — instrument did not measure"
+    _nc_raw="$(_unmap "$_nc_raw")"
+    # 부분 미스캔 경고를 **같이** 건진다. 호출부가 `🟥 무앵커` 만 grep 해서, 스크립트가 옳게 낸
+    # "전수 스캔이 아니다" 를 통째로 버렸다 — 수리가 스크립트 안으로 옮겨졌을 뿐 이 표면에선
+    # 미스캔 문서가 여전히 깨끗한 문서와 구분 불가였다(high 재리뷰 #5).
+    _nc_warn=$(printf '%s\n' "$_nc_raw" | grep -F '전수 스캔이 아니다' | head -3 || true)
+    if [ -n "$_nc_warn" ]; then
+      echo "[Gate] novelty check: 부분 미스캔 (advisory):"
+      printf '%s\n' "$_nc_warn" | sed 's/^/  /'
+      echo "  → 이 문서는 전수 스캔이 아니다. 제외된 줄에 실제 주장이 있을 수 있다."
+    fi
+    _nc_out=$(printf '%s\n' "$_nc_raw" | grep -E '🟥 무앵커' | head -5 || true)
+    if [ -n "$_nc_out" ]; then
+      echo "[Gate] novelty/absence claim without an external anchor (advisory):"
+      printf '%s\n' "$_nc_out" | sed 's/^/  /'
+      echo "  Each = 'you asserted this about the world without asking it'. Does not block."
+    fi
+  fi
+fi
+_stage_cleanup
+
 # SKILL.md ONLY here, deliberately (2026-07-26): the 07-26 sweep widened `SKILL\.md` →
 # `SKILL(_detail)?\.md` in the HEAVY and doc-coupling terms above, but NOT here. This slice asks
 # "did the number of SKILLS change?" — a detail file is a referenced companion, not a skill, so
