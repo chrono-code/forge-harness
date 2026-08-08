@@ -111,6 +111,7 @@
     "scripts/prepush_guard_check.sh",
     "scripts/psa_scan_lib.sh",
     "scripts/session_close_check.sh",
+    "scripts/utterance_landing_check.sh",
     "scripts/test_dispatch_log_lanes.sh",
     "scripts/memory_link_check.py",
     "scripts/test_memory_link_check.sh",
