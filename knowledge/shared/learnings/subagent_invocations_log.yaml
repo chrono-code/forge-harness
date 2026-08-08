@@ -1421,3 +1421,32 @@
     이슈를 열 뻔했다([[feedback_challenger_verify_before_act]] 가 실제로 걸린 사례).
     ⚠️ **둘 다 Claude = same-family.** cross-family 는 restricted-env 호스트명 residency 때문에
     홈에서 못 돌렸다 — PR #121 에 `DEGRADED_PANEL_UNUSED` 로 명시하고 restricted-env 이월.
+
+- date: 2026-08-09
+  session: pmh Axis 0 표시 수리 (홈, qasp AX-레디 축 연장)
+  agents: [codex exec gpt-5.5 — cross-family sidecar (non-Claude), nohup + timeout 600]
+  why: >-
+    머지 게이트 스크립트를 내가 고쳤고 **내가 그 게이트로 다른 PR 을 머지하려던 참**이었다.
+    저자=검사자 상태고, 같은 날 이미 5건을 틀렸다. 계열을 바꾸는 게 유일하게 남은 축이라
+    codex 를 붙였다. residency 는 사전 실측으로 확인 — 대상 2파일에 회사 식별자 0건
+    (컨트롤: 같은 grep 이 'git' 29건 히트).
+  dispatch_count: 1
+  outcome: accepted
+  evidence: >-
+    5건 반환. **M-2 가 내 수리가 만든 구멍이었다** — 경고를 `rc=20` 분기에만 달아서,
+    되돌림인데 임계(add < del/4)를 못 넘는 PR 이 경고 없이 안심 문구만 보게 돼 있었다.
+    구체 시나리오까지 제시: base 300줄 수리 · head 옛 100줄 → 100 < 75 거짓 → rc=0.
+    **S-1**: multiple merge bases 는 실패가 아니다 — git 이 warning 을 찍고 base 를 임의로
+    골라 rc=0 을 낸다(공식 문서 인용 동반). rc 만 보면 임의 base 수치를 진실로 라벨한다.
+    **R-5**: 푸터가 `음성 13` 다음 줄에 `음성(11)` — 내가 한쪽만 고친 것이다. 그 파일이
+    자기 주석에 "문장에 숫자를 맞추지 말 것" 이라 적어놨는데 그걸 어겼다.
+    전부 거버너가 소스로 재확인 후 수리했고, M-2 는 되돌려 실행해 rc=0 레인이 빨개지는 것을
+    확인했다. S-3 은 M-2 수리로 함께 닫혔고 R-4 는 반증 실패로 남겼다.
+  note: >-
+    ★ 이 날의 축이 그대로 반복됐다 — **수리가 신규 결함의 주된 출처**이고 자력 적발이 0이다.
+    내가 고친 것(표시)이 옳았고, 그 수리에 내가 새로 단 경고가 잘못된 자리(판정 분기)에
+    걸려 있었다. 판정과 무관한 성질을 판정 분기에 매단 형태다.
+    ★ codex 가 중간에 `bash -n` 을 쓴 구간이 있다 — 문법만 보므로 계기가 아니다. 채택 근거는
+    그쪽 산문이 아니라 내가 돌린 레인 27 arm + 되돌림 실행이다.
+    ★ 조달 메모: `nohup ... timeout 600 codex exec -m gpt-5.5 - < prompt` 폼이 그대로 동작했고
+    총 79,938 토큰 · 약 12분. 0-output hang 없음.
