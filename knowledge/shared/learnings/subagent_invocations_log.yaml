@@ -1099,3 +1099,25 @@
     올린다** — tally 라인에 발화 원인(agent type/도구)을 함께 남겨, ④-e 가 "위임 누락"과
     "내부 에이전트/백그라운드 작업"을 구분하게 한다. 지금 그 구분 없이 숫자만 맞추면
     원장이 사실과 다른 것을 기록하게 되므로, 이 항목은 **8건을 위임으로 주장하지 않는다.**
+
+- date: 2026-08-08
+  session: FH self-dev — crossfamily typed verdict (③ degrade 지능화)
+  invoked: cross-family sidecar CLIs (not Agent-tool subagents)
+  what: >-
+    codex/gpt-5.5 1건 + agy/Gemini-3.1-Pro-High 2건(1건은 모델명 오류로 rc=1 즉시 실패,
+    카탈로그 실측 후 재주행). 대상 = pre-commit crossfamily lane diff 의 적대 검토.
+  outcome: accepted
+  evidence: >-
+    gemini 7건(3S/3A/1B) · codex 6건(5건은 gemini 와 독립 수렴, 1건 net-new =
+    grep -m1 first-field shadowing). 전량 수리 + 각각 픽스처. 앵커 37/37.
+    ★ codex 의 레포 grep 이 내가 지은 것이 **기존 crossfamily 검사의 중복 정규화기**임을
+    가리켰다 — 이 라운드 최대 결함의 자력 적발 경로가 사이드카였다.
+  note: >-
+    ★ 계기-대상 불일치가 이번에도 발화했다: ④-e 가 "30 dispatches"를 셌는데 이 세션의
+    Agent-tool 위임은 **0** 이다(사이드카는 Bash CLI 호출). 앞 항목이 N=2 로 올린 기계화
+    과제(tally 라인에 발화 원인 기록)의 **N=3** — 이제 산문이 아니라 기계 대상이다.
+    이 항목은 30건을 위임으로 주장하지 않으며, 위 3건만을 실제 사이드카 호출로 기록한다.
+  residual: >-
+    agy 모델명은 **카탈로그 실측 없이 기억으로 핀하면 rc=1 로 죽는다**("Gemini 3 Pro" ✗ /
+    "Gemini 3.1 Pro (High)" ✓). memory 의 "디스플레이명을 쓰라" 규칙은 맞았고 값이 틀렸다 —
+    폼과 값은 따로 검증해야 한다.
