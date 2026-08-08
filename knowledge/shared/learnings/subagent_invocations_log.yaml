@@ -1299,3 +1299,39 @@
   outcome: accepted
   evidence: "7 findings, 소스로 7/7 확인, 7/7 수리 + 회귀 앵커. 저자 계열 미검출 2건이 핵심 — (b) 판단방향 허용형식이 'default to PASS' 를 회로 증거로 크레딧(계기 내부의 degrade-direction 구멍) · (d-2) 인용을 지칭으로 통과시키고 분류는 원문으로 해서 인용 안 역할부여를 히트 기록. 나머지 5: 배열 미사용 공백경로 분할 · shift 2 무한루프 · rc=10 삼킴 · 「」 누락 · 미설치 무음(기존 훅 독트린과 일치해 유지)"
   note: "첫 시도는 `&` 배경잡으로 띄웠다가 Bash 호출 셸 리셋과 함께 죽었다(ps 에 프로세스 없음, stdout 0B). 하네스 기전 문제지 사이드카 hung 이 아니었다 — 포그라운드 + timeout 420 으로 재실행해 EXIT=0. 다음부터 사이드카는 포그라운드 하드타임아웃 폼."
+
+- date: 2026-08-08
+  agent: "consolidated — workflow code-review ×3 (34+38+39 agents) · fh-meta personas ×3 (beginner·main-player·challenger) · Sonnet target-tier sim ×2 · codex cross-family sidecar ×1"
+  context: "엔진 4요소 RC 세션 — 3라운드 high 리뷰 + 챔버 런 #10 페르소나 시뮬 + 서브에이전트 정책 살리언스 sim"
+  ask: "리뷰=수리가 결함을 옮겼는지 · 페르소나=EMIT 가치/실패비용/안 보이는 것 · sim=텍스트가 따라와지는지"
+  outcome: accepted
+  evidence: "리뷰 3라운드 10·10·10(벡터 평평, 2·3차 다수가 직전 수리 산물) → 축소 착지 판단의 근거. 페르소나 3인이 핵심 결함에 독립 수렴 → 챔버 KILL. sim 2회: 1차가 **거짓 기계-주장을 5/5 로 되읽음**(sim 은 followable 을 재지 true 를 안 잰다), 정정 후 2차 6/6"
+  note: "★계기 관찰 — `④-e` 탤리는 **148**, 이 원장 엔트리는 **3**이다. 탤리 훅은 워크플로 내부 에이전트를 전부 세고(리뷰 1회 = 34~39), 원장은 **내가 낸 디스패치 단위**를 센다. 둘은 다른 축이라 격차 자체는 결함이 아니지만, 그 사실이 어디에도 안 적혀 있어서 **148 vs 3 을 보면 기록 누락처럼 읽힌다**. 다음에 `session_close_check` ④-e 문구에 축 차이를 한 줄 붙일 것."
+
+- date: 2026-08-08
+  agent: general-purpose x2 (install-wizard --dry-run 진단 · if(kakao) 약속수치 4건 근거추적) + codex sidecar x1 (cross-family 적대감사)
+  caller: FH 세션 (🔴 utterance-landing-check 배선 · 거버너)
+  purpose: >-
+    ① dry-run 은 쓰기 0건 분석이라 통째로 격리 가능 ② if(kakao) 수치추적은 3개 레포를
+    가로질러 원자료를 뒤지는 작업이라 이 컨텍스트에 담으면 다른 갈래를 밀어낸다
+    ③ codex 는 **탈상관**이 목적 — selfcheck verdict 경로에 레인을 붙이는 load-bearing
+    변경이라 같은 계열 리뷰로는 저자의 낙관을 공유한다.
+  dispatch_count: 3
+  outcome: accepted
+  evidence: >-
+    ③ codex 가 **NOT-CONVERGED + 5 findings**. 전부 소스로 먼저 검증한 뒤 처리했고
+    (M2·S1·S2·R1 수리 / M1 이월-명명), **M2 는 내가 못 본 진짜 결함**이었다 —
+    TARGET 0건 probes 가 `✅ 발화 0 건 전부 착지` + exit 0 을 냈다. 자기 존재 이유
+    (0을 착지로 읽지 마라)와 정반대 방향이고, self-test p4 픽스처가 그 상태를 기대값
+    0 으로 **인코딩해 승인**하고 있었다. 신규 3레인 전부 개별 되돌림으로 물림 확인.
+    ② 4건 중 ③번(8/8)이 원자료·분모 확인으로 닫혔고, 동시에 2차 출처 문장 오기 1건
+    (`그중` → 이중 감점)·유도값 1건(오탐 0 은 렌즈 arm 한정)·합집합 표기 누락 1건을
+    새로 열었다. ①은 UNVERIFIED(원자료 미보존), ②는 조건 4번째(샌드박스 빌드) 추가.
+    ① dry-run 92/100 over 12, FAIL 0. 부수로 **플러그인 캐시 30패치 드리프트**를
+    잡았다 — 캐시본이 레포가 이미 정정한 주장을 계속 서빙 중.
+  note: >-
+    ★ ③이 이 세션에서 가장 값이 컸다. 내 self-review 는 "호출자 0개" 까지 갔지만
+    **스크립트 자체의 fail-open** 은 못 봤다 — 같은 손이 배선과 검사를 쓰면 배선 축만
+    본다([[feedback_lane_vocabulary_blind_to_its_own_fix]] 의 인접 판본).
+    ★ ②의 발견은 대외 발표 리스크라 비공개 컴패니언 스토어로 착지시켜야 한다
+    (이 로그는 위임 원장이지 정본이 아니고, 공개 표면이라 내용은 여기 적지 않는다).

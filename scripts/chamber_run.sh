@@ -85,7 +85,15 @@ fi
 # gate (a) is "artifact exists WITH real content", not just "placeholder removed" (Axis-2 LOW-6): require
 # at least one non-empty numbered success condition so a gutted INTENT.md doesn't pass.
 if ! awk '/^## Success conditions/{f=1;next} /^## /{f=0} f && /^[0-9]+\.[[:space:]]*[^[:space:]]/{print; exit}' "$WS/INTENT.md" | grep -q .; then
-  echo "  ⛔ step 2 BLOCKED: $WS/INTENT.md has no filled success condition (need a numbered line with content), re-run."; exit 1
+  # 계약을 **에러 메시지가 가르친다.** 이 형식은 CHAMBER_RUN_SKELETON.md 에 한 글자도 없어서,
+  # 스켈레톤만 읽고 쓴 INTENT 가 반려됐다 — gate-locality(계약이 게이트 구현에만 산다).
+  # 같은 런에서 step 6 도 같은 이유로 막혔다(N=2). 문서는 드리프트하지만 에러는 코드와 같이 산다.
+  echo "  ⛔ step 2 BLOCKED: $WS/INTENT.md has no filled success condition."
+  echo "     Expected — an English heading, then NUMBERED lines with content:"
+  echo "       ## Success conditions"
+  echo "       1. <condition> · [measured|mandatory-pass|judged]"
+  echo "       2. ..."
+  echo "     A table alone does NOT satisfy this check. Re-run after adding it."; exit 1
 fi
 _stamp "step-2-done"; echo "  ✓ step 2: INTENT.md present"
 
@@ -152,7 +160,11 @@ _stamp "step-5-done"; echo "  ✓ step 5: Emission Gate verdict = $VERDICT"
 
 # STEP 6 — actual cost / carry-forward record.
 if grep -qE '^ACTUAL:[[:space:]]*<' "$WS/BUDGET.md" || ! grep -qE '^ACTUAL:[[:space:]]*\S' "$WS/BUDGET.md"; then
-  echo "  ⛔ step 6 BLOCKED: record ACTUAL cost in $WS/BUDGET.md (actual-vs-estimate calibration), re-run."; exit 1
+  echo "  ⛔ step 6 BLOCKED: record ACTUAL cost in $WS/BUDGET.md (actual-vs-estimate calibration)."
+  echo "     Expected — a LINE PREFIX, not a heading:"
+  echo "       ACTUAL: <number/summary>        ← this form is checked"
+  echo "       ## ACTUAL                       ← a heading does NOT satisfy it"
+  echo "     Re-run after adding the line."; exit 1
 fi
 _stamp "step-6-done"; echo "  ✓ step 6: actual cost recorded"
 
