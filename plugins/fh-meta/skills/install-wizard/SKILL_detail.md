@@ -526,30 +526,96 @@ fi
 # scripts/package_coverage_check.sh caught the omission — without it an npm-installed wizard hit
 # FileNotFoundError here and registered nothing while reporting success upstream).
 python3 - "$FH_DIR" <<'PY'
-import json, os, sys, collections
+import json, os, sys, glob, collections, re, shutil
 hub = sys.argv[1]
-snippet = os.path.join(hub, "templates", "settings.SessionStart.snippet.json")
 target = os.path.join(hub, ".claude", "settings.json")
-entry = json.load(open(snippet))["project_settings_json"]["hooks"]["SessionStart"]
+
+# DISCOVER every shipped snippet, do not name one. Hardcoding a single snippet path is why the
+# compaction hooks shipped unwired while their own README recited the shipping-is-not-wiring lesson
+# (high review, 2026-08-08 — and PreToolUse was already sitting in the same hole, so N=2).
+# A new templates/settings.*.snippet.json is picked up with zero edits here: generation, not detection.
+snippets = sorted(glob.glob(os.path.join(hub, "templates", "settings.*.snippet.json")))
+if not snippets:
+    print("no snippets found under templates/ — nothing to register"); raise SystemExit(0)
+
 d = collections.OrderedDict()
 if os.path.exists(target):
     d = json.load(open(target), object_pairs_hook=collections.OrderedDict)
-    import shutil; shutil.copy2(target, target + ".prewizard")   # back up before rewriting
+    shutil.copy2(target, target + ".prewizard")          # back up before rewriting
 hooks = d.setdefault("hooks", collections.OrderedDict())
-# Merge at HOOK level, not group level. A group-level filter drops the whole group when a user's own
-# hook shares a group with the FH one — the common shape when someone hand-edits or appends to an
-# older wizard's output. (Cross-family review 2026-07-30 reproduced the loss: a group holding
-# [my_telemetry.sh, fh_session_load.sh] lost my_telemetry.sh entirely.)
-kept = []
-for g in hooks.get("SessionStart", []):
-    survivors = [h for h in g.get("hooks", []) if "fh_node_check" not in h.get("command", "")]
-    if survivors:
-        g = dict(g); g["hooks"] = survivors; kept.append(g)
-hooks["SessionStart"] = kept + entry
+
+def fh_keys(entry_groups):
+    """FH script basenames this snippet owns — the replace key is DERIVED from the snippet's own
+    commands, never hardcoded, so it cannot drift from what is actually being installed."""
+    keys = set()
+    for g in entry_groups:
+        for h in g.get("hooks", []):
+            for m in re.findall(r'([A-Za-z0-9_\-]+\.sh)', h.get("command", "")):
+                keys.add(m)
+    return keys
+
+registered, bad_schema, intended = [], [], {}
+for snip in snippets:
+    try:
+        blob = json.load(open(snip))
+    except Exception as e:
+        print("SKIP (unparsable):", os.path.basename(snip), e); bad_schema.append(snip); continue
+    proj = (blob.get("project_settings_json") or {}).get("hooks") or {}
+    if not proj:
+        # settings_local_json_MODE_D_ONLY entries carry private paths — never auto-written here.
+        print("SKIP (no project_settings_json):", os.path.basename(snip)); bad_schema.append(snip); continue
+    for event, entry in proj.items():
+        # Shape-validate before touching the user's file. A valid-JSON / invalid-SCHEMA snippet used
+        # to be written anyway and reported as success, then detonate on the NEXT run inside the
+        # survivor filter — far from the snippet that caused it (lanes BS-*, LT-*).
+        if not isinstance(entry, list) or not all(
+                isinstance(g, dict) and isinstance(g.get("hooks"), list) for g in entry):
+            print("SKIP (bad schema):", os.path.basename(snip), event); bad_schema.append(snip); continue
+        keys = fh_keys(entry)
+        if not keys:
+            print("SKIP (no FH script in commands):", os.path.basename(snip), event)
+            bad_schema.append(snip); continue
+        intended[event] = intended.get(event, set()) | keys
+        # Merge at HOOK level, not group level. A group-level filter drops the whole group when a
+        # user's own hook shares a group with the FH one (cross-family review 2026-07-30 reproduced
+        # the loss: [my_telemetry.sh, fh_session_load.sh] lost my_telemetry.sh entirely).
+        kept = []
+        for g in hooks.get(event, []):
+            survivors = [h for h in g.get("hooks", [])
+                         if not any(k in h.get("command", "") for k in keys)]
+            if survivors:
+                g = dict(g); g["hooks"] = survivors; kept.append(g)
+        hooks[event] = kept + entry
+        registered.append(f"{event}({','.join(sorted(keys)) or '?'})")
+
 os.makedirs(os.path.dirname(target), exist_ok=True)
 with open(target, "w") as fh:
     json.dump(d, fh, indent=2, ensure_ascii=False); fh.write("\n")
-print("node-check SessionStart hook registered ->", target)
+# RE-READ WHAT WE JUST WROTE. The success message used to be unconditional — it never checked the
+# serialized result, so a snippet that failed to register still printed "registered ->". Verify, then
+# claim (`[[feedback_gate_verification_must_execute]]`).
+written = json.load(open(target))
+missing = []
+for event, keys in intended.items():
+    blob = json.dumps(written.get("hooks", {}).get(event, []))
+    for k in sorted(keys):
+        if k not in blob:
+            missing.append(f"{event}:{k}")
+for r in registered: print("    hook registered ->", r)
+print("snippets scanned:", len(snippets), "· hook entries registered:", len(registered),
+      "· skipped:", len(bad_schema), "->", target)
+if missing:
+    print("FAILED to register:", ", ".join(missing)); raise SystemExit(1)
+# FAIL CLOSED on any skipped snippet. The good ones are already written (a malformed sibling must not
+# cost you the working hooks), but the RUN exits non-zero — an installer that skips a snippet and
+# reports success leaves hooks unwired, which is the exact defect this rewrite exists to close.
+# Lanes MG-N1..N4 caught this: the first draft skipped-and-exited-0 = fail-open.
+if bad_schema:
+    print("SKIPPED snippet(s):", ", ".join(sorted({os.path.basename(b) for b in bad_schema})))
+    print("  → non-zero exit on purpose: a skipped snippet is unregistered hooks, not a warning.")
+    raise SystemExit(1)
+if not registered:
+    print("no hook entries registered — nothing to claim"); raise SystemExit(1)
 PY
 chmod +x "$FH_DIR/scripts/fh_node_check.sh" 2>/dev/null
 # VERIFY against a THROWAWAY state file (FH_NODE_STATE). Verifying against the real state would
