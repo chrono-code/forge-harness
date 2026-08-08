@@ -46,21 +46,25 @@
 # 그 차이는 판정에 반드시 붙는다(아래 출력이 매번 스코프를 인쇄한다).
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# 🟥 알려진 결함 — 이 계기는 아직 RC 가 아니다 (2026-08-09 실측)
+# 🟡 알려진 한계 — RC 다. 단 **선별기이지 판정기가 아니다** (2026-08-09)
 # ─────────────────────────────────────────────────────────────────────────────
-# **선후 필터가 mtime 기반이라 git 작업에 오염된다.** 실측: `CLAUDE.md` 의 mtime 이
-# 21:45(digest 09:08 이후)라 "digest 이후 수정" 으로 통과했지만, **내용 변경은 그 전**이고
-# 21:45 은 브랜치 전환이 남긴 시각이었다. 그 파일에 후보 토큰(`plugin.json`,
-# `SKILL_detail.md`)이 **원래부터** 있어서 미착지 2건이 착지로 뒤집혔다.
+# **닫힌 것 — mtime 오염.** 초판은 선후를 mtime 하나로 재서, 브랜치 전환이 갱신한 mtime 때문에
+# *내용은 digest 이전인* 파일이 필터를 통과했다(실측: `CLAUDE.md` mtime 21:45 vs 내용은 그 전 →
+# 원래 있던 토큰이 착지로 잡혀 미착지 2건이 초록으로 뒤집힘). 지금은 **두 축을 분리**한다:
+#   git 추적 → `git log --since=@<digest mtime>` (커밋 시각)
+#   gitignored(`tracks/**`) → mtime (그 축엔 다른 증거가 없다)
+#   dirty tracked → **UNMEASURED** 로 셈에 남긴다(커밋 안 된 수정엔 git 시각 증거가 없다)
+# 레인 2종이 그 분리를 고정한다 — mtime 만 새 tracked 는 **안 세고**(a), 커밋만 새 tracked 는
+# mtime 이 옛것이어도 **잡는다**(b). (b)가 없으면 *"tracked 를 전부 버려 negative 만 통과하는
+# 하네스"* 가 된다(cross-family/codex 지목).
 #
-# ⚠️ **이 결함은 self-test 로 안 잡힌다** — 픽스처에는 git 조작이 없다. 즉 known-pair 가
-# 실물의 이 축을 안 덮는다. 그래서 8 레인 초록이어도 **캘리브레이션은 미완**이다.
+# **안 닫힌 것 — `file-change ≠ token-introduction`.** 파일이 digest 이후 진짜 커밋됐어도
+# 그 토큰은 원래 있던 것일 수 있다(실측: `CLAUDE.md` 는 챔버 실적 수정으로 커밋됐고 후보와
+# 무관하다). 닫으려면 **토큰 수준 diff**(`git log -S`)가 필요한데 후보마다 타깃이 갈려
+# 착지 검증기 인터페이스와 맞지 않는다 — 재설계 사안으로 남긴다.
 #
-# 수리 방향(다음 라운드): git 추적 파일은 `git log --since=<digest date>` 로 판정하고,
-# gitignored(`tracks/**`)만 mtime 으로 판정한다. 두 축을 섞지 않는다.
-#
-# 📌 그때까지 이 계기의 출력은 **선별기이지 판정기가 아니다.** 히트는 반드시 열어라.
-#    실측 3회 중 3회 손검증이 오탐을 잡았다(자기참조 → 토큰 절단 → mtime 오염).
+# 📌 그래서 이 계기의 출력은 **선별기다.** 히트는 반드시 열어라. 실측 4회 중 4회 손검증이
+#    무언가를 잡았다(자기참조 → 토큰 절단 → mtime 오염 → file-change≠token-introduction).
 #
 # ── 사용 ──
 #   digest_landing_check.sh <digest.md> [target ...]   # 미지정 시 기본 타깃
@@ -73,8 +77,14 @@
 
 set -uo pipefail
 
-FH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CHECKER="$FH/scripts/utterance_landing_check.sh"
+# ⚠️ `CLAUDE_PROJECT_DIR` 를 우선한다. 초판은 스크립트 위치로만 루트를 잡아서,
+# 격리 픽스처에서 **실제 레포를 봤다**(타깃 279건). 기존 레인은 타깃을 인자로 넘겼기 때문에
+# **기본 타깃 선택 경로가 한 번도 테스트되지 않았다** — 자기 self-test 의 사각이었다.
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FH="${CLAUDE_PROJECT_DIR:-$(cd "$SELF_DIR/.." && pwd)}"
+# ⚠️ 검증기는 **도구**이고 FH 는 **대상**이다 — 두 축을 같은 변수로 묶으면 격리 픽스처에서
+# 도구까지 임시 트리에서 찾다가 죽는다(실측). 도구는 언제나 이 스크립트 옆에 있다.
+CHECKER="$SELF_DIR/utterance_landing_check.sh"
 SECTION_RE='^## .*Immediate Application Candidates'
 
 # 후보 표에서 (id, 판별토큰 OR 정규식) 을 뽑는다. 토큰 없으면 id 만 내고 정규식은 빈 값.
@@ -173,8 +183,24 @@ do_check() {
     # **"그 뒤에 쓰였다"** 는 잡아서 판별력을 크게 올린다.
     # ⚠️ 명명된 잔여: mtime 기반이라 sync/checkout 으로 흔들린다. `tracks/**` 가 gitignored 라
     # git 시각을 못 쓰는 것이 원인이고, 이건 챔버 순서 증인이 만난 것과 같은 제약이다.
+    # ★ **두 축을 분리한다** (cross-family/codex 설계, 2026-08-09).
+    #   git 추적 파일 → **커밋 시각**(`git log --since=@epoch`). mtime 은 브랜치 전환·체크아웃으로
+    #                   갱신되므로 tracked 에서는 신뢰할 수 없다 — 실측으로 확인된 오탐 원인.
+    #   gitignored    → mtime 밖에 없다(`tracks/**`). 남는 취약면이고 아래에 명명한다.
+    local _dts; _dts="$(stat -f %m "$d" 2>/dev/null || stat -c %Y "$d" 2>/dev/null)"
+    if [ -z "${_dts:-}" ]; then
+      echo "❌ digest mtime 을 못 읽었다 — 선후 판정 불가" >&2; return 10
+    fi
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      case "$f" in *.md) ;; *) continue ;; esac
+      [ -f "$FH/$f" ] && targets+=("$FH/$f")
+    done < <(git -C "$FH" log --since="@$_dts" --name-only --pretty=format: -- knowledge CLAUDE.md 2>/dev/null | sort -u)
     while IFS= read -r f; do targets+=("$f"); done < <(
-      find "$FH/knowledge" "$FH/tracks/_meta" -name '*.md' -type f -newer "$d" 2>/dev/null | head -400)
+      find "$FH/tracks/_meta" -name '*.md' -type f -newer "$d" 2>/dev/null | head -400)
+    # dirty tracked — 커밋 안 된 수정본엔 git 시각 증거가 없다. 초록으로 만들지 않고 셈에 남긴다.
+    DIRTY_TRACKED="$(git -C "$FH" diff --name-only -- knowledge CLAUDE.md 2>/dev/null | grep -c '[.]md$')" || true
+    DIRTY_TRACKED="${DIRTY_TRACKED//[^0-9]/}"; DIRTY_TRACKED="${DIRTY_TRACKED:-0}"
   fi
   # ★ 자기참조 차단 — **이 계기의 첫 실물 실행에서 100% 오탐을 낸 원인**이다.
   # digest 자신(과 그 로그)이 타깃에 있으면 모든 후보 토큰이 거기서 발견되므로
@@ -204,6 +230,7 @@ do_check() {
   echo "── digest 착지 검증: $(basename "$d") ──"
   echo "   스코프: 공개 FH 자산 + tracks/ (비공개 companion store 제외 — '조직 전파'가 아니라 '허브 내부 착지')"
   echo "   타깃 파일 ${#targets[@]}건 (digest 이후 수정분만) · 판별불가 후보 ${unchk}건"
+  echo "   축: git추적=커밋시각 · gitignored=mtime · dirty tracked ${DIRTY_TRACKED:-0}건=UNMEASURED"
   echo "   ⚠️ 이 계기는 **선후**를 잰다. 인과가 아니다 — 히트는 열어서 확인하라"
   echo
 
@@ -244,17 +271,17 @@ EOF
   printf 'forge-harness session card\nallow_force_pushes 잔여가 거짓임을 실측했다\n' > "$T/tgt/card.md"
 
   # P1 — 착지분과 미착지분이 섞이면 rc=1 (미착지 있음)
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "M2 착지 · R2 미착지 → 미착지 검출(1)" 1 "$rc"
 
   # P2 — 둘 다 착지시키면 0
   printf 'prime_agent_sister_asset 도 기록했다\n' >> "$T/tgt/card.md"
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "둘 다 착지 → 전건 착지(0)" 0 "$rc"
 
   # N1 — 컨트롤 사망(타깃에 컨트롤 토큰이 없다) → HARNESS-ERROR(10), PASS 도 FAIL 도 아님
   printf 'allow_force_pushes\nprime_agent_sister_asset\n' > "$T/tgt/nocontrol.md"
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/digest.md" "$T/tgt/nocontrol.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/nocontrol.md" >/dev/null 2>&1 || rc=$?
   _t "컨트롤 사망 → HARNESS-ERROR(10), 착지로 안 읽는다" 10 "$rc"
 
   # N2 — 판별 토큰 없는 후보는 UNCHECKABLE 이고, 전건 착지라도 0 을 내지 않는다
@@ -268,10 +295,47 @@ EOF
 
 ## end
 EOF
+  # ── N-git ★ 두 축 분리 검증 (cross-family/codex 설계) ──────────────────────
+  # 임시 git 레포에서 **mtime 과 커밋시각이 어긋난** 두 상태를 만들어 각각 잰다.
+  # 이 두 레인이 없으면 mtime 오염 수리가 회귀해도 초록이 난다.
+  local G; G="$(mktemp -d -t dlc_g.XXXXXX)" || return 10
+  (
+    cd "$G" && git init -q . && git config user.email t@t && git config user.name t
+    mkdir -p knowledge tracks/_meta
+    printf 'forge-harness session\nstale_token_x\n' > knowledge/old.md
+    git add -A && GIT_AUTHOR_DATE="2001-01-01T00:00:00+0000" \
+      GIT_COMMITTER_DATE="2001-01-01T00:00:00+0000" git commit -qm base
+    printf '# d\n## 📌 FH Immediate Application Candidates\n\n| # | 티어 | 내용 |\n|---|---|---|\n| **A1** | M | `stale_token_x` 후보 |\n| **B1** | M | `fresh_token_y` 후보 |\n\n## end\n' \
+      > tracks/_meta/frontier_digest_2001_01_02.md
+    touch -t 200101020000 tracks/_meta/frontier_digest_2001_01_02.md
+    printf 'forge-harness session\nfresh_token_y\n' > knowledge/new.md
+    git add -A && GIT_AUTHOR_DATE="2001-01-03T00:00:00+0000" \
+      GIT_COMMITTER_DATE="2001-01-03T00:00:00+0000" git commit -qm later
+    touch -t 200101010000 knowledge/new.md
+    touch knowledge/old.md
+    printf 'forge-harness session control\n' > tracks/_meta/card.md
+  ) >/dev/null 2>&1
+  out="$( cd "$G" && CLAUDE_PROJECT_DIR="$G" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" \
+          "$G/tracks/_meta/frontier_digest_2001_01_02.md" 2>&1 )"
+  # ⚠️ **줄 단위로** 본다. `case *"A1"*"미착지"*` 는 마지막 요약줄("N건 중 M건 미착지")까지
+  # 삼켜 오매칭한다 — 문자열 위치로 판정하는 prose-grep 함정([[feedback_typed_verdict_channel]]).
+  if printf '%s\n' "$out" | grep -qE '후보 A1[[:space:]]+미착지'; then
+    _t "★N-git a) mtime 만 새 tracked 는 착지로 안 센다" 0 0
+  else
+    echo "❌ N-git a) mtime 오염 파일이 착지로 잡혔다"; fail=$((fail+1))
+  fi
+  # b) 는 **positive arm** — 없으면 "tracked 를 전부 버려 negative 만 통과" 하는 하네스가 된다.
+  if printf '%s\n' "$out" | grep -qE '후보 B1[[:space:]]+[0-9]+파일'; then
+    _t "★N-git b) 커밋시각이 새 tracked 는 mtime 이 옛것이어도 잡는다" 0 0
+  else
+    echo "❌ N-git b) tracked 를 통째로 버렸다(negative 만 통과하는 하네스)"; fail=$((fail+1))
+  fi
+  rm -rf "$G"
+
   # N2a — 후보가 **전부** 판별불가면 TARGET 이 0건이다. 이건 "미착지" 가 아니라
   #        **계기 부적용**이고, 착지 검증기가 rc=10(PASS 도 FAIL 도 아님)을 낸다.
   #        초판은 여기 기대값을 1 로 적었는데 **내 기대가 틀렸다** — 전부 못 쟀으면 에러다.
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/digest_unchk.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest_unchk.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "판별불가만 있는 digest → HARNESS-ERROR(10), '착지 0건' 아님" 10 "$rc"
 
   # N2b ★ 진짜 중요한 레인 — **혼합**. 잴 수 있는 건 전부 착지했는데 판별불가가 섞였다.
@@ -287,20 +351,20 @@ EOF
 
 ## end
 EOF
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/digest_mixed.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest_mixed.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "★혼합(착지 전건 + 판별불가 1) → 0 아님(미측정을 분모에서 안 지운다)" 1 "$rc"
 
   # N3 — 후보 절이 없는 digest → 10 (0건과 미검출을 가른다)
   printf '# digest\n## 다른 절\n내용\n' > "$T/nosection.md"
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/nosection.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/nosection.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "후보 절 부재 → HARNESS-ERROR(10), '0건 착지' 아님" 10 "$rc"
 
   # N4 — digest 파일 자체가 없음 → 10
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/does-not-exist.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/does-not-exist.md" >/dev/null 2>&1 || rc=$?
   _t "digest 부재 → rc=10" 10 "$rc"
 
   # N5 컨트롤 — P2 가 여전히 0 인가 (앞 레인이 상태를 오염시키지 않았는지)
-  rc=0; bash "${BASH_SOURCE[0]}" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "컨트롤 — 정상 케이스 재확인" 0 "$rc"
 
   rm -rf "$T"
