@@ -65,3 +65,8 @@ tracks/**
 
 # push-zone owner accounts (operator-private)
 .claude/rules/.push-zone-owners
+
+# 필드 하네스 주행 산출물 — 앱 화면 캡처/UI 덤프가 떨어질 수 있다.
+# 2026-08-08: 병렬 qasp 세션이 이 레포 cwd 에 outputs/act2/*.png|xml 를 생성.
+# FH 는 공개 레포이므로 추적 대상이 되면 안 된다.
+outputs/
