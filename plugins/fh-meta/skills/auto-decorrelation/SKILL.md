@@ -197,13 +197,54 @@ mode**, with an honest *same-family* note but **no "reduced value / degraded" fr
 this floor. `unset` → ask-once at first load-bearing need (accept → proceed; decline → record + this
 branch). Only proceed to the discovery ladder below when consent is `accepted`.
 
-1. frontier cross-family CLI present → recruit it (decorrelated, at-floor) — best.
-2. only local 4090 present → canary pre-screen + in-session opus governor (canary, not full decorrelation).
-3. nothing present → in-session same-family + **honest below-floor/same-family note** (residual named).
+Every rung **emits a typed `crossfamily:` value into the Axes 2–3 marker** — the rung is not
+done until its verdict is recorded. The value is a closed enum, validated by `pre-commit`
+(`validate_marker_floor`, fixtures in `scripts/test_marker_crossfamily_lanes.sh`); free prose is
+rejected at commit time.
 
-Env non-determinism (CLI presence varies) → **silent degrade, never hard-fail**. Distinguish this
-**unavailable-but-wanted** case (consent given, panel down → degrade-with-note; for a *load-bearing corp*
-surface, fail-closed per `local_pmh_context.md`) from the **declined** case above (chosen floor, first-class).
+| # | Panel state | Emit | Ack |
+|---|---|---|---|
+| 1 | frontier cross-family CLI present → recruit it (decorrelated, at-floor) — best | `panel(<families>)` | — |
+| 2 | only local 4090 → canary pre-screen + in-session opus governor (canary, not full decorrelation) | `panel(<families>)` **only if** a capable non-Claude model actually reviewed; otherwise rung 3 | — |
+| 3 | **probed and nothing capable reachable** → in-session same-family | `DEGRADED_SINGLE_FAMILY` | **required** |
+| — | **capable panel reachable, not recruited** (a choice, not a constraint) | `DEGRADED_PANEL_UNUSED` | **required** |
+| — | consent `declined` (branch above — chosen floor, not a degrade) | `declined` | — |
+| — | change is not load-bearing — decorrelation not required | `single-family` | — |
+| — | **panel never probed** | `UNKNOWN` | **required** |
+
+**The three degrade values are the load-bearing split**: *could not* (`DEGRADED_SINGLE_FAMILY`) ·
+*did not* (`DEGRADED_PANEL_UNUSED`) · *did not look* (`UNKNOWN`). Free prose merges all three, and
+each merge hides a different thing — an unrun probe renders as a zero finding
+(`[[feedback_not_found_is_not_zero_family]]`), and an unused panel renders as an unavailable one.
+The sibling-harness signal that motivated this field said it in its own words about itself:
+*"못 한 것이 아니라 안 한 것이다."* All three require an ack naming *what was probed and what it
+returned*. **`DEGRADED_PANEL_UNUSED` was added by dogfooding**: the first real marker written under
+this lane found the panel reachable (codex · agy · gemini) and no cross-family review run — a state
+the original five-value enum could not express without lying
+(`[[feedback_adversarial_review_not_substitute_for_first_use]]`).
+
+**Panel membership is capability-gated, and ineligibility is tested FIRST.** A runtime `/models`
+list is a **serving** list, not a generative one. Measured in a sibling harness (2026-08-08): 6 of
+14 served entries could not review anything (embedding · reranker · OCR · safeguard), and because
+the embeddings' ids matched no family prefix **each counted as its own family — satisfying the
+family-diversity check while the panel was incapable**. Order is the invariant, not the list:
+`GLM-OCR` matches both `ocr` and `glm`, `Qwen3-Embedding` matches both `embed` and `qwen`, so an
+eligibility-first test lets them through silently. If nothing capable survives the filter, that is
+rung 3 — **not** a smaller panel.
+
+**Attribution: `panel(...)` records the families *requested*, not confirmed.** At least one
+procurement path (an internal corp-gateway CLI) returns **no model attribution in its response**, so "3/3 responded"
+does not establish which model contributed. Record request-fact and response-fact separately; do not
+launder the former into the latter (`[[feedback_instrument_cannot_discriminate_hypotheses]]`).
+
+Env non-determinism (CLI presence varies) → **never hard-fail the run** — but never *silent* either.
+The two are different properties, and the prose this replaces conflated them: the degrade proceeds
+(a commit is a reversible surface) **and** lands in the verdict with an ack. That is how this rung
+and `CLAUDE.md` §Field-Harness gate ("never a silent same-family pass") are simultaneously true.
+Distinguish the **unavailable-but-wanted** case (consent given, panel down → `DEGRADED_SINGLE_FAMILY`
++ ack; for a *load-bearing corp* surface, fail-closed per `local_pmh_context.md` — note that file is
+**pmh-repo-local and unreadable from an FH session**, so on this side the typed value + ack is the
+enforceable layer) from the **declined** case above (chosen floor, first-class, no degrade framing).
 
 ## Step 7 — Output
 
@@ -221,7 +262,14 @@ at N per run (no loop).
 
 - Mechanical sidecar discovery returns the available panel. *[mandatory-pass]*
 - Family-diversity recruitment picks ≥1 cross-family verifier when present (family by model probe). *[mandatory-pass]*
-- Degrade ladder applied: local-only → canary+note · none → same-family note. *[mandatory-pass]*
+- Degrade ladder applied AND its verdict emitted as a typed `crossfamily:` value in the Axes 2–3
+  marker (`panel(<families>)` | `declined` | `DEGRADED_SINGLE_FAMILY` | `DEGRADED_PANEL_UNUSED` |
+  `UNKNOWN`); the three degrade values carry substantive grounds on the same line. `single-family`
+  is NOT accepted on a load-bearing change — that block only runs there, so "decorrelation not
+  required" is a contradiction, and as a no-ack pass it was a free bypass of the lane.
+  *[mandatory-pass — enforced by pre-commit, fixtures `scripts/test_marker_crossfamily_lanes.sh`]*
+- Panel members are review-capable: embedding/reranker/OCR/safeguard classes are excluded **before**
+  family-diversity is counted, never after. *[mandatory-pass — same fixtures, ordering anchor c4/c5]*
 - Paid recruit was per-run spend-gated (or `paid_auto` set); free local tier may auto-fire. *[mandatory-pass]*
 - Governor (CC) retains terminal verdict; every accepted sidecar finding is source-grounded. *[judged, pair: judge-robustness / phantom-quench back-trace]*
 - Marker records panel + families only with a captured sidecar transcript. *[mandatory-pass]*
