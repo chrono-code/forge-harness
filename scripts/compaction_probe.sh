@@ -73,21 +73,37 @@ do_seal() {
       python3 - "$transcript" <<'PY' 2>/dev/null || echo "- (전사본 파싱 실패 — 원본: $transcript)"
 import json,sys
 n=0
+skipped_tool=skipped_meta=skipped_other=0
 for line in open(sys.argv[1], errors='replace'):
     try: d=json.loads(line)
     except Exception: continue
     if d.get('type')!='user': continue
     m=d.get('message') or {}
     c=m.get('content')
-    # 실발화는 content 가 str. 툴 결과는 list — 기계적으로 갈린다(실측 2026-08-08).
-    if not isinstance(c,str): continue
-    t=' '.join(c.split())
-    if not t: continue
+    # ⚠️ 초판은 "실발화=str · 툴결과=list" 로 갈랐다. **틀렸다** — 이미지/파일을 첨부한 실발화는
+    # list 다(high 리뷰 실측: 전사본 25개에서 그런 발화 18건이 구조적으로 안 보였다). 더 나쁜 건
+    # self-test 픽스처가 같은 가정을 인코딩해서 **초록이 그 결함을 보증**했다는 것이다.
+    # 이제 list 는 text 블록을 꺼내 쓰고, tool_result 만 제외한다.
+    if isinstance(c,str):
+        t=c
+    elif isinstance(c,list):
+        if any(isinstance(b,dict) and b.get('type')=='tool_result' for b in c):
+            skipped_tool+=1; continue
+        parts=[b.get('text','') for b in c if isinstance(b,dict) and b.get('type')=='text']
+        if not parts:
+            skipped_other+=1; continue          # 이미지-only 등 — 셈에서 지우지 않고 센다
+        t=' '.join(parts)
+    else:
+        skipped_other+=1; continue
+    t=' '.join(t.split())
+    if not t: skipped_other+=1; continue
     if t.startswith('<') or t.startswith('/'):   # 슬래시 커맨드·메타 봉투 제외
-        continue
+        skipped_meta+=1; continue
     n+=1
     print(f"{n}. {t[:200]}")
+# **제외분을 반드시 인쇄한다.** 합계만 찍으면 그 원장이 완전한 것처럼 읽힌다 — `not found ≠ 0`.
 print(f"\n합계: {n}건" if n else "- (발화 0건)")
+print(f"제외: tool_result {skipped_tool} · 메타/커맨드 {skipped_meta} · 텍스트없음 {skipped_other}")
 PY
     else
       echo "- 🟥 전사본 경로 없음: $transcript"
@@ -100,7 +116,13 @@ PY
       [ -n "$changed" ] && echo "$changed" || echo "  (working tree clean)"
       echo
       echo "  브랜치: $(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-      echo "  미푸시: $(git -C "$REPO_ROOT" log --oneline '@{u}..HEAD' 2>/dev/null | wc -l | tr -d ' ')건"
+      # upstream 이 없으면 `@{u}` 는 fatal 이고 2>/dev/null 이 그걸 삼켜 **0건**으로 렌더된다.
+      # `git switch -c` 후 첫 푸시 전 = 이 레포의 정상 경로다. 미상과 0 을 갈라야 한다.
+      if git -C "$REPO_ROOT" rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+        echo "  미푸시: $(git -C "$REPO_ROOT" log --oneline '@{u}..HEAD' 2>/dev/null | wc -l | tr -d ' ')건"
+      else
+        echo "  미푸시: unknown (upstream 미설정 — 0건이 아니다)"
+      fi
     else
       echo "  (git 레포 아님)"
     fi
@@ -143,7 +165,13 @@ do_digest() {
   echo "🧭 [FH 압축 복구] 직전 압축 전에 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다."
   echo "   정본: $sealfile"
   echo
-  sed -n '1,80p' "$sealfile" 2>/dev/null
+  # ⚠️ 초판은 `sed -n '1,80p'` 였다. 봉인 앞부분은 **발화 덤프**라, 긴 세션에서는 80줄이 발화
+  # 목록 중간에서 끊기고 **정작 포인터(git 상태·정본 경로·payload 상태)는 한 줄도 안 들어갔다** —
+  # 계약("포인터 원장이다")의 정반대. 이제 포인터 절을 먼저 주입하고 발화는 뒤에서 잘라 붙인다.
+  awk '/^## 이 세션이 건드린 파일/,0' "$sealfile" 2>/dev/null | head -40
+  echo
+  echo "── 운영자 발화 (앞 25건) ──"
+  awk '/^## 운영자 발화/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -E '^[0-9]+\.|^제외:|^합계:' | head -25
   echo
   echo "   ⚠️ 이 원장은 **축자 기록**이다. 여기 있는 발화가 기록에 착지했는지는 별도 검증이다"
   echo "      (scripts/utterance_landing_check.sh)."
@@ -180,6 +208,11 @@ self_test() {
     printf '%s\n' '{"type":"user","message":{"content":"/clear"}}'
     printf '%s\n' '{"type":"assistant","message":{"content":"응답"}}'
     printf '%s\n' '{"type":"user","message":{"content":"곁가지는 병렬 세션에서"}}'
+    # ★ 이미지 첨부 실발화 — **list 인데 진짜 발화다.** 초판 픽스처엔 이 모양이 없었고,
+    # 그래서 "list=툴결과" 가정이 self-test 를 통과했다. 픽스처가 결함을 보증한 자리.
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"text","text":"일정이 조정됐어 리더리뷰는 다음주"},{"type":"image","source":{"type":"base64"}}]}}'
+    # 이미지만 있는 발화 — 텍스트가 없으니 못 싣지만 **세어야** 한다
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"image","source":{"type":"base64"}}]}}'
   } > "$T/tr.jsonl"
 
   do_seal "$T/tr.jsonl" "$T/out" "sess1" >/dev/null 2>&1; rc=$?
@@ -201,8 +234,8 @@ self_test() {
   grep -q '^3\. /clear' "$sf" 2>/dev/null && r=YES || r=NO
   t "슬래시 커맨드 제외 (known-negative)" NO "$r"
 
-  grep -q "합계: 2건" "$sf" 2>/dev/null && r=YES || r=NO
-  t "발화 카운트 정확 (2건)" YES "$r"
+  grep -q "합계: 3건" "$sf" 2>/dev/null && r=YES || r=NO
+  t "발화 카운트 정확 (3건 — 이미지 첨부 발화 포함)" YES "$r"
 
   # digest: 1회만 나오고 두 번째는 무출력 — 매 프롬프트 재주입은 소음이다
   local d1 d2
@@ -240,6 +273,26 @@ self_test() {
   grep -qE 'payload: (fallback-cwd|unresolved)' "$sf2" 2>/dev/null && rc=YES || rc=NO
   t "payload 상태가 typed 로 남는다 (무음 아님)" YES "$rc"
 
+  # ── 회귀 레인: high 리뷰 CONFIRMED (2026-08-08) ──
+  # #2 list-shaped 실발화 — 픽스처에 이 모양이 없어서 초록이 결함을 보증했다
+  grep -q "일정이 조정됐어" "$sf" 2>/dev/null && r=YES || r=NO
+  t "#2 이미지 첨부 실발화(list)가 원장에 실린다" YES "$r"
+  grep -q "툴 출력 본문" "$sf" 2>/dev/null && r=YES || r=NO
+  t "#2 tool_result 는 여전히 제외" NO "$r"
+  grep -qE "^제외: tool_result [0-9]+ · 메타/커맨드 [0-9]+ · 텍스트없음 [0-9]+" "$sf" 2>/dev/null && r=YES || r=NO
+  t "#2 제외분이 명시 카운트된다 (합계만 찍지 않는다)" YES "$r"
+  grep -q "텍스트없음 1" "$sf" 2>/dev/null && r=YES || r=NO
+  t "#2 이미지-only 발화가 침묵 드롭되지 않고 계수된다" YES "$r"
+
+  # #3 digest 는 발화 덤프가 아니라 **포인터**를 주입해야 한다
+  # (앞 레인들이 .pending 을 소비했으므로 새로 봉인하고 잰다)
+  do_seal "$T/tr.jsonl" "$T/out3b" "sess3b" >/dev/null 2>&1
+  local dg; dg="$(do_digest "$T/out3b" 2>/dev/null)"
+  case "$dg" in *"열어야 할 정본"*) r=YES ;; *) r=NO ;; esac
+  t "#3 digest 가 정본 포인터를 주입한다" YES "$r"
+  case "$dg" in *"브랜치:"*) r=YES ;; *) r=NO ;; esac
+  t "#3 digest 가 git 상태를 주입한다" YES "$r"
+
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍) — seal/digest 레그 한정. score 는 실측으로 **반증**됐다(§계기 타당성)." \
                  || echo "❌ 캘리브레이션 실패 ($n 쌍)"
@@ -265,7 +318,10 @@ done
 
 # 훅 경로: stdin 의 JSON 에서 읽는다. 인자로 준 값이 있으면 그쪽이 이긴다(테스트용).
 PAYLOAD_STATUS="args"
-if [ -z "$TRANSCRIPT" ] && [ ! -t 0 ]; then
+# ⚠️ 캡처는 **seal 에서만**. 전 모드에서 돌리면 매 `UserPromptSubmit`(digest)가 PreCompact 페이로드를
+# 덮어써서, 빈 봉인을 진단하라고 만든 증거를 **다음 프롬프트가 파괴**한다. 게다가 사용자 프롬프트
+# 원문이 매 턴 디스크에 남는다. (high 리뷰 실측 재현: seal 직후엔 PreCompact 페이로드, digest 한 번에 교체.)
+if [ "$MODE" = "seal" ] && [ -z "$TRANSCRIPT" ] && [ ! -t 0 ]; then
   HOOK_JSON="$(cat 2>/dev/null)"
   # 원본 페이로드를 항상 남긴다. 2026-08-08 첫 실발화가 session=unknown · transcript 빈 값으로
   # 돌았는데, 원본을 안 남겨서 **왜 그런지 알 방법이 없었다.** 미측정을 빈 값으로 렌더하지 않는다.
