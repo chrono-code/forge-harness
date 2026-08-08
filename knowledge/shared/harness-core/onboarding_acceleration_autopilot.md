@@ -30,7 +30,9 @@ install plan, and gate every install.**
    But a **live one-command autonomous simulate→EMIT of a field harness is NOT yet a capability**:
    step-4 persona dispatch is human/Claude-driven (bash cannot spawn the isolated Agents — the
    honest muscle boundary), the EMIT terminus is HITL, and **EMIT has never fired — the ledger's
-   real runs are honest KILLs** (the chamber to date *screens*, it has not *birthed*). So today this
+   real runs are honest KILLs** (the chamber overwhelmingly *screens* — 9 full runs, 8 KILL, 1 EMIT, hand-counted 2026-08-08; it has
+   birthed once, but that run left no intent/budget/persona artifacts so the formal flow is not what
+   produced it, and the first end-to-end formal run KILLed). So today this
    branch = a one-line HITL recommendation to run the chamber (`chamber_run.sh`), then fall back to
    Full-Harness Mode §6 (`auto_project_mapping.md`) for the actual onboarding; the runner gates and
    records a human-driven run — it must **not** be presented as a push-button autonomous emit. The

@@ -382,8 +382,13 @@ installed **FH assets** run the **4-axis gate**; **field scaffolds** run **`asse
 repo, so this routing is not redundant with it) · **autonomy floor** — discover/rank trusted at opus-tier+;
 below-floor, present the raw recommend and ask · **HITL per item**, and `"끝까지 해줘 / 자율로 완주"` → full-autonomy under the `/goal-quench`
 gate: autonomy removes the per-item *prompt*, **never the gate**. Honesty boundary that must not soften in
-summary: the chamber to date **screens**; it has not *birthed* — simulate-first is a one-line HITL
-recommendation, never a push-button autonomous emit.
+summary: the chamber **overwhelmingly screens** — hand-counted 2026-08-08 from the run ledger:
+9 full runs, **8 KILL, 1 EMIT**. It has birthed **once** (run #9 `forge-wiki`, shipped publicly), so
+"it has not birthed" — the earlier wording here — is no longer true. But do not upgrade the claim
+either: that run's workspace carries only a verdict file, with no intent/budget/blind-persona
+artifacts, so the **formal flow** is not what produced it. The first end-to-end formal run is #10 and
+it KILLed. Either way simulate-first stays a one-line HITL recommendation, never a push-button
+autonomous emit.
 
 > **Detail**: See `knowledge/shared/harness-core/onboarding_acceleration_autopilot.md` — full Phase-0 branch
 > logic + `chamber_run.sh` scope, the per-phase skill composition, the remaining guards (no-reinvention
