@@ -1291,3 +1291,11 @@
     ④-e 에서 실제로 막혀 내 미커밋 항목 5건이 드러났다 — 훅이 산문이 아니라 작동한다.
     ★ 이번 라운드 위임 3건은 전부 **accepted**(반환을 손으로 재현해 닫음: engine.py
     접촉 diff·스위트 직접 실행·되돌림 9 failed 독립 재현). 상세는 08-07 항목.
+
+- date: 2026-08-08
+  agent: "consolidated — workflow code-review ×3 (34+38+39 agents) · fh-meta personas ×3 (beginner·main-player·challenger) · Sonnet target-tier sim ×2 · codex cross-family sidecar ×1"
+  context: "엔진 4요소 RC 세션 — 3라운드 high 리뷰 + 챔버 런 #10 페르소나 시뮬 + 서브에이전트 정책 살리언스 sim"
+  ask: "리뷰=수리가 결함을 옮겼는지 · 페르소나=EMIT 가치/실패비용/안 보이는 것 · sim=텍스트가 따라와지는지"
+  outcome: accepted
+  evidence: "리뷰 3라운드 10·10·10(벡터 평평, 2·3차 다수가 직전 수리 산물) → 축소 착지 판단의 근거. 페르소나 3인이 핵심 결함에 독립 수렴 → 챔버 KILL. sim 2회: 1차가 **거짓 기계-주장을 5/5 로 되읽음**(sim 은 followable 을 재지 true 를 안 잰다), 정정 후 2차 6/6"
+  note: "★계기 관찰 — `④-e` 탤리는 **148**, 이 원장 엔트리는 **3**이다. 탤리 훅은 워크플로 내부 에이전트를 전부 세고(리뷰 1회 = 34~39), 원장은 **내가 낸 디스패치 단위**를 센다. 둘은 다른 축이라 격차 자체는 결함이 아니지만, 그 사실이 어디에도 안 적혀 있어서 **148 vs 3 을 보면 기록 누락처럼 읽힌다**. 다음에 `session_close_check` ④-e 문구에 축 차이를 한 줄 붙일 것."
