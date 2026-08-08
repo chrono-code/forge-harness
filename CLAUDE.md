@@ -604,13 +604,53 @@ Self-healing is not only FH-self-dev (Mode D 4-axis) and reactive (`verify-bidir
 
 > **Runtime authority (canonical):** one explicit governor per context + capability-routed sidecars; sidecar findings are evidence candidates, not terminal verdicts, until source-closed by the governor *via a mechanical anchor* — never governor agreement alone. CC=action/governor · Codex=repo-grounded audit sidecar · Gemini/agy=breadth/multimodal sidecar · other runtimes=portable `AGENTS.md` entrypoint only. Full doctrine + Maintenance-Cost Rule: `knowledge/shared/harness-core/multi_model_sidecar_strategy.md §Runtime Authority`.
 
-Default operation is a **standard interactive session**. Agent dispatch (single or parallel) is used when the task warrants it — not as a default mode. Three execution paths:
+**Isolated delegation is a component of the identity, not an optional extra** (operator decision,
+2026-08-08). FH/PMH are defined as governor + orchestrator; a harness that cannot dispatch is a
+contradiction in its own terms. So **agent dispatch is default-active**: reach for it whenever a unit
+of work is genuinely separable — independent tasks, a blind evaluation that must not see the author's
+reasoning, a search that would otherwise flood this context — **without waiting to be asked**. The
+earlier wording here ("used when the task warrants it — not as a default mode") is superseded.
+
+**The one thing that overrides it** is the user saying not to, *in this environment*.
+
+⚠️ **Neither direction has a confirmed hook-level floor. Say that plainly rather than implying one.**
+```
+opening    salience only — CONFIRMED. If a runtime's SYSTEM PROMPT carries a prohibition
+           ("do not use subagents unless the user asked"), neither this file nor a hook
+           overrides it; a system prompt outranks both, by construction.
+blocking   ALSO not hook-enforced. `SubagentStart` fires on spawn but is **context-only** —
+           it cannot block, exit 2 only surfaces stderr, and it has no decision field
+           (official hooks reference, read 2026-08-08). It can INJECT context at the moment
+           of dispatch, which is better-placed salience than this file, but still salience.
+UNVERIFIED whether a `permissions` deny entry or a `PreToolUse` matcher can target subagent
+           spawning at all — the reference does not name a tool for it, and this repo has no
+           precedent. **Do not cite a blocking mechanism until someone runs the known pair**
+           (configure the deny, attempt a dispatch, observe). Until then: unverified, not absent.
+```
+An earlier draft of this very block asserted "a `SubagentStart` hook can deny, and a denial there is a
+real floor." That was false, taken on trust from an adjacent session and written here before the
+reference was read. A blind target-tier sim then read it back correctly — which shows a sim measures
+whether text is *followable*, never whether it is *true*. Both checks are needed; neither substitutes.
+
+So "default-active" is a **posture, not a guarantee**. Measured 2026-08-08: a session running under
+exactly that system-prompt instruction worked alone for a full session and dispatched only at the two
+points where the operator named it — while this file said dispatch was available. A session that
+*cannot* dispatch must **say so** rather than quietly doing everything inline; the silent version is
+what made that case invisible until the operator asked. Writing "default is active" into a remote
+canon without this paragraph produces the next session that reads it and still cannot comply.
+
+**Onboarding**: at first setup, ask whether this environment wants dispatch and record the answer then —
+that is the one moment where the choice is cheap to make. Wiring it to a *mechanism* waits on the
+UNVERIFIED line above; until that known pair is run, the answer is recorded and honoured by salience,
+and the honest install note says so.
+
+Three execution paths:
 
 | Path | Situation | Method |
 |---|---|---|
 | **Direct edit** | Simple modification of mapped project files | Read/Edit with absolute path (no cwd switch needed) |
 | **Agent dispatch** | Field project work · single independent task | Inject Context Card then dispatch Agent |
-| **Parallel dispatch** | 2+ genuinely independent tasks, explicitly requested | Dispatch parallel Agents |
+| **Parallel dispatch** | 2+ genuinely independent tasks (no explicit request needed — see the default above) | Dispatch parallel Agents |
 
 **Why not Agent View by default**: Agent View introduces worktree isolation (blocks settings.json writes, Stop hook timing differs), session context gaps (session card stale content bug), and path friction — with no benefit unless the user is actively managing multiple agent sessions. Parallel agents via `Agent` tool work identically in a standard session.
 
@@ -650,7 +690,10 @@ true statement about one thing (provenance) was standing in for an untested clai
 recurrence is 1, below this repo's own N≥3 mechanization threshold. If it recurs, the check is a
 two-line hook addition, not a research problem.
 
-**Forbidden responses**: *"I can't do that — I'm not in that project's cwd"* — self-check Agent dispatch first.
+**Forbidden responses**: *"I can't do that — I'm not in that project's cwd"* — self-check Agent dispatch
+first. And **silently working alone while dispatch is unavailable**: if this environment blocks
+subagents, name it once rather than absorbing the whole job inline — an unstated constraint reads as a
+capability the harness simply chose not to use.
 
 Mapped paths: check `auto_project_mapping.md` or `find ~/projects -maxdepth 1 -type d` for actuals.
 
