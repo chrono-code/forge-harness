@@ -15,12 +15,31 @@ but zero real emits. So the gate scores **identities by evidence**, and the hone
 | Status | Meaning | Bar |
 |---|---|---|
 | 🟢 GREEN | **REALIZED** | a concrete track-record artifact proves the identity fired for real, n≥1 (a real gate block, a measured probe, a real orchestration record) — *not* a doc that describes it |
+| 🔵 RC | **RELEASE-CANDIDATE** | implemented **and** calibrated on a known pair **and** its own self-test green — but it has not yet fired in a real situation. All three legs, each with an evidence line; two out of three is 🟡 |
 | 🟡 YELLOW | **PARTIAL** | pieces work but no single closed track record (e.g. two half-pipelines that never connected end-to-end) |
 | 🔴 RED | **이상론 (ideal-only)** | documented aspiration, never actually run; or the source itself says "not built yet / named target" |
 
-**All-green rule**: ship + tag only when **every** identity is 🟢. A 🟡 or 🔴 blocks the tag — and names
+**All-green rule**: ship + tag only when **every** identity is 🟢. A 🔵, 🟡 or 🔴 blocks the tag — and names
 exactly what real run is missing. The remedy for RED is never to relabel it green; it is to **run it and
 leave the artifact** (the operator's standing rule: "이상론이면 실제로 돌려봐서 실적을 남겨야 한다").
+
+**🔵 RC is deliberately not green.** It is the rung for "we built it, we proved the instrument works, and
+our own tests pass" — a real and reportable milestone, and *still* short of the bar, because a self-test
+is authored by the same party it tests. The boundary is the one named in
+`[[feedback_adversarial_review_not_substitute_for_first_use]]`: **passing your own tests is not firing in
+the real situation**, and the first real use is repeatedly what invalidates the design. So RC never opens
+a `v1.0.0`; only REALIZED does.
+
+> The origin note (2026-08-08 session card) drew this ladder with RC and REALIZED **both** marked 🟢. That
+> shorthand is fine in a card and breaks here: this gate's rule reads literally as "every identity 🟢 →
+> ship", so a green RC would open the tag that the same note says RC must not open. Distinct symbol, same
+> intent.
+
+**RC is self-reported by construction — so it carries evidence, not a claim.** Each RC status names, on
+one line, *what ran and what came out* (the non-vacuity requirement borrowed from the 4-axis marker's
+`axis2-evidence`: a recorded verdict, count or fixture result — never "it works"). An RC without that line
+is 🟡. Where an instrument could not be calibrated against a real case, the leg ships labelled
+**`UNCALIBRATED`** rather than silently counted (`not found ≠ 0`).
 
 ## Dominance, not concession — the AlexNet bar
 A harness earns the right to say "we compose with other harnesses" **only from proven dominance**, never
@@ -102,15 +121,48 @@ notes claim more green than the audit shows is the defect the gate exists to pre
 the non-all-green status (③⑤ 🟢, ④ 🟡, ①② 🔴), elected to tag `v0.1.0` as this honest baseline; the
 decision is logged here and the tag's notes state the real status.
 
+## The four engines — what has to run for an identity to be reachable at all
+
+An identity is what a harness *claims*; an **engine** is a capability the harness must actually possess
+for that claim to be reachable. They are different axes, and scoring only identities hides *why* one is
+stuck: the failure shows up in the identity and the cause sits in the engine.
+
+| Engine | What it is | Why an identity needs it |
+|---|---|---|
+| **external-grounding** | Asking the world on its own initiative — reaching outside the repo before asserting novelty or settling a design, without being told to | Anything **new** has no known answer inside; asserting `net-new` from an internal grep alone is how a phantom is born |
+| **judgment-circuit** | A forged decision circuit: what counts as success, which way to lean under uncertainty, what is out of scope, what never happens | Anything **autonomous** has no direction without one; the harness fills the vacuum with volume instead |
+| **ship-gate** | Mechanical blocking before an irreversible surface — commit, publish, delete, rewrite | Anything that **ships** needs a last line that does not depend on remembering |
+| **context-continuity** | Not losing the thread mid-run — across compaction, sub-agents, machines and sessions | Anything **long** loses its own premises first, and the loss is silent |
+
+**Naming rule — do not translate `judgment-circuit` as "soul".** In Korean the operator's word is 영혼, but
+the English word reads as *persona*, and the single largest finding of the 105-run measurement behind this
+engine was precisely that **an identity declaration is not a judgment circuit** ("너는 ~이다" measured as a
+net loss; removing it recovered +0.67 on the weak tier). A one-word translation re-fuses exactly what the
+measurement separated.
+
+**Why engines gate the advertised capabilities**: the harness's most-advertised surfaces — incubating a new
+project, orchestrating a multi-harness cluster — are simultaneously *long, autonomous, novel and shipping*.
+They therefore load all four engines at once, which is why a harness with a mature ship-gate and little
+else appears to fail *at* those surfaces while the cause is underneath them.
+
+> ⚠️ **The identity↔engine mapping below was composed by the AI, not measured.** It is a structural
+> hypothesis, not established causality. The way to test it is to bring **one** engine up a rung and watch
+> whether the mapped identity moves; until then, read the column as a claim about *what to try*, not about
+> what is known. (The counterweight matters here: a mapping that looks tidy is the easiest thing to start
+> citing as a finding.)
+
 ## FH's own status (2026-07-14) — NOT yet all-green
 
-| # | Identity | Status | Evidence / what's missing |
-|---|---|---|---|
-| ③ | 거버넌스 게이트 (governance) | 🟢 GREEN | pre-commit/pre-push physically block; moat measured 3–4 family blind (HITL 8/8 ABSENT); cross-family caught a real companion-store-name leak 2026-07-14 (fail-closed) |
-| ⑤ | 증폭자 (amplifier) | 🟢 GREEN | short-intent→literature-grounding→ultimate-doc real instances; rules-diet −18.2k measured; intent-routing probe 94% (below) |
-| ④ | 프런티어→조직 전파 | 🟡 YELLOW | frontier-digest launchd auto + AX submission docs both real, but digest→org never closed as ONE pipeline |
-| ① | 멀티하네스 클러스터 | 🟡 PARTIAL | routing runs for real — 17 nodes mapped, sidecar-orchestrator, Skill Bus routing qasp/dashboard/stockbattle (so NOT 🔴 ideal-only). Missing: continuous 2-node relay channel + external-harness recommend (cluster-wizard parked) → 🟡 not 🟢 |
-| ② | 프로젝트 인큐베이터 | 🟡 PARTIAL | incubation is running — **stockbattle is being incubated now** (S1 built, mid-flight) + qasp/pmh spin-out precedent + scaffold-emit shipped (doctrine: "emit shipped today as scaffold+approval; the chamber flow is the named target"). What's still 0 is the **formal chamber simulate-then-emit** mechanism (6 runs, 6 KILL — runs #5–#6 *measured* the emit-worthiness criterion: net-new ∧ artifact-shaped ∧ real-data-precision-adequate ∧ hub-state-independent, 0/6 cleared all four; run #6 also confirmed the graduation-order principle — hub-internal proof before standalone extraction, never the reverse). That mechanism is ONE path of ②, not the whole identity → 🔴 was too narrow; incubation runs but no closed emit-via-incubation yet → 🟡 |
+Engine column added 2026-08-08 (mapping is the unverified hypothesis flagged above; Status column is
+unchanged and keeps its own 2026-07-14 evidence).
+
+| # | Identity | Engines it loads | Status | Evidence / what's missing |
+|---|---|---|---|---|
+| ③ | 거버넌스 게이트 (governance) | ship-gate | 🟢 GREEN | pre-commit/pre-push physically block; moat measured 3–4 family blind (HITL 8/8 ABSENT); cross-family caught a real companion-store-name leak 2026-07-14 (fail-closed) |
+| ⑤ | 증폭자 (amplifier) | judgment-circuit | 🟢 GREEN | short-intent→literature-grounding→ultimate-doc real instances; rules-diet −18.2k measured; intent-routing probe 94% (below) |
+| ④ | 프런티어→조직 전파 | external-grounding | 🟡 YELLOW | frontier-digest launchd auto + AX submission docs both real, but digest→org never closed as ONE pipeline |
+| ① | 멀티하네스 클러스터 | context-continuity | 🟡 PARTIAL | routing runs for real — 17 nodes mapped, sidecar-orchestrator, Skill Bus routing qasp/dashboard/stockbattle (so NOT 🔴 ideal-only). Missing: continuous 2-node relay channel + external-harness recommend (cluster-wizard parked) → 🟡 not 🟢 |
+| ② | 프로젝트 인큐베이터 | context-continuity + judgment-circuit | 🟡 PARTIAL | incubation is running — **stockbattle is being incubated now** (S1 built, mid-flight) + qasp/pmh spin-out precedent + scaffold-emit shipped (doctrine: "emit shipped today as scaffold+approval; the chamber flow is the named target"). What's still 0 is the **formal chamber simulate-then-emit** mechanism (6 runs, 6 KILL — runs #5–#6 *measured* the emit-worthiness criterion: net-new ∧ artifact-shaped ∧ real-data-precision-adequate ∧ hub-state-independent, 0/6 cleared all four; run #6 also confirmed the graduation-order principle — hub-internal proof before standalone extraction, never the reverse). That mechanism is ONE path of ②, not the whole identity → 🔴 was too narrow; incubation runs but no closed emit-via-incubation yet → 🟡 |
 
 **Cross-cutting measured (intent-based autonomous completion)**: blind floor-tier Sonnet trigger-accuracy
 probe (n=10, 2026-07-14): **should-fire 7.5/8 (94%), false-fire 0/2**. One weak trigger (simulate-first /
