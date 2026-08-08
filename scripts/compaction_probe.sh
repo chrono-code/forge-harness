@@ -359,8 +359,15 @@ self_test() {
   local sf5
   printf '%s' '{}' | bash "$0" seal --dir "$T/out5" >/dev/null 2>&1
   sf5="$(ls -t "$T/out5"/seal_*.md 2>/dev/null | head -1)"
-  grep -q "fallback-mtime-UNVERIFIED" "$sf5" 2>/dev/null && rc=YES || rc=NO
-  t "#5 세션 미상 폴백은 UNVERIFIED 로 타입된다" YES "$rc"
+  # ⚠️ 성질은 "세션 미상 폴백이 **타입으로 남는다**" 이지 특정 값 하나가 아니다. 특정 값으로
+  # 과대명세했더니 **저자 머신의 전사본이 있어야만 통과**하는 레인이 됐고, selfcheck 에 배선하자
+  # CI 가 82db426 부터 빨개졌다(로컬 초록 ≠ CI 초록, 실측). 전사본이 없는 러너에서는 `unresolved`
+  # 가 정답이고 그것도 **무음이 아니다** — 둘 다 통과여야 한다.
+  grep -qE "payload: (fallback-mtime-UNVERIFIED|unresolved)" "$sf5" 2>/dev/null && rc=YES || rc=NO
+  t "#5 세션 미상 폴백이 타입으로 남는다 (환경 무관)" YES "$rc"
+  # known-negative: 무음(빈 값)이면 실패해야 한다 — 레인이 공허하지 않다는 증명
+  grep -qE "payload: *$" "$sf5" 2>/dev/null && rc=YES || rc=NO
+  t "#5 payload 가 빈 값이면 통과 아님" NO "$rc"
 
   echo
   [ "$f" -eq 0 ] && echo "✅ 캘리브레이션 통과 ($n 쌍) — seal/digest 레그 한정. score 는 실측으로 **반증**됐다(§계기 타당성)." \
@@ -390,7 +397,10 @@ PAYLOAD_STATUS="args"
 # ⚠️ 캡처는 **seal 에서만**. 전 모드에서 돌리면 매 `UserPromptSubmit`(digest)가 PreCompact 페이로드를
 # 덮어써서, 빈 봉인을 진단하라고 만든 증거를 **다음 프롬프트가 파괴**한다. 게다가 사용자 프롬프트
 # 원문이 매 턴 디스크에 남는다. (high 리뷰 실측 재현: seal 직후엔 PreCompact 페이로드, digest 한 번에 교체.)
-if [ -z "$TRANSCRIPT" ] && [ ! -t 0 ]; then
+# 훅 모드에서만 stdin 을 읽는다. 모드 화이트리스트가 없으면, 오타나 디스패처 소실 시
+# 스크립트가 **stdin 을 기다리며 멈춘다** — 훅에선 페이로드가 오니 안 보이지만 CI 에선 정지다(실측).
+case "$MODE" in seal|digest|score) _READS_STDIN=1 ;; *) _READS_STDIN=0 ;; esac
+if [ "$_READS_STDIN" = "1" ] && [ -z "$TRANSCRIPT" ] && [ ! -t 0 ]; then
   HOOK_JSON="$(cat 2>/dev/null)"
   # 원본 페이로드를 항상 남긴다. 2026-08-08 첫 실발화가 session=unknown · transcript 빈 값으로
   # 돌았는데, 원본을 안 남겨서 **왜 그런지 알 방법이 없었다.** 미측정을 빈 값으로 렌더하지 않는다.

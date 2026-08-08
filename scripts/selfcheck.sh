@@ -221,13 +221,26 @@ fi
 for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
   if [ ! -f "scripts/$_subj.sh" ]; then
     echo "SKIP  $_subj --self-test (subject scripts/$_subj.sh absent)"
-  elif grep -q -- '--self-test' "scripts/$_subj.sh"; then
-    if ! bash "scripts/$_subj.sh" --self-test; then
+  else
+    # ⚠️ **문자열 존재로 판정하지 마라.** 초판은 `grep -q -- '--self-test'` 였는데, 그 문자열은
+    # 헤더 주석과 usage echo 에도 있어서 **디스패처 한 줄만 지워도 여전히 매치**한다. 그리고
+    # 인식 못 한 모드에서 스크립트가 usage 를 찍고 exit 0 을 내므로, selfcheck 는 rc=0 을 보고
+    # 조용히 통과했다 — 25개 레인이 통째로 사라져도 `npm test` 는 PASS (high 3차 리뷰 실측).
+    # 존재검사가 진위를 못 본다는 그 클래스의 재발이다. **실행이 일어났다는 증거**를 요구한다.
+    # `< /dev/null` 필수: 인식 못 한 모드로 떨어지면 스크립트가 stdin 을 기다려 **무한 대기**한다
+    # (실측 — 디스패처 제거 known-negative 가 2분 타임아웃). CI 를 멈추는 건 조용한 통과보다 나쁘다.
+    _st_out="$(timeout 120 bash "scripts/$_subj.sh" --self-test < /dev/null 2>&1)"; _st_rc=$?
+    case "$_st_out" in
+      *캘리브레이션*) : ;;
+      *) echo "FAIL  $_subj: --self-test produced no calibration verdict (dispatcher missing?)"
+         printf '%s\n' "$_st_out" | head -3 | sed 's/^/      /'
+         fail=1; _st_rc=0 ;;   # 이미 FAIL 로 셌으니 아래서 중복 계상 안 한다
+    esac
+    if [ "$_st_rc" -ne 0 ]; then
+      echo "FAIL  $_subj --self-test (exit $_st_rc)"
+      printf '%s\n' "$_st_out" | tail -6 | sed 's/^/      /'
       fail=1
     fi
-  else
-    echo "FAIL  $_subj: script present but its --self-test anchor is missing"
-    fail=1
   fi
 done
 
