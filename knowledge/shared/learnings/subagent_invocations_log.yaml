@@ -1,6 +1,26 @@
 # Sub-agent invocation log (operations.md §Sub-agent Operations).
 # Fields: date · agent · model · purpose · prompt_summary · outcome · finding · note
 # outcome ∈ {accepted, partial, rejected, sustained}
+#
+# ⚠️ THIS FILE IS PUBLIC AND SHARED. Generalize before you write, not after.
+#
+#   PUBLIC   — git-tracked in a public repo. Company/corp asset names, internal
+#              hostnames, restricted-env identifiers, and absolute home paths do NOT
+#              belong here. Write "a restricted-env model gateway", not its product name.
+#              (The pre-commit confidentiality scan blocks these — but being blocked is
+#              an upstream failure, not a demonstration that the gate is healthy.)
+#
+#   SHARED   — parallel sessions append to this same file. A blocked entry does not
+#              just block you: it blocks EVERY session whose commit stages this file,
+#              and they cannot fix it, because editing another session's delegation
+#              record is not theirs to do. Your violation is billed to someone else.
+#
+#   Measured 2026-08-08: an entry naming a corp model-gateway asset was blocked HIGH;
+#   a parallel session hit the block, correctly declined to edit another session's
+#   record, and stalled. Two sessions paid for one careless line.
+#
+#   If you are blocked by an entry that is NOT yours: do not edit it. Report it to the
+#   operator with the file:line and the flagged token — the owning session generalizes it.
 
 - date: 2026-06-10
   agent: general-purpose
