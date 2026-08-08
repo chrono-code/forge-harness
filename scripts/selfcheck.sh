@@ -520,6 +520,33 @@ else
   fail=1
 fi
 
+# utterance landing check — the close chain's CONTENT anchor, and it has to be RUN, not parsed.
+# Measured 2026-08-08 on the branch that introduced it: the only thing in this file that touched
+# `scripts/utterance_landing_check.sh` was the `bash -n` syntax sweep at the top. Syntax passing is
+# not the instrument working, so the script shipped via files[] with zero behavioural callers —
+# [[feedback_built_but_not_wired]] in its purest form, where the sole caller is prose in CLAUDE.md.
+#
+# What the self-test defends is specifically the DEGRADE DIRECTION. This checker's whole reason for
+# existing is that a dead grep prints zero hits and zero hits read as "nothing landed" — a fail-open
+# that manufactures a clean verdict out of a broken instrument. Its known-pair set pins that apart:
+# a genuine miss must exit 1 while a dead control must exit 10, and 10 must never collapse into 1.
+# Left unrun, the file rots exactly where it is load-bearing and nothing here would notice.
+# Absence is a FAIL, not a SKIP — and the distinction is mechanical, not stylistic. The SKIP arm
+# above for `probe_scope_check.sh` is correct because that file genuinely never ships; this one is
+# listed in package.json files[], so in BOTH a source tree and an installed package it must be here.
+# A SKIP would convert `rm scripts/utterance_landing_check.sh` into a green run — deletion as a
+# clean bill of health, which is the same fail-open shape the checker itself exists to refuse.
+if [ ! -f scripts/utterance_landing_check.sh ]; then
+  echo "FAIL  utterance_landing_check.sh: missing — it ships via package.json files[], so absence is deletion, not package mode"
+  fail=1
+elif _out=$(bash scripts/utterance_landing_check.sh --self-test 2>&1); then
+  echo "PASS  utterance_landing_check.sh (known-pair self-test: control-death → 10, target-miss → 1)"
+else
+  echo "FAIL  utterance_landing_check.sh: self-test failed — the close-chain content anchor cannot be trusted"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # tag/version consistency guard. Wired with the guard it anchors: the guard exists because a wrong
 # tag reached the remote and a publish from the wrong tree was stopped only by npm's own collision
 # check, so an unrun anchor here would be the same luck-as-floor arrangement one layer up.
