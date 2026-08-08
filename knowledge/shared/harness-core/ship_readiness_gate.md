@@ -196,7 +196,51 @@ unreachable condition, which is the shape that trains people to delete the thing
 
 | | Condition | Check class | Status |
 |---|---|---|---|
-| **P1** | An EMIT run leaves an ordering record that does not depend on trusting the author — the intent/budget/sim record committed, hashed, or otherwise witnessed **outside** the gitignored workspace, before the verdict | mandatory-pass | **not buildable today** — no such channel exists for `tracks/**`. This is the work item, not a test to re-run |
+| **P1** | An EMIT run leaves an ordering record that does not depend on trusting the author — the intent/budget/sim record committed, hashed, or otherwise witnessed **outside** the gitignored workspace, before the verdict | mandatory-pass | **channel now exists (2026-08-08)** — `scripts/chamber_witness.sh`, wired into `chamber_run.sh` steps 2–5. **Still unsatisfied**: no run holds a witness yet |
+
+**P1's channel was built, and that is not the same as P1 passing.** The row above said *not buildable
+today*; that is no longer true, and the reason it was true is worth keeping because it names the shape of
+the fix. The blocker was never "we lack a checker" — it was that `tracks/**` is gitignored, so the only
+ordering evidence was mtime, which is trivially forgeable. The channel takes the **second form P1's own
+sentence already permitted — `hashed`**: the artifacts stay in the private workspace and only their
+SHA-256 goes into a tracked ledger (`knowledge/shared/learnings/chamber_ordering_witness.yaml`). Content
+disclosure is zero, and the commit graph carries the ordering.
+
+**What makes the witness bind here specifically**: `main` runs a `non_fast_forward` ruleset, so pushed
+history cannot be rewritten — the commit order is not something the author can retroactively change. That
+is a *precondition*, not a property of the script: if the ruleset is ever relaxed, this witness weakens
+with it, and that dependency is recorded in the script header rather than assumed.
+
+**What it does NOT prove — stated because the failure to state it is the defect this section exists for.**
+A commitment proves *this content was fixed at this time*. It does not prove *the author was honest*: one
+can still decide the outcome first and write an INTENT to match before committing. The attack it closes is
+**retroactive rewriting** — producing a verdict and then editing INTENT to claim it was screened — and
+`verify` returns `TAMPERED` for exactly that (calibrated lane, not a claim).
+
+**Known-pair calibrated, 16 lanes**: correct order → `WITNESSED(0)` · verdict-committed-first →
+`UNORDERED(1)` · post-hoc rewrite → `TAMPERED(1)` · unrecorded run → `UNWITNESSED(2)` · recorded but
+uncommitted → `PENDING(2)` · missing artifact / bad slug charset / ledger-write failure → `rc=10` ·
+verdict hash absent → `INCOMPLETE(2)` · gates and verdict in the **same commit** → `UNORDERED(1)` ·
+only *some* gate artifacts before the verdict → not a pass · a duplicate hash from another run →
+does not hide `PENDING` · single-arg call → survives · control → still 0.
+**`2` is not a pass** — `not found ≠ 0` is enforced in the exit code itself, so a caller cannot read
+"no record" as "no problem".
+
+**Seven of those lanes exist because a cross-family audit found the first version fail-open**, and the
+finding rate is the point: the author's own review produced **zero** of them. codex (gpt-5.5) returned 11
+defects with source lines and **reproduced four of them by execution** — a ledger write to an invalid path
+still printed `witnessed` and returned 0; gates and verdict in one commit passed; `INTENT` alone before the
+verdict passed while `BUDGET`/`SIM_NOTES` landed after it; and a hash reused from another run masked an
+uncommitted entry. Worst of all, **a run with no verdict hash at all returned `0`, which the runner rendered
+as "usable as identity ② promotion evidence"** — the witness channel issuing a green with no witness, which
+is the exact failure it was built to prevent. Each fix carries a lane, and two were proven non-decorative by
+revert (reverting either reddens exactly one lane, 1/16).
+
+**The nine historical runs stay `UNWITNESSED`, and are not back-filled.** Hashing them now would record
+the artifacts as they are *today*, after their verdicts — a record written after the outcome, which is
+precisely the thing the witness exists to distinguish. Back-filling would produce a ledger that looks
+witnessed and proves nothing. So run #9 `forge-wiki` remains **UNKNOWN** on ordering, as the section above
+already concluded, and P1 is first satisfiable by the **next** chamber run.
 
 **P2 (dominance) is deliberately NOT listed**, and the reason is a finding about the gate rather than
 about ②. The draft required it, citing §"Gate consequence". Checked against the table: ③ does carry a
