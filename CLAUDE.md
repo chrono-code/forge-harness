@@ -955,6 +955,14 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
 > (④-c: why-its-own-step origin, ownership split, salience/backstops) · `§Open-PR-Sweep-Origin` (①-b) — read
 > when executing that close step.
 
+> **다축 마감 (같은 하네스에 세션이 둘 이상일 때)**: 순서·판별·쓰기 규율은
+> `knowledge/shared/rules/multi_session_close_protocol.md` 가 정본이다. **접기 전에 살아있는
+> peer 에게 「더 있나」를 묻는 단계가 있고, 그 질문은 `gh pr list` 재대조로 대체되지 않는다**
+> (PR 이 없는 델타를 구조적으로 못 잡는다 — 2026-08-09 실측 8건). 세 가지를 각각 못 믿는다:
+> **보냈다≠닿았다 · 살아있다≠일하는중 · 닫혔다≠안열렸다.** 기계 표면화는
+> `session_close_check.sh` ①-c·①-d, 내용 착지는 `scripts/utterance_landing_check.sh`.
+> **읽어라 — 이 요약에는 판별 규칙도 쓰기 규율도 없다.**
+
 **Card-last guard**: ①–④-c (incl. ①-b open-PR sweep, ④-c handoff lifecycle) must ALL complete before
 ⑤ runs. **Mechanical floor**: `scripts/session_close_check.sh` is **wired into `templates/.git-hooks/pre-push`** (2026-07-20) — it runs on *every* push, so it is no longer prose-invoked. Enforcement is surface-matched: an ordinary push **surfaces** ❌ violations (advisory — a branch push is reversible), and the **close push blocks** on them: run step ⑥ as **`FH_SESSION_CLOSE=1 git push`** → exit 1 (card-last violated / required close artifact missing) stops the push until fixed. *Why not block always*: ⑤ card-last is a close-time invariant, while ④ mandates writing `fh_completed_*` **during** the session — an unconditional block would pit the two rules against each other and train `--no-verify`, disarming the Destructive-Op gate in the same hook. Any new information produced during ①–④ (new commits from a merged self-PR, model changes,
 new findings, a carry item flipped to DONE) feeds INTO ⑤ — card is never written mid-sequence and
