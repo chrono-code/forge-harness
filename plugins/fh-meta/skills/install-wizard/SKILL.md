@@ -205,7 +205,19 @@ recording it rather than implying an expiry alarm exists.
 
 ### Step 4. Acceleration Baseline Setup
 
-After executing approved items, install the automatic maintenance structure: zshrc hook (idempotent, preview-then-confirm) + sentinel initialization (per-project) + weekly-audit cadence (no cron — zshrc hook + session-start detection are the durable mechanisms).
+After executing approved items, offer the automatic maintenance structure — **each piece is its own
+Y/N, none is folded into an unconditional batch** (decline-integrity sim 2026-08-10: the earlier
+"batch" wording had the zshrc hook and the SessionStart registration running without a gate, which
+contradicted this skill's own Per-item-approval principle): zshrc hook (idempotent, **preview the
+exact block, then Y/N**) + SessionStart floor-check hook registration (**Y/N — it writes to
+`.claude/settings.json`**) + sentinel initialization (per-project) + weekly-audit cadence (no cron —
+zshrc hook + session-start detection are the durable mechanisms).
+
+**Every N is recorded, not just skipped**: append the item key to
+`~/.cc_sentinels/{project}_wizard_declined`. A declined item means the corresponding intended FH
+feature does not run (declined zshrc = no shell-side audit nag · declined SessionStart hooks = no
+turn-0 floor/env-delta/companion signal — those fall back to session prose, which is
+salience-dependent). State this at decline time in one line.
 
 **4-axis pre-commit gate (behavioral — OPT-IN, double-confirm)**: Mode D / FH-self-development only. It gates commits **in the user's FH clone** and is **never installed into field projects** (FH-internal infra — see `auto_project_mapping.md §6`). Not auto-run: a separate explicit Y/N, never folded into the baseline-setup batch.
 
@@ -214,6 +226,19 @@ After executing approved items, install the automatic maintenance structure: zsh
 ### Step 5. Completion Report + Contribution Guidance
 
 Output the completion summary (executed/skipped/later counts + what runs automatically from now on) followed by next-step skill suggestions, FH contribution guidance, Mode D companion-store pointer, and the fork-your-own-hub option.
+
+**If any item was declined or deferred, the summary MUST also carry a consequences block**
+(operator requirement 2026-08-10 — a decline is respected, never silent):
+- the declined items by name, and the plain statement that **the corresponding intended FH features
+  will not run in this state** (which gates/hooks/automation are off);
+- how to change your mind: re-run `/install-wizard` (declined items are re-proposed, approved ones
+  are not re-asked);
+- that a **one-line per-session reminder** will note the not-installed state until resolved —
+  mechanical via the env-delta SessionStart hook where hooks were accepted, session prose where they
+  were declined (an unwired node has no hook to remind with — named residual: a task-first entry on
+  a fully-unwired node has no reminder surface at all);
+- how to silence the reminder deliberately: `touch ~/.cc_sentinels/{project}_wizard_reminder_muted`
+  (recorded as its own decision, not a default).
 
 > **Detail**: See `SKILL_detail.md §Step5-Completion-Report` — full completion report template — read when executing Step 5.
 

@@ -62,15 +62,19 @@ claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
 
 # 2. Clone the hub
-git clone https://github.com/chrono-meta/forge-harness.git ~/forge-harness
-cd ~/forge-harness
+git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
+cd ~/projects/forge-harness
 
 # 3. Start a session
 claude
 ```
 
-> ✅ Claude reads `CLAUDE.md` and asks what project to connect or what task to start.
+> ✅ Then **type a greeting ("hi")** — the 🐿️ door menu appears on a typed greeting, not on launch alone.
 > Say **"Connect a project"** → hub scans `../`, finds `.git` directories, creates `tracks/{project}/`.
+> For full initial setup (hooks · gates · baseline — each item individually approved, declining is
+> respected and recorded), ask for **`/install-wizard`**.
+> Already cloned somewhere else? That path *is* your hub — read every `~/projects/forge-harness`
+> in the docs as your actual clone path.
 
 **Your first 15 minutes** — what success looks like, and what to do with it:
 
