@@ -138,7 +138,7 @@ fi
 if [ -z "${CLAUDE_CODE_CHILD_SESSION:-}${CLAUDE_CODE_AGENT:-}" ] && [ "${FH_PEER_SCAN_FORCE:-0}" != "1" ]; then
   : # solo/top-level surface — ①-c is out of scope here, and silence is the correct output
 else
-PEER_LIVE=0; PEER_UNKNOWN=0; PEER_STALE=0; PEER_IDS=""
+PEER_LIVE=0; PEER_UNKNOWN=0; PEER_STALE=0; PEER_SPARE=0; PEER_IDS=""
 SOCK_DIR="${FH_PEER_SOCK_DIR:-/tmp/cc-socks}"
 # Self-exclusion must walk the ANCESTOR chain, not compare `$$`. This script is a grandchild of the
 # session process that owns the socket, so `$$` never matches it — measured: the first run counted
@@ -162,6 +162,10 @@ if [ -d "$SOCK_DIR" ]; then
     case "$_pid" in ''|*[!0-9]*) continue ;; esac
     case "$SELF_CHAIN" in *" $_pid "*) continue ;; esac   # 나 자신(조상 체인)
     if ! ps -p "$_pid" >/dev/null 2>&1; then PEER_STALE=$((PEER_STALE+1)); continue; fi
+    # bg-spare = pre-warmed worker, NOT a session. It owns a socket and a cwd like everything else,
+    # so cwd matching alone counts it as a peer — measured 2026-08-09, and it is a pure false
+    # positive with a clean signature. Exclude mechanically rather than explaining it away.
+    case "$(ps -p "$_pid" -o args= 2>/dev/null)" in *--bg-spare*) PEER_SPARE=$((PEER_SPARE+1)); continue ;; esac
     _pcwd="$(_peer_cwd "$_pid")"
     if [ -z "$_pcwd" ]; then
       # Alive but undirected. NOT zero — a peer we cannot place is exactly the case that must not
@@ -179,16 +183,23 @@ if [ "$PEER_UNKNOWN" = "-1" ]; then
   echo "ℹ️  ①-c peer scan UNMEASURED — no session-socket dir at $SOCK_DIR (not 'no peers')"
 elif [ "$PEER_LIVE" -gt 0 ]; then
   echo "⚠️  ①-c $PEER_LIVE peer CANDIDATE(s) in THIS harness —$PEER_IDS"
-  echo "     This counts LIVE PROCESSES, which is deliberately WIDER than the fleet view Working"
-  echo "     list — and the surplus is signal, not noise. Measured 2026-08-09: the extras were"
-  echo "     sessions shown as Completed whose CLOSE NEVER FINISHED, so their process lingered."
-  echo "     Read the two cases differently:"
-  echo "       alive + Working   → active peer. Ask before folding."
-  echo "       alive + Completed → that close did not finish. Nobody else surfaces this."
+  echo "     The surplus over the fleet view Working list is MIXED — do not read it as one thing."
+  echo "     Measured 2026-08-09, three kinds land here and only the first needs a message:"
+  echo "       working session   → ask before folding"
+  echo "       idle terminal     → a real session sitting at a prompt. Not working. Usually skip."
+  echo "       lingering process → a close that never finished (seen once, had to be killed by hand)"
+  echo "     Only the fleet view separates them. An earlier version of this text called the whole"
+  echo "     surplus unfinished closes; that was one case generalised, and it was wrong."
   echo "     Do NOT switch to the job state file to narrow it: it marked THIS session done"
   echo "     (firstTerminalAt set) while it was still running — it under-reports as hard as"
   echo "     sockets over-report. Cross-read with the fleet view; neither source alone is right."
-  echo "     Before folding, ASK them '지금부터 마감이다, 더 있나' — the question is wider than a"
+  echo "     THIS IS A DETECTION LIST, NOT A RECIPIENT LIST — do not message all of them."
+  echo "     What survives here is: a live PROCESS whose cwd is this harness, minus pre-warmed"
+  echo "     spares. That still includes IDLE TERMINALS sitting at a prompt. It is NOT a list of"
+  echo "     sessions that are working — nothing here can tell you that; the fleet view can."
+  echo "     Notify only the ones actually WORKING/BUSY right now. Messaging a finished session"
+  echo "     is noise, burns a recipient approval, and does not land in their record."
+     echo "     Of those still working, ASK '지금부터 마감이다, 더 있나' — the question is wider than a"
   echo "     PR sweep: a peer's inheritance-channel or landing-check work has no PR to find."
   echo "     Then fold, then re-check \`gh pr list --merged\`. Merging their delta stays MANUAL."
   echo "     SENDING IS NOT DELIVERING — a cross-session message can be held for the recipient"
@@ -200,7 +211,7 @@ elif [ "$PEER_UNKNOWN" -gt 0 ]; then
   echo "⚠️  ①-c 0 peers placed in this harness, but $PEER_UNKNOWN live session(s) are UNPLACEABLE"
   echo "     — treat as possible peers and ask; do not read this as 'closing alone'."
 else
-  echo "✅ ①-c no live peer session in this harness (${PEER_STALE} stale socket(s) ignored)"
+  echo "✅ ①-c no live peer in this harness (${PEER_STALE} stale · ${PEER_SPARE} pre-warmed spare(s) ignored)"
 fi
 
 fi
