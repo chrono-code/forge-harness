@@ -744,7 +744,12 @@ the local binding** (`CLAUDE.local.md`) **in the three-part form above — quote
 picks, a scope** — not only into the session. Ask for all three at that moment; a record written with
 two of them is invalid, and the only route past an invalid record is the session inventing the third,
 which is forgery. **A gate that blocks every new install is not a strict gate, it is a bypass
-trainer** — that is the one moment where the
+trainer** — so the ask is **wired, not left to prose**: `install-wizard` **Step 3-D** collects all
+three at setup and writes them down, and carries any mechanical settings change under the same
+approval (operator decision, 2026-08-09: *users of FH/PMH run parallel by default; where a mechanical
+config change is needed, take consent through the install-wizard contract and change it then*).
+A recorded **decline** is also a record — it stops later sessions re-asking. This is why the answer
+belongs at setup — that is the one moment where the
 choice is cheap to make, and a durable record is the whole point: a *yes* left in a transcript expires
 with the transcript, while the conditional line above is re-evaluated by every cold session. A recorded
 standing request is therefore not bookkeeping — it is the thing that satisfies the condition. Wiring the

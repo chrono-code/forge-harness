@@ -170,6 +170,39 @@ Execution priority (behavioral):
 
 > **Detail**: See `SKILL_detail.md §Step3-Execution` — action preview example, FH plugin auto-install bash + error handling table + success format, agent-composer mapping update format — read when executing Step 3.
 
+### Step 3-D. Dispatch Standing Request — the one moment this is cheap to settle
+
+FH/PMH treat isolated delegation as part of what the harness is, so **parallel dispatch is the
+intended default for anyone running them**. It is not default *by assertion*: some runtimes ship a
+line making unprompted dispatch conditional on a user request, and `CLAUDE.md §Agent Dispatch
+Operation` will not read that condition as met unless a standing request is on disk. **A session with
+no such record asks before every dispatch** — which is the friction this step exists to remove, once,
+here, instead of in every future session.
+
+So ask, and write the answer down. Three parts, all required — a record missing one is not a record,
+and a session may never supply the missing part itself:
+
+```
+① the user's own words, quoted   — ask them to say it, then quote what they said
+② a lease                        — THE USER picks the length. Do not suggest a default and
+                                   do not fill it in. Renewal needs a fresh utterance later
+③ a scope                        — which prohibition line this covers. Granting one never
+                                   grants another (agents ≠ workflows ≠ deep-research):
+                                   name each one the user actually intends
+```
+
+Write it into `CLAUDE.local.md` (gitignored). **Declined is a valid, recorded answer** — write that
+down too, so later sessions stop re-asking rather than reading silence as an unanswered question.
+
+**Any mechanical settings change belongs here as well**, under the same consent: if enabling the
+intended default needs a `settings.json` edit, propose it in this step with the diff shown, and apply
+it only on approval. Do not change settings silently on the strength of the doctrine alone — the
+doctrine says dispatch is the default posture, not that the wizard may edit a user's config unasked.
+
+⚠️ **The lease is honoured by reading, not by machinery.** `scripts/consent_registry_check.sh`
+enforces leases for *registered consent classes*, and this grant is not one of those — say so when
+recording it rather than implying an expiry alarm exists.
+
 ### Step 4. Acceleration Baseline Setup
 
 After executing approved items, install the automatic maintenance structure: zshrc hook (idempotent, preview-then-confirm) + sentinel initialization (per-project) + weekly-audit cadence (no cron — zshrc hook + session-start detection are the durable mechanisms).
