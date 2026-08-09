@@ -341,7 +341,18 @@ DISPATCHED=$(_int "$(grep -c "^$TODAY$" "$TALLY" 2>/dev/null | tr -d ' ' || true
 # while anything appended via yaml.dump renders `- date: '"'"'2026-08-02'"'"'`. Matching one form counted
 # half the entries as absent — a divergent-normalizer miss inside the check that exists to catch
 # missing records. Known-pair calibrated below in test_dispatch_log_lanes.sh.
-LOGGED=$(_int "$(grep -cE "^- date: *'?$TODAY'?" "$LOG" 2>/dev/null | tr -d ' ' || true)")
+# ── 전환 설계: 레거시 단일 파일 ∪ 세션별 디렉터리를 **둘 다** 읽는다 ────────────
+# WHY: 같은 파일 끝에 여러 세션이 append 하면 브랜치 병합이 확정 충돌이고, 그 해소가
+# 조용히 손상된다 — git 이 엔트리 헤더 한 줄을 공통 접두로 밀어내서 «양쪽 다 보존»이라는
+# 정답 해소가 엔트리를 흡수시킨다(2026-08-09 재현: 항목 133/정답 134, 파싱은 통과).
+# 처방은 세션당 한 파일. 다만 **마이그레이션과 배선을 같은 커밋에 묶으면** 아직 머지 안 된
+# 원장 브랜치와 대형 충돌이 나므로, 소비자를 먼저 «둘 다 읽게» 만든다. 그러면 데이터가
+# 언제 옮겨가든 이 검사는 안 깨진다. 두 상태 모두 known-pair 로 고정돼 있다.
+LOGDIR="$FH/knowledge/shared/learnings/subagent_invocations"
+_cat_logs() {  # 다중 파일에 grep -c 를 직접 걸면 파일별 `경로:개수` 를 찍어 합산이 깨진다(실측).
+  { [ -f "$LOG" ] && cat "$LOG"; [ -d "$LOGDIR" ] && cat "$LOGDIR"/*.yaml; } 2>/dev/null
+}
+LOGGED=$(_int "$(_cat_logs | grep -cE "^- date: *'?$TODAY'?" | tr -d ' ' || true)")
 if [ "${DISPATCHED:-0}" -gt 0 ] && [ "${LOGGED:-0}" -eq 0 ]; then
   echo "❌ ④-e $DISPATCHED sub-agent dispatch(es) today and ZERO invocation-log entries — the 60/40"
   echo "     promotion gate and the UAP loop both read that file; an unlogged session is invisible to"

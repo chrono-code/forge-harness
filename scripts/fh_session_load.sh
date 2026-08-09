@@ -186,6 +186,26 @@ if [ -d "$_AUDIT_DIR" ] && fh_cadence_due "$_FH_HOOK_SRC"; then
   fi
 fi
 
+# ── branch-claim 자동 기록 (2026-08-09) ────────────────────────────────────────
+# WHY HERE, ABOVE THE COMPANION-STORE EARLY EXIT: 공유 체크아웃 사고는 Mode D 와 무관하다.
+# companion store 가 없는 설치에서도 병렬 세션은 돌고, 그때도 `.git/HEAD` 는 트리당 하나다.
+# 아래 `[ -d "$BE/.git" ] || exit 0` 뒤에 두면 **공개 사용자에게는 게이트가 통째로 죽는다.**
+#
+# WHY AUTO AT ALL: 게이트(templates/.git-hooks/pre-commit → scripts/branch_claim.sh)는
+# **기록이 없으면 «의견 없음»으로 통과**한다. 아무도 `claim` 을 안 하면 장식이 된다 —
+# 오늘 하루 반복해서 본 «만들고 배선 안 함» 의 얼굴. 세션 시작이 유일한 자연스러운 배선점이다.
+#
+# WHY IT IS SAFE (마찰 0):
+#   · **없을 때만 기록한다** — 이미 있으면 손대지 않는다. 남의 기록은 애초에 파일이 다르다
+#     (`.git/fh-claims/<session_id>`), 그래서 steal 이 구조적으로 불가능하다
+#   · **1인 세션은 차단을 안 만난다** — check 는 «살아있는 peer claim 0» 이면 경고만 낸다
+#   · detached/rebase/bisect 중이면 `claim` 이 스스로 거부한다(rc=2) → 무해
+#   · 실패해도 세션을 막지 않는다(|| true · 출력 억제)
+[ -x "$FH/scripts/branch_claim.sh" ] && {
+  ( cd "$FH" && bash scripts/branch_claim.sh claim --if-absent session >/dev/null 2>&1 ) || true
+  ( cd "$FH" && bash scripts/branch_claim.sh reap                     >/dev/null 2>&1 ) || true
+}
+
 # Non-Mode-D / no companion store → silent no-op (this is the majority path for public users).
 [ -d "$BE/.git" ] || exit 0
 

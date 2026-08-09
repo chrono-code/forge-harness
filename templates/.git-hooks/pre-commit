@@ -188,6 +188,40 @@ LIGHT=$(echo "$LIGHT" | grep -vE '^\s*$' || true)
 # boundary, so they run on EVERY commit regardless of what is staged.
 # Body is intentionally NOT indented: it contains heredocs whose terminators must sit at column 0.
 run_universal_guards() {
+# ── Branch-claim guard — «내가 믿는 브랜치 ≠ HEAD» (2026-08-09) ───────────────
+# WHY HERE, WITH THE OTHER UNIVERSAL GUARDS: surface-scoped, not 4-axis-scoped — a commit
+# lands on a branch whether or not an FH asset is staged, so it must run before the
+# "no FH assets → exit 0" path.
+#
+# WHAT IT CATCHES (measured 2026-08-09, two parallel sessions, one checkout):
+#   `.git/HEAD` is one per working tree; session A's `git switch` moves B's ground too.
+#   B had already "cut a branch at the start of work" — that did not prevent it.
+#   Key insight: the judgment key is the SESSION, not the tree. A tree-level claim is
+#   defeated when BOTH sessions follow the protocol (A switches + re-claims → claim==HEAD →
+#   B passes) — i.e. it gets weaker as adoption rises. Per-session records
+#   (.git/fh-claims/<session_id>, keyed on CLAUDE_CODE_SESSION_ID which git hooks inherit)
+#   compare only MY record against HEAD, so peers can never over-block me.
+#
+# NOT A ROOT FIX: it does not block `git switch` (git has no switch hook) and does not
+# protect the uncommitted worktree. Root fix = one worktree per session.
+#
+# DEGRADE: no record · unparseable · detached/rebase/bisect/merge · no LIVE peer session
+#   → PASS. Sole rationale: over-blocking trains the override and kills the gate.
+#   (Deliberately NOT "a commit is reversible" — this incident's recovery went through a
+#   shared-branch history rewrite, which that invariant classes fail-closed.)
+# Anchor: scripts/test_branch_claim_lanes.sh — includes the S-1 regression lane (both
+# sessions protocol-compliant) and controls proving the pass-lanes are not unconditional.
+BCLAIM="$REPO_ROOT/scripts/branch_claim.sh"
+if [ -f "$BCLAIM" ]; then
+  if ! bash "$BCLAIM" check; then
+    FAILED=1
+  fi
+else
+  # 부재를 통과로 렌더하지 않는다 — 이웃 가드(PSA_LIB)는 부재 시 FAIL 인데 여기만 무음이면
+  # «가드가 안 돌았다»와 «가드가 통과했다»가 구분 불가해진다. 차단은 안 한다(과차단 회피).
+  echo "  ⚠️  branch-claim guard NOT INSTALLED (scripts/branch_claim.sh) — skipped, not passed"
+fi
+
 # ── Privacy guard — tracks/ staged-path allowlist (structural, name-free) ─────
 # tracks/** is local-by-default (frozen-seed policy); the only public lanes are
 # tracks/_contrib/** (consent lane) and ALREADY-TRACKED .gitkeep skeleton files.
@@ -336,6 +370,16 @@ if [ -n "$HEAVY" ]; then
   GATE_MODE="full"
 else
   GATE_MODE="lightweight"
+fi
+
+# TOCTOU 완화: 앞선 branch-claim check 이후 게이트들이 도는 동안 peer 가 브랜치를 옮길 수
+# 있다. 최종 판정 직전에 한 번 더 돌려 창을 좁힌다. (원자적 close 는 reference-transaction
+# 훅의 몫 — 이건 완화이지 해결이 아니다.)
+if [ -f "$REPO_ROOT/scripts/branch_claim.sh" ]; then
+  if ! bash "$REPO_ROOT/scripts/branch_claim.sh" check; then
+    echo "  ↑ 게이트 실행 중에 브랜치가 옮겨졌다 (TOCTOU 창에서 포착)"
+    FAILED=1
+  fi
 fi
 
 echo ""
