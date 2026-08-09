@@ -94,6 +94,27 @@ if command -v gh >/dev/null 2>&1; then
   [ "${PRS:-0}" -gt 0 ] && echo "⚠️  ①-b $PRS open PR(s) by you — classify: self-mergeable vs awaiting-external"
 fi
 
+# ── ①-d CLOSE RE-OPENED? ──────────────────────────────────────────────────────
+# WHY: a session that closed cleanly and then kept working looks IDENTICAL to one that never
+# closed — both read Completed from outside, and ①-c cannot separate them. Measured 2026-08-09:
+# this session ran step 5 eleven times and a peer independently named the same gap. The two need
+# opposite actions — an unfinished close must be FINISHED, a re-opened one must be RE-FOLDED.
+# HOW: stamp each close-gated pass and count. Self-attested (whoever runs the check writes it):
+# it detects the pattern, it does not prove it.
+CLOSE_STAMP="$FH/tracks/_meta/.close_stamps_$TODAY"
+if [ "${FH_SESSION_CLOSE:-0}" = "1" ]; then
+  mkdir -p "$(dirname "$CLOSE_STAMP")" 2>/dev/null
+  date -u +%Y-%m-%dT%H:%M:%SZ >> "$CLOSE_STAMP" 2>/dev/null || true
+fi
+if [ -f "$CLOSE_STAMP" ]; then
+  CLOSE_N=$(grep -c . "$CLOSE_STAMP" 2>/dev/null | tr -d ' ')
+  if [ "${CLOSE_N:-0}" -gt 1 ]; then
+    echo "ℹ️  ①-d close ran $CLOSE_N times today — CLOSED-THEN-WORKED, not a stalled close."
+    echo "     Both look Completed from outside; only this counter separates them."
+    echo "     Every re-open owes a FULL step 5: append to fh_completed FIRST, then rewrite the card."
+  fi
+fi
+
 # ── ①-c LIVE PEER SESSIONS in this same harness ─────────────────────────────────
 # WHY: FH's close chain has an agreed two-axis order (peer appends → ping → **ask "더 있나" before
 # folding** → fold → re-check merged PRs), and it lived only in the session card as prose. Measured
@@ -170,6 +191,10 @@ elif [ "$PEER_LIVE" -gt 0 ]; then
   echo "     Before folding, ASK them '지금부터 마감이다, 더 있나' — the question is wider than a"
   echo "     PR sweep: a peer's inheritance-channel or landing-check work has no PR to find."
   echo "     Then fold, then re-check \`gh pr list --merged\`. Merging their delta stays MANUAL."
+  echo "     SENDING IS NOT DELIVERING — a cross-session message can be held for the recipient"
+  echo "     user approval and never arrive; the send call still reports success. Measured"
+  echo "     2026-08-09: 2 of 5 notices were held while the card already claimed all 5 informed."
+  echo "     Record ANSWERS, not sends, and put the unanswered count in the card."
   [ "$PEER_UNKNOWN" -gt 0 ] && echo "     + $PEER_UNKNOWN live session(s) whose directory is UNKNOWN (counted, not dismissed)"
 elif [ "$PEER_UNKNOWN" -gt 0 ]; then
   echo "⚠️  ①-c 0 peers placed in this harness, but $PEER_UNKNOWN live session(s) are UNPLACEABLE"
