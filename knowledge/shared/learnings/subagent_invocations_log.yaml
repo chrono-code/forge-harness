@@ -1709,3 +1709,11 @@
     계기는 **문자열 착지만** 재고 기록의 정확성·실행 여부는 안 본다.
     ★ 오라벨 1건 발견: `fh_completed:1384` 의 `⑨PR 선제흡수` 는 틀렸다 — ⑨ 답변은 `ⓑ`이고
     「PR 선제흡수」는 별개 지적(:1301)이다. 한 줄에 두 결정이 뭉개졌다.
+
+- date: 2026-08-10
+  session: ifkakao-fhops-pmh-sync-overnight
+  agents_summary: "5 dispatches (consolidated): weekly-audit(claude generic, bg) · persona-innovator Mode F(bg) · quench-challenger(Axis2, sync) · company-extract(claude generic, bg) · codex gpt-5.5 sidecar(crossfamily, pmh sync tooling)"
+  dispatch_count: 5
+  outcome: accepted
+  evidence: "audit file 18994B M3/S3/R5 · innovator A1 채택→canon 수리 착지 · challenger M5/S10 전건 수리(PR #311) · extract 31절 무손실(known-pair 24/24) · codex M4/S4→M 전건 수리+레인 8/8"
+  notes: "codex payload residency scan (org-token 0, control 3) · 전 dispatch 산출이 머지/파일로 착지"
