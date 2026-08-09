@@ -104,6 +104,31 @@ control; FH supplies the quality gate after goal completion.
 > **Detail**: See `knowledge/shared/harness-core/agents_md_runtime_details.md §Invocation-patterns`
 > — single, parallel, and wave composition examples — read when choosing a dispatch shape.
 
+### Before dispatching without being asked
+
+FH treats isolated delegation as part of what a harness *is*, so it leans toward dispatching rather
+than absorbing separable work inline. One boundary comes with that, and it is runtime-agnostic:
+
+```
+unprompted dispatch is available only when a standing request from the user is RECORDED —
+  in a durable local file, carrying all three of:
+    the user's own words, quoted   · a dated lease   · a scope line
+no such record, or the lease has lapsed, or you cannot tell (fresh clone · a runtime whose
+  own prompt may restrict this)
+  → the request is absent, and absent is not granted → ask per invocation
+```
+
+Four notes for anyone porting this. A record is only a record if the *user* authored the quoted
+words — an agent writing the file on its own initiative has produced nothing. Consent is **leased,
+not owned**: past the lease date the record stops counting and you go back to asking. Every run that
+proceeds *without* a prompt should say that it is doing so, so an unnoticed grant cannot accumulate
+silently. And the request buys not-being-asked about the dispatch; it never relaxes a gate at what
+the dispatched agent then touches (publish, delete, history rewrite).
+
+The Claude-side rationale — including why the boundary is phrased around a *conditional* rather
+than a prohibition — lives in `CLAUDE.md §Agent Dispatch Operation` and is specific to that runtime.
+The constraint above is not.
+
 > **Detail**: See `knowledge/shared/harness-core/agents_md_runtime_details.md §Codex-entry-points`
 > — runnable `fh-run` and `codex exec` forms — read before invoking FH from Codex.
 
