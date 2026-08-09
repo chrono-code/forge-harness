@@ -320,6 +320,34 @@ else
   fail=1
 fi
 
+# branch-claim lanes — shipped with 27 hand-run lanes and ZERO callers, so CI never ran one of them.
+# That is the exact defect its own subject guards against (a gate nobody claims against passes
+# forever), reproduced one layer up in its anchor. Same SKIP/FAIL shape: a missing subject is a
+# legitimate skip, a present subject with a missing anchor is a real failure. The lanes are hermetic
+# (per-PID temp dirs under the worktree, no network, no API spend), so running them here costs
+# nothing.
+#
+# ⚠️ Subject-absent is a FAIL here, NOT the SKIP the sibling blocks use. The SKIP arm exists for
+# subjects that may legitimately not ship; branch_claim.sh IS in package.json files[], so it is
+# present in the source checkout AND in the published package — absence can only mean deletion.
+# Nothing else catches that: measured 2026-08-09, package_coverage_check.sh returns PASS on a
+# files[] entry whose file does not exist, so a deleted subject would be green on every surface
+# (SKIP here + PASS there + npm silently omitting it). A cross-family reviewer caught this; the
+# first draft of this block used SKIP and would have silenced exactly that case.
+# Named residual, deliberately not fixed here: the sibling blocks above carry the same hole for
+# their own shipped subjects. Fixing them is a separate change with its own verification.
+if [ ! -f scripts/branch_claim.sh ]; then
+  echo "FAIL  scripts/branch_claim.sh is in package.json files[] but absent — a deleted subject, not a skip"
+  fail=1
+elif [ -f scripts/test_branch_claim_lanes.sh ]; then
+  if ! bash scripts/test_branch_claim_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_branch_claim_lanes.sh: branch_claim.sh present but its anchor is missing"
+  fail=1
+fi
+
 # And the ablation calibrator, for the third instance of the same reason. Its whole job is telling
 # apart states that look identical from outside — "the arm could not answer" vs "the runner is dead"
 # vs "the runner read the answer off disk" — and round 2 of its own adversarial review found that
