@@ -12,6 +12,19 @@ load: on-demand
 
 ## §Collection-Bash
 
+> **Execution form — canonical (revised 2026-08-10, operator decision ⓑ).** The default runtime path
+> is **WebFetch (+WebSearch) against the endpoints below** — not `curl`. Measured: **13 consecutive
+> unattended runs** executed via WebFetch while this section documented only the curl form (the digest
+> reported the mismatch on every run — spec debt N=13). `curl` requires an allowlist entry that a
+> default install does not carry; the bash blocks below are kept as the **endpoint/parameter spec**
+> (query shapes, filters, item caps, refresh rules — all still authoritative), and a run applies them
+> through WebFetch on the same URLs. If an environment *does* allow the curl form, it is equivalent —
+> the transport is not the contract, the endpoints and criteria are.
+>
+> **arXiv HTTP 429 is a separate item, not part of this revision**: it is a remote rate limit
+> (N=11 consecutive, transport-independent). On 429: back off once, then fall back to per-item
+> `https://arxiv.org/abs/{id}` reads; record `FAILED (429)`, never 0 items.
+
 ### HackerNews (Algolia API)
 
 ```bash
