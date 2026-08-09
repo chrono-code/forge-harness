@@ -651,6 +651,67 @@ validate_crossfamily_leg() { # $1 = marker path
   return 0
 }
 
+# ── 4축 자기 대조 — «어느 축을 돌렸고 어느 축을 안 돌렸나» 형식 검사 ────────────
+# CLAUDE.md §3층 자기 대조가 마커에 3줄을 요구한다. 그중 **기계로 볼 수 있는 두 줄**만 여기서
+# 강제한다. 나머지(①영혼을 «설계 전에» 썼는가)는 **원리적으로 확인 불가**라 안 넣는다 —
+# 사후 작성과 사전 작성이 파일에서 구분되지 않으므로, 넣으면 의식(ritual)만 훈련시킨다.
+#
+# 🟥 **이 검사의 스코프를 오해하지 마라 — 침묵은 잡고 오답은 못 잡는다.**
+#    「ⓐ 돌렸다」고 적었는데 안 돌렸으면 이 훅은 통과시킨다. 마커의 계약은 예전부터
+#    form + non-vacuity + auditability 이지 provenance 가 아니다. 오답을 잡는 건
+#    cross-family 가 이 마커를 읽는 것이고, 그건 이 훅의 일이 아니다(정본에 그렇게 적혀 있다).
+#
+# 날짜 유예: 마커 **파일명의 날짜**가 GRACE 이후인 것만 요구한다. 소급 강제하면 진행 중인
+# 브랜치가 전부 막히고, 그 과차단이 `--no-verify` 를 습관화시켜 같은 훅 안의 Destructive-Op
+# 게이트까지 무장해제한다(오늘 실측된 트레이드오프).
+AXES_RUN_GRACE_DATE="2026-08-10"
+validate_marker_axes_run() { # $1 = marker path
+  local m="$1" mdate line ax miss=""
+  mdate=$(basename "$m" | sed -nE 's/.*_([0-9]{4}-[0-9]{2}-[0-9]{2})\.marker$/\1/p')
+  # 날짜를 못 읽으면 요구하지 않는다 — 파일명 규약 밖의 마커를 이 검사가 판정할 근거가 없다.
+  [ -n "$mdate" ] || return 0
+  [ "$mdate" \< "$AXES_RUN_GRACE_DATE" ] && return 0
+
+  line=$(grep -m1 -E '^[[:space:]]*axes-run:' "$m" 2>/dev/null)
+  if [ -z "$line" ]; then
+    echo "  ❌ MARKER FORMAT — missing 'axes-run:' line (4축 자기 대조)"
+    echo "     CLAUDE.md §3층 자기 대조: **돌린 축과 안 돌린 축을 각각 이름으로** 적는다."
+    echo "     안 돈 축은 침묵이 아니라 'none' 이다 — 미측정을 0으로 렌더하지 않는다."
+    echo "       axes-run: a=codex(4건) b=CI배선 c=none d=되돌림(국소성 확인)"
+    echo "     (a=다른계열 · b=첫실사용 · c=기록그라운딩 · d=되돌림)"
+    return 1
+  fi
+  for ax in a b c d; do
+    echo "$line" | grep -qE "(^|[[:space:]])${ax}=[^[:space:]]" || miss="$miss $ax"
+  done
+  if [ -n "$miss" ]; then
+    echo "  ❌ MARKER — 'axes-run:' 에 빠진 축:$miss"
+    echo "     네 축을 **전부** 적는다. 안 돌린 축은 'none' 으로 명시한다 — 빠뜨리는 것과"
+    echo "     안 돌렸다고 적는 것은 다른 명제이고, 빠뜨리면 읽는 쪽이 전자를 후자로 읽는다."
+    echo "       axes-run: a=codex(4건) b=CI배선 c=none d=되돌림(국소성 확인)"
+    return 1
+  fi
+
+  line=$(grep -m1 -E '^[[:space:]]*controls:' "$m" 2>/dev/null \
+         | sed -E 's/^[[:space:]]*controls:[[:space:]]*//')
+  if [ -z "$line" ]; then
+    echo "  ❌ MARKER FORMAT — missing 'controls:' line"
+    echo "     축을 «돌렸다»의 최소 증거는 **컨트롤이 살아 있는 실행 출력**이다."
+    echo "     컨트롤 없는 측정은 실측으로 절반이 죽었다(정본 §1-c)."
+    echo "       controls: alive — known-positive 'X' 히트 3 · known-negative 0"
+    echo "       controls: n/a — 이번 델타에 측정이 없다 (<사유>)"
+    return 1
+  fi
+  # 비-vacuity: 생사 토큰이 있어야 한다. "컨트롤 붙였다" 같은 무실질 문장을 막는다.
+  if ! echo "$line" | grep -qiE 'alive|dead|살아|죽|n/a|없'; then
+    echo "  ❌ MARKER — 'controls:' 에 생사 토큰이 없다 (무실질)"
+    echo "     컨트롤이 **살았는지 죽었는지**를 적어라 — 'alive' / 'dead' / 'n/a'."
+    echo "     죽은 컨트롤 위에서 나온 수치는 측정이 아니다."
+    return 1
+  fi
+  return 0
+}
+
 validate_marker_floor() {
   local m="$1" fs model
   # Leading whitespace tolerated on field lines (defense-in-depth vs indented writes).
@@ -779,8 +840,8 @@ if [ "$GATE_MODE" = "full" ]; then
   MARKER="$MARKER_DIR/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
 
   if [ -f "$MARKER" ]; then
-    if validate_marker_floor "$MARKER"; then
-      echo "  ✅ PASS (marker confirmed + floor fields valid:"
+    if validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER"; then
+      echo "  ✅ PASS (marker confirmed + floor/axes fields valid:"
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
     else
       FAILED=1

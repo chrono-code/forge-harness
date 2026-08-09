@@ -91,6 +91,7 @@
     "scripts/tier_census_grep.sh",
     "scripts/test_marker_floor_lanes.sh",
     "scripts/test_marker_crossfamily_lanes.sh",
+    "scripts/test_marker_axes_run_lanes.sh",
     "scripts/directional_diff_gate.sh",
     "scripts/reviewer_capability_corpus.tsv",
     "scripts/test_reviewer_capability_conformance.sh",
