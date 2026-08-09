@@ -197,6 +197,21 @@ EXPECT="git switch -- '${B}'"
 _lane "⑫ metachar 브랜치명이 인용된 채 출력된다" 1 "$rc" "$EXPECT"
 rm -rf "$R"
 
+# ── ⑬ --if-absent: 없으면 만들고, 있으면 안 덮는다 (세션시작 훅이 부르는 형태) ──
+#     훅 안에 같은 로직을 복제하면 앵커가 안 걸리므로 스크립트에 두고 여기서 잡는다.
+R=$(_mkrepo)
+LANE_OUT=$(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me bash "$SCRIPT" claim --if-absent s 2>&1); rc=$?
+_ok "⑬ --if-absent: 기록 없으면 생성" \
+    "$([ "$rc" = 0 ] && [ -f "$R/.git/fh-claims/me" ] && echo 1 || echo 0)"
+git -C "$R" switch -q -c moved            # 브랜치가 옮겨진 뒤 다시 불러도
+LANE_OUT=$(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me bash "$SCRIPT" claim --if-absent s 2>&1); rc=$?
+kept=$(sed -n 's/^branch=//p' "$R/.git/fh-claims/me")
+_lane "⑬-b --if-absent: 기록 있으면 덮지 않는다" 0 "$rc" "이미 있다"
+_ok "⑬-c 기존 값 보존 (main 이어야 함 · 지금=$kept)" "$([ "$kept" = main ] && echo 1 || echo 0)"
+# ★ 이게 중요한 이유: 덮으면 「내가 믿는 브랜치」가 매 세션시작마다 HEAD 로 갱신돼
+#   게이트가 영원히 통과한다 — 자동화가 게이트를 무장해제하는 경로다
+rm -rf "$R"
+
 echo
 echo "[branch-claim] PASS=$PASS  FAIL=$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1

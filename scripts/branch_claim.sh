@@ -47,7 +47,8 @@
 #   불일치 + 살아있는 peer 존재 → **차단.** override = FH_BRANCH_CLAIM_OK=1 (파일에 기록된다).
 #
 # USAGE
-#   bash scripts/branch_claim.sh claim [<label>]   # 현재 HEAD 를 «내 브랜치»로 기록
+#   bash scripts/branch_claim.sh claim [<label>]              # 현재 HEAD 를 «내 브랜치»로 기록
+#   bash scripts/branch_claim.sh claim --if-absent [<label>]  # 없을 때만 (세션시작 훅용)
 #   bash scripts/branch_claim.sh check             # pre-commit 이 부르는 것 (0=통과 1=차단)
 #   bash scripts/branch_claim.sh show | release | reap
 #
@@ -132,6 +133,10 @@ _live_peers() {
 _override_log() { local gd; gd=$(_git_dir) || return 1; echo "$gd/fh-branch-claim-overrides.log"; }
 
 cmd_claim() {
+  # --if-absent: 이 세션의 기록이 이미 있으면 아무것도 하지 않는다(덮어쓰기 금지).
+  # 세션시작 훅이 부르는 형태 — 훅 안에 같은 로직을 복제하면 앵커를 못 걸어서 여기에 둔다.
+  local ifabsent=0
+  if [ "${1:-}" = "--if-absent" ]; then ifabsent=1; shift; fi
   local label="${1:-${USER:-unknown}}" d f b now
   d=$(_claim_dir) || { echo "branch-claim: git 저장소가 아니다 — 아무것도 안 한다"; return 0; }
   b=$(_head_branch)
@@ -141,6 +146,10 @@ cmd_claim() {
   fi
   mkdir -p "$d" || return 1
   f=$(_my_claim); now=$(_now)
+  if [ "$ifabsent" = "1" ] && [ -f "$f" ]; then
+    echo "branch-claim: 이 세션의 기록이 이미 있다 — 그대로 둔다 ($(_field "$f" branch))"
+    return 0
+  fi
   # 원자적 교체: 같은 디렉터리 내 rename. in-place truncate 는 동시 read 에서 필드가 찢어진다
   # (실측: 동시 claim 300회 중 9회 owner 필드 파손).
   printf 'branch=%s\nlabel=%s\npid=%s\nat_epoch=%s\n' "$b" "$label" "$(_session_pid)" "$now" \
@@ -248,7 +257,7 @@ cmd_check() {
 }
 
 case "${1:-check}" in
-  claim)   shift; cmd_claim "${1:-}" ;;
+  claim)   shift; cmd_claim "$@" ;;
   release) cmd_release ;;
   reap)    cmd_reap ;;
   show)    cmd_show ;;
