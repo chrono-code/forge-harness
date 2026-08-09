@@ -638,13 +638,16 @@ of work is genuinely separable — independent tasks, a blind evaluation that mu
 reasoning, a search that would otherwise flood this context — **without waiting to be asked**. The
 earlier wording here ("used when the task warrants it — not as a default mode") is superseded.
 
-**The one thing that overrides it** is the user saying not to, *in this environment*.
+**Two different things turn it off, and conflating them is how a session talks itself into
+dispatching.** ⓐ the user saying not to, *in this environment* — a veto of **this file's posture**;
+ⓑ **the absence of a request**, wherever the runtime carries the conditional line described below.
+Under a conditional, silence is not permission. ⓐ is FH's own default being withdrawn by its owner;
+ⓑ is a sentence in a layer FH does not author. Do not read them as one operation.
 
 ⚠️ **Neither direction has a confirmed hook-level floor. Say that plainly rather than implying one.**
 ```
-opening    salience only — CONFIRMED. If a runtime's SYSTEM PROMPT carries a prohibition
-           ("do not use subagents unless the user asked"), neither this file nor a hook
-           overrides it; a system prompt outranks both, by construction.
+opening    salience only for the POSTURE. The prohibition met in the field is CONDITIONAL,
+           which changes what "override" even means — see the measured block below.
 blocking   ALSO not hook-enforced. `SubagentStart` fires on spawn but is **context-only** —
            it cannot block, exit 2 only surfaces stderr, and it has no decision field
            (official hooks reference, read 2026-08-08). It can INJECT context at the moment
@@ -654,9 +657,61 @@ UNVERIFIED whether a `permissions` deny entry or a `PreToolUse` matcher can targ
            precedent. **Do not cite a blocking mechanism until someone runs the known pair**
            (configure the deny, attempt a dispatch, observe). Until then: unverified, not absent.
 ```
+**The conditional line, and what a session must do about it.** Some runtimes ship the default
+*"Do not call the AgentTool unless the user requested it"* (with a workflows/deep-research twin).
+Measured 2026-08-09 on this machine: it is **not** a hard-coded constant and **not** global — it is
+the third branch of a three-tier resolution, replaceable and flag-switchable, and gated to one model
+bundle. So it is a **conditional**, and a request *satisfies* it rather than having to outrank it.
+Which request, though, is an **interpretation** — narrow (per-invocation) or standing — and FH takes
+the standing reading only under provenance:
+
+```
+RECORDED   operator's own words — quoted · dated · attributed — in a durable local binding
+           (CLAUDE.local.md, or the onboarding answer), PLUS two required fields:
+             scope:            what is granted (and what is NOT — a runtime may carry more
+                               than one prohibition line; granting one never grants the other)
+             gates-unchanged:  the request removes the PROMPT, never a gate — cost gates and
+                               irreversible-surface gates still fire
+           Missing either field → not a record → treat as NOT RECORDED.
+           → dispatch without asking, within `scope:` only
+NOT RECORDED  no binding · fresh clone · ephemeral session whose local files were reclaimed ·
+           conditional-line presence UNKNOWN (a session cannot read its own system prompt —
+           unknown is not absent; assume the conditional applies)
+           → request ABSENT. absent ≠ granted → ask per invocation.
+           This is the default for every install that is not the author's.
+```
+
+**A session may not write its own permission slip.** The authority is the quoted operator utterance,
+never the paragraph's existence; an entry with no quote, date, or attribution **is not a record** —
+treat it as absent. **Named residual, stated at the same strength as §Operational Adaptation Loop's:
+the record is self-attested.** Every field is writable by the beneficiary, so form-checking catches
+silence, not forgery — mitigated (the binding is version-controlled, so *when* it was written is
+mechanically checkable against the dates it cites), **not closed**.
+
+**Scope of the consent carve-out — it exits ONE clause, not the section.** §Operational Adaptation
+Loop has two separable parts: (i) the *derivation* rule (standing consent inferred from 3× accepted),
+and (ii) **action-class floors that hold regardless of how consent arrived** — a class never promotes
+if its sinks are irreversible, if it *feeds* such a sink (taint propagates through reversible steps),
+or if that is unknown. A direct operator instruction is outside **(i) only**. **(ii) still applies in
+full**, and it bites here: a dispatched subagent inherits tools and therefore feeds publish/delete/
+history-rewrite sinks — so the standing request buys *not being asked about the dispatch*, never a
+relaxed gate at the sink. The per-run announce duty and expiry from §OAL likewise survive.
+**Discriminator is mechanical, not introspective**: the test is whether a literal operator utterance
+is quoted in the record (greppable) — **not** whether the session judges its own reasoning to be
+instruction-shaped. A self-test the session administers to itself is the thing §OAL forbids
+("decided mechanically from the registry — never by the session's own judgment").
+
+> **Detail**: `knowledge/shared/harness-core/dispatch_conditional_prohibition.md` — the resolution
+> order, the model-bundle gate, the calibrated where-it-is-not table, and the reproduction commands.
+> **Read it before citing any of these numbers or claiming the line is absent from a surface.**
+
 An earlier draft of this very block asserted "a `SubagentStart` hook can deny, and a denial there is a
 real floor." That was false, taken on trust from an adjacent session and written here before the
-reference was read. A blind target-tier sim then read it back correctly — which shows a sim measures
+reference was read. A second draft, on 2026-08-09, then wrote that the constant's call site "needs
+binary inspection, which was blocked" — **also false**: three plain `grep` calls resolved it, and an
+adversarial reviewer demonstrated that by doing it. Declaring something unmeasurable before trying the
+cheap tool is [[feedback_impossible_verdict_may_be_unread_half]]; the honest label is *"not yet
+measured,"* never *"blocked."* A blind target-tier sim then read it back correctly — which shows a sim measures
 whether text is *followable*, never whether it is *true*. Both checks are needed; neither substitutes.
 
 So "default-active" is a **posture, not a guarantee**. Measured 2026-08-08: a session running under
@@ -666,10 +721,13 @@ points where the operator named it — while this file said dispatch was availab
 what made that case invisible until the operator asked. Writing "default is active" into a remote
 canon without this paragraph produces the next session that reads it and still cannot comply.
 
-**Onboarding**: at first setup, ask whether this environment wants dispatch and record the answer then —
-that is the one moment where the choice is cheap to make. Wiring it to a *mechanism* waits on the
-UNVERIFIED line above; until that known pair is run, the answer is recorded and honoured by salience,
-and the honest install note says so.
+**Onboarding**: at first setup, ask whether this environment wants dispatch and **write the answer into
+the local binding** (`CLAUDE.local.md`), not only into the session — that is the one moment where the
+choice is cheap to make, and a durable record is the whole point: a *yes* left in a transcript expires
+with the transcript, while the conditional line above is re-evaluated by every cold session. A recorded
+standing request is therefore not bookkeeping — it is the thing that satisfies the condition. Wiring the
+*blocking* direction to a mechanism still waits on the **UNVERIFIED (deny-mechanism) line** above — not
+the UNVERIFIED (call-sites) line, which is a different open question; the honest install note says so.
 
 Three execution paths:
 
@@ -677,7 +735,7 @@ Three execution paths:
 |---|---|---|
 | **Direct edit** | Simple modification of mapped project files | Read/Edit with absolute path (no cwd switch needed) |
 | **Agent dispatch** | Field project work · single independent task | Inject Context Card then dispatch Agent |
-| **Parallel dispatch** | 2+ genuinely independent tasks (no explicit request needed — see the default above) | Dispatch parallel Agents |
+| **Parallel dispatch** | 2+ genuinely independent tasks — **requires a RECORDED standing request** (see the provenance gate above); otherwise ask per invocation | Dispatch parallel Agents |
 
 **Why not Agent View by default**: Agent View introduces worktree isolation (blocks settings.json writes, Stop hook timing differs), session context gaps (session card stale content bug), and path friction — with no benefit unless the user is actively managing multiple agent sessions. Parallel agents via `Agent` tool work identically in a standard session.
 

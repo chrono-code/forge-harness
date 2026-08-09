@@ -1561,3 +1561,39 @@
     agy=breadth. agy 는 짧은 설계 질문에 6분, codex 는 전문 감사에 8~12분.
     ★ 폼: codex 는 stdin 인라인 + nohup + timeout + DONE 마커(argv 폼 hang 회피),
     agy 는 `agy models` 출력 문자열 그대로 핀 + `--print-timeout`.
+
+- date: 2026-08-09
+  session: FH self-dev — dispatch 금지 문구가 조건절임을 실측하고 독트린 정정
+  agents: [fh-meta:challenger ×2 (opus), isolated Agent grounding (opus), isolated Agent sim (sonnet), codex gpt-5.5 ×2]
+  purpose: >-
+    운영자 지시로 "요청 없이 에이전트 금지" 문구를 고치는 작업. 축을 골라 걸었다 —
+    ⓐ 다른 계열(codex)=논증 구조 · ⓑ 격리 그라운딩=내 실측 주장 재측정 ·
+    ⓒ 적대검증(challenger)=자기합리화 여부 · ⓓ target-tier sim(sonnet)=콜드 세션이
+    이 텍스트로 옳게 행동하나. 넷이 서로 대체 불가.
+  dispatch_count: 6
+  outcome: accepted
+  evidence: >-
+    **grounding(격리)** — 내 블록의 "9개 표면 전부 0히트, 계기 보정됨" 을 반증.
+    넷은 파일 자체가 없어 보정 불가(user settings.local.json · agents 양쪽 · output-styles
+    양쪽) → **미측정을 측정된 0 으로 렌더**. 자력 적발 0. 카운트도 정정(2 lines / 3
+    occurrences) 하고 2.1.223~226 전부 동일임을 추가로 측정.
+    **challenger R1** — S 10건. 최대 소득은 내 `UNVERIFIED (call sites) — blocked` 를
+    **평문 grep 3회로 반증**한 것. 실제 구조는 3순위 폴백 + `opus_5_prompt_bundle` 모델
+    스코프 + `tengu_fennel_godwit` 킬스위치. 내가 직접 재현해 앵커로 닫았다
+    (target 3 / CONTROL 37 / NEG 0, JWb·Hbo 본문 추출).
+    또 순환 지적 — `CLAUDE.local.md` 에 내가 쓴 *"이 문단 자체가 그 조건을 참으로 만든다"*
+    가 문자 그대로 자기 허가증. provenance(발화 인용·날짜·recorded-by)로 교체.
+    **codex(gpt-5.5)** — challenger 와 **독립 수렴**: SATISFIES 과단정 · 순환(AI 저작이면
+    순환/사용자 출처면 정당) · 측정vs추론 혼재 · fail-open 에 fail-closed 문장 필요.
+    처방이 challenger 것에 포섭돼 추가 수리는 없었으나 두 계열 수렴이 채택 근거.
+    **sim(sonnet, 블라인드)** — 재작성 전 텍스트로 followable 확인: Q1 "묻지 않고 띄운다" ·
+    Q3 "다른 머신·기록 없음 → **묻는다**"(fail-open 안 열림). 마찰 1건("override" 어휘
+    이중 사용)을 지목해 수리.
+  note: >-
+    ★ **계기 결함 2건을 내가 냈다.** ① codex 1차를 `git diff main...HEAD` 로 만들어
+    **빈 프롬프트**를 보냈다(커밋 전이라 three-dot 이 0줄). `wc -l` 이 0 인 걸 보고 잡아
+    죽이고 재발주 — 안 봤으면 "codex 통과" 로 기록될 뻔했다.
+    ② sonnet sim 1차는 분류기 transient 오류로 차단, 재시도로 통과.
+    ★ **블라인드 분리의 값어치가 다시 숫자로**: 내가 자력 적발한 결함 0건, 격리 넷이 합쳐
+    S 14건. 특히 *"막혔다"* 는 내 판정을 뒤집은 건 **같은 도구를 그냥 써 본** 리뷰어였다
+    ([[feedback_impossible_verdict_may_be_unread_half]]).
