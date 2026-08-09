@@ -300,6 +300,14 @@ Compose session-card candidates **into door ③ (field) and the 🔧 door (FH-de
 **Identity marker**: every greeting response (Step ②) opens with 🐿️ then an identity-revealing welcome line **on the same line** (a space after 🐿️; exact count not significant — the renderer collapses it — the invariant is *same-line*, not 🐿️ alone) — new / exploratory = "Welcome to FH." · returning = "Welcome back to FH." · operator (FH-dev state) = "The FH operator — good to see you." It is embedded in all skeletons above (do not strip it when composing doors); the exploratory branch template (`fh_detail_protocols.md` Step 2) uses the "Welcome to FH." line.
 
 **Guards**: explicit task-entry utterance → skip onboarding **menu** (the door skeleton / greeting) — but this **never skips the Mode D companion-store freshness load** (pull + INDEX read + card-vs-commit reconcile); that is a data-load, not the menu, and it fires even when the first message is a task — hook-backed via `scripts/fh_session_load.sh` (measured miss + mechanics: `fh_detail_protocols.md §Onboarding-Provenance` · `modes_and_value.md §Session-start freshness`) · once per session · code/debug requests → start working directly · project routing is a suggestion, mention at most once
+**Wizard-state guard (prose layer — for nodes whose hooks were declined/never wired)**: during the
+greeting auto-read, if `~/.cc_sentinels/{repo}_wizard_done` is absent, or `{repo}_wizard_declined`
+is non-empty without a `_wizard_reminder_muted` sentinel, append ONE line to the response:
+*"install-wizard 미실행(또는 거부 항목 N개) 상태 — FH 의 의도된 기능 일부가 정상 실행되지 않을 수
+있다. 재실행: `/install-wizard`."* Wired nodes get the same line mechanically from the env-delta
+hook — emit it once, not twice. Honest residual: a task-first entry on a fully-unwired node has no
+surface for this line (no hook, no menu) — prose cannot close that, and it is named here rather
+than papered over.
 **Metadata-is-not-intent guard**: the trigger is the user's **typed message only**. Session metadata — branch name (auto-derived from the first message, e.g. `claude/korean-greeting-*`), repo name, file paths — is **never** a task spec and never suppresses or redirects the greeting trigger. A bare greeting fires onboarding even when the branch name looks like a feature request; if the only "task" signal lives in metadata and not in what the user typed, treat the message as a greeting and run the greeting branch + door skeleton above.
 
 ## New Skill Creation Pre-Commit Gate

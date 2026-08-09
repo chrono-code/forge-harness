@@ -506,8 +506,13 @@ Output preview before execution:
 ## §Step4-Baseline-Bash
 
 ```bash
-# zshrc hook (if not installed — preview then confirm, idempotent)
+# zshrc hook — preview then confirm. The wizard is AI-mediated: SHOW the user the exact block
+# below and ask in-chat "Append this to ~/.zshrc? (Y/N)" BEFORE running the append. An earlier
+# revision's comment promised preview-then-confirm while the bash appended unconditionally —
+# the decline-integrity sim (2026-08-10) caught the mismatch; the gate is the instruction, the
+# bash below runs ONLY on Y.
 if ! grep -q "fh_audit_check.zsh" ~/.zshrc 2>/dev/null; then
+  # (run only after an explicit in-chat Y)
   cat >> ~/.zshrc << 'EOF'
 export FH_DIR="{FH_DIR}"
 export CC_HUB_DIR="{CC_HUB_DIR}"
@@ -515,12 +520,28 @@ export CC_SENTINELS_DIR="$HOME/.cc_sentinels"
 source "$FH_DIR/templates/fh_audit_check.zsh"
 EOF
 fi
+# On N: do NOT append; record the decline and state its consequence in one line —
+#   echo "zshrc_hook" >> "$HOME/.cc_sentinels/{project}_wizard_declined"
+#   "declined — shell-side audit nag off; only session-start prose detection remains."
 
 # Node floor check hook — ALL users, not Mode D only. Source of truth = the tracked snippet
 # templates/settings.SessionStart.snippet.json (`project_settings_json` key). Registration itself
-# cannot be tracked (every .claude/settings*.json path is gitignored), so the wizard is what wires it
-# — which is exactly why this must not be skipped: without it, a user on a fresh machine gets no
-# turn-0 signal that their floors are missing.
+# cannot be tracked (every .claude/settings*.json path is gitignored), so the wizard is what wires it.
+#
+# ⚠️ Y/N GATE (added 2026-08-10 — decline-integrity sim finding D): this block WRITES to
+# .claude/settings.json, so it gets the same explicit in-chat gate as the 4-axis block below —
+# it was the only settings-writing step without one (structural asymmetry, and a violation of this
+# skill's own Per-item-approval principle). Ask BEFORE running the python:
+#   "Register the SessionStart hooks (floor check · env-delta · companion load) into
+#    .claude/settings.json? (Y/N)
+#    On N: you get no turn-0 mechanical signal — floor gaps, env changes and companion freshness
+#    fall back to session prose, and some of FH's intended features will not run as designed.
+#    The decline is recorded and a one-line per-session reminder will note the state
+#    (re-run /install-wizard to change it; mute deliberately via
+#    ~/.cc_sentinels/{project}_wizard_reminder_muted)."
+# On N: echo "sessionstart_hooks" >> "$HOME/.cc_sentinels/{project}_wizard_declined" and SKIP the
+# python below entirely. "Must not be skipped" in the earlier wording meant the wizard must not
+# FORGET this step — it never licensed skipping the user's consent.
 # NPM-INSTALL PRECONDITION: this block reads the snippet from disk, so both it and
 # scripts/fh_node_check.sh must be in package.json `files[]`. They are (added 2026-07-30 after
 # scripts/package_coverage_check.sh caught the omission — without it an npm-installed wizard hit

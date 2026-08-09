@@ -98,7 +98,19 @@ CWD_UNMAPPED="$(_candidate "${CLAUDE_PROJECT_DIR:-$PWD}")" || CWD_UNMAPPED=""
 #   «변화 감지» 헤더가 찍히고 그 아래가 비는 알림이 나간다(=내용 없는 경보).
 fh_cadence_due "$_FH_HOOK_SRC" || COUNT=0
 
-[ "$COUNT" -eq 0 ] && [ -z "$CWD_UNMAPPED" ] && exit 0
+# Wizard-declined reminder (2026-08-10, operator-requested): declined wizard items = intended
+# features off — surface ONE line per session until resolved or deliberately muted. This is the
+# mechanical half; a fully-unwired node (hooks declined) cannot run this and falls back to the
+# CLAUDE.md prose layer (named residual there).
+DECLINED_LINE=""
+for _df in "$SENT"/*_wizard_declined; do
+  [ -f "$_df" ] || continue
+  [ -f "${_df%_wizard_declined}_wizard_reminder_muted" ] && continue
+  _dn=$(grep -c . "$_df" 2>/dev/null); case "$_dn" in (*[!0-9]*|'') _dn=0 ;; esac
+  [ "$_dn" -gt 0 ] && DECLINED_LINE="${DECLINED_LINE}$(basename "${_df%_wizard_declined}")(${_dn}) "
+done
+
+[ "$COUNT" -eq 0 ] && [ -z "$CWD_UNMAPPED" ] && [ -z "$DECLINED_LINE" ] && exit 0
 
 # Emit the delta proposal (one block, imperative). Trim trailing ", ".
 LIST="${CANDIDATES%, }"
@@ -113,6 +125,9 @@ LIST="${CANDIDATES%, }"
   fi
   if [ "$COUNT" -gt 0 ]; then
     echo "  • $COUNT unmapped sibling repo(s) under $ROOT — run \`/install-wizard --dry-run\` to review + map (HITL); skip via touch \"$SENT/<name>_mapping_skipped\" (mechanical, no re-nag)."
+  fi
+  if [ -n "$DECLINED_LINE" ]; then
+    echo "  • install-wizard declined/deferred items remain — ${DECLINED_LINE}— the matching intended FH features are OFF in this state. Re-run \`/install-wizard\` to revisit; silence deliberately: touch \"$SENT/<project>_wizard_reminder_muted\"."
   fi
   # Honest scope (target-tier sim [surfacing residual]): this hook mechanizes the CONTEXT-INJECTION
   # half of claim ② — the env-change now reliably REACHES turn-0 context. It does NOT mechanize the

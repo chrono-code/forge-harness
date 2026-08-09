@@ -1,6 +1,6 @@
 # FH Starter Profile — Mode C (plugin only, no clone)
 
-> **The one opinionated front door.** FH has 33 skills and a full hub you can clone — but you
+> **The one opinionated front door.** FH has 39 skills and a full hub you can clone — but you
 > don't need any of that to get value today. This profile is the *single strong default*: one
 > install command, a curated first-five skills, and a zero-install governance gate. Pick up the
 > rest later if you want it.
@@ -42,7 +42,7 @@ highest-leverage thing to try first if you only do one thing.
 
 ## 3. The opinionated first five (start here, ignore the other 28)
 
-A new user dropped into 33 skills stalls. These five cover the common path; reach for the rest only
+A new user dropped into 39 skills stalls. These five cover the common path; reach for the rest only
 when a real need shows up.
 
 | Skill | Run it when | One line |
