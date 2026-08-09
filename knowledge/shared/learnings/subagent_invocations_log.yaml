@@ -1717,3 +1717,11 @@
   outcome: accepted
   evidence: "audit file 18994B M3/S3/R5 · innovator A1 채택→canon 수리 착지 · challenger M5/S10 전건 수리(PR #311) · extract 31절 무손실(known-pair 24/24) · codex M4/S4→M 전건 수리+레인 8/8"
   notes: "codex payload residency scan (org-token 0, control 3) · 전 dispatch 산출이 머지/파일로 착지"
+
+- date: 2026-08-10
+  session: qasp-axready-parallel-overnight
+  agents_summary: "8 dispatches (consolidated): Explore×3(mtm setter 배선조사 · AX완성조건 발화수집 · 핸드오프 격리 그라운딩 감사, 전부 bg) · codex gpt-5.5 sidecar×5(rer/effective 수리 적대 5라운드)"
+  dispatch_count: 8
+  outcome: accepted
+  evidence: "조사① runner 5지점+정직술어 지목→#139 그대로 채택 · 조사② B1~B12 판정표→NOT READY 판정 근거 · 감사③ 핵심수치 전건 CONFIRMED+정정 8건→핸드오프 반영 · codex 5R 반증 12건 전건 수리(S→S→S/A→A/B→B 소진, #137·#138 머지)"
+  notes: "sidecar 수치 액면 미인용 — S급 전건 governor 소스 재판정(재현 후 수리). 조사 에이전트 위치주장은 구현 중 파일 직독으로 교차확인"
