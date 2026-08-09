@@ -229,7 +229,13 @@ for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
     # 존재검사가 진위를 못 본다는 그 클래스의 재발이다. **실행이 일어났다는 증거**를 요구한다.
     # `< /dev/null` 필수: 인식 못 한 모드로 떨어지면 스크립트가 stdin 을 기다려 **무한 대기**한다
     # (실측 — 디스패처 제거 known-negative 가 2분 타임아웃). CI 를 멈추는 건 조용한 통과보다 나쁘다.
-    _st_out="$(timeout 120 bash "scripts/$_subj.sh" --self-test < /dev/null 2>&1)"; _st_rc=$?
+    # `timeout` 은 GNU coreutils 이고 **stock macOS 에 없다**. 가용성 확인 없이 부르면 rc=127 +
+    # 빈 출력 → 아래 `*)` 가 발동해 "dispatcher missing?" 이라는 **틀린 원인**으로 거짓 FAIL 이
+    # 난다(실측: homebrew 없는 PATH 에서 3개 subject 전부). 소비자 머신에서 `npm test` 와
+    # `prepublishOnly` 를 깨뜨리는 경로다. 정답 폼은 이미 레포에 있다(sync-from-be.sh:134).
+    # 없으면 무한대기 방지를 잃는 대신 도는 쪽을 택한다 — `< /dev/null` 이 그 방어의 본체다.
+    local _to=""; command -v timeout >/dev/null 2>&1 && _to="timeout 120"
+    _st_out="$($_to bash "scripts/$_subj.sh" --self-test < /dev/null 2>&1)"; _st_rc=$?
     case "$_st_out" in
       *캘리브레이션*) : ;;
       *) echo "FAIL  $_subj: --self-test produced no calibration verdict (dispatcher missing?)"
