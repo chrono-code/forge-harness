@@ -24,6 +24,16 @@
 # hard-codes no private path). HUB_DIR overrides the hub path. Never commit the registration to
 # the public settings.json — the hook is Mode-D-only.
 
+
+# ── SessionStart source (단일 소스 lib) ─────────────────────────────────────────
+# stdin 페이로드는 **한 번만** 읽을 수 있으므로 맨 앞에서 소비하고 변수로 들고 간다.
+_FH_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/hook_source_lib.sh"
+# shellcheck source=scripts/hook_source_lib.sh
+if [ -f "$_FH_LIB" ]; then . "$_FH_LIB"; else
+  # lib 부재 = 파싱 불가. 무음으로 억제하지 말고 unknown(=띄운다) 으로 degrade 한다.
+  fh_hook_source() { printf 'unknown\n'; }; fh_cadence_due() { return 0; }
+fi
+_FH_HOOK_SRC="$(fh_hook_source)"
 set -uo pipefail
 
 FH="${HUB_DIR:-${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}}"
@@ -161,7 +171,10 @@ fi
 # so it surfaces and never blocks. Silent when current, and silent when the dir does not exist
 # (a fresh clone has no audit history and must not be nagged about one).
 _AUDIT_DIR="$FH/tracks/_audit"
-if [ -d "$_AUDIT_DIR" ]; then
+# ── /clear 게이팅: 이 나그는 «사람이 이미 보고 결정한» 것이라 같은 세션에서 다시 띄우지 않는다.
+#    위의 companion freshness 는 반대로 게이팅하지 않는다 — 그건 «세션이 잃어버린 상태» 라
+#    /clear 직후에 오히려 필요하다. 기준은 그 둘의 구분이지 "시작이냐" 가 아니다.
+if [ -d "$_AUDIT_DIR" ] && fh_cadence_due "$_FH_HOOK_SRC"; then
   _LATEST_AUDIT="$(find "$_AUDIT_DIR" -maxdepth 1 -name 'weekly_audit_*.md' -print 2>/dev/null \
                    | sort | tail -1)"
   if [ -n "$_LATEST_AUDIT" ]; then
