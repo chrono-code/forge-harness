@@ -686,14 +686,25 @@ NOT RECORDED  no binding · fresh clone · ephemeral session whose local files w
 ```
 
 **A session may not write its own permission slip.** The authority is the quoted operator utterance,
-never the paragraph's existence; an entry with no quote, date, or attribution **is not a record** —
-treat it as absent. **Named residual, stated at the same strength as §Operational Adaptation Loop's:
+never the paragraph's existence; an entry missing any of the three **is not a record** —
+treat it as absent — *any of the three above*, not some longer list; the schema is the whole test.
+**Lease length is the operator's to set, never the session's**, and renewal needs a fresh utterance:
+a session that re-dates an expired lease on its own has forged a record, which is this paragraph's
+whole subject. **Named residual, stated at the same strength as §Operational Adaptation Loop's:
 the record is self-attested.** Every part of it is writable by the beneficiary, so form-checking
 catches silence, not forgery — and this one is **unmitigated on a default install**: the binding is
 gitignored, so there is no write-time history to check the cited dates against. (An operator who
 mirrors it into a private version-controlled store gets that check; that is *their* setup, not a
 property of the rule, and an earlier draft of this sentence claimed it generally.) The lease is the
-only part that decays on its own.
+only part that decays on its own — **and nothing reads it**. Correcting a wrong reason given earlier
+in this branch: that gap is *not* "below the mechanization threshold, so don't build it."
+`scripts/consent_registry_check.sh` already enforces leases (requires `expires`, rejects past dates,
+caps at 365 days) and is lane-tested. It is **unwired here**, which is a different defect with a
+different fix, and "don't build" was covering for it. Wiring it is a real decision, not a chore:
+the registry's own floor forbids `promotion_eligible: true` for a class whose effects feed
+irreversible sinks, and a dispatched subagent does — so registering this grant would either be
+rejected by that floor or require declaring it something the registry does not govern. That is the
+operator's call, and until it is made the lease is **honoured by reading, not by machinery**.
 
 **Scope of the consent carve-out — it exits ONE clause, not the section.** §Operational Adaptation
 Loop has two separable parts: (i) the *derivation* rule (standing consent inferred from 3× accepted),
@@ -729,7 +740,11 @@ what made that case invisible until the operator asked. Writing "default is acti
 canon without this paragraph produces the next session that reads it and still cannot comply.
 
 **Onboarding**: at first setup, ask whether this environment wants dispatch and **write the answer into
-the local binding** (`CLAUDE.local.md`), not only into the session — that is the one moment where the
+the local binding** (`CLAUDE.local.md`) **in the three-part form above — quoted words, a lease the user
+picks, a scope** — not only into the session. Ask for all three at that moment; a record written with
+two of them is invalid, and the only route past an invalid record is the session inventing the third,
+which is forgery. **A gate that blocks every new install is not a strict gate, it is a bypass
+trainer** — that is the one moment where the
 choice is cheap to make, and a durable record is the whole point: a *yes* left in a transcript expires
 with the transcript, while the conditional line above is re-evaluated by every cold session. A recorded
 standing request is therefore not bookkeeping — it is the thing that satisfies the condition. Wiring the
