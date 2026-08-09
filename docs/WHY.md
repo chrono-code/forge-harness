@@ -40,3 +40,11 @@ forge-harness exists because the discipline of *checking* deserves the same tool
 distrusting confident output.
 
 > *Made for people who already know the hardest bug to catch is the one you wrote yourself.*
+
+<!-- REQUIRED-CHECK PROBE (2026-08-09) — DELIBERATE CI FAILURE. This is the positive arm of a
+     known-pair verifying that the newly-enabled required status check actually BLOCKS a red PR.
+     Before the change, a red PR reported UNSTABLE + MERGEABLE and could still be merged.
+     The path below is real but absent from package.json files[], so package-coverage must FAIL:
+     scripts/frontier_digest_daily.sh
+     This commit is reverted immediately after the verdict is observed. -->
+
