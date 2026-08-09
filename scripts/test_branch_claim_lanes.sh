@@ -16,7 +16,11 @@ set -uo pipefail
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/branch_claim.sh"
 PASS=0; FAIL=0; LIVE_PID=""
 
-cleanup() { [ -n "$LIVE_PID" ] && kill "$LIVE_PID" 2>/dev/null; return 0; }
+cleanup() {
+  [ -n "$LIVE_PID" ] && kill "$LIVE_PID" 2>/dev/null
+  [ -n "${SOCK_EMPTY:-}" ] && rm -rf "$SOCK_EMPTY"
+  return 0
+}
 trap cleanup EXIT
 
 _mkrepo() {
@@ -60,6 +64,14 @@ _plant_peer() { # repo branch pid
 # 즉 코드가 아니라 **저자 환경**을 재고 있었고, 그 초록이 S-1 재설계의 유일한 증명이었다.
 # 앵커가 배선되기 전까지(=호출부 0개) 이 사실은 드러날 수 없었다.
 unset CLAUDE_PID
+
+# ⚠️ 같은 이유로 **소켓 경로도 환경에서 빌리지 않는다.** _unclaimed_risk 가 기본으로 실제
+# `/tmp/cc-socks` 를 보므로, 그대로 두면 «지금 이 머신에 CC 세션이 몇 개 떠 있나» 가 레인
+# 판정을 바꾼다 — 실측 2026-08-09: 이 수정을 넣자 레인 ④ 가 즉시 깨졌다(실제 세션 5개).
+# **위의 CLAUDE_PID 와 같은 결함을 수리 그 자체가 재생산한 것**이라, 같은 처방을 붙인다.
+# 개별 레인은 필요할 때 이 값을 인라인으로 덮는다.
+SOCK_EMPTY=$(mktemp -d "${TMPDIR:-/tmp}/bcsock0.XXXXXX")
+export FH_CLAIM_SOCK_DIR="$SOCK_EMPTY"
 
 echo "[branch-claim] known-pair 앵커"
 PEERPID=$(_spawn_live)
@@ -225,6 +237,55 @@ _ok "⑬-c 기존 값 보존 (main 이어야 함 · 지금=$kept)" "$([ "$kept" 
 # ★ 이게 중요한 이유: 덮으면 「내가 믿는 브랜치」가 매 세션시작마다 HEAD 로 갱신돼
 #   게이트가 영원히 통과한다 — 자동화가 게이트를 무장해제하는 경로다
 rm -rf "$R"
+
+# ── ⑭ «peer 없음» 과 «못 가름» 을 나눈다 (2026-08-09 라이브 거짓 음성 N=2 회귀) ──
+#     _live_peers 는 claim 기록만 센다 → claim 안 한 세션을 구조적으로 못 본다.
+#     그걸 0 으로 렌더한 게 라이브 결함이었다. 세 값이 **각각 다른 문장**을 내야 한다.
+#     ⚠️ 세 팔이 rc 는 전부 0(차단 안 함)이라 **rc 로는 구분이 안 된다** — 출력으로 잡는다.
+#        이 레인이 rc 만 봤으면 세 팔 다 통과하고 아무것도 안 잡았을 것이다.
+_sockdir() { local d; d=$(mktemp -d "${TMPDIR:-/tmp}/bcsock.XXXXXX"); echo "$d"; }
+
+# ⑭ 소켓엔 살아있는 세션이 있는데 claim 은 0 → 「판정할 수 없다」
+R=$(_mkrepo); S=$(_sockdir); : > "$S/${PEERPID}.sock"
+(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me bash "$SCRIPT" claim a >/dev/null 2>&1)
+git -C "$R" switch -q -c other
+LANE_OUT=$(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me FH_CLAIM_SOCK_DIR="$S" bash "$SCRIPT" check 2>&1); rc=$?
+_lane "⑭ claim 0 인데 살아있는 세션 있음 → «판정할 수 없다»" 0 "$rc" \
+      "판정할 수 없다" "구분하지 못한다" "«안전» 이 아니라 «미판정»"
+rm -rf "$R" "$S"
+
+# ⑭-b 컨트롤: 소켓 디렉터리는 있는데 살아있는 세션이 없다 → 진짜 「peer 없음」
+R=$(_mkrepo); S=$(_sockdir)
+(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me bash "$SCRIPT" claim a >/dev/null 2>&1)
+git -C "$R" switch -q -c other
+LANE_OUT=$(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me FH_CLAIM_SOCK_DIR="$S" bash "$SCRIPT" check 2>&1); rc=$?
+_lane "⑭-b 컨트롤: 살아있는 세션 0 → «peer 없음» 이라고 단정한다" 0 "$rc" \
+      "살아있는 peer 세션이 없어" "이 머신에 다른 CC 세션도 없다"
+_ok "⑭-b′ 그 팔엔 «판정할 수 없다» 가 없다(문장이 갈린다)" \
+    "$(printf '%s' "$LANE_OUT" | grep -q "판정할 수 없다" && echo 0 || echo 1)"
+rm -rf "$R" "$S"
+
+# ⑭-c 소켓 경로 자체가 없다 → 0 이 아니라 「교차 확인 불가」
+#     런타임이 소켓 경로를 바꾸면 여기로 떨어진다. 그때 «peer 없음» 이라고 말하면 안 된다.
+R=$(_mkrepo)
+(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me bash "$SCRIPT" claim a >/dev/null 2>&1)
+git -C "$R" switch -q -c other
+LANE_OUT=$(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me FH_CLAIM_SOCK_DIR="/nonexistent-$$" bash "$SCRIPT" check 2>&1); rc=$?
+_lane "⑭-c 소켓 경로 부재 → «교차 확인 불가»(0 아님)" 0 "$rc" "교차 확인 불가"
+_ok "⑭-c′ 그 팔은 «peer 없음» 이라고 단정하지 않는다" \
+    "$(printf '%s' "$LANE_OUT" | grep -q "이 머신에 다른 CC 세션도 없다" && echo 0 || echo 1)"
+rm -rf "$R"
+
+# ⑭-d 노브 게이팅: FH_CLAIM_TEST 없이 FH_CLAIM_SOCK_DIR 를 주면 **무시돼야** 한다.
+#     안 그러면 프로덕션에서 소켓 경로를 갈아끼워 게이트를 무력화할 수 있다
+#     (이 파일이 이미 같은 결함으로 한 번 수리된 적이 있다 — 테스트 노브 6종 무음 우회).
+R=$(_mkrepo); S=$(_sockdir); : > "$S/${PEERPID}.sock"
+(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=me bash "$SCRIPT" claim a >/dev/null 2>&1)
+git -C "$R" switch -q -c other
+LANE_OUT=$(cd "$R" && FH_CLAIM_SESSION=me FH_CLAIM_SOCK_DIR="$S" bash "$SCRIPT" check 2>&1); rc=$?
+_ok "⑭-d 노브가 FH_CLAIM_TEST 없이는 무시된다(실경로를 본다)" \
+    "$(printf '%s' "$LANE_OUT" | grep -qF -- "$S" && echo 0 || echo 1)"
+rm -rf "$R" "$S"
 
 echo
 echo "[branch-claim] PASS=$PASS  FAIL=$FAIL"
