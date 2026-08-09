@@ -666,14 +666,18 @@ Which request, though, is an **interpretation** — narrow (per-invocation) or s
 the standing reading only under provenance:
 
 ```
-RECORDED   operator's own words — quoted · dated · attributed — in a durable local binding
-           (CLAUDE.local.md, or the onboarding answer), PLUS two required fields:
-             scope:            what is granted (and what is NOT — a runtime may carry more
-                               than one prohibition line; granting one never grants the other)
-             gates-unchanged:  the request removes the PROMPT, never a gate — cost gates and
-                               irreversible-surface gates still fire
-           Missing either field → not a record → treat as NOT RECORDED.
-           → dispatch without asking, within `scope:` only
+RECORDED   a durable local binding (CLAUDE.local.md, or the onboarding answer) carrying
+           three things, each of which adds information the others do not:
+             the operator's own words, quoted     — who granted it
+             a dated lease                        — until when (§OAL: consent is leased)
+             a scope line                         — for what. A runtime may carry more than
+                                                    one prohibition line; granting one never
+                                                    grants the other
+           Any of the three missing → not a record → treat as NOT RECORDED.
+           → dispatch without asking, inside that scope, until the lease lapses
+           (Nothing else is a field. The request removes the PROMPT and never a gate — that
+            holds by the rule below, not by a line the author ticks. A field whose content is
+            already fixed by the rule certifies nothing and can only fail closed on a typo.)
 NOT RECORDED  no binding · fresh clone · ephemeral session whose local files were reclaimed ·
            conditional-line presence UNKNOWN (a session cannot read its own system prompt —
            unknown is not absent; assume the conditional applies)
@@ -684,9 +688,12 @@ NOT RECORDED  no binding · fresh clone · ephemeral session whose local files w
 **A session may not write its own permission slip.** The authority is the quoted operator utterance,
 never the paragraph's existence; an entry with no quote, date, or attribution **is not a record** —
 treat it as absent. **Named residual, stated at the same strength as §Operational Adaptation Loop's:
-the record is self-attested.** Every field is writable by the beneficiary, so form-checking catches
-silence, not forgery — mitigated (the binding is version-controlled, so *when* it was written is
-mechanically checkable against the dates it cites), **not closed**.
+the record is self-attested.** Every part of it is writable by the beneficiary, so form-checking
+catches silence, not forgery — and this one is **unmitigated on a default install**: the binding is
+gitignored, so there is no write-time history to check the cited dates against. (An operator who
+mirrors it into a private version-controlled store gets that check; that is *their* setup, not a
+property of the rule, and an earlier draft of this sentence claimed it generally.) The lease is the
+only part that decays on its own.
 
 **Scope of the consent carve-out — it exits ONE clause, not the section.** §Operational Adaptation
 Loop has two separable parts: (i) the *derivation* rule (standing consent inferred from 3× accepted),
@@ -734,7 +741,7 @@ Three execution paths:
 | Path | Situation | Method |
 |---|---|---|
 | **Direct edit** | Simple modification of mapped project files | Read/Edit with absolute path (no cwd switch needed) |
-| **Agent dispatch** | Field project work · single independent task | Inject Context Card then dispatch Agent |
+| **Agent dispatch** | Field project work · single independent task — **same RECORDED requirement as the row below**; the provenance gate is per *spawn*, not per *fan-out width* | Inject Context Card then dispatch Agent |
 | **Parallel dispatch** | 2+ genuinely independent tasks — **requires a RECORDED standing request** (see the provenance gate above); otherwise ask per invocation | Dispatch parallel Agents |
 
 **Why not Agent View by default**: Agent View introduces worktree isolation (blocks settings.json writes, Stop hook timing differs), session context gaps (session card stale content bug), and path friction — with no benefit unless the user is actively managing multiple agent sessions. Parallel agents via `Agent` tool work identically in a standard session.
