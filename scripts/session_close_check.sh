@@ -94,6 +94,83 @@ if command -v gh >/dev/null 2>&1; then
   [ "${PRS:-0}" -gt 0 ] && echo "⚠️  ①-b $PRS open PR(s) by you — classify: self-mergeable vs awaiting-external"
 fi
 
+# ── ①-c LIVE PEER SESSIONS in this same harness ─────────────────────────────────
+# WHY: FH's close chain has an agreed two-axis order (peer appends → ping → **ask "더 있나" before
+# folding** → fold → re-check merged PRs), and it lived only in the session card as prose. Measured
+# 2026-08-09, the first two-axis close: the ping surfaced four deltas the closing session did not
+# know about, and **two of them were structurally invisible to `gh pr list`** (an inheritance
+# channel and a landing check — no PR exists for either). So a PR sweep is not a substitute; the
+# question is. This block does the DETECTION half mechanically. It never merges anything and never
+# blocks — the merge is where the loss risk is (two sessions writing one card is the shared-checkout
+# hazard this repo already named), and one occurrence is below this repo's own mechanization bar.
+#
+# HOW: a live session owns /tmp/cc-socks/<pid>.sock. pid → cwd resolves the ONE thing that actually
+# matters, "is this peer in MY harness" — which the agent-facing session list cannot answer, because
+# it reports names, not directories. Stale sockets are detectable (pid gone), so absence here is a
+# measurement rather than silence.
+# SCOPE (operator, 2026-08-09): this is a **claude-agents / Agent-View** feature — the surface where
+# sessions are deliberately run in parallel. A plain solo terminal must not be nagged because some
+# other window happens to be open. Discriminator is env, set by the parent that spawns the session.
+#   ⚠️ NEGATIVE ARM UNVERIFIED: a child session cannot observe a top-level session's environment, so
+#   "a real top-level session lacks these vars" is asserted, not measured. The lane simulates absence
+#   by unsetting them, which tests THIS SCRIPT'S logic — not that claim. Verify from a plain terminal.
+if [ -z "${CLAUDE_CODE_CHILD_SESSION:-}${CLAUDE_CODE_AGENT:-}" ] && [ "${FH_PEER_SCAN_FORCE:-0}" != "1" ]; then
+  : # solo/top-level surface — ①-c is out of scope here, and silence is the correct output
+else
+PEER_LIVE=0; PEER_UNKNOWN=0; PEER_STALE=0; PEER_IDS=""
+SOCK_DIR="${FH_PEER_SOCK_DIR:-/tmp/cc-socks}"
+# Self-exclusion must walk the ANCESTOR chain, not compare `$$`. This script is a grandchild of the
+# session process that owns the socket, so `$$` never matches it — measured: the first run counted
+# the calling session as its own peer, i.e. it would tell you to go ask yourself.
+SELF_CHAIN=" $$ "
+_p=$$
+while :; do
+  _p=$(ps -o ppid= -p "$_p" 2>/dev/null | tr -d ' ')
+  case "$_p" in ''|0|1) break ;; esac
+  SELF_CHAIN="$SELF_CHAIN$_p "
+done
+_peer_cwd() { # $1=pid → cwd on stdout, empty if unresolvable
+  if [ -r "/proc/$1/cwd" ]; then readlink "/proc/$1/cwd" 2>/dev/null; return; fi
+  command -v lsof >/dev/null 2>&1 || return 0
+  lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1
+}
+if [ -d "$SOCK_DIR" ]; then
+  for _s in "$SOCK_DIR"/*.sock; do
+    [ -e "$_s" ] || continue
+    _pid="${_s##*/}"; _pid="${_pid%.sock}"
+    case "$_pid" in ''|*[!0-9]*) continue ;; esac
+    case "$SELF_CHAIN" in *" $_pid "*) continue ;; esac   # 나 자신(조상 체인)
+    if ! ps -p "$_pid" >/dev/null 2>&1; then PEER_STALE=$((PEER_STALE+1)); continue; fi
+    _pcwd="$(_peer_cwd "$_pid")"
+    if [ -z "$_pcwd" ]; then
+      # Alive but undirected. NOT zero — a peer we cannot place is exactly the case that must not
+      # render as "no peers" (not-found != zero).
+      PEER_UNKNOWN=$((PEER_UNKNOWN+1)); continue
+    fi
+    case "$_pcwd" in
+      "$FH"|"$FH"/*) PEER_LIVE=$((PEER_LIVE+1)); PEER_IDS="$PEER_IDS $_pid" ;;
+    esac
+  done
+else
+  PEER_UNKNOWN=-1
+fi
+if [ "$PEER_UNKNOWN" = "-1" ]; then
+  echo "ℹ️  ①-c peer scan UNMEASURED — no session-socket dir at $SOCK_DIR (not 'no peers')"
+elif [ "$PEER_LIVE" -gt 0 ]; then
+  echo "⚠️  ①-c $PEER_LIVE live peer session(s) in THIS harness —$PEER_IDS"
+  echo "     Before folding, ASK them '지금부터 마감이다, 더 있나' — the question is wider than a"
+  echo "     PR sweep: a peer's inheritance-channel or landing-check work has no PR to find."
+  echo "     Then fold, then re-check \`gh pr list --merged\`. Merging their delta stays MANUAL."
+  [ "$PEER_UNKNOWN" -gt 0 ] && echo "     + $PEER_UNKNOWN live session(s) whose directory is UNKNOWN (counted, not dismissed)"
+elif [ "$PEER_UNKNOWN" -gt 0 ]; then
+  echo "⚠️  ①-c 0 peers placed in this harness, but $PEER_UNKNOWN live session(s) are UNPLACEABLE"
+  echo "     — treat as possible peers and ask; do not read this as 'closing alone'."
+else
+  echo "✅ ①-c no live peer session in this harness (${PEER_STALE} stale socket(s) ignored)"
+fi
+
+fi
+
 # ② FH assets changed today → harvest-loop owed
 # NOTE: no `grep -q` here — under `set -o pipefail`, -q's early exit SIGPIPEs git log (141),
 # masking a real match as pipeline failure so the warning NEVER fired on true positives

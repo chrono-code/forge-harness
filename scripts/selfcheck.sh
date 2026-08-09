@@ -478,6 +478,18 @@ else
   fail=1
 fi
 
+# hook_source_gate 는 subject 가 session_close_check.sh 가 아니라 별도로 돌린다 — 위 루프의
+# SKIP 조건(subject 부재)에 얹으면 엉뚱한 이유로 건너뛴다.
+if [ -f scripts/test_hook_source_gate_lanes.sh ]; then
+  if bash scripts/test_hook_source_gate_lanes.sh >/dev/null 2>&1; then
+    echo "PASS  test_hook_source_gate_lanes.sh"
+  else
+    echo "FAIL  test_hook_source_gate_lanes.sh (SessionStart source 게이트 쌍 붕괴)"
+    bash scripts/test_hook_source_gate_lanes.sh 2>&1 | grep "❌" | head -5 | sed "s/^/      /"
+    fail=1
+  fi
+fi
+
 for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh scripts/test_session_close_chain_lanes.sh; do
   if [ ! -f scripts/session_close_check.sh ]; then
     echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"
