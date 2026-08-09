@@ -320,6 +320,21 @@ else
   fail=1
 fi
 
+# marker axes-run lanes — 훅의 4축 자기대조 형식 검사(§CLAUDE.md 3층 자기 대조)의 앵커.
+# subject 부재를 FAIL 로 두는 이유는 branch-claim 블록과 같다: 이 subject 는 pre-commit 훅
+# 자체이고 files[] 에 있으므로 «정당한 부재» 가 없다. 부재 = 삭제다.
+if [ ! -f templates/.git-hooks/pre-commit ]; then
+  echo "FAIL  templates/.git-hooks/pre-commit absent — the gate itself is missing, not a skip"
+  fail=1
+elif [ -f scripts/test_marker_axes_run_lanes.sh ]; then
+  if ! bash scripts/test_marker_axes_run_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_marker_axes_run_lanes.sh: pre-commit present but its axes-run anchor is missing"
+  fail=1
+fi
+
 # branch-claim lanes — shipped with 27 hand-run lanes and ZERO callers, so CI never ran one of them.
 # That is the exact defect its own subject guards against (a gate nobody claims against passes
 # forever), reproduced one layer up in its anchor. Same SKIP/FAIL shape: a missing subject is a
