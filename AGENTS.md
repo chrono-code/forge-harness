@@ -55,6 +55,9 @@ Machine-readable mirror: `.claude/registry/agent_cards.json`.
   passing check. Governor agreement alone is not an anchor.
 - **Sidecar completion:** judge a sidecar only by the typed verdict from `scripts/sidecar_wait.sh`.
   Never infer completion or emptiness by looking at its output file.
+- **Identity grades:** the five-identity grade table is canonical only in
+  `knowledge/shared/harness-core/ship_readiness_gate.md`. Do not restate grades from memory or from
+  a session card — cite that file's current state.
 
 > **Detail**: See `knowledge/shared/harness-core/agents_md_runtime_details.md §Architecture-and-output-routing`
 > — layer ownership and destination routing — read before routing work across a public/private workspace pair.
@@ -84,6 +87,23 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    require instrument suspicion.
 6. **Irreversible intent:** before publish, delete, or history rewrite, read and apply the
    Pre-Publish or Destructive-Op gate in `CLAUDE.md`. `pre-push` is only the git-side backstop.
+7. **Self-contrast on asset touch:** the trigger for the three-layer self-contrast (process ·
+   engines · identities) is *touching an FH/PMH asset*, not being asked. Pick verification axes by
+   failure mode — running all four every time is not the rule. Record, in the existing Axes 2–3
+   marker fields: the soul line written before design (or `none`), each axis run and not run — by
+   name, and each axis's control with whether it survived. The minimum evidence that an axis ran is
+   execution output with a live control; reporting an axis as run without one, or recording only a
+   reason for not choosing it, is not compliance. The four axes are named in
+   `knowledge/shared/harness-core/fh_three_layer_canon.md` §1-a — read it before recording; §1-c
+   holds the sample limits — read it before citing. This record is self-attested and has no hook
+   behind it; it is closed by a different-family reader, not by writing it more carefully.
+8. **Branch-surface claims:** GitHub branch protection is two independent layers — legacy
+   protection and rulesets coexist, and the strictest wins. Read both
+   `/repos/{owner}/{repo}/branches/{branch}/protection` and
+   `/repos/{owner}/{repo}/rules/branches/{branch}` before declaring any branch surface open or
+   closed. In the reference repository (forge-harness), reading the protection object alone
+   misjudged the force-push surface three times; the symmetric single-endpoint case is untested,
+   but the same failure shape applies.
 
 > **Detail**: See `knowledge/shared/harness-core/agents_md_runtime_details.md §Mandatory-checklist-procedures`
 > — exact supporting procedures and canonical doctrine links — read when any checklist trigger fires.
