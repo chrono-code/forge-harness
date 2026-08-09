@@ -1652,3 +1652,27 @@
     ★ 이 라운드에서 내가 낸 계기 결함 2건도 기록: 도달 지표 초판이 `distinct_screens>1` 로
     판정해 54/56 이 막힌 배치를 REACHED 로 찍었고(교정에서 즉시 발각), grep 을
     `categor[a-z]*` 로 써서 대문자 `Categories` 를 놓칠 뻔했다.
+
+- date: 2026-08-09
+  session: qasp 병렬축 (홈, 저녁) — AX-레디 판별력 실측
+  agent: Explore ×3 (병렬, 읽기전용) + codex(gpt-5.5) cross-family 1
+  purpose: >-
+    ①앱트랙 needs_human_setup 정본 분석 ②1막 사전조건 품질·신호어 매칭 ③NO_MATCH 34 원인
+    — 셋 다 트리 무변경 조사. 이후 precondition 수리에 cross-family 적대검증 1회.
+  outcome: accepted
+  evidence: >-
+    **Explore 3건** — 셋 다 파일:라인 인용으로 회수. 최대 소득은 ③축 이식 설계가 뒤집힌 것:
+    앱 폴라리티(`!= self_drivable`)를 그대로 옮기면 웹 TC 51건에 `autonomy` 가 0건이라
+    **전건 deferred → exit 6**, 그리고 생산자 코드가 아예 없어 `built_but_not_wired` 가 된다.
+    1막 `자동화` 컬럼은 전부 하드코딩 "X" 인 디코이라는 것도 이쪽 소득.
+    **codex(gpt-5.5)** — REFUTED 9건. 전건 기계 재현해 **4건 반증 · 3건 확정 · 2건 무해**.
+    확정분으로 실제 수리: `_ROUTE_LIKE_RE` 되돌림(경로=상태요구 표기를 무음 통과시킴) ·
+    URL 제외 문자류를 한글→CJK 전역. 잔여 2건은 테스트로 현 동작 못박음. 699 passed.
+  note: >-
+    ★ **에이전트 수치를 그대로 인용할 뻔했다.** ②축이 「신호어 오탐 8건」으로 보고했고
+    손으로 재니 **3건**이었다 — 나머지는 백틱 경로·한국어 신호어 공존이라는 다른 원인.
+    수치는 인용 전에 직접 잰다([[feedback_sim_measures_followable_not_true]] 와 같은 축).
+    ★ **적대검증 finding 도 동의 대상이 아니다.** 반증된 4건 중 F6a 는 **내가 이미 갖고 있던
+    통과 테스트가 반증하고 있었다** — 동의했으면 멀쩡한 코드를 고쳤다.
+    ★ 컨트롤이 실제로 일했다: `korean_state_requirement_survives` 가 없었으면
+    "unexec 를 통째로 비우는" 과교정 구현도 통과했다.
