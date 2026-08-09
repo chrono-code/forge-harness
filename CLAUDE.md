@@ -45,6 +45,21 @@ core invariants never melt). The nursery also **verifies what it births**: harne
 
 > **3층 정본 — 공정 · 엔진 · 정체성**: FH 를 설명하는 뼈대는 세 층이고 셋의 관계가 정본으로 적혀 있다 — **3단 공정**(엔진을 벼리는 순서: 초기 영혼 → 중간 탈상관 가속화 → **마무리 4축 태우기**) → **4대 엔진**(영혼·품질게이트·질문하기·맥락유지) → **5대 정체성**(사람이 실제로 쓰는 기능). **Read `knowledge/shared/harness-core/fh_three_layer_canon.md`** before naming, re-scoping, or citing any of the three — it also defines the **4 verification axes** (ⓐ구현 · ⓑ재는 방식 · ⓒ주장 · ⓓ앵커) that the third stage actually consists of, and states why the three are *not* a clean stack. Grade table stays canonical in `ship_readiness_gate.md`; this pointer never carries grades.
 
+> **자기 대조는 상시 의무 — 트리거는 발화가 아니라 «지금 FH/PMH 자산을 건드리고 있다»**
+> (운영자 결정 2026-08-09; 이 저장소든 **다른 사용자의 install 이든** 동일). §FH Improvement
+> 4-Axis Auto-Gate 와 **같은 트리거**이므로 새 트리거도 새 파일도 만들지 않는다 — 기록 자리는
+> **4축 마커의 기존 필드**(`axis2-*` · `axis3-*` · `residual`)다.
+> **마커에 반드시 남는 3줄** ① **①영혼** — 설계 *전에* 쓴 «성공 정의 / 절대 안 함»(없으면 `없음`)
+> · ② **돌린 축과 안 돌린 축을 각각 이름으로**(ⓐ구현 · ⓑ재는 방식 · ⓒ주장 · ⓓ앵커)
+> · ③ **각 축의 컨트롤과 그 생사**. 축을 «돌렸다»의 **최소 증거 = 컨트롤이 살아 있는 실행 출력**
+> 이다 — 안 고른 이유만 적은 것은 준수가 아니다.
+> **비용 경계**: 넷을 매번 다 돌리지 않는다. 실패 모드에 맞춰 **고른다**.
+> 🟥 **자평이다 · 게임 가능하다 · 훅이 없다 — 셋 다 안 닫혔다.** 지금 기계 앵커가 붙은 축은 ⓓ
+> 하나뿐이나 그건 **현 상태이지 원리적 한계가 아니다**(ⓐⓒ 도 기계화할 수 있다 — cross-family
+> 지목). 닫는 방향은 **cross-family 가 그 마커를 읽는 것**이지 자기 채점을 더 성실히 하는 게 아니다.
+> **근거·사례·표본 한계는 `fh_three_layer_canon.md` §1-c — 인용하기 전에 읽어라.** 이 규칙은
+> **n=1 세션 표본**에서 모든 install 로 일반화한 것이고, 그 절이 그 사실을 명시한다.
+
 ## Core Reference Documents (Consult First)
 
 Four foundational assets for hub operations. **Mandatory pre-reference** before new design, protocol proposals, or framework extensions.
