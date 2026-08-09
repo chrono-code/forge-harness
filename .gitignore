@@ -20,6 +20,11 @@ context/
 # public-surface-audit pattern source — operator-private token patterns (real username, employer, store).
 # The skill reads this file; it must never be public (it literally lists the private tokens to hunt for).
 .claude/rules/.public-surface-patterns
+# 자매 파일 — 같은 «리터럴은 gitignored 소스에만» 패턴. 2026-08-09 마감 스윕에서
+# 이 줄이 빠져 있는 걸 발견했다: 파일은 untracked 였지 ignored 가 아니었고,
+# 내용은 회사 식별 리터럴이라 누가 `git add -A` 하면 공개 레포로 그대로 올라간다.
+# 이력 확인 결과 커밋된 적은 없다(유출 미발생). 자매 줄이 있는데 이 줄이 없던 게 원인.
+.claude/rules/.residency-patterns
 
 # Paper — PDF regenerated from HTML; canonical version on Zenodo/arXiv
 paper/*.pdf
