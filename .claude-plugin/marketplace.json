@@ -11,13 +11,13 @@
   "plugins": [
     {
       "name": "fh-meta",
-      "version": "1.4.91",
+      "version": "1.4.92",
       "description": "Hub meta-operations toolkit — 35 skills + 7 agents. New in 1.4.53: `fh-codex-doctor` (npm bin) — Codex adapter drift scanner; reads the documented M1/M2/M3 skill tier map + skill/agent source and reports codex-native/adapter-required/claude-native/unclassified per unit, wired into `npm test`/`prepublishOnly` (fail-closed on unclassified Claude-native primitives). New in 1.4.49: steel-quench gains Step 0.6 Verdict-Invariance Probe (groundedness axis — a load-bearing judged gate's verdict must track behavior, not rubric phrasing; measured flip-count over cross-family paraphrases; arXiv:2605.06161 Policy Invariance anchor); multi_model_sidecar_strategy §Vendor-native harness (a model is strongest in its own vendor CLI — Claude/CC, GPT/codex, Gemini/Antigravity; a universal router degrades all of them, so it stays an autocomplete/QA sidecar, never orchestration); predelete_check.sh fail-closed rewrite; memory-hygiene A-TMA anchor. New in 1.4.48: phantom-quench + steel-quench gain external frontier anchors (arXiv:2607.02052 package-hallucination; arXiv:2607.02057 prompt-coverage-adequacy); README model-flat claim reframed from a per-release point-curve to structural invariants (operation flattens across tiers; depth tier-order fixed within a generation). New in 1.4.47: onboarding step ① surfaces the Mode D companion-store session-start load in the auto-read salience anchor (previously only in the local binding + rules, so a greeting could skip the load). New in 1.4.46: context-doctor command-output axis (route to rtk/proxy for verbose CLI stdout, complementing .claudeignore; risk-gated to token-scarce envs). New in 1.4.41: context-doctor 2026 trigger vocab (context engineering/rot/collapse) + phantom-citation hardening; hub measurement-integrity-checklist (cross-model measurement pre-flight: display-name pin/reps≥3/discriminating probe). New in 1.4.40: install-wizard queryable-wiki scaffold (INDEX + session-start read + R/W/C ingest). New in 1.4.39: auto-decorrelation (cross-family verifier sidecar recruitment) + video-ingest (capability-routed video ingestion). New in 1.4.x: verify-axis check-class taxonomy (mandatory-pass/measured/judged), no-reinvention Tier-0 inventory, 7-class failure taxonomy, Destructive-Op Gate, Wave-T (Temper), tier-floor governance, Mode D Model Notice, FC consent lane, default-Sonnet guidance. New in 1.3.0: public-surface-audit, field-harvest Mode B auto-trigger, 4-axis gate scope ext. Validated cross-CLI: Claude Code, Codex, Gemini.",
       "source": "./plugins/fh-meta"
     },
     {
       "name": "fh-commons",
-      "version": "1.4.91",
+      "version": "1.4.92",
       "description": "Project-agnostic utility skills — 4 skills (convergence-loop · deliberation · mcp-circuit-breaker · token-budget-gate) + 1 agent (quench-challenger). Domain-independent utilities transplantable into any project.",
       "source": "./plugins/fh-commons"
     }
