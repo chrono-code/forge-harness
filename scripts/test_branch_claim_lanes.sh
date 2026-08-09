@@ -50,6 +50,17 @@ _plant_peer() { # repo branch pid
     > "$1/.git/fh-claims/session-PEER"
 }
 
+# ⚠️ 주변 환경을 흡입하지 않는다 — 이 한 줄이 없어서 이 스위트는 «거짓 초록» 이었다.
+# branch_claim.sh 의 `_session_pid() { echo "${CLAUDE_PID:-${PPID:-$$}}"; }` 때문에, 저자 셸에
+# CLAUDE_PID 가 있으면 claim 이 **살아있는 pid**(그 Claude 프로세스)를 기록한다. 레인 ③ 은
+# A 가 재-claim 해서 peer 기록을 덮는 시나리오라, 그 pid 가 살아있느냐가 판정을 통째로 뒤집는다.
+# 실측 2026-08-09 (known-pair, 같은 트리·같은 커밋):
+#   CLAUDE_PID 있음 → 24 PASS / 0 FAIL      (저자 로컬 — 초록)
+#   CLAUDE_PID 없음 → 23 PASS / 1 FAIL ③   (CI — 적색, rc=0 기대 1)
+# 즉 코드가 아니라 **저자 환경**을 재고 있었고, 그 초록이 S-1 재설계의 유일한 증명이었다.
+# 앵커가 배선되기 전까지(=호출부 0개) 이 사실은 드러날 수 없었다.
+unset CLAUDE_PID
+
 echo "[branch-claim] known-pair 앵커"
 PEERPID=$(_spawn_live)
 
@@ -74,7 +85,10 @@ R=$(_mkrepo)
 (cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=B bash "$SCRIPT" claim bee >/dev/null 2>&1)
 _plant_peer "$R" main "$PEERPID"                        # A 를 살아있는 peer 로
 git -C "$R" switch -q -c ifkakao                        # A 가 트리를 옮기고
-(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=session-PEER bash "$SCRIPT" claim ay >/dev/null 2>&1)  # 프로토콜대로 claim
+# A 는 «살아있는» 세션이다 — 그 사실을 환경에서 빌리지 말고 레인이 직접 고정한다.
+# CLAUDE_PID 를 안 주면 claim 이 곧 죽을 서브셸의 PPID 를 기록하고, B 의 check 는
+# «살아있는 peer 0» 으로 통과한다 — 시나리오가 성립하지도 않은 채 초록이 된다.
+(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=session-PEER CLAUDE_PID="$PEERPID" bash "$SCRIPT" claim ay >/dev/null 2>&1)  # 프로토콜대로 claim
 LANE_OUT=$(cd "$R" && FH_CLAIM_TEST=1 FH_CLAIM_SESSION=B bash "$SCRIPT" check 2>&1); rc=$?
 _lane "③ ★S-1 회귀: 양쪽이 프로토콜을 지켜도 B 는 차단된다" 1 "$rc" \
       "이 세션은 'main' 로 기록돼 있는데 HEAD 는 'ifkakao' 다" "git switch -- 'main'"
