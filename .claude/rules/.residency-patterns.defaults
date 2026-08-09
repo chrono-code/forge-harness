@@ -1,0 +1,7 @@
+# residency 폐포 스캔 — **일반형 패턴만**. 회사 리터럴은 절대 여기 두지 않는다(공개 레포).
+# 실질 커버리지는 gitignored `.residency-patterns` 가 준다 — 그게 없으면 스캔은 exit 10 이다.
+# 한 줄 = 정규식 하나 (대소문자 무시).
+\.corp\b
+\bintranet\b
+\bghe\.[a-z0-9.-]+
+\binternal\.[a-z0-9.-]+\.(com|net|io|kr)\b
