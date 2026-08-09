@@ -130,6 +130,35 @@ _live_peers() {
   echo "$n"
 }
 
+# 🟥 «peer 없음» 인지 «못 가르는 것» 인지를 나누는 **독립 계수기**.
+# _live_peers 는 claim 기록만 세므로 claim 하지 않은 세션을 구조적으로 못 본다. 그 구멍의
+# 폭을 재려면 claim 과 무관한 신호가 필요하고, 이 머신에서는 세션 소켓이 그 신호다.
+#
+# 반환: 살아있는 «claim 안 한» 다른 CC 세션 수 · 또는 `unknown`(경로 없음 = 교차확인 불가).
+# ⚠️ **이건 상한이지 증거가 아니다.** 소켓은 머신 전역이라 다른 레포에서 도는 세션도 센다 —
+#    그래서 «peer 가 이 체크아웃에 있다» 를 증명하지 못한다. 증명되는 건 «구분할 수 없다» 뿐이고,
+#    그게 정확히 이 함수가 있는 이유다. 0 도 N 도 아닌 **세 번째 값**을 만든다.
+# ⚠️ 소켓 경로는 런타임 구현 세부라 바뀔 수 있다 — 그때는 `unknown` 으로 degrade 하고
+#    «peer 없음» 이라고 말하지 않는다(부재를 0으로 렌더하지 않는 것이 이 함수의 계약이다).
+_unclaimed_risk() {
+  local dir me n=0 s pid live_claims
+  dir="${FH_CLAIM_SOCK_DIR:-}"
+  if [ -z "$dir" ] || ! _test_mode; then dir=/tmp/cc-socks; fi
+  [ -d "$dir" ] || { echo unknown; return; }
+  me=$(_session_pid)
+  for s in "$dir"/*.sock; do
+    [ -e "$s" ] || continue
+    pid=$(basename "$s" .sock)
+    case "$pid" in ''|*[!0-9]*) continue;; esac
+    [ "$pid" = "$me" ] && continue
+    kill -0 "$pid" 2>/dev/null && n=$((n+1))
+  done
+  # 이미 claim 한 살아있는 peer 는 _live_peers 가 세므로 여기서 뺀다 — 중복 계상 방지.
+  live_claims=$(_live_peers)
+  n=$((n - live_claims)); [ "$n" -lt 0 ] && n=0
+  echo "$n"
+}
+
 _override_log() { local gd; gd=$(_git_dir) || return 1; echo "$gd/fh-branch-claim-overrides.log"; }
 
 cmd_claim() {
@@ -230,7 +259,30 @@ cmd_check() {
 
   peers=$(_live_peers)
   if [ "$peers" -eq 0 ]; then
-    echo "  ⚠️  branch-claim: 기록('$cb')과 HEAD('$b')가 다르다 — 살아있는 peer 세션이 없어 차단하지 않는다."
+    # 🟥 «peer 없음» 과 «peer 가 claim 을 안 함» 은 다른 명제다. _live_peers 는 **claim 기록만**
+    # 세므로 claim 하지 않은 세션을 구조적으로 못 본다 — 그걸 0 으로 렌더하면 미측정이 0이 된다.
+    # 실측 2026-08-09 (라이브, N=2): peer 세션이 커밋할 때 이 분기가 «peer 없음» 을 찍었는데
+    # 그 순간 다른 세션이 살아서 메시지를 주고받고 있었다. 원인은 판정식이 아니라 **기록 부재** —
+    # 활성화 배선은 세션 시작 때 도는데, 배선보다 먼저 시작된 세션은 영원히 claim 이 없다.
+    local unclaimed; unclaimed=$(_unclaimed_risk)
+    case "$unclaimed" in
+      unknown)
+        echo "  ⚠️  branch-claim: 기록('$cb')과 HEAD('$b')가 다르다 — 살아있는 peer claim 0."
+        echo "      🟡 교차 확인 불가(세션 소켓 경로 없음) — «peer 없음» 을 확인하지 못했다. 차단하지 않는다."
+        ;;
+      0)
+        echo "  ⚠️  branch-claim: 기록('$cb')과 HEAD('$b')가 다르다 — 살아있는 peer 세션이 없어 차단하지 않는다."
+        echo "      (교차 확인: 이 머신에 다른 CC 세션도 없다)"
+        ;;
+      *)
+        echo "  🟥 branch-claim: 기록('$cb')과 HEAD('$b')가 다른데 **판정할 수 없다.**"
+        echo "      peer claim 0 개 ↔ 이 머신에 살아있는 다른 CC 세션 ${unclaimed} 개."
+        echo "      이 게이트는 지금 «peer 가 없다» 와 «peer 가 claim 을 안 했다» 를 **구분하지 못한다.**"
+        echo "      claim 하지 않은 세션이 이 체크아웃을 같이 쓰고 있으면 지금 커밋은 남의 브랜치에 얹힌다."
+        echo "      → 확인:  bash scripts/branch_claim.sh show   ·  다른 세션에서:  claim"
+        echo "      ⚠️  차단하지 않는다(커밋은 가역 표면). 다만 이건 «안전» 이 아니라 «미판정» 이다."
+        ;;
+    esac
     echo "      의도한 전환이면:  bash scripts/branch_claim.sh claim"
     return 0
   fi
