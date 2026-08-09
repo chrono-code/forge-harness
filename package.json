@@ -172,6 +172,9 @@
     "scripts/judgment_circuit_lint.sh",
     "scripts/novelty_claim_check.sh",
     "templates/settings.Compaction.snippet.json",
+    "scripts/field_canon_preload.sh",
+    "scripts/test_field_canon_lanes.sh",
+    "templates/settings.FieldCanon.snippet.json",
     ".claude/judgment_circuits.txt"
   ]
 }

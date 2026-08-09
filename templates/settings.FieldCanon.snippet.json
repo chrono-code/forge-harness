@@ -1,0 +1,51 @@
+{
+  "_README": [
+    "field-canon 선적재 훅 스니펫 — TRACKED 라 clone 과 함께 도착한다. 이 레포의 모든",
+    ".claude/settings*.json 경로는 gitignored 이므로(`git check-ignore -v .claude/settings.json` 으로",
+    "확인) **훅 등록 자체를 tracked 로 둘 수 없다.** 이것이 install-wizard 가 사용자 로컬 설정에",
+    "머지하는 tracked SOURCE 다. 머지 단계가 없으면 훅은 돌지 않는다 —",
+    "**스크립트를 출하하는 것과 배선하는 것은 같은 명제가 아니다.**",
+    "",
+    "이 파일이 왜 뒤늦게 생겼나 (2026-08-09 실측, 컨트롤 동반):",
+    "  PR #299 가 scripts/field_canon_preload.sh 를 심으면서 스니펫도 files[] 등재도 안 했다.",
+    "    npm pack --dry-run | grep field_canon   →  0건",
+    "    CONTROL  같은 명령 | grep compaction_probe →  1건   (계기 생존)",
+    "  즉 npm 사용자에게는 **스크립트도 배선도 아무것도 가지 않았다.** git clone 사용자는",
+    "  스크립트는 받지만 배선이 없어 훅이 안 돈다. 위 Compaction 스니펫의 _README 가 이미",
+    "  같은 문장을 적어놨는데 #299 가 그걸 안 따랐다 — 산문 규율의 한계이자, 이 스니펫이",
+    "  그 규율을 파일로 바꾸는 이유다.",
+    "",
+    "무엇을 하나: 프롬프트에 **매핑된 필드 하네스 이름**이 나오면 그 레포의 정본 경로",
+    "(README · CLAUDE.md · docs/governance/)를 **세션당 1회** 띄운다. 코드 역추론 전에 정본을",
+    "읽게 하는 것이 목적이다. 2026-08-09 실측: 한 세션이 종일 qasp 를 파면서 정본을 하나도",
+    "안 읽고 코드에서 역추론해 **네 번 정정당했고 자력 적발 0** 이었다 — 네 번 다 답이",
+    "정본에 있었고 그중 하나는 README 가 그 오해를 경고까지 하고 있었다.",
+    "",
+    "🟥 부재를 침묵으로 렌더하지 않는다. 초판 배선은 `[ -f \"$S\" ] && bash \"$S\"` 였는데,",
+    "그러면 **「이 install 에 파일이 없는 게 정상」과 「체크아웃이 옛날 컷 브랜치라 파일이",
+    "사라진 상태」가 구분되지 않는다.** 공유 체크아웃에서 후자가 실제로 반복 발생했고",
+    "(하루 6회 브랜치 이동), 그동안 훅은 exit 0 · 출력 0줄로 조용히 꺼져 있었다.",
+    "그래서 else 가지에서 **한 줄 경보**를 낸다 — 차단은 하지 않는다(UserPromptSubmit 은",
+    "차단 표면이 아니고, 사용자 앞을 막는 게이트는 꺼지는 게이트다).",
+    "",
+    "PRIVATE PATH 없음 → .claude/settings.json(프로젝트 로컬)에 속한다.",
+    "머지하되 덮어쓰지 마라: 사용자의 기존 UserPromptSubmit 엔트리를 보존하고 **스크립트",
+    "이름을 키로** FH 것만 교체해라."
+  ],
+  "project_settings_json": {
+    "hooks": {
+      "UserPromptSubmit": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash -c 'HUB=\"${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}\"; S=\"$HUB/scripts/field_canon_preload.sh\"; if [ -f \"$S\" ]; then bash \"$S\"; else echo \"\"; echo \"⚠️ [field-canon] 선적재 훅 스크립트가 없다 — 이 체크아웃이 옛날 컷 브랜치이거나 설치가 불완전할 수 있다.\"; echo \"   필드 하네스 정본 안내가 **꺼져 있다**. git log --oneline -1 로 브랜치를 확인해라.\"; fi; exit 0'",
+              "timeout": 10
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
