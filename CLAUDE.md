@@ -215,11 +215,31 @@ into muscle memory and disarm it.
 > *Origin*: before that change the server had `enforce_admins: false`, so an admin push *satisfied*
 > the rule and merely printed `Bypassed rule violations` — a notice, not a block. A rule that
 > announces its own bypass is not a floor.
-> ⚠️ **Unresolved residual**: `allow_force_pushes` on `main` is still `true`. Two documented API
-> attempts to set it `false` were accepted without error and did **not** persist (verified by
-> independent GET, not by the write response). Force/non-ff pushes are blocked locally by this same
-> hook, so the honest-model case is covered — but the **server-side** history-rewrite surface on
-> `main` remains open. Re-check before relying on it.
+> ✅ **Retraction — the server-side force-push surface is CLOSED, and the way it was misread is the
+> durable part.** An earlier version of this block said `allow_force_pushes` on `main` was "still
+> `true`", that two API writes "did not persist", and that the **server-side** history-rewrite
+> surface therefore "remains open". The field reading was correct; the conclusion was not.
+> **Branch protection is two independent layers — legacy protection and rulesets coexist, and the
+> strictest wins** — so a field on the protection object is never the effective answer by itself.
+> Measured on this repo 2026-08-09: `GET /repos/{owner}/{repo}/rules/branches/main` returns
+> `non_fast_forward` from ruleset `main-no-force-push` — `enforcement: active`,
+> `current_user_can_bypass: never`, `bypass_actors: []`, live since 2026-07-25 — while the legacy
+> object still reports `allow_force_pushes: true`. The two API writes that "did not persist" were
+> writing to the layer that does not govern *this* outcome while the stricter ruleset is active — not
+> a layer that is inert in general: disable or retarget the ruleset and the legacy toggle governs
+> again. **Read BOTH layers before declaring any branch surface open or closed** — `/rules/branches/
+> {branch}` shows only what the *rulesets* impose, and `/branches/{branch}/protection` only what
+> *legacy protection* imposes; neither is the effective view alone. A protection-object field read by
+> itself misjudged this three times ([[reference_github_protection_two_layers]]).
+> **Scope of the retraction, stated narrowly on purpose**: it covers *force-push / non-fast-forward*,
+> which is what `non_fast_forward` blocks. Branch **deletion** is a separate rule and is closed on the
+> other layer (`allow_deletions: false`, same GET). PR-routing is likewise a different field —
+> `required_pull_request_reviews` present with `enforce_admins: true` — not something
+> `required_status_checks` says anything about.
+> ⚠️ A *different* residual on `main` is still real and must not be folded into the one just
+> retracted: `required_status_checks.contexts` is `[]` — pushes are routed through PRs by the fields
+> just named, but **no check is required to be green** for one to merge (named again in the 4-axis
+> section below).
 
 ## Permission-Denial Guidance (When Auto-Mode Blocks an Action)
 
