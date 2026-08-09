@@ -43,6 +43,8 @@ core invariants never melt). The nursery also **verifies what it births**: harne
 | **③ AI Collaboration Guide** | Accumulates and distributes best practices for token efficiency and dialogue methodology — "how to ask, delegate, and record". | `CHEATSHEET.md` · `knowledge/shared/dialogue/ai_dialogue_playbook.md` · `MEMORY.md` intent-based + associative recall (`knowledge/shared/dialogue/memory_intent_recall.md`) |
 | **Core Axis** | **Harness Engineering (How)** — the methodology and practice axis that realizes the three layers above. The 6-axis framework is the operating unit. **A harness is a means, not an end** — Field harness: "simpler over time" (complexity = warning signal). Meta-harness: *optimize*, not necessarily simplify — complexity earns its scope; red flags are orphaned, redundant, and decorative units, not complexity itself. | `harness_6axis_framework.md` · `hub_compounding_loop.md` · `claude_code_runtime_flow.md` · `plugins/*/agents/` (sub-agents) |
 
+> **3층 정본 — 공정 · 엔진 · 정체성**: FH 를 설명하는 뼈대는 세 층이고 셋의 관계가 정본으로 적혀 있다 — **3단 공정**(엔진을 벼리는 순서: 초기 영혼 → 중간 탈상관 가속화 → **마무리 4축 태우기**) → **4대 엔진**(영혼·품질게이트·질문하기·맥락유지) → **5대 정체성**(사람이 실제로 쓰는 기능). **Read `knowledge/shared/harness-core/fh_three_layer_canon.md`** before naming, re-scoping, or citing any of the three — it also defines the **4 verification axes** (ⓐ구현 · ⓑ재는 방식 · ⓒ주장 · ⓓ앵커) that the third stage actually consists of, and states why the three are *not* a clean stack. Grade table stays canonical in `ship_readiness_gate.md`; this pointer never carries grades.
+
 ## Core Reference Documents (Consult First)
 
 Four foundational assets for hub operations. **Mandatory pre-reference** before new design, protocol proposals, or framework extensions.
