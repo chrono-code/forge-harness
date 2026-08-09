@@ -1,5 +1,12 @@
 # CLAUDE.md
 
+> **Role-matched self-inspection (incubator bequest, 2026-08-10)**: this harness should carry at
+> least ONE self-check instrument matched to *its own role* — something that answers "is what this
+> harness verifies still aligned with what it is for?" — run at sync/upgrade moments, not only at
+> incidents. The parent hub's instance is an env-purity scan (does shared prose still apply here?);
+> a QA harness's is spec↔implementation↔TC triad consistency; yours follows YOUR role. An
+> instrument the harness never runs on itself is decoration — wire it to a recurring moment.
+
 ## Session Start
 
 When a user starts a session with greetings like "hello", "let's start", "resume", "continuing from where we left off", or says "read root memory", **both layers must activate**:
