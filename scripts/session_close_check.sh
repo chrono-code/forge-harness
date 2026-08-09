@@ -157,7 +157,16 @@ fi
 if [ "$PEER_UNKNOWN" = "-1" ]; then
   echo "ℹ️  ①-c peer scan UNMEASURED — no session-socket dir at $SOCK_DIR (not 'no peers')"
 elif [ "$PEER_LIVE" -gt 0 ]; then
-  echo "⚠️  ①-c $PEER_LIVE live peer session(s) in THIS harness —$PEER_IDS"
+  echo "⚠️  ①-c $PEER_LIVE peer CANDIDATE(s) in THIS harness —$PEER_IDS"
+  echo "     This counts LIVE PROCESSES, which is deliberately WIDER than the fleet view Working"
+  echo "     list — and the surplus is signal, not noise. Measured 2026-08-09: the extras were"
+  echo "     sessions shown as Completed whose CLOSE NEVER FINISHED, so their process lingered."
+  echo "     Read the two cases differently:"
+  echo "       alive + Working   → active peer. Ask before folding."
+  echo "       alive + Completed → that close did not finish. Nobody else surfaces this."
+  echo "     Do NOT switch to the job state file to narrow it: it marked THIS session done"
+  echo "     (firstTerminalAt set) while it was still running — it under-reports as hard as"
+  echo "     sockets over-report. Cross-read with the fleet view; neither source alone is right."
   echo "     Before folding, ASK them '지금부터 마감이다, 더 있나' — the question is wider than a"
   echo "     PR sweep: a peer's inheritance-channel or landing-check work has no PR to find."
   echo "     Then fold, then re-check \`gh pr list --merged\`. Merging their delta stays MANUAL."
