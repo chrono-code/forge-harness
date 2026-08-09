@@ -114,11 +114,19 @@ Run `/return-path-gate --skill [scope]`.
 
 Check for harvest-loop signals in the current session — read session context rather than invoking harvest-loop directly (a mid-sweep invocation would conflict with the sweep's own pattern collection).
 
+**Typed-first parsing (codex M3 2026-08-10)**: if a harvest-loop output block exists, classify
+ONLY from its final non-empty `Verdict:` line; absent/malformed → `ESCALATE`. The prose rows below
+apply ONLY to pre-contract historical runs (no typed line anywhere in the output).
+
 | harvest-loop result | pipeline-conductor verdict |
 |---|---|
-| Ran this session — all steps pass, no pending patterns | `PASS` |
-| Ran this session — patterns found but no blockers | `CONDITIONAL_PASS` — capture pattern list |
-| Ran this session — semantic drift or loop failure detected | `FAIL` |
+| Typed `Verdict: PASS` | `PASS` |
+| Typed `Verdict: CONDITIONAL_PASS` | `CONDITIONAL_PASS` (carry the attached skip-list into the report) |
+| Typed `Verdict: FAIL` | `FAIL` |
+| Typed `Verdict: ESCALATE` | `ESCALATE` (own handling — never collapsed into FAIL) |
+| (legacy, no typed line) all steps pass prose | `PASS` |
+| (legacy, no typed line) patterns found but no blockers | `CONDITIONAL_PASS` — capture pattern list |
+| (legacy, no typed line) drift/failure prose | `FAIL` |
 | Did not run this session | `CONDITIONAL_PASS` — note: knowledge loop not validated |
 | Auto-skipped (< 3 patterns) | `CONDITIONAL_PASS` — note: sub-threshold, not validated |
 

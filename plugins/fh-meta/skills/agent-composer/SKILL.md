@@ -478,7 +478,9 @@ All stages Step 0~6 complete
   or user has confirmed Wave end
 + When deliberation was invoked: wait for verdict before closing Wave N+1;
   verdict folds back into Step 4-b fan-in result set
-+ Auto-recording gate (Step 4-c) complete (lightweight harvest-loop status confirmed)
++ Auto-recording gate (Step 4-c) complete — confirmed by the RECORD ARTIFACT (harvest output
+  file exists on disk + harvest-loop typed `Verdict:` line read), never by a completion notice
+  alone (completed-notice ≠ completion — return-path audit 2026-08-10)
 ```
 
 > **Sprint Contract**: Done When must be in an externally verifiable contract format — "criteria a third party can confirm," not "when it feels done." (Anthropic official validation 2025)

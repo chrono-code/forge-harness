@@ -475,7 +475,7 @@ over **unchanged** code:
 | Attack angle is a harness structure problem | `/harness-doctor` | optional |
 | After Wave convergence, propose new pattern rules | `fh-meta:persona-innovator` | optional |
 | Wave 1 structure-specific attack (6-axis) | `fh-commons:quench-challenger` | priority |
-| Back-trace whether claims exist in source files | `/phantom-quench` | **mandatory** when `phantom_risk=true` OR `scope=external` (see tpa_schema.md §Gate Routing Table) |
+| Back-trace whether claims exist in source files | `/phantom-quench` | **mandatory** when `phantom_risk=true` OR `scope=external` — **its verdict folds back: a load-bearing Phantom = a new S-grade finding, convergence blocked until closed** (routing defined in tpa_schema.md §Gate Routing Table — read it when this fires) |
 
 **steel-quench → sim-conductor gate**: After Wave convergence in external-publish context, `/sim-conductor Area A` is the mandatory next step.
 

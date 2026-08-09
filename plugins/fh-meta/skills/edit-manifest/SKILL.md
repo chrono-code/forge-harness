@@ -242,6 +242,10 @@ RECORD mode:
 
 VERIFY mode:
   All pending entries checked (canonical + legacy freeform reconciled to pending)
+  + Final output line, EVERY exit path including no-pending: literal `Verdict: PASS` |
+    `Verdict: PASS (no pending entries)` | `Verdict: CONDITIONAL_PASS` (rejected buffer non-empty —
+    attach the list on the same line) | `Verdict: FAIL` — nothing after it; callers gate on this
+    line (return-path audit + codex S2 2026-08-10)
   + validation_type classified (mechanical / judged / untestable)
   + match_score recorded with cited evidence (mechanical: delta; judged: one cited observation)
   + Gate decisions applied (accepted / redefine / rejected / pending)
