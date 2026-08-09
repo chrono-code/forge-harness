@@ -100,8 +100,12 @@ for f in tracks/_audit/*.md; do
 done
 
 # 6. subagent_invocations_log.yaml — dispatch events (date: field per entry)
-if [[ -f knowledge/shared/learnings/subagent_invocations_log.yaml ]]; then
-  grep -E '^[[:space:]]*-?[[:space:]]*date:' knowledge/shared/learnings/subagent_invocations_log.yaml \
+# 전환 설계: 레거시 단일 파일 ∪ 세션별 디렉터리를 둘 다 읽는다 (session_close_check.sh 와 동일)
+_SAL=knowledge/shared/learnings/subagent_invocations_log.yaml
+_SAD=knowledge/shared/learnings/subagent_invocations
+if [[ -f "$_SAL" || -d "$_SAD" ]]; then
+  { [[ -f "$_SAL" ]] && cat "$_SAL"; [[ -d "$_SAD" ]] && cat "$_SAD"/*.yaml; } 2>/dev/null \
+    | grep -E '^[[:space:]]*-?[[:space:]]*date:' \
     | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | sort | uniq -c | while read -r n d; do
       emit_line "$d" "dispatch" "$n agent invocation(s)" "subagent_log"
   done

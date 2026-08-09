@@ -33,7 +33,14 @@ if [ -z "$MATCHER" ]; then
   echo "      this lane cannot verify what it claims to. Update the lane WITH the subject."
   exit 1
 fi
+# 주어의 _cat_logs 정의를 그대로 들어온다(재작성 금지 — 재작성하면 정규화가 갈린다)
+CATLOGS_DEF=$(awk '/^_cat_logs\(\) \{/,/^\}/' "$CHECK")
+if [ -z "$CATLOGS_DEF" ]; then
+  echo "FAIL  subject 에 _cat_logs 가 없다 — 전환 설계(레거시 ∪ 디렉터리)가 사라졌거나 이름이 바뀌었다."
+  exit 1
+fi
 echo "── matcher located in the subject"
+echo "── _cat_logs lifted from the subject ($(printf '%s' "$CATLOGS_DEF" | grep -c '') lines)"
 
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 D=2026-08-02
@@ -123,7 +130,10 @@ _eval_subject_assign() {  # $1 = variable name; echoes what the SUBJECT computes
   [ -n "$line" ] || { echo "NOLINE"; return; }
   bash -c "set -uo pipefail
     _int() { case \"\${1:-}\" in (''|*[!0-9]*) echo 0 ;; (*) echo \"\$1\" ;; esac; }
-    TODAY=NOSUCHDATE; TALLY='$CHECK'; LOG='$CHECK'
+    # ★ LOGGED 는 주어의 _cat_logs 에 의존한다. 이걸 안 들여오면 «함수 없음 → 빈 입력 → 0»
+    #   으로 **틀린 이유로 통과**한다 — 이 파일이 경고하는 장식 앵커 그 자체다.
+    $CATLOGS_DEF
+    TODAY=NOSUCHDATE; TALLY='$CHECK'; LOG='$CHECK'; LOGDIR='$CHECK.nodir'
     $line
     printf %s \"\$$var\"" 2>/dev/null
 }
@@ -132,6 +142,30 @@ for _v in DISPATCHED LOGGED; do
   [ "$(printf %s "$_got" | grep -c '')" -le 1 ] ; chk $? "subject's \$$_v is ONE line on a zero match (was two: the disarm)"
   ( set -uo pipefail; [ "${_got:-x}" -eq 0 ] ) 2>/dev/null ; chk $? "subject's \$$_v survives \`[ -eq 0 ]\` (the disarm threw here)"
 done
+
+echo ""
+echo "── 전환 설계 레인: 레거시 단일 파일 ∪ 세션별 디렉터리 ──"
+# 주어의 _cat_logs + LOGGED 를 그대로 들어와 4가지 상태에서 센다.
+LOGGED_LINE=$(grep -E "^LOGGED=" "$CHECK" | head -1)
+_count_in() {  # $1=LOG 경로(없으면 빈문자) $2=LOGDIR 경로(없으면 빈문자)
+  bash -c "set -uo pipefail
+    _int() { case \"\${1:-}\" in (''|*[!0-9]*) echo 0 ;; (*) echo \"\$1\" ;; esac; }
+    $CATLOGS_DEF
+    TODAY='$D'; LOG='$1'; LOGDIR='$2'
+    $LOGGED_LINE
+    printf %s \"\$LOGGED\"" 2>/dev/null
+}
+LT="$T/split"; mkdir -p "$LT/dir"
+printf -- "- date: %s\n" "$D" > "$LT/legacy.yaml"                       # 1건
+printf -- "- date: %s\n- date: '%s'\n" "$D" "$D" > "$LT/dir/a.yaml"     # 2건 (두 표기 다)
+printf -- "- date: %s\n" "$D" > "$LT/dir/b.yaml"                        # 1건
+[ "$(_count_in "$LT/legacy.yaml" "$LT/nosuchdir")" = 1 ] ; chk $? "레거시 파일만 → 1"
+[ "$(_count_in "$LT/nofile.yaml" "$LT/dir")"       = 3 ] ; chk $? "디렉터리만 → 3 (파일 2개 합산)"
+[ "$(_count_in "$LT/legacy.yaml" "$LT/dir")"       = 4 ] ; chk $? "둘 다 → 4 (합집합)"
+[ "$(_count_in "$LT/nofile.yaml" "$LT/nosuchdir")" = 0 ] ; chk $? "둘 다 없음 → 0 (부재는 오류가 아니다)"
+# ★ 컨트롤: 다중 파일에 grep -c 를 직접 걸면 깨진다는 실측을 레인으로 고정
+_naive=$(grep -cE "^- date: *'?$D'?" "$LT/dir"/*.yaml 2>/dev/null | tr -d ' \n')
+[ "$_naive" != 3 ] ; chk $? "컨트롤: naive grep -c 다중파일은 3을 못 낸다 (실제='$_naive' — 경로:개수 형태)"
 
 echo ""
 if [ "$FAILED" -ne 0 ]; then echo "DISPATCH-LOG LANES: FAIL"; exit 1; fi
