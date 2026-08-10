@@ -62,6 +62,16 @@ locality — review alone cannot show it (review reads all files; the runtime do
   (Ahn · Kim): independent convergence on code-enforced behavioral contracts over prompt instructions;
   their ablation shows code-owned enforcement blocks violations prompting alone permits. Cross-audit:
   `tracks/_audit/session_2026_08_01_prompts-to-contracts-sister.md` (B-tier, 2 imports identified).
+- **[arXiv 2605.23950 — "Stop Comparing LLM Agents Without Disclosing the Harness"](https://arxiv.org/abs/2605.23950)**
+  (Zhang · Wang · Ge · Xu · Hamm · Reddy, May 2026): formalizes the **Binding Constraint Thesis** —
+  for long-horizon agent tasks, harness configuration (context construction, tool orchestration,
+  verification) is often a stronger determinant of measured performance than the underlying model;
+  harness-induced variance can exceed model-induced variance enough to **reverse published model
+  rankings**, and leaderboard comparisons that omit harness disclosure are incomplete and potentially
+  misleading. This anchors the *locality* claim from the adjacent direction: an undisclosed or
+  misplaced harness doesn't just under-enforce a gate (the HANDBOOK.md anchor above), it can silently
+  swap which system gets credit for an outcome — the same failure shape as a gate firing in a file the
+  enforcing actor never loads.
 
 These are external anchors for the **prose-vs-mechanical premise**; the locality claim itself
 (N=2, one operator) still awaits direct cross-operator confirmation as named above.
