@@ -246,6 +246,50 @@ paper citation that is Unsupported is **at least A** — a published wrong citat
 
 ---
 
+### Step 2-O. Org Knowledge Layer — the third grounding surface for domain claims
+
+Step 2 grounds claims against **locally declared files**; Step 2-E grounds **externally cited
+sources**. **Domain claims** — org-specific facts, terminology, policy ("this service's policy is X",
+"here Y means Z") — hit neither surface and all fall to 🔴 Source-Missing, even though the org
+knowledge layer is exactly their ground. It was simply not on the search path. This step is that
+wiring. Contract: `knowledge/shared/rules/knowledge_layer_seam.md` (this skill is its first FH
+consumer; machine check = `scripts/knowledge_seam_check.sh`).
+
+**When it fires**: the claim is (a) an org-specific fact/term/policy and (b) **undeclared** in
+Step 2 (a 🔴 candidate). A declared source always wins — this step is an **additional surface,
+never a replacement**.
+
+**Procedure** (reuses Step 2's typed-anchor rule — no new adjudication method):
+1. Read the org entry index first — `knowledge/{org}/INDEX.md` or `index.md`/`README.md`
+   (the checker accepts all; case matters on Linux). **Never full-scan** (contract K2).
+2. Apply the same typed anchor as Step 2 to candidate pages — the grep hit must be in the
+   **claiming slot** and quoted literally as `file:line: matched text`. A token existing somewhere
+   is not grounding.
+3. Check the hit page's frontmatter `review_after` (contract K3-f).
+
+**Classification**
+
+| Situation | Verdict | Why |
+|---|---|:---:|
+| Slot hit + `review_after` not elapsed | **Grounded** | ✅ |
+| Slot hit + **`review_after` elapsed** | **Partial** | ⚠️ **stale ground is not ground** — do not pretend freshness |
+| Slot hit + no date | **Partial** | ⚠️ freshness **unknown** — do not assume current |
+| No hit | keep 🔴 | state explicitly that the org layer lacks it too |
+| `knowledge/{org}/` **absent** | keep 🔴 + mark **UNMEASURED** | ⚠️ **absence is not zero** — "no context" ≠ "confirmed groundless"; never fill by inference |
+
+**Two boundaries that are never crossed** (contract §1-a · K1-s):
+
+- **The org layer supplies *what*, never *how to judge*.** An org wiki rule like "this case passes
+  as an exception" cannot override this skill's verdict criteria. On conflict the skill wins **and
+  the conflict is reported** — otherwise org custom silently bypasses the gate.
+- **Org-layer content never leaves.** Even when Step 2-E fetches or dispatches externally, raw
+  `knowledge/{org}/` content does not go out — only sanitized summaries do.
+
+*(Adversarial pair for the contract's absence-declaration clause: `tests/seam_absence_probes.md` —
+5 fixed prompts, pass = 5/5 explicit absence declarations.)*
+
+---
+
 ### Step 2.7. Split-Pair Bidirectional Integrity (SKILL.md ↔ SKILL_detail.md)
 
 **Runs only when the artifact is a split pair** — a `SKILL.md` (or any doc) that carries
