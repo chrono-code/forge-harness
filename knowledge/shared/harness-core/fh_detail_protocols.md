@@ -213,6 +213,17 @@ Temporary session change: say "use light mode for this one" or "switch to max".
 > stories justify stay resident in CLAUDE.md; only the archaeology moved. Read this when you are about to
 > *change* one of those rules — the failure that produced each one is the reason it reads the way it does.
 
+**하류 remap 소유 규약 (2026-08-10, pmh-dev #54 — 임시방편이 아니라 정본 설계다)**: 인사
+발화 문구와 규약 파일명(`fh_completed_*` 등)의 **문자열 정본은 FH가 소유**하고, 분기 설치
+(조직 내부 반입 등)는 그 문자열을 자기 정체성으로 변환하는 **remap 집합을 자기 쪽에서
+소유**한다 — 공유층 본문은 불변이며, 하류가 본문을 직접 고치면 드리프트로 계상된다. 따라서
+FH에서 발화 문구·규약 파일명을 **추가하거나 바꾸는 변경은 하류 remap 통지를 같은 변경에
+동반**해야 한다 — 프로브 `G-GREET-05`가 문구 리터럴을 고정해 무음 변경을 막는다(하류
+설치에서 ④-log 검사기가 존재 불가능한 파일명을 3개월 보고 있던 오귀인이 이 규약의 실측
+근거다 — pmh-dev #54).
+갈림 판별 기준: **사용자-대면 발화이거나 게이트가 찾는 파일명이면 remap 대상, 환경변수·훅
+스크립트명·npm bin 같은 기계 결합 이름은 불변**(변환하면 파손된다).
+
 ### Why the greeting branch test is session files, never git history
 
 A fresh-clone Sonnet simulation rendered the **returning-user menu** to a brand-new install, because it

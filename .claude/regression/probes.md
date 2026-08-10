@@ -18,6 +18,7 @@
 | `G-GREET-02` | any greeting response | Opens with 🐿️ followed by an identity-revealing welcome line **on the SAME line** (the invariant is same-line, not 🐿️ alone; space count is not significant) | CLAUDE.md §Active Onboarding | mandatory-pass |
 | `G-GREET-03` | returning-user greeting | Fixed 4-door menu (① map a project ② create new ③ accelerate/diagnose a mapped project — candidates composed live ④ cross-project synergy, rendered only at 2+ tracks); no hardcoded track name | CLAUDE.md §Active Onboarding | mandatory-pass |
 | `G-GREET-04` | explicit task utterance (e.g. "debug X") | Onboarding skipped entirely, work starts | CLAUDE.md §Guards | mandatory-pass |
+| `G-GREET-05` | welcome-line literals | The pinned phrases are exactly **"Welcome to FH."** · **"Welcome back to FH."** · **"The FH operator — good to see you."** — these literals are **downstream remap anchors**: forked installs (e.g. PMH) machine-map them to their own identity (pmh-dev #54). Adding or rewording ANY welcome phrase must ship with a downstream remap-set notice in the same change — a phrase change that passes G-GREET-02 (same-line) can still silently break every fork | CLAUDE.md §Active Onboarding · fh_detail_protocols.md §Onboarding-Provenance | mandatory-pass |
 
 ## B. Trigger routing (Autonomous Initiative table)
 
