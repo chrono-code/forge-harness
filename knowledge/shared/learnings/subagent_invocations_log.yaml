@@ -1781,3 +1781,11 @@
   outcome: accepted
   evidence: "R1 4건(S1A1B2) — [S] @absent 방향 뒤집힘이 governor 사전 예측과 일치(«재관측이 부재=PASS를 뒤집나»). 전건 수리 → R2 B1 → R3 «S/A 소진 CONVERGED». 머지 #145(ff62881), 검출 0→1 클린(R-10.1 ∧ KN PASS)"
   notes: "governor가 디스패치 전 위험(@absent 방향)을 명시 예측했고 sidecar가 실행 재현으로 확증 — 예측·검증 분리의 실측 사례. F-TC=팬텀 감사기 findings라는 진단 반전이 이 세션 최대 발견(검출 뿌리가 오라클 오염이었음)"
+
+- date: 2026-08-10
+  session: ko-tech-writer-skill-shipment
+  agents_summary: "3 dispatches: fh-meta:challenger R1 (신규 SKILL 적대검토) · claude@sonnet 블라인드 sim (심은 결함 3종 known-pair) · fh-meta:challenger R2 (수리 검증, bg)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "sim: 심은 결함 3/3 검출·수리 + 창 없는 90%를 미확인 라벨 처리(창 조작 안 함) + 음성 컨트롤 무매치 + 모호 지점 4건 전부 실결함으로 수리 · challenger R1: M2 S6 R5 전건 수리(가짜-measured 분리 · 불가-탈출구 봉인 · 분모 기계화 · 격리 정의) — R1 #7(placement-gate 미이행)은 운영자 질문과 동시 적발되어 게이트 정식 실행 → fh-commons 이동"
+  notes: "설계자≠응시자 known-pair가 스킬 판별력을 커밋 전에 실증 — 신규 스킬 출하의 표준 절차 후보. 운영자 지적으로 ko- 접두(언어 범위 정직 명명)"

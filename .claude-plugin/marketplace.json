@@ -18,7 +18,7 @@
     {
       "name": "fh-commons",
       "version": "1.4.92",
-      "description": "Project-agnostic utility skills — 4 skills (convergence-loop · deliberation · mcp-circuit-breaker · token-budget-gate) + 1 agent (quench-challenger). Domain-independent utilities transplantable into any project.",
+      "description": "Project-agnostic utility skills — 5 skills (convergence-loop · deliberation · mcp-circuit-breaker · token-budget-gate · ko-tech-writer) + 1 agent (quench-challenger). Domain-independent utilities transplantable into any project.",
       "source": "./plugins/fh-commons"
     }
   ]

@@ -494,6 +494,7 @@ Claude agents feature
 | Skill | What it does | Say this |
 |---|---|---|
 | `token-budget-gate` *(commons)* | Estimates token cost before a multi-step task, then calibrates against actual after | "how expensive is this", "estimate the token budget first" |
+| `ko-tech-writer` *(commons)* | Korean tech-writing pipeline — venue calibration, translationese scan, number/claim gate, perceptual QA | "기술문서 써줘", "테크블로그 초안", "번역투 고쳐줘" |
 | `asset-placement-gate` | Routes a new skill/agent/plugin to the right place (hub vs project), no role overlap | "where does this go", "should this be shared", "hub or project" |
 | `marketplace-gate` | Scores a repo against 5 listing criteria (README, zero-config, maintenance, dup, safety) | "is this OK to publish", "ready for the marketplace", "pre-publish check" |
 | `public-surface-audit` | Scans git-tracked files for operator-private tokens (real username, corp names, home paths) | "did I leak anything", "scan for private tokens", "is my split clean" |
