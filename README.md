@@ -279,7 +279,7 @@ All four movements ship. Temper was named before it was built — deliberately (
 two more signatures keep it running: `harvest-loop` (each session's lessons become permanent skills) and
 `agent-composer` (orchestrate the dispatch). The other skills wait until you need them — full list below.
 
-## 39 skills · 8 agents
+## 40 skills · 8 agents
 
 > Count = non-deprecated skills (deprecated redirect stubs — kept only for old-name routing — excluded).
 
@@ -313,6 +313,7 @@ two more signatures keep it running: `harvest-loop` (each session's lessons beco
 | `convergence-loop` *(fh-commons)* | N-round convergence loops | "Single-pass seems suspicious" |
 | `token-budget-gate` *(fh-commons)* | Pre-task token cost estimate | "How expensive is this?" |
 | `mcp-circuit-breaker` *(fh-commons)* | MCP tool failure pattern detection | "MCP keeps failing" |
+| `ko-tech-writer` *(fh-commons)* | Korean technical-writing pipeline (register calibration, translationese removal, honesty layering, perceptual QA) | "기술문서 써줘", "번역투 고쳐줘" |
 | `quench-challenger` *(fh-commons)* | Adversarial pressure-test agent | "Challenge this with a devil" |
 | *(+ additional assets)* | marketplace-gate · contention-layer · edit-manifest · fact-checker · goal-quench · hub-persona-auditor · install-doctor · memory-hygiene · persona-innovator · prompt-regression · public-surface-audit · salience-splitter | |
 

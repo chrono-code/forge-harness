@@ -4,7 +4,7 @@
   "engines": {
     "claudeCode": ">=1.0.0"
   },
-  "description": "Cross-project utility skill bundle — 4 skills + 1 agent. Domain-agnostic and portable: convergence-loop, deliberation, mcp-circuit-breaker, token-budget-gate + quench-challenger agent.",
+  "description": "Cross-project utility skill bundle — 5 skills + 1 agent. Domain-agnostic and portable: convergence-loop, deliberation, mcp-circuit-breaker, token-budget-gate, ko-tech-writer + quench-challenger agent.",
   "author": {
     "name": "chrono-meta",
     "email": "chrono-meta@users.noreply.github.com"
