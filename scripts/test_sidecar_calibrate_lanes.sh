@@ -53,7 +53,9 @@ for a in "\$@"; do
 done
 case "\$1" in --version) echo "stub 9.9.9"; exit 0 ;; esac
 # Scan ALL arguments for the verdict prompt — it is NOT always last. codex puts the prompt at the
-# end; agy puts it after -p with `--print-timeout 170s` trailing. A first draft read only the last
+# end; agy puts it after -p with '--print-timeout 170s' trailing. A first draft read only the last
+# (NB: this comment sits inside an UNQUOTED heredoc — a backtick here is command substitution and
+#  actually executed '--print-timeout 170s' at stub-creation, 10x per lane run. Single quotes only.)
 # argument, so the agy-shaped call never looked like a verdict request and lane5b failed against a
 # correct script. An honest runtime ANSWERS THE QUESTION ASKED: a one-token request gets one token.
 is_verdict=0
