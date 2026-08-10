@@ -213,6 +213,18 @@ PATH="$TMP/bin:/usr/bin:/bin:/usr/sbin:/sbin" bash "$CAL" >/dev/null 2>&1
 [ $? -eq 0 ] && ok "lane7 exits 0 even with an empty panel (detector, not gate)" \
              || bad "lane7 non-zero exit on empty panel" "exit=$?"
 
+# LANE 8 — nongenerative unfit filter (pmh crossfamily_probe 델타 흡수): an embedding/OCR model id
+# must classify UNFIT (rc=1) BEFORE family patterns could claim it; a generative id stays FIT (rc=0).
+out=$(bash "$CAL" --classify "Qwen3-Embedding-8B" 2>&1); rc=$?
+[ $rc -eq 1 ] && case "$out" in *"UNFIT (embedding"*) true;; *) false;; esac \
+  && ok "lane8 embedding id → UNFIT rc=1" || bad "lane8 embedding not UNFIT" "rc=$rc $out"
+out=$(bash "$CAL" --classify "GLM-OCR" 2>&1); rc=$?
+[ $rc -eq 1 ] && case "$out" in *"UNFIT (OCR"*) true;; *) false;; esac \
+  && ok "lane8b OCR id → UNFIT (unfit-before-family order)" || bad "lane8b OCR not UNFIT" "rc=$rc $out"
+out=$(bash "$CAL" --classify "llama3.3:70b" 2>&1); rc=$?
+[ $rc -eq 0 ] && case "$out" in *"FIT (generative"*) true;; *) false;; esac \
+  && ok "lane8c generative id → FIT rc=0 (과차단 대칭 · 출력 검증)" || bad "lane8c generative misclassified" "rc=$rc $out"
+
 printf '\nsidecar-calibrate lanes: %d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
 exit 0
