@@ -1741,3 +1741,19 @@
   outcome: accepted
   evidence: "반증 23건 → 수리 21 · 기각 1(A-4: List[str] 선재 크래시 + p35 fail-safe — R2 에서 실행 재현으로 반박받아 dict-repr 유출로 재분류 수용) · 명명 2. 곡선 S1A5B2→S1A3B3→A2B1→A1B1→A1→0 CONVERGED. 전건 governor 소스 재판정 후 수리 · R6 «S/A 소진» 명시 후 머지(qasp-dev #141, af244fa)"
   notes: "R2 S(오라클 반전)·R3 A2·R5 A1 은 전부 직전 수리의 산물 — «수리가 결함의 주된 출처» 재확증. degrade_direction_scan 은 사후 실행(advisory 620, 순서 위반 기록) — 종국 판정은 6R 이 담당"
+
+- date: 2026-08-10
+  session: ifkakao-coldread-reverify
+  agents_summary: "1 dispatch: fh-meta:beginner 수리본 전체 콜드리드(청중 시점 추출본, 주석 차단, bg)"
+  dispatch_count: 1
+  outcome: accepted
+  evidence: "HARD 3/SOFT 14 — 그중 Critical 1건을 governor 가 계기 아티팩트로 판정(주석 중간삽입→추출 절단, 원문 재확인) · 실결함 8건 운영자 승인 수리 · 프로브 5문 응답 전건 처분"
+  notes: "응시자 오귀속 아님 — 계기 결함(blind_separation 규율 적용). 추출본 known-pair 유출검사 선행"
+
+- date: 2026-08-10
+  session: qasp-anchor-provenance-day2-round2
+  agents_summary: "4 dispatches (consolidated): codex gpt-5.5 sidecar×4 (라운드2 적대 4라운드 — R1 전면 · R2~R3 수리 반증 · R4 수렴 확인, 전부 bg)"
+  dispatch_count: 4
+  outcome: accepted
+  evidence: "반증 12건 전건 수리(곡선 S2A2→A4→A2→0 CONVERGED) — reach 분모 소실 S(선재 결함 표면화)·다이어트 전이 소실 S 는 적대 실행-재현을 수용해 설계 완화. 머지 qasp-dev #142(a7523b5)"
+  notes: "이번 캠페인도 신규 결함 다수가 직전 수리 산물(dup 병합 낙관·desc truthiness) — «수리가 결함의 주된 출처» 4연속. 프로브 계상 경계(시험관 제공 환경 vs qasp 발화)는 정답키 v3 §3 에 명문화해 자기채점 부풀리기 차단"
