@@ -1789,3 +1789,11 @@
   outcome: accepted
   evidence: "sim: 심은 결함 3/3 검출·수리 + 창 없는 90%를 미확인 라벨 처리(창 조작 안 함) + 음성 컨트롤 무매치 + 모호 지점 4건 전부 실결함으로 수리 · challenger R1: M2 S6 R5 전건 수리(가짜-measured 분리 · 불가-탈출구 봉인 · 분모 기계화 · 격리 정의) — R1 #7(placement-gate 미이행)은 운영자 질문과 동시 적발되어 게이트 정식 실행 → fh-commons 이동"
   notes: "설계자≠응시자 known-pair가 스킬 판별력을 커밋 전에 실증 — 신규 스킬 출하의 표준 절차 후보. 운영자 지적으로 ko- 접두(언어 범위 정직 명명)"
+
+- date: 2026-08-10
+  session: qasp-detect-expansion-gugan2
+  agents_summary: "11 dispatches (consolidated): Explore R-10.1 파이프라인 지도화(bg) · codex gpt-5.5 sidecar×10 (구간 2 적대 R1~R10 — 술어 3종·힌트·measured 레인)"
+  dispatch_count: 11
+  outcome: accepted
+  evidence: "Explore 지도가 «R-10.1=하위호환 unknown 레인·P7 는 그 경로 못 탐·R-4.3 은 sourced 가능» 3판정을 사전 특정 — 구현이 그 지도 그대로 감. codex 10R: S10·A7·B9 중 수용 21·기각 2(스펙 근거), R10 «신규 없음» CONVERGED. 라이브 자기적발 1(전제 미형성 FAIL 이 이슈 오발화 — 1차 주행에서 즉시 실측). 머지 #146(7cb45ac), 검출 1→4"
+  notes: "R5~R8 네 라운드가 전부 R3 증거-짝 수리의 후속 결함(«수리가 결함의 주된 출처» 4연쇄 실측) · R9 는 codex 가 내 회귀 레인의 공허성(.opine 계약 미준수로 단언 미실행)을 적발 — 레인 자체가 검증 대상이라는 사례"
