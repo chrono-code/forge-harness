@@ -25,6 +25,8 @@ model-note: session-inherit — Sonnet base is first-class (sonnet_floor_doctrin
 **Lightweight mode Done When**:
 ```
 Step 0 (Regression Guard) + Step 1 (field-harvest) + Step 2 (contention-layer) + Step 5 (verify-bidirectional) complete
++ record artifact path printed + final `Verdict:` line emitted — lightweight mode promises the SAME
+  consumer contract as full mode (agent-composer Step 4-c gates on artifact + verdict; codex M1 2026-08-10)
 + harvested pattern summary 1~3 lines output
 + "run full harvest-loop?" proposed (if patterns found)
 + [Card update prohibited] Do NOT update reference_next_session_starter.md in lightweight mode alone
@@ -216,8 +218,15 @@ Read reference_next_session_starter.md → apply Step 0-b removal list → add n
 
 ```
 All stages Step 0-c → 0 → 1 → 2 → 3 (parallel) → 3.5 → 3.75 → 4 → 5 complete
-+ Step 0-c: edit-manifest pending entries verified + memory-hygiene scan run
++ Step 0-c: edit-manifest verdict received (rejected buffer non-empty → surfaced as an
+  Observability flag in the final list, never silently passed) + memory-hygiene scan run
+  (scheduling-only — callee self-contained via its own HITL; no verdict folds back BY DESIGN,
+  declared here so the absence reads as intent, not omission)
 + Step 3.75 Critic verdict received (PASS/CONDITIONAL PASS/FAIL stated) before Step 4
++ Step 4 harness-doctor verdict received — M-tier findings demote/separate the affected
+  candidates (same routing as Critic FAIL), never proceed unread
++ Step 5 verify-bidirectional verdict received — FAIL (= baseline requires redesign) routes the
+  affected baseline to redesign, never into the proposal list
 + synthesizer grade readjustment complete (rejected candidates separated)
 + Final proposal list output (sorted by HIGH/MED)
 + User Y/N approval gate complete
@@ -225,6 +234,15 @@ All stages Step 0-c → 0 → 1 → 2 → 3 (parallel) → 3.5 → 3.75 → 4 �
   → 6-1: STALE candidate list + merge candidates
   → 6-2: INDEX-ORPHAN/FILE-ORPHAN/MEM-STALE detection results
 + [Required] reference_next_session_starter.md delta update complete
+
+**Typed verdict — the last output line, consumed by callers (pipeline-conductor Step 1 ·
+agent-composer Step 4-c):**
+`Verdict: PASS` (all steps green) | `CONDITIONAL_PASS` (sub-threshold skips/held patterns — list
+them on the same line) | `FAIL` (Critic FAIL unresolved after one re-synthesis · drift detected) |
+`ESCALATE` (operator decision required). Callers gate on this line, not on prose — harvest-loop
+was the only core pipeline skill without a typed verdict and made 5 chains fire-and-forget
+(return-path audit 2026-08-10). **The `Verdict:` line is the FINAL output line — emit nothing
+after it; consumers read a missing/malformed final `Verdict:` line as `ESCALATE`, never as pass.**
   → BEFORE N items → AFTER M items diff output required (proof gate)
   → No diff (N=M) = warning + Step 0-b re-check
   → Completed items remaining = bug (Done When not met)

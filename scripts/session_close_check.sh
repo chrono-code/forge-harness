@@ -270,6 +270,9 @@ if [ -n "$LAST_TAG" ] && [ -f "$FH/package.json" ]; then
   CHANGED_SINCE_TAG=$(git -C "$FH" diff --name-only "$LAST_TAG"..HEAD 2>/dev/null)
   if printf '%s\n' "$CHANGED_SINCE_TAG" | grep -qE "$SHIP_RE"; then
     echo "⚠️  ④-b npm-shipped assets changed since $LAST_TAG — propose lockstep republish (never auto)"
+    # env-purity advisory (2026-08-10, 운영자 «자체점검기 모듈화»): 큰 업그레이드 시점 = 출하자산
+    # 변경 시점 — 공유층의 환경-전용 산문을 세서 포인터화/독해규칙 후보를 표면화한다 (advisory).
+    [ -x scripts/env_purity_scan.sh ] && bash scripts/env_purity_scan.sh 2>/dev/null | tail -3
   fi
   # ④-b-drift: auto-FIRE a drift-CANDIDATE reminder (not a parity verdict) — **in BOTH directions**.
   # The two entry points are read by DIFFERENT runtimes (CLAUDE.md → Claude Code · AGENTS.md/codex-compat
