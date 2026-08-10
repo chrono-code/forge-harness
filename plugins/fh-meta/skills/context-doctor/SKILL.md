@@ -212,6 +212,10 @@ The reductions above all act on the **context-footprint** axis (files, history r
 **Two ways to reduce, safest first:**
 1. **Per-call narrow flags (default — non-lossy, no install).** Prefer narrow commands: `git log --oneline -N` over bare `git log`, `--quiet` on noisy tools, `head`/`tail` on long output. The agent chooses what to drop, per call — no blind heuristic. This suffices for almost every session.
 2. **A command-output proxy/hook (only under token scarcity).** A **Claude Code hook that rewrites verbose commands through a token-reducing proxy**, transparent (0 prompt-side overhead). Recommended tool: **`rtk` (Rust Token Killer)**, a CLI proxy that filters dev-command output (the tool reports ~60–90% savings on dev operations), wired so `git status` → `rtk git status` happens automatically.
+   - **Measure, don't quote**: `bash scripts/rtk_gross_ablation.sh [repo]` measures the actual gross
+     cut on YOUR env's command-output slice (instrument-check first — a dead filter emits stubs that
+     fake 82–100% cuts). The vendor band above is a claim; the script returns a local measurement — a char/4 approximation whose error direction is toward OVER-stating the cut
+     (e.g. 68.3% on the FH repo slice, 2026-08-10 — your number will differ; measure yours). NET (context-loss) stays unmeasured either way.
    - ⚠️ **Name collision**: there is an unrelated `reachingforthejack/rtk` (Rust Type Kit). Verify the Token-Killer build — `rtk gain` (savings analytics) should work; "command not found" means the wrong binary.
    - **No-reinvention**: FH **routes to** this tool; it does not rebuild a token-killer. Install + hook wiring live in the user's own config (global `CLAUDE.md` / `settings.json`), never reimplemented here.
    - ⚠️ **Never filter a command whose output a mechanical gate parses.** FH gates read raw command output (a pre-commit hook greps, `regression_guard` diffs). A filtered `git diff` / `git log` feeding a gate gives the gate wrong input — the same trap as grepping filtered prose for a verdict (typed-verdict-channel). Keep filtering off gate-input paths, and keep a raw escape hatch (`rtk proxy <cmd>`).

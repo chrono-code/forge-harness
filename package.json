@@ -183,6 +183,7 @@
     "scripts/knowledge_seam_check.sh",
     "scripts/test_knowledge_seam_lanes.sh",
     "tests/seam_absence_probes.md",
-    "scripts/gate_anchor_check.sh"
+    "scripts/gate_anchor_check.sh",
+    "scripts/rtk_gross_ablation.sh"
   ]
 }
