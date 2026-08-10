@@ -1757,3 +1757,19 @@
   outcome: accepted
   evidence: "반증 12건 전건 수리(곡선 S2A2→A4→A2→0 CONVERGED) — reach 분모 소실 S(선재 결함 표면화)·다이어트 전이 소실 S 는 적대 실행-재현을 수용해 설계 완화. 머지 qasp-dev #142(a7523b5)"
   notes: "이번 캠페인도 신규 결함 다수가 직전 수리 산물(dup 병합 낙관·desc truthiness) — «수리가 결함의 주된 출처» 4연속. 프로브 계상 경계(시험관 제공 환경 vs qasp 발화)는 정답키 v3 §3 에 명문화해 자기채점 부풀리기 차단"
+
+- date: 2026-08-10
+  session: ifkakao-recheck-coldread (재등재 — 미커밋 append 가 공유 체크아웃 피어 작업에 소실된 2건 + 후속)
+  agents_summary: "3 dispatches (consolidated): general-purpose 원문대조 32행(bg) · fh-meta:beginner 콜드리드(bg) · Explore 역수확 인벤토리 13건(bg)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "원문대조 CONFIRMED25/MISMATCH2→수리 · 콜드리드 HARD3(1건=계기 아티팩트 판정)→8건 운영자 승인 수리 · 인벤토리 13건→HARVEST 판정표(#9 오보는 이식 직전 자력 적발)"
+  notes: "원장 append 즉시-커밋 규율 위반으로 초판 2건 소실(공유 체크아웃) — 이번 재등재는 전용 브랜치 즉시 커밋"
+
+- date: 2026-08-10
+  session: ifkakao-harvest-prABCD
+  agents_summary: "8 dispatches (consolidated): fh-meta:challenger×2(PR A seam·PR C rtk, 격리) · codex gpt-5.5 sidecar×6(PR A 4R + PR B 1R + 초기 1회 flag 누락 재시도)"
+  dispatch_count: 8
+  outcome: accepted
+  evidence: "PR A: challenger M4S5R5 + codex M6S3R2→M3S2→M1S1→M1S1 전건 수리/경계명명, 레인 34 · PR B: codex M6S3 전건 수리, 스모크 6/6 · PR C: challenger S2R5 수리, 실측 68.3% · 전부 머지 대기 PR #322-325"
+  notes: "codex git-밖 실행은 --skip-git-repo-check 필수(메모리 재확인) · 수렴 정체 시 «조이지 말고 줄여라» 적용 1회(파서 경계 명명)"
