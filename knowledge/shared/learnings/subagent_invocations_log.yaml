@@ -1797,3 +1797,11 @@
   outcome: accepted
   evidence: "Explore 지도가 «R-10.1=하위호환 unknown 레인·P7 는 그 경로 못 탐·R-4.3 은 sourced 가능» 3판정을 사전 특정 — 구현이 그 지도 그대로 감. codex 10R: S10·A7·B9 중 수용 21·기각 2(스펙 근거), R10 «신규 없음» CONVERGED. 라이브 자기적발 1(전제 미형성 FAIL 이 이슈 오발화 — 1차 주행에서 즉시 실측). 머지 #146(7cb45ac), 검출 1→4"
   notes: "R5~R8 네 라운드가 전부 R3 증거-짝 수리의 후속 결함(«수리가 결함의 주된 출처» 4연쇄 실측) · R9 는 codex 가 내 회귀 레인의 공허성(.opine 계약 미준수로 단언 미실행)을 적발 — 레인 자체가 검증 대상이라는 사례"
+
+- date: 2026-08-11
+  session: qasp-axready-night-autonomous
+  agents_summary: "3 dispatches (consolidated): Explore 필드 정본 읽기(MTM/2막 계약/발화 자격, bg=false) · Explore 데이터-플레인 오라클 삽입지점 설계 조사(bg) · codex gpt-5.5 sidecar 1R (야간 5커밋 diff 적대 감사)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "① 정본 Explore 가 «MTM=블박+화박 동시 실행, verdict 불변, 표기 4상태» 를 정본 인용으로 확정 — 이후 2-arm 실측(판정 51/51 동일 · mtm_cited 17)이 그 계약과 일치함을 확인하는 근거가 됐다. 일반 개념(«화이트박스 모드») 정규화를 사전 차단. ② 설계 Explore 가 relations.py 5곳·triage.py:258 닫힌 어휘·sourced 레인 선점 함정·데이터 리더 부재(known-positive 컨트롤 동반)를 특정 — 이번 세션은 그 능력을 안 지었으나(잔여 S1) 지도는 그대로 유효. ③ codex 1R: S/A/B/C 4축 반증 중 **헤드라인 반증 1건 수용** — 「품절 배지 검출」 주장이 로케일 축 오귀속임을 App.tsx/en.ts 근거로 지적, governor 가 소스 재확인 후 철회하고 attribution_risk 를 기계에 실었다(86dc8bf). 추가로 C-1(미생성 사유가 stdout 전용) 수용·수리, 잔여 4건은 명명"
+  notes: "cross-family 가 **내 커밋 메시지의 주장** 을 반증한 사례 — 코드 결함이 아니라 «주장의 귀속» 이 틀린 경우라 레인·적대검증·되돌림 셋 다 못 잡았을 축이다([[feedback_grounding_audit_of_own_record]] 형). 자력 적발 0. 반대로 생성기 1차 산출의 오탐 공장 성질은 **손검사로 자력 적발**했다 — 기계 감사와 육안 표본이 서로 다른 결함을 잡았다"
