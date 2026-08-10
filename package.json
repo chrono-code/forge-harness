@@ -179,6 +179,9 @@
     "scripts/field_canon_preload.sh",
     "scripts/test_field_canon_lanes.sh",
     "templates/settings.FieldCanon.snippet.json",
-    ".claude/judgment_circuits.txt"
+    ".claude/judgment_circuits.txt",
+    "scripts/knowledge_seam_check.sh",
+    "scripts/test_knowledge_seam_lanes.sh",
+    "tests/seam_absence_probes.md"
   ]
 }
