@@ -1773,3 +1773,11 @@
   outcome: accepted
   evidence: "PR A: challenger M4S5R5 + codex M6S3R2→M3S2→M1S1→M1S1 전건 수리/경계명명, 레인 34 · PR B: codex M6S3 전건 수리, 스모크 6/6 · PR C: challenger S2R5 수리, 실측 68.3% · 전부 머지 대기 PR #322-325"
   notes: "codex git-밖 실행은 --skip-git-repo-check 필수(메모리 재확인) · 수렴 정체 시 «조이지 말고 줄여라» 적용 1회(파서 경계 명명)"
+
+- date: 2026-08-10
+  session: qasp-condition-forming-first-detection
+  agents_summary: "3 dispatches: codex gpt-5.5 sidecar×3 (액션 스텝 정착 리트라이 적대 3라운드 — R1 전면 · R2 수리반증 · R3 수렴확인, 전부 bg)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "R1 4건(S1A1B2) — [S] @absent 방향 뒤집힘이 governor 사전 예측과 일치(«재관측이 부재=PASS를 뒤집나»). 전건 수리 → R2 B1 → R3 «S/A 소진 CONVERGED». 머지 #145(ff62881), 검출 0→1 클린(R-10.1 ∧ KN PASS)"
+  notes: "governor가 디스패치 전 위험(@absent 방향)을 명시 예측했고 sidecar가 실행 재현으로 확증 — 예측·검증 분리의 실측 사례. F-TC=팬텀 감사기 findings라는 진단 반전이 이 세션 최대 발견(검출 뿌리가 오라클 오염이었음)"
