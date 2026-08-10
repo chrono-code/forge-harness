@@ -42,9 +42,10 @@
 
 set -uo pipefail
 
-ONLY=""; STUB_MODEL=""; QUIET=""
+ONLY=""; STUB_MODEL=""; QUIET=""; CLASSIFY=""
 while [ $# -gt 0 ]; do
   case "$1" in
+    --classify) CLASSIFY="${2:-}"; shift 2 ;;
     --only) ONLY="${2:-}"; shift 2 ;;
     --stub-model) STUB_MODEL="${2:-}"; shift 2 ;;
     --quiet) QUIET=1; shift ;;
@@ -178,6 +179,31 @@ probe_runtime() {
   return 0
 }
 
+# nongenerative_reason <model> — adversarial review needs a model that ANSWERS IN PROSE. Embedding /
+# reranker / OCR / safeguard models accept any prompt with rc=0 and contribute nothing — counting one
+# as a panel member fakes family diversity (pmh-dev@cbe3932 crossfamily_probe 델타 흡수, 2026-08-10).
+# Unfit patterns are checked BEFORE family patterns on purpose: Qwen3-Embedding matches both.
+nongenerative_reason() {
+  local m
+  m="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "$m" in
+    *embed*)              echo "embedding" ;;
+    *rerank*)             echo "reranker" ;;
+    *-ocr*|*ocr-*|*ocr:*) echo "OCR" ;;
+    *guard*|*shield*)     echo "safeguard" ;;
+    *) return 1 ;;
+  esac
+}
+
+# --classify <model-id> — query surface for the unfit filter (pmh --check-model 흡수). NOTE: this
+# subcommand DOES use exit semantics (0=FIT, 1=UNFIT, 2=usage) — the always-exit-0 contract (lane 7)
+# applies to CALIBRATION runs, not to this explicit query mode.
+if [ -n "$CLASSIFY" ]; then
+  if r=$(nongenerative_reason "$CLASSIFY"); then echo "UNFIT ($r — non-generative; not a reviewer)"; exit 1
+  else echo "FIT (generative-shaped id — still needs a live pin probe)"; exit 0; fi
+fi
+
+
 probe_runtime codex "gpt-5.6-sol"
 probe_runtime agy   "Gemini 3.1 Pro (High)"
 
@@ -234,6 +260,11 @@ print(",".join(m["name"] for m in d.get("models",[])[:6]))' 2>/dev/null)
   local IFS=,
   for m in $models; do
     [ -n "$m" ] || continue
+    local unfit
+    if unfit=$(nongenerative_reason "$m"); then
+      echo "ollama/$m UNFIT ($unfit — non-generative) — excluded from panel; a prompt it rc=0-accepts is not a review"
+      continue
+    fi
     local body out env_model resp compact pin v
     body=$(python3 -c 'import json,sys; print(json.dumps({"model":sys.argv[1],"prompt":sys.argv[2],"stream":False,"options":{"num_predict":int(sys.argv[3]),"temperature":0}}))' \
            "$m" "$VERDICT_PROMPT" "$OLLAMA_NUM_PREDICT")

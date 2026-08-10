@@ -114,6 +114,21 @@ This is the default failure mode when a skill chain has no return path defined. 
 
 ---
 
+## Verdict Extension (harvested from field use — pmh-dev@cbe3932, 2026-08-10)
+
+The 4-tier enum is the floor, not the ceiling. A project may extend it (field precedent:
+`WAVE_SKIP` / `WAVE_INSERT` for wave-orchestrating callers) under two rules:
+
+- the extended enum is declared in the **callee's** SKILL.md verdict section — a verdict value the
+  emitter never documents is prose, not a contract;
+- the caller maps **any verdict value it does not recognize to ESCALATE** — an unknown verdict is a
+  human-decision signal, never a silent PASS. (Same degrade direction as the typed-Verdict contract:
+  unparseable ⇒ escalate, never optimistic.)
+
+Do NOT harvest the field's `[Verdict]` block output format — FH's typed contract (final-line
+`Verdict:` literal, #318) is newer and stricter; two competing formats would reopen the
+divergent-normalizer class.
+
 ## Relation to Other Patterns
 
 - **Three-Doctor Loop** (`harness-doctor ↔ context-doctor ↔ sim-conductor`) uses return paths implicitly — each doctor's output triggers the next. A full Return-Path Gate implementation would make the fold-back explicit.
