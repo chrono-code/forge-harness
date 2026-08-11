@@ -40,7 +40,46 @@ PASS='(True|"PASS"|'"'"'PASS'"'"'|"ALLOW"|'"'"'ALLOW'"'"'|"OK"|'"'"'OK'"'"'|"VAL
 # incl. this gate's own pre-push/pre-commit-hook trigger category — must not be invisibly dropped).
 # Anything else is tracked as UNSCANNABLE so a load-bearing surface in another language is reported
 # as "not covered", never silently folded into an "advisory clean" (M#2, steel-quench 2026-07-03).
-FILES=(); UNSCANNABLE=()
+FILES=(); UNSCANNABLE=(); MD_ORIGIN=()
+
+# ── Markdown fence extraction (2026-08-11) ────────────────────────────────────────────────────
+# The bash this harness actually EXECUTES largely does not live in .sh files — it lives in ```bash
+# fences inside SKILL.md / SKILL_detail.md, and the scanner could not see a single line of it.
+# Measured that day: one sweep batch extracted 61 fenced blocks across 12 skills and found the
+# S5 pipefail-fallback class alive in four of them (harness-doctor E3/E7/Step-11, install-doctor),
+# each rendering a dead check as a PASS. The scanner was not wrong before — it reported those files
+# as UNSCANNABLE (exit 2, "NOT scanned, NOT clean"), which is the honest degrade. But "honestly
+# unmeasured" on the surface where the code actually lives is a coverage hole, not a resolution.
+#
+# Method: for a markdown file, write a shadow .sh whose fenced-block lines sit at their ORIGINAL
+# line numbers and whose every other line is blank. Line numbers then map 1:1, so an emitted
+# finding points at the real file:line with no offset arithmetic to get wrong. A markdown file
+# with NO bash fence stays UNSCANNABLE — nothing was extracted, so nothing was measured.
+_MD_TMP="$(mktemp -d 2>/dev/null || echo /tmp/degradescan.$$)"
+trap 'rm -rf "$_MD_TMP"' EXIT
+_md_shadow() {   # $1 = markdown path; echoes shadow path, or nothing when no bash fence exists
+  local src="$1" out
+  out="$_MD_TMP/$(echo "$src" | tr '/' '_').sh"
+  python3 - "$src" "$out" <<'PYEOF' || return 1
+import sys, re
+src, out = sys.argv[1], sys.argv[2]
+lines = open(src, encoding='utf-8', errors='replace').read().split('\n')
+shadow = [''] * len(lines)
+inside = False
+found = False
+for i, l in enumerate(lines):
+    s = l.strip()
+    if not inside and re.match(r'^```(bash|sh|shell|zsh)\s*$', s):
+        inside = True; continue
+    if inside and s == '```':
+        inside = False; continue
+    if inside:
+        shadow[i] = l; found = True
+open(out, 'w', encoding='utf-8').write('\n'.join(shadow))
+sys.exit(0 if found else 3)
+PYEOF
+  printf '%s' "$out"
+}
 for t in "${TARGETS[@]}"; do
   if [ -d "$t" ]; then
     while IFS= read -r f; do FILES+=("$f"); done < <(find "$t" -type f \( -name '*.py' -o -name '*.sh' \) 2>/dev/null)
@@ -61,10 +100,19 @@ for t in "${TARGETS[@]}"; do
       esac
       head -n1 "$f" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b' && FILES+=("$f")
     done < <(find "$t" -type f 2>/dev/null)
+    while IFS= read -r f; do
+      sh=$(_md_shadow "$f") && [ -n "$sh" ] && { FILES+=("$sh"); MD_ORIGIN+=("$sh=$f"); }
+    done < <(find "$t" -type f -name '*.md' 2>/dev/null)
   elif [ -f "$t" ]; then
     tb="${t##*/}"
     case "$tb" in
       *.py|*.sh) FILES+=("$t") ;;
+      *.md)
+        if sh=$(_md_shadow "$t") && [ -n "$sh" ]; then
+          FILES+=("$sh"); MD_ORIGIN+=("$sh=$t")
+        else
+          UNSCANNABLE+=("$t")      # no bash fence extracted → genuinely not measured
+        fi ;;
       *.*) UNSCANNABLE+=("$t") ;;
       *) if head -n1 "$t" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b'; then FILES+=("$t"); else UNSCANNABLE+=("$t"); fi ;;
     esac
@@ -81,7 +129,18 @@ if [ ${#FILES[@]} -eq 0 ]; then
 fi
 
 hits=0
-emit() { printf '  %s:%s\n    [%s] %s\n' "$1" "$2" "$3" "$4"; hits=$((hits+1)); }
+# A markdown fence is scanned through a shadow .sh (see §Markdown fence extraction). The finding
+# must point at the file a human can open, so emit translates the shadow path back to its origin —
+# line numbers need no adjustment because the shadow preserves them by construction. A finding that
+# names a path under /tmp is unactionable, which would make the new coverage decorative.
+_origin() {
+  local sh="$1" pair
+  for pair in "${MD_ORIGIN[@]:-}"; do
+    [ "${pair%%=*}" = "$sh" ] && { printf '%s (```bash fence)' "${pair#*=}"; return; }
+  done
+  printf '%s' "$sh"
+}
+emit() { printf '  %s:%s\n    [%s] %s\n' "$(_origin "$1")" "$2" "$3" "$4"; hits=$((hits+1)); }
 
 for f in "${FILES[@]}"; do
   # ---- Shell-shaped probes (S*) -------------------------------------------------------------

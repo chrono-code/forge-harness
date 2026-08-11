@@ -2,7 +2,7 @@
 name: agent-composer
 description: Reads the current work context and plans the optimal agent dispatch. Clarifies direction with 1-2 questions when unclear; infers and proceeds immediately when execution path is unclear. Runs an automatic recording gate after each Wave completes. Triggered by "compose agents", "which agent should I use?", "run in parallel", or "agent-composer".
 user-invocable: true
-allowed-tools: ["Read", "Bash", "Glob", "Grep"]
+allowed-tools: ["Read", "Bash", "Glob", "Grep", "Agent", "Skill"]
 model-note: session-inherit — Sonnet base is first-class (sonnet_floor_doctrine.md); depth-critical judged steps route to dispatch (opus agent / cross-family sidecar, consent-gated), never a substrate requirement
 ---
 
@@ -150,7 +150,7 @@ This orchestrator does not read files or understand structure directly — **eve
 
 Default composition table by task type.
 
-> **Note**: This table lists known installed agents. Capability fit scoring in Step 0.2 overrides static mapping when `agent_cards.json` has more current data.
+> **Note**: This table lists known installed agents. Capability fit scoring in Step 0.2 overrides static mapping when `.claude/registry/agent_cards.json` (repo-relative — there is no bare `agent_cards.json` at the repo root) has more current data.
 
 > **Call method distinction**: `(S)` = Skill tool call / `(A)` = Background dispatch via Agent tool
 

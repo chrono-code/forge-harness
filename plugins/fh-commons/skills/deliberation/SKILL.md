@@ -261,10 +261,24 @@ The jury fills the domain blind spots that no single person can see on their own
 
 ## Done When
 
+Each condition declares its check class (mandatory-pass / measured / judged); every judged condition
+names its adversarial pairing — no judge-only path.
+
 ```
 All Steps 0~3 completed (Steps 4~5 added if 5-layer selected)
+  (mandatory-pass — each layer's output block is present in the declared format; a skipped layer is
+   a FAIL, not a default pass)
++ Every Innovator proposal carries a Devil-Advocate rebuttal AND an acknowledgment line
+  (measured: rebuttal count == proposal count, and acknowledgment count == rebuttal count. A
+   rebuttal without an acknowledgment is already flagged `[WARN: unsynthesizable rebuttal]` in
+   Step 2 — this condition is what makes that flag block completion instead of decorating it)
 + [Mediator — Synthesis Verdict] output present (Adopt / Alert absorption / Verdict / Conditions / Discard)
+  (judged — adversarial pairing: the Devil-Advocate layer is the standing opposition to the
+   Innovator, and the Mediator's synthesis is re-attacked by `fh-commons:quench-challenger` on the
+   one axis the Devil conceded; a synthesis that only restates the concessions is not a verdict)
 + User's final decision confirmed (deliberation output must never be auto-executed)
+  (mandatory-pass — an explicit user utterance selecting an option; silence, absence, or the
+   session's own inference does NOT satisfy it)
 ```
 
 **→ When invoked from agent-composer Wave next-D: synthesis verdict is the fan-in input for Wave continuation** — return the Mediator verdict + Conditions to agent-composer so the conflict is marked resolved in the fan-in result set. After this, agent-composer re-runs Step 4-b state transition evaluation with the conflict cleared; subsequent Waves (next-M / next-E / end) proceed based on the updated result.

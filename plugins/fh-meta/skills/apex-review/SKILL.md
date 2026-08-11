@@ -177,6 +177,11 @@ Incorporate sim-conductor results into the HTML deck and save the revised versio
 All steps 0–4 completed
 + Verdict (✅/⚠️/❌) output for all target decision-makers
 + Gate verdict (Passed / Conditionally passed / Rejected) stated
++ Deck artifact exists on disk: `apex_review_deck_YYYYMMDD.html` (Step 2) — confirm by printing its
+  path and byte size; this is the skill's only durable output, so "reviewed but no deck" is NOT done
++ If the gate verdict is `Conditionally passed`: the `/sim-conductor Area E` verdict has been
+  RECEIVED and folded in (the mandatory-next gate below). Without that verdict the run is not done,
+  regardless of the A/B/C/D selection
 + User next step selection (A/B/C/D) confirmed
 ```
 

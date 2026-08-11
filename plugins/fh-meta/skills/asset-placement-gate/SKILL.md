@@ -2,7 +2,7 @@
 name: asset-placement-gate
 description: Routes a proposed skill, plugin, or agent to its correct home — forge-harness (FH) meta-skill, project-local agent, or drop — by applying a 4-criteria meta-skill bar followed by a project-local value test.
 user-invocable: true
-allowed-tools: ["Read", "Grep", "Glob"]
+allowed-tools: ["Read", "Grep", "Glob", "Bash"]
 model: sonnet
 ---
 
@@ -73,19 +73,37 @@ Criterion ④ ("no overlap with existing FH skills") is otherwise an LLM **recal
 ground truth — a duplicate skill with a novel name passes because the judge has no enumerated list to
 check against (judge-robustness swarm, 2026-06-13). Ground it mechanically first:
 
+Run this in **Bash** from the FH repo root (the pipeline below is `grep | grep -v | grep -c`, which the
+Grep tool cannot express).
+
 ```bash
-# enumerate existing skill names + descriptions (grounds the judged comparison)
-grep -riE "name:|description:" plugins/fh-meta/skills/*/SKILL.md plugins/fh-commons/skills/*/SKILL.md
-# hard-collision check: WHOLE proposed name or a WHOLE trigger phrase reused verbatim.
+# LEG A — enumerate existing skill names + descriptions (grounds the judged comparison).
+# This leg is ALSO the liveness check for leg B: a dead scan and a genuine no-collision both
+# produce collision-count 0, so the enumerate count must be read FIRST.
+ROSTER="$(grep -riE 'name:|description:' plugins/fh-meta/skills/*/SKILL.md plugins/fh-commons/skills/*/SKILL.md)"
+ROSTER_N="$(printf '%s' "$ROSTER" | grep -c . )"
+echo "roster_entries=$ROSTER_N"
+if [ "$ROSTER_N" -eq 0 ]; then
+  echo "SCAN_DEAD — enumerate leg returned 0 rows (wrong cwd / missing plugins tree / glob did not match)."
+  echo "Criterion ④ = UNDETERMINED. Do NOT read this as 'no collision'. Fix the cwd and re-run."
+  # fail-closed: stop here, do not run leg B, do not pass ④
+fi
+# LEG B — hard-collision check (run ONLY when ROSTER_N > 0).
+# WHOLE proposed name or a WHOLE trigger phrase reused verbatim.
 # grep -wF (whole-word, fixed-string) on the full strings — NOT -E on tokens (a shared common
 # word like "review" is not a collision). Exclude the asset's own file (self-match = false hit).
-SELF="plugins/fh-meta/skills/<proposed name>/SKILL.md"
-grep -rwF -e "<proposed full name>" -e "<full trigger phrase 1>" -e "<full trigger phrase 2>" \
+SELF="plugins/fh-meta/skills/PROPOSED_NAME/SKILL.md"
+grep -rwF -e "PROPOSED_FULL_NAME" -e "FULL_TRIGGER_PHRASE_1" -e "FULL_TRIGGER_PHRASE_2" \
      plugins/*/skills/*/SKILL.md | grep -v "$SELF" | grep -c .
 ```
 
-Surface **collision count + nearest existing skill(s)**. Criterion ④ then passes only if **0 whole-name/
-whole-trigger collision AND the judged ≤90%-overlap check agrees**. A verbatim whole-name or
+(Replace the `PROPOSED_*` / `FULL_TRIGGER_*` tokens with the literal strings under evaluation.)
+
+Surface **roster_entries + collision count + nearest existing skill(s)** — the roster count is part of
+the report, not a private step: `collision=0` is only meaningful next to a non-zero `roster_entries`
+(not-found ≠ zero). Criterion ④ then passes only if **`roster_entries` > 0 AND 0 whole-name/
+whole-trigger collision AND the judged ≤90%-overlap check agrees**. `roster_entries = 0` is
+`SCAN_DEAD` → ④ **UNDETERMINED** (fail-closed), never a pass. A verbatim whole-name or
 whole-trigger reuse is a hard ④ fail regardless of the LLM judgment. **Honest scope**: the grep grounds
 *literal* name/trigger reuse only — a post-cutoff duplicate with a *paraphrased* trigger is invisible to
 both the judge (cutoff) and the grep (literal); that residual leans on the judged half **fed the
@@ -105,10 +123,22 @@ skipping. (Provenance: `tracks/_audit/session_2026_07_25_claude5-context-rules-s
 
 ## Done When
 
+Each condition declares its check class (mandatory-pass / measured / judged); every judged condition
+names its adversarial pairing — no judge-only path.
+
 ```
 All steps 0–3 completed
+  (mandatory-pass — each step's output block is present; a skipped step is a FAIL, not a default pass)
++ Step 0.5 scan is LIVE: roster_entries > 0
+  (measured: the reported roster_entries count. 0 = SCAN_DEAD → criterion ④ UNDETERMINED and this
+   skill is NOT done — a dead scan and a genuine no-collision both read 0 collisions, so the
+   liveness number is what separates them)
 + Step 3 routing result output (location: FH meta-skill / local agent / drop)
+  (judged — adversarial pairing: `fh-meta:challenger` re-argues the case for the destination that was
+   NOT chosen, citing the 4 criteria; a routing verdict that survives the opposite case passes, an
+   unopposed one does not)
 + Next action specified (write SKILL.md / create .claude/agents/ / none)
+  (mandatory-pass — a literal next-action string from that enum; blank or "TBD" does not satisfy it)
 ```
 
 ---

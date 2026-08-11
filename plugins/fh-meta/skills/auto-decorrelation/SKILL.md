@@ -103,11 +103,25 @@ probe localhost:11434 && echo "ollama-local(mac)"
 EP="$FH_SIDECAR_EXTRA"
 [ -z "$EP" ] && [ -f tracks/_meta/sidecar_endpoints.env ] && \
   EP="$(grep '^OLLAMA_EXTRA=' tracks/_meta/sidecar_endpoints.env | cut -d= -f2- | tr -d '"')"
-for e in $EP; do
-  case "$e" in *[!0-9a-zA-Z.:-]*|'') continue;; esac   # host:port form only — reject glob/junk (no word-split hole)
+# Split on NEWLINES via `while read`, never on an unquoted `for e in $EP`. Word-splitting an unquoted
+# variable is a BASH behavior; zsh does NOT word-split, so under zsh a space-separated multi-endpoint
+# list arrives as ONE string, hits the charclass below (space is not in it) and is dropped — silently
+# reporting "no extra sidecars", i.e. the single-family fail-open this skill exists to prevent.
+# Measured 2026-08-11: `EP="host1:11434 host2:11434"` → bash probes 2, zsh probes 0.
+# Accepts either separator: commas/spaces are normalized to newlines first.
+printf '%s\n' "$EP" | tr ' ,' '\n\n' | while IFS= read -r e; do
+  [ -z "$e" ] && continue
+  case "$e" in *[!0-9a-zA-Z.:-]*)
+    # NEVER a silent `continue` — a dropped endpoint must be visible, or an unprobed panel is
+    # indistinguishable from an unavailable one (DEGRADED_PANEL_UNUSED vs DEGRADED_SINGLE_FAMILY).
+    echo "sidecar-endpoint DROPPED (not host:port form): [$e]" >&2; continue;;
+  esac
   probe "$e" 10 && echo "ollama-extra($e)"             # -m10: a sleeping GPU box may wake slower than 6s
 done
 ```
+**Shell note**: this block is `sh`-portable and is written so bash and zsh behave identically. Any
+future edit that reintroduces `for e in $EP` re-opens the zsh drop above. A drop line on stderr is a
+**finding, not noise** — carry it into the Step 6 degrade verdict rather than discarding stderr.
 Endpoint resolution is a **mechanical env/file read** (not a prose instruction the runner must remember),
 so this discovery is tier-independent — no target-tier sim owed. The extra-endpoint binding lives only in
 the gitignored `tracks/_meta/sidecar_endpoints.env` (auto-synced to the companion store); the public skill

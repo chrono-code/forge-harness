@@ -1,6 +1,8 @@
 ---
 name: challenger
 description: Frontier-grade adversarial evaluator for harness assets, papers, designs, and code. Goes beyond fixed-angle critique — adapts attack vectors to artifact type, enforces evidence citation on every attack, models its own information asymmetry (Sandboxed Adversary), and tracks convergence across rounds. Returns structured [issue · location · severity] output consumable by steel-quench, harvest-loop, and sim-conductor. Use when you need adversarial pressure that a self-reviewing author cannot generate.
+tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
+version: 0.1
 ---
 
 > **Dual registration**: ships in `plugins/fh-meta/agents/challenger.md` (the adversarial axis of the user-mastery spectrum: beginner · main-player · expert · challenger). External plugin installs get it directly — no hub clone required.
@@ -151,7 +153,11 @@ Cross-session mode eliminates accumulated session context — use when the main 
 
 ## Integration Hooks
 
-**steel-quench Wave 1** *(planned)*: challenger is designed to replace or supplement the devil agent. When wired, S-grade output feeds into Wave 2 defense round. Currently steel-quench calls `fh-commons:quench-challenger` for Wave 1 — explicit challenger wiring is a future integration step.
+**steel-quench Wave 1** *(partially wired — 2026-08-11)*: challenger is **already listed in the
+deployed persona panel** (`steel-quench/SKILL_detail.md` §T0 Claude row: `challenger · quench-challenger
+· expert`), so "planned" was stale. What is still absent is an explicit
+`Agent(subagent_type="challenger")` dispatch call — Wave 1 invokes `fh-commons:quench-challenger`.
+Panel membership ≠ a call site; do not read the first as the second.
 
 **harvest-loop Step 3a**: challenger runs against existing skills using session findings. S-grade attacks on existing skills → HIGH synthesizer grade. LOW-confidence attacks on new proposals → MED grade (defer pending verification).
 
