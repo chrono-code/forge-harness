@@ -77,3 +77,7 @@ tracks/**
 outputs/
 .claude/mcp_circuit/
 .claude/rules/.public-surface-allowlist
+
+# deep-clarify spec documents — user goals, constraints, and "must not touch" lists.
+# Written per-task in a working project; keep off the tracked surface.
+.claude/specs/

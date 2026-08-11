@@ -96,7 +96,21 @@ Report progress: `📡 HN 15 items · arxiv 5 items · TLDR 5 items · Batch 5 i
 
 Print the synthesis result in the conversation (format in §Output-Formats): engine line + Highlights + Immediate Application Candidates + Warning Signals + collection stats.
 
-**With `--save` flag**: save to `digests/frontier_{today}.md` (path priority: FH install path → `~/.claude/frontier-digest/digests/` → cwd; details in §Output-Formats). After saving: `✅ Saved: {path}`
+**With `--save` flag**: save to **`{FH}/tracks/_meta/frontier_digest_{YYYY_MM_DD}.md`** — underscores in
+the date, matching `date +%Y_%m_%d`. Fallback when no FH install is resolvable:
+`~/.claude/forge-harness/tracks/_meta/` → cwd `tracks/_meta/`, same filename either way. After saving:
+`✅ Saved: {path}`
+
+⚠️ **This path is load-bearing, not cosmetic.** The cadence detector in `CLAUDE.md §Cadence Rules`
+globs exactly `tracks/_meta/frontier_digest_*.md` to decide whether the 7-day proposal is overdue, so
+a digest written anywhere else — or with hyphens instead of underscores — is **invisible to the
+cadence check forever**, and the skill silently looks never-run. The hub's production runner
+(`scripts/frontier_digest_daily.sh` — **hub-local, not distributed in the npm package**: it is half of
+a launchd pair and spends CLI calls per run, so an installed copy does not have it and does not need
+it — this skill's save path stands alone) already writes this exact path; the previously documented
+`digests/frontier_{today}.md` matched neither, and measured 2026-08-11 it had produced **0** files
+against 53 real digests in `tracks/_meta/`. Keep this path, the runner, and the cadence glob in sync
+— changing one alone re-opens the same hole.
 
 > **Detail**: See `SKILL_detail.md §Output-Formats` — conversation output template, save path priority, fh_signal file format, env setup guide — read when executing Steps 3–4.
 
@@ -176,12 +190,20 @@ not become an `fh_signal` candidate.
 
 ## Done When
 
-| Condition | Completion |
-|---|---|
-| Step 3 synthesis result printed in conversation | ✅ Basic execution complete |
-| With `--save` flag: `✅ Saved: {path}` confirmed | ✅ Save complete |
-| With `--chain` flag: persona-innovator Mode E invoked + field-harvest proposed | ✅ Chaining complete |
-| All curl failures → fallback to WebSearch synthesis output | ✅ Fallback complete |
+| Condition | Check class | Completion |
+|---|---|---|
+| Step 3 synthesis result printed in conversation | **mandatory-pass** — the output block exists in the transcript | ✅ Basic execution complete |
+| With `--save` flag: `✅ Saved: {path}` confirmed **and the file resolves under the cadence glob** `tracks/_meta/frontier_digest_*.md` | **measured** — `ls` the written path in the same run; a `✅ Saved:` line without a resolving file is a FAIL, not a pass (`not found ≠ 0`) | ✅ Save complete |
+| With `--chain` flag: persona-innovator Mode E **proposed (awaiting approval)** + field-harvest proposed | **mandatory-pass** — the proposal line was emitted **and no invocation occurred before approval**. Both halves are required: an *invoked* Mode E is a FAIL of this condition, not a stronger pass | ✅ Chaining complete |
+| All curl failures → fallback to WebSearch synthesis output | **mandatory-pass** — fallback output present, and the collection stats line reports the failed legs rather than rendering them as zero items | ✅ Fallback complete |
+| Every shipped item carries its collected identifier (§Citation anchors) | **judged** — adversarial pairing: before the digest ships, re-resolve **one** cited identifier against its source in the same run. If that known item cannot be re-resolved, the anchor check is UNCALIBRATED and no item may be counted as anchored | ✅ Anchors verified |
+
+⚠️ **The `--chain` row deliberately says *proposed*, not *invoked*.** Step 4-c gates persona-innovator
+behind a human approval precisely because everything collected in Steps 1–3 is attacker-writable text.
+An earlier version of this table required Mode E **invoked** for completion — i.e. the completion
+criterion demanded the exact behavior the Step 4-c fix removed, so a run that correctly stopped and
+waited scored as incomplete and the operator was rewarded for clicking through. A fix that lands in
+the steps but not in the Done When is a half-fix, and this row is where it surfaced.
 
 **Incomplete**: Exiting without collection + synthesis output = Fail. `--save` invoked but no file = Fail.
 

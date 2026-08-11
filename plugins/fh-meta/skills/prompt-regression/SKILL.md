@@ -1,8 +1,8 @@
 ---
 name: prompt-regression
-description: Detects harness regressions by running standard prompt probes after rule/skill changes and comparing outputs against saved baselines. Triggers on "prompt regression", "did my changes break anything", "regression check", "test harness changes".
+description: Statically checks harness assets against a known-answer probe set after rule/skill changes — inspects the changed source for the trigger phrases, chain links and gate conditions each probe expects, and reports PASS/FAIL/SKIP per probe. Source inspection only; it does not run live sessions, so it catches assets that no longer SAY the right thing, not models that stop DOING it. Triggers on "prompt regression", "did my changes break anything", "regression check", "test harness changes".
 user-invocable: true
-allowed-tools: ["Read", "Bash", "Glob", "Grep"]
+allowed-tools: ["Read", "Write", "Bash", "Glob", "Grep"]
 model: sonnet
 complexity_routing:
   base: sonnet
@@ -58,8 +58,15 @@ ls .claude/regression/probes.md 2>/dev/null || echo "NO_CUSTOM_PROBES"
 ```
 
 **If custom probes exist**: load and use them. The hub repo ships its golden probe set
-(known-answer offline eval, 32 probes with check classes) at exactly this path — when
-present it is canonical and supersedes the default matrix below.
+(known-answer offline eval, **33 probes** with check classes — 27 mandatory-pass · 1 measured ·
+5 judged, of which 2 rows are inert deletion anchors, so live coverage is 31) at exactly this path
+— when present it is canonical and supersedes the default matrix below.
+
+> Count from the file, not from this line: `grep -cE '^\| *`[A-Z][A-Z0-9-]*-[0-9]+` *\|'
+> .claude/regression/probes.md`. Both this number and the tally inside `probes.md` read `32` until
+> 2026-08-12, when the actual count was 33 — a probe had been added to section A without touching
+> either summary. A count duplicated in two files rots independently; if the two disagree, the file
+> wins and both get corrected.
 
 **If no custom probes** (e.g. Mode C install without the hub repo): use the default
 probe matrix below.
@@ -93,7 +100,23 @@ If change scope is `CLAUDE.md` core (10+ lines changed): run **full suite** (all
 
 ---
 
-### Step 4. Run Affected Probes
+### Step 4. Evaluate Affected Probes (static source inspection)
+
+**What this step is, stated plainly.** Every check below reads the changed *source* and asks whether
+the text a probe expects is still there. No live session is started, no model is prompted, no output
+is compared against a recorded transcript. The description said "running standard prompt probes …
+comparing outputs against saved baselines", which reads as live execution; the honest label is a
+**known-answer static check**.
+
+**What it therefore cannot catch** — say this in the report, do not leave it implied:
+- a rule that is still present but has stopped *firing* (salience loss, ordering, competition
+  from another rule)
+- a trigger phrase present in the file but shadowed by a higher-priority route
+- any behavior change that leaves the source text identical
+
+Those need a dispatched blind sim at the target tier (`sim-conductor`, or the target-tier sim gate in
+`.claude/rules/fh_4axis_gate.md`). A green report here means *the assets still say the right thing*.
+Treating it as behavioral evidence is the misread this section exists to prevent.
 
 For each affected probe, evaluate:
 
@@ -150,24 +173,44 @@ If all probes pass:
 
 After a deliberate behavior change (not a regression — an intentional improvement), update the baseline:
 
+Prompt user first: *"Probe `G-GATE-03` now expects the new gate format. Update baseline? (y/n)"*
+Only update on explicit `y` — never auto-update.
+
+On `y`, actually perform the write. The previous version of this step was three lines of which two
+were comments — it created the directory and stopped, so "baseline updated" was reported by a step
+that had written nothing.
+
 ```bash
-# Baseline stored as markdown in .claude/regression/
 mkdir -p .claude/regression
-# Write updated probe expectations
 ```
 
-Prompt user: *"Probe P-CHAIN-01 now expects the new gate format. Update baseline? (y/n)"*
+Then **use the `Write` tool** on `.claude/regression/probes.md` (create it from the SKILL.md default
+matrix if absent) to apply the approved edit. Each approved change edits the probe's row in place —
+Expected Behavior, Scope, and Class — and:
 
-Only update on explicit `y` — never auto-update.
+- update the `**Count**:` tally line **in the same edit** if a row was added or removed, including
+  the per-section breakdown and the class counts (a stale tally is exactly how the `32`/`33`
+  mismatch was introduced)
+- append a one-line note under `**Baseline**:` recording the date and the reason for the change
+- never rewrite rows the user did not approve
+
+Confirm afterwards by re-reading the file and reporting the row's new content plus the recount —
+`grep -cE '^\| *`[A-Z][A-Z0-9-]*-[0-9]+` *\|' .claude/regression/probes.md`. Do not report a
+baseline update whose result you have not read back.
 
 ---
 
 ## Done When
 
-- All affected probes are evaluated (PASS / FAIL / SKIP) — class: mandatory-pass
+- All affected probes are evaluated (PASS / FAIL / SKIP) and the three counts sum to the number of
+  probes selected in Step 3 — class: measured (`PASS + FAIL + SKIP == selected`)
 - Regression report is output with clear PASS/FAIL verdict — class: mandatory-pass
+- The report states its own scope: **static source inspection, no live session run** — a green
+  verdict is never presented as behavioral evidence — class: mandatory-pass
 - If FAIL: specific file + line fix is recommended — class: judged, paired with verify-bidirectional (the fix recommendation is re-checked, not trusted as-is)
-- Baseline updated only on explicit user approval — class: mandatory-pass (HITL)
+- Baseline updated only on explicit user approval, and the written file is **read back** and its
+  probe count reported — class: mandatory-pass (HITL). Approval alone does not close this: a step
+  that prompts, gets `y`, and writes nothing satisfied the old wording.
 
 ---
 

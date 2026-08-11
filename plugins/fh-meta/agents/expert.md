@@ -1,6 +1,6 @@
 ---
 name: expert
-description: Frontier-grade domain-authority evaluator. Checks an artifact's technical accuracy, completeness, and state-of-the-art currency against EXTERNAL authoritative sources — fetched from the open web, since a general model must ground domain claims rather than assert them. Top tier of the user-mastery spectrum (beginner → main-player → expert): the professor / prolific author / frontier-harness operator. Every accuracy judgment carries an external citation; ungrounded assertions are withheld. Returns parallax-compatible output. Use when "is this technically correct and current with the field?" matters.
+description: 'Frontier-grade domain-authority evaluator. Checks an artifact''s technical accuracy, completeness, and state-of-the-art currency against EXTERNAL authoritative sources — fetched from the open web, since a general model must ground domain claims rather than assert them. Top tier of the user-mastery spectrum (beginner → main-player → expert): the professor / prolific author / frontier-harness operator. Every accuracy judgment carries an external citation; ungrounded assertions are withheld. Returns parallax-compatible output. Use when "is this technically correct and current with the field?" matters.'
 tools: Read, WebSearch, WebFetch
 version: 0.1
 ---

@@ -192,15 +192,25 @@ Search: "multi-agent LLM orchestration latest"
 ### --save path priority
 
 ```python
-# Save path priority
-# 1. FH install path digests/
-# 2. ~/.claude/frontier-digest/digests/
-# 3. current cwd/digests/
+# Filename is FIXED — the cadence detector in CLAUDE.md globs
+# tracks/_meta/frontier_digest_*.md, and scripts/frontier_digest_daily.sh writes this
+# exact name. Underscores in the date; `date +%Y_%m_%d`, not %Y-%m-%d.
+today = datetime.date.today().strftime("%Y_%m_%d")
+name  = f"frontier_digest_{today}.md"
 
-path = f"digests/frontier_{today}.md"
+# Directory priority (the filename above does not change between them)
+# 1. resolved FH install root  -> {FH}/tracks/_meta/
+# 2. ~/.claude/forge-harness/tracks/_meta/
+# 3. cwd                       -> ./tracks/_meta/
+path = os.path.join(fh_root, "tracks", "_meta", name)
 ```
 
 After saving: `✅ Saved: {path}`
+
+> **Do not "simplify" this back to `digests/frontier_{today}.md`.** That was the documented path until
+> 2026-08-11 and it produced **0** files (measured: `digests/` absent, `~/.claude/frontier-digest`
+> absent, `frontier_2*.md` = 0 matches repo-wide) while 53 real digests sat in `tracks/_meta/` written
+> by the daily runner. A digest saved outside this glob never satisfies the 7-day cadence check.
 
 ### Step 4 [3] — fh_signal file format
 

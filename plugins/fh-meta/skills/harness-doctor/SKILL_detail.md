@@ -165,11 +165,23 @@ awk '/^### /{count++} count<=5{print}' CATALOG.md 2>/dev/null | grep -c "^- Open
 #### 5-3. Field Project CLAUDE.md Existence
 
 ```bash
-grep -oE '`~/[^`]+`' .claude/memory/reference_field_projects.md 2>/dev/null \
-  | tr -d '`' | sed "s|~|$HOME|g" | while read p; do
-    [ -f "$p/CLAUDE.md" ] && echo "OK: $p" || echo "MISSING CLAUDE.md: $p"
-  done
+# The index file may not exist at all. `not found` != `0 problems` — an absent
+# index must print MISSING INDEX, never an empty (= "all OK") result.
+field_index=.claude/memory/reference_field_projects.md
+if [ ! -f "$field_index" ]; then
+  echo "MISSING INDEX: $field_index (5-3 UNMEASURED — not a pass)"
+else
+  grep -oE '`~/[^`]+`' "$field_index" \
+    | tr -d '`' | sed "s|~|$HOME|g" | while read p; do
+      [ -f "$p/CLAUDE.md" ] && echo "OK: $p" || echo "MISSING CLAUDE.md: $p"
+    done
+fi
 ```
+
+> Known-pair calibration for this block: a **known-positive** path that does exist
+> (`.claude/rules/fh_4axis_gate.md`) must print its `OK:`/`MISSING CLAUDE.md:` verdict, while an
+> absent index must print `MISSING INDEX`. Do not add `2>/dev/null` back — it was what turned a
+> non-existent directory into a silent zero-byte "everything is fine".
 
 ---
 
@@ -243,7 +255,11 @@ done
 
 # harness-doctor self-loop misuse
 for f in $recent_sessions; do
-  count=$(grep -c "harness-doctor" "$f" 2>/dev/null || echo 0)
+  # `grep -c` prints 0 AND exits 1 on no-match, so `|| echo 0` appends a SECOND line
+  # ("0\n0") and every later [ -eq/-gt ] test dies with "integer expression expected".
+  # `|| true` keeps the exit code from killing the assignment without corrupting the value.
+  count=$(grep -c "harness-doctor" "$f" || true)
+  count=$(( ${count:-0} + 0 ))
   if [ "$count" -gt 2 ]; then
     echo "L5-B MISUSE (suspected): harness-doctor @ $f — self-loop suspected (${count} mentions in same session)"
   fi
@@ -281,14 +297,21 @@ if [ "$skill_count" -gt 0 ]; then
 fi
 
 # E3: CATALOG.md Open item consumption rate
-current_open=$(awk '/^### /{count++} count<=5{print}' CATALOG.md 2>/dev/null | grep -c "^- Open:" || echo 0)
-past_open=$(git show "HEAD@{30 days ago}:CATALOG.md" 2>/dev/null \
-  | awk '/^### /{count++} count<=5{print}' | grep -c "^- Open:" || echo "N/A")
-if [ "$past_open" != "N/A" ]; then
+# NEVER use `grep -c ... || echo N/A` here: grep -c prints "0" and exits 1 on no-match, so the
+# fallback appends a second line ("0\nN/A"), the != "N/A" test passes, and $(( )) then dies with a
+# syntax error — the E3 line vanishes entirely (silent non-measurement, not a skip).
+# Separate the two questions: (a) is history reachable at all, (b) what is the count.
+current_open=$(awk '/^### /{count++} count<=5{print}' CATALOG.md 2>/dev/null | grep -c "^- Open:" || true)
+current_open=$(( ${current_open:-0} + 0 ))
+past_catalog=$(git show "HEAD@{30 days ago}:CATALOG.md" 2>/dev/null || true)
+if [ -z "$past_catalog" ]; then
+  echo "E3_SKIP: git history < 30 days or CATALOG.md absent then (UNMEASURED — not zero)"
+else
+  past_open=$(printf '%s\n' "$past_catalog" \
+    | awk '/^### /{count++} count<=5{print}' | grep -c "^- Open:" || true)
+  past_open=$(( ${past_open:-0} + 0 ))
   consumed=$((past_open - current_open))
   echo "E3: Open items consumed ${consumed} (30 days ago: ${past_open} → now: ${current_open})"
-else
-  echo "E3_SKIP: git history < 30 days"
 fi
 
 # E4: harvest signals
@@ -318,12 +341,27 @@ if [ ! -f "$manifest" ]; then
     && echo "E7_WARN: ${recent_asset_edits} asset edit(s) in 14d but no edit_manifest.yaml" \
     || echo "E7: no recent asset edits"
 else
-  manifest_recent=$(grep -c "$(date +%Y-%m)" "$manifest" 2>/dev/null || echo 0)
-  [ "$recent_asset_edits" -gt 0 ] && [ "$manifest_recent" -eq 0 ] \
-    && echo "E7_WARN: asset edits exist but no manifest entry this month" \
-    || echo "E7_OK: edit_manifest.yaml present with recent entries"
+  # `grep -c` on zero matches prints "0" and exits 1 → `|| echo 0` made this "0\n0", the
+  # -eq test then errored out (non-zero = false), and control fell through to the `||` branch:
+  # E7_OK. The evolution-loop blindness detector was structurally unable to raise its own alarm.
+  # `|| true` + arithmetic normalisation is what makes the WARN arm reachable.
+  manifest_recent=$(grep -c "$(date +%Y-%m)" "$manifest" || true)
+  manifest_recent=$(( ${manifest_recent:-0} + 0 ))
+  if [ "$recent_asset_edits" -gt 0 ] && [ "$manifest_recent" -eq 0 ]; then
+    echo "E7_WARN: ${recent_asset_edits} asset edit(s) in 14d but no manifest entry this month"
+  else
+    echo "E7_OK: edit_manifest.yaml present with ${manifest_recent} entr(ies) this month"
+  fi
 fi
 ```
+
+> **Known-pair calibration (mandatory before trusting E7).** Run both arms:
+> **negative arm** — point `manifest` at a file with no current-month entries while asset edits
+> exist → must print `E7_WARN`; **positive arm** — the real
+> `tracks/_meta/edit_manifest.yaml` → must print `E7_OK` with a non-zero entry count.
+> If the negative arm prints `E7_OK`, the detector is dead and its silence means nothing.
+> Note the `if/else` form: the old `[ ... ] && echo A || echo B` chain also falls to `B`
+> whenever the *first* test is false, which is a second route to the same false pass.
 
 ---
 
@@ -332,12 +370,25 @@ fi
 ### 11-1. Detect Changed Files
 
 ```bash
+# Two defects lived here and both produced phantom downstream counts:
+#  (1) `return 0` is only valid inside a function/sourced script. Run as a plain block it
+#      printed "can only `return' from a function" to stderr and CARRIED ON into 11-2A/B/C.
+#  (2) `echo "" | wc -l` is 1, not 0 — so "no changes" was announced as "1 total".
+# `exit 0` actually stops the block, and `grep -c .` counts non-empty lines only.
 changed=$(git diff main..HEAD --name-only 2>/dev/null)
 [ -z "$changed" ] && changed=$(git diff --cached --name-only 2>/dev/null)
-[ -z "$changed" ] && echo "PR_CHECK: no changes detected vs main — skip" && return 0
-echo "=== Changed files ($(echo "$changed" | wc -l | tr -d ' ') total) ==="
+if [ -z "$changed" ]; then
+  echo "PR_CHECK: no changes detected vs main — skip (Step 11 UNMEASURED, run nothing below)"
+  exit 0
+fi
+changed_count=$(printf '%s\n' "$changed" | grep -c . || true)
+echo "=== Changed files ($(( ${changed_count:-0} + 0 )) total) ==="
 echo "$changed"
 ```
+
+> Steps 11-2A/B/C consume `$changed` and must not run when it is empty. If you inline this
+> into a larger function, swap `exit 0` for `return 0` — but never leave a bare `return` in a
+> block that is executed directly, which is what silently disarmed the guard.
 
 ### 11-2A. SKILL.md Changes → Count Drift + README + CATALOG
 

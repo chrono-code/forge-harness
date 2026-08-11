@@ -123,7 +123,12 @@ Output final proposal list → Y: PR creation / N: persist to tracks/_meta/fh_si
 
 ### Step 3.75 — Critic (Isolated Agent)
 
-> Source: SAGE (arXiv 2603.15255). Isolation = Critic does not inherit synthesizer reasoning chain → resolves Cost of Consensus.
+> Isolation = the Critic does not inherit the synthesizer's reasoning chain. **This is an FH design
+> decision, not a borrowed one.** Its evidence is arXiv 2605.00914 (*The Cost of Consensus*): plurality
+> voting discards correct answers already present in the pool (oracle gap ≤32.3pp) and peer rationales
+> destabilize previously-correct reasoning (≤70.0%) — so the reviewer must not stand inside the
+> generator's chain. *Corrected 2026-08-11: this line previously cited SAGE (arXiv 2603.15255) as the
+> isolation source. SAGE's four agents **co-evolve from a shared backbone** — the opposite structure.*
 
 Critic evaluation: Done When logic validation · failure mode exploration (2+ edge cases) · claim vs. implementation alignment · scope appropriateness (Too Narrow / Too Broad).
 

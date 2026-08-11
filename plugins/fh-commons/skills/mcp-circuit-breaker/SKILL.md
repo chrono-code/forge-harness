@@ -182,12 +182,21 @@ Sending HALF-OPEN probe to {tool-name}...
 - If success: circuit → CLOSED, log updated
 - If fail: circuit remains OPEN, cooldown resets
 
-Reset log entry:
+Reset log entry — **append as a NEW list item (`- tool:`), never as bare indented keys**:
 ```yaml
+- tool: {tool-name}
   state: CLOSED
   reset_at: {ISO-8601}
   reset_method: probe_success | user_forced
 ```
+
+> **Why the leading `- tool:` is load-bearing.** The Step 3 log is a YAML *list*. Appending indented
+> keys with no `-` merges them into the **previous** item instead of adding one, and PyYAML resolves
+> duplicate keys silently by keeping the last value — so `state: OPEN` is overwritten by `CLOSED` and
+> the trip record disappears. Measured 2026-08-11: trip entry + bare-key reset entry parses to
+> **1 item** with `state: CLOSED` (the OPEN row is gone); the same pair written as two list items
+> parses to **2 items** with the trip history intact. The state history is what Step 6 reports on, so
+> a merged entry silently zeroes the failure record.
 
 ---
 

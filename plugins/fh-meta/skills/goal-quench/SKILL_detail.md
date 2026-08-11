@@ -40,16 +40,27 @@ Codex has its own goal/session capability. Do not replace it with goal-quench st
 3. After the Codex goal completes, run FH governance on changed files:
 
 ```bash
-FH_BACKEND=codex npx @chrono-meta/fh-gate "{changed-files}" quick codex-goal
+FH_BACKEND=codex npx --yes @chrono-meta/fh-gate@latest "{changed-files}" quick codex-goal
 ```
 
 For non-interactive one-shot runs only, `fh-goal` can run a backend task and then invoke `fh-gate` automatically:
 
 ```bash
-FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-goal \
+FH_BACKEND=codex npx --yes --package @chrono-meta/fh-gate@latest fh-goal \
   --prompt "{task}" \
   --gate quick
 ```
+
+> **Pin the version spec — this is not cosmetic (measured 2026-08-12, npx 11.12.1).** An unpinned
+> `@chrono-meta/fh-gate` resolves whatever npx already has cached, and a stale cache predates the
+> `fh-goal` bin entirely: the previously-documented `npx --package @chrono-meta/fh-gate fh-goal …`
+> exited **127 `sh: fh-goal: command not found`**, while `…@latest` exits 0. `--call` makes no
+> difference (2×2 probe: both `--call` and bare forms are 127 unpinned, 0 pinned) — the version
+> spec is the whole cause. The same stale cache silently ran **fh-gate v1.0.0** for the gate
+> command above while `latest` was 1.4.95, and the two returned *different exit codes for the same
+> input* (`1` vs `10` = harness-error). A gate whose version is whatever the cache happens to hold
+> is not a gate. Confirm before relying on either command:
+> `npx --yes @chrono-meta/fh-gate@latest --version`.
 
 `fh-goal` is not a Codex goal replacement; it is a post-run governance wrapper.
 
@@ -230,15 +241,39 @@ After each goal-quench run, append to `tracks/_meta/goal_quench_{YYYY-MM-DD}.md`
 
 **`actual_tokens` collection**: Claude cannot read session token counts directly. Preferred method:
 ```bash
-python3 -c "
-import json, glob
-f = sorted(glob.glob('~/.claude/projects/*/conversation*.jsonl'.replace('~', __import__('os').path.expanduser('~'))))[-1]
-lines = [json.loads(l) for l in open(f)]
-total = sum(m.get('message',{}).get('usage',{}).get('input_tokens',0) + m.get('message',{}).get('usage',{}).get('output_tokens',0) for m in lines)
-print(f'Session tokens: {total:,}')
-"
+python3 - <<'PY'
+import json, glob, os, sys
+# Transcript filenames are session UUIDs, NOT "conversation*.jsonl" — an earlier glob
+# assumed the latter, matched zero files, and died on [-1] with IndexError, so the
+# "actual tokens" field had no mechanical source at all. Verify with:
+#   ls ~/.claude/projects/*/ | head
+root = os.path.join(os.path.expanduser('~'), '.claude', 'projects')
+files = glob.glob(os.path.join(root, '*', '*.jsonl'))
+if not files:
+    # not found != 0 — say so explicitly rather than reporting a zero token count
+    print('actual_tokens: unknown  # no session transcript found under ' + root)
+    sys.exit(0)
+f = max(files, key=os.path.getmtime)   # newest by mtime; UUID names do not sort chronologically
+total = counted = skipped = 0
+with open(f, encoding='utf-8') as fh:
+    for line in fh:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            m = json.loads(line)
+        except json.JSONDecodeError:
+            skipped += 1          # count, never silently drop
+            continue
+        u = (m.get('message') or {}).get('usage') or {}
+        total += u.get('input_tokens', 0) + u.get('output_tokens', 0)
+        counted += 1
+print(f'actual_tokens: {total}  # {os.path.basename(f)} · {counted} records, {skipped} unparseable')
+PY
 ```
-Fallback: turn count × estimated tokens/turn (~2K for short turns, ~8K for long file edits). Write `"unknown"` if no estimate is possible.
+The newest transcript is not guaranteed to be *this* session's — treat the number as the session's
+own only when the run just ended in this project. Fallback: turn count × estimated tokens/turn (~2K
+for short turns, ~8K for long file edits). Write `"unknown"` if no estimate is possible — never `0`.
 
 **Retrospective calibration baseline (N=10, 2026-06-01–06-03, Sonnet)**: mean actual/estimate ratio = 4.7× (range 1.3×–10.5×). Systematic underestimation due to session overhead. Full data held in the private companion store (`paper-signals/`).
 

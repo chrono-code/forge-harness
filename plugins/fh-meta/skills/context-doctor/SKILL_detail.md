@@ -29,13 +29,37 @@ ls -d */ 2>/dev/null | head -20
 ### Step 2 — Large file detection + warning format
 
 ```bash
-# Detect files exceeding 500 lines (top 10)
-find . -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.java" -o -name "*.kt" \
-  | grep -v node_modules | grep -v .git \
-  | xargs wc -l 2>/dev/null | sort -rn | head -11 | tail -10
+# Detect files exceeding 500 lines (top 10).
+#
+# Two mechanical guards, both measured 2026-08-11 on this repo:
+#  (a) 500-line THRESHOLD via awk. Without it, `head -11 | tail -10` emits 10 rows unconditionally —
+#      this repo's largest source file is 450 lines and ZERO files exceed 500, yet the old pipeline
+#      still returned 10 rows, which the warning block below then rendered as "Large file detected".
+#      Not-found must render as "none", never as a hit.
+#  (b) `while read` instead of `xargs wc -l`. xargs splits a long file list into batches and EACH
+#      batch emits its own `total` row; those rows then occupy slots in the reported top 10
+#      (measured: 6000 files -> 2 `total` rows, one of them inside the top 10). The loop also
+#      survives spaces in filenames, which the xargs form did not.
+FILES="$(find . -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.js" \
+                        -o -name "*.java" -o -name "*.kt" \) \
+              -not -path "*/node_modules/*" -not -path "*/.git/*")"
+SCANNED="$(printf '%s' "$FILES" | grep -c . )"
+BIG="$(printf '%s\n' "$FILES" | while IFS= read -r f; do
+         [ -n "$f" ] || continue
+         printf '%s\t%s\n' "$(wc -l < "$f")" "$f"
+       done | awk -F'\t' '$1 > 500' | sort -rn | head -10)"
+
+if [ "$SCANNED" -eq 0 ]; then
+  echo "large-file scan: UNMEASURED — 0 source files matched (wrong cwd, or this project uses other extensions)"
+elif [ -z "$BIG" ]; then
+  echo "large-file scan: none — 0 of $SCANNED source files exceed 500 lines"
+else
+  printf '%s\n' "$BIG"
+fi
 ```
 
-When files exceeding 500 lines are found:
+Emit the warning below **only for rows the scan actually returned** (`BIG` non-empty). A `none` or
+`UNMEASURED` line is reported as-is and produces **no** warning — and `UNMEASURED` is not `none`:
 
 ```
 ⚠️  Large file detected: {filename} ({N} lines)
@@ -67,11 +91,22 @@ If found, suggest adding to the `## Check Items` or `## Token Efficiency` sectio
 # CLAUDE.md line count
 wc -l CLAUDE.md .claude/CLAUDE.md 2>/dev/null | sort -rn | head -3
 
-# MEMORY.md line count (200-line limit)
-wc -l memory/MEMORY.md 2>/dev/null
-
-# memory/*.md files exceeding 30K
-find memory -name "*.md" -size +30k 2>/dev/null | xargs wc -l | sort -rn | head -10
+# Session memory lives OUTSIDE the repo — under the Claude Code project dir, keyed by a slug of the
+# absolute cwd. There is NO `memory/` at the repo root: the old `wc -l memory/MEMORY.md 2>/dev/null`
+# and `find memory ... 2>/dev/null` both printed nothing on this repo, and that silence read as
+# "no bloat" (not-found rendered as zero). Derive the path; never hardcode a home path.
+MEMDIR="$HOME/.claude/projects/$(pwd | sed 's|/|-|g')/memory"
+if [ -d "$MEMDIR" ]; then
+  # MEMORY.md line count (200-line limit)
+  if [ -f "$MEMDIR/MEMORY.md" ]; then wc -l "$MEMDIR/MEMORY.md"
+  else echo "MEMORY.md: UNMEASURED — index absent under $MEMDIR"; fi
+  # topic files exceeding 30K (while-read: survives spaces, no xargs `total` rows)
+  find "$MEMDIR" -name "*.md" -size +30k | while IFS= read -r m; do
+    printf '%s\t%s\n' "$(wc -l < "$m")" "$m"
+  done | sort -rn | head -10
+else
+  echo "memory audit: UNMEASURED — no memory dir at $MEMDIR. This is NOT 'zero bloat'."
+fi
 
 # SKILL.md files > 300 lines with no SKILL_detail.md (salience-splitter candidates)
 find plugins -name "SKILL.md" 2>/dev/null | while read f; do

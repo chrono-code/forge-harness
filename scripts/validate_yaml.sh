@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate YAML frontmatter in all SKILL.md files.
+# Validate YAML frontmatter in all SKILL.md files AND all agent definitions.
 # Catches frontmatter that does not parse — the failure mode that breaks Codex/Gemini plugin parsers.
 # Usage: ./scripts/validate_yaml.sh [--fix]
 #
@@ -15,6 +15,23 @@
 # not a substitute for parsing the thing whose parseability is the question. When no YAML parser is
 # reachable the check does not silently degrade to the old guess — it reports UNCALIBRATED and exits
 # non-zero, because "I could not measure" is not "it is fine" (CLAUDE.md §Instrument Calibration).
+#
+# ── 2026-08-11: agents added to the scanned surface ───────────────────────────────────────────
+# The scan covered only `plugins/*/skills/*/SKILL.md`, so agent definitions were structurally
+# invisible — and one of them was broken the whole time. `quench-challenger.md` carried an unquoted
+# multi-line `description:` whose `user:`/`assistant:` lines parsed as new keys, which invalidated
+# the `tools: Read, Grep, Glob` and the `model: opus` HARD FLOOR declared BELOW it. Measured in a
+# live session agent list: it showed `(Tools: All tools)` and a fallback description while its
+# siblings showed exactly what they declared — i.e. a read-only adversary was running with write
+# and execute tools, and a hard tier floor was pinning nothing.
+#
+# Note what the check measures: **YAML validity**, not CC-tolerance. Claude Code's own loader is
+# more lenient — `expert.md` had an unquoted description containing ": " and still loaded correctly
+# there. That leniency is not portable, and this file's whole reason for existing is the parsers
+# that are not lenient (Codex/Gemini plugin loaders). So a file CC accepts can still fail here, on
+# purpose. Calibrated at wiring time on a known pair: `quench-challenger.md`/`expert.md` failed
+# before their fixes, the other six passed — a checker that flagged everything or nothing would
+# have proven nothing.
 set -uo pipefail
 
 FIX=${1:-}
@@ -29,7 +46,7 @@ fi
 
 check_skill() {
   local file="$1"
-  local skill; skill=$(basename "$(dirname "$file")")
+  local skill; skill="${2:-$(basename "$(dirname "$file")")}"
 
   if [ -z "$PARSER" ]; then
     echo "  ⚠️  $skill: UNCALIBRATED — no YAML parser available, frontmatter NOT verified"
@@ -95,12 +112,26 @@ PY
   esac
 }
 
-echo "=== SKILL.md YAML validation ==="
+echo "=== SKILL.md + agent YAML validation ==="
 [ -z "$PARSER" ] && echo "  ⚠️  no YAML parser (python3 + pyyaml) — this run cannot verify anything"
+_skills=0
 for dir in plugins/*/skills/*/; do
   file="${dir}SKILL.md"
-  [ -f "$file" ] && check_skill "$file"
+  [ -f "$file" ] && { check_skill "$file"; _skills=$((_skills + 1)); }
 done
+_agents=0
+for file in plugins/*/agents/*.md .claude/agents/*.md; do
+  [ -f "$file" ] || continue          # unmatched glob is not a file — no nullglob assumption
+  check_skill "$file" "agent:$(basename "$file" .md)"
+  _agents=$((_agents + 1))
+done
+# A surface that scans zero files is an instrument error, not a pass — the exact shape this
+# addition exists to close (agents were an empty set for the whole life of the checker).
+if [ "$_skills" -eq 0 ] || [ "$_agents" -eq 0 ]; then
+  echo "  ❌ INSTRUMENT ERROR — scanned skills=$_skills agents=$_agents; a zero surface cannot pass"
+  exit 3
+fi
+echo "  (scanned: $_skills skill(s), $_agents agent(s))"
 
 echo ""
 if [ "$UNCALIBRATED" -gt 0 ]; then
@@ -108,7 +139,7 @@ if [ "$UNCALIBRATED" -gt 0 ]; then
   exit 2
 fi
 if [ "$ERRORS" -eq 0 ]; then
-  echo "  ✅ All skills: frontmatter parses"
+  echo "  ✅ All skills + agents: frontmatter parses"
   exit 0
 fi
 echo "  $ERRORS error(s). Run with --fix for the unquoted-description case; others are by hand."

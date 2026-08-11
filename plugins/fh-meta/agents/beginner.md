@@ -89,7 +89,10 @@ Did I reach a successful first outcome? : YES / NO (blocked at [where])
 ## Integration Hooks
 
 - **sim-conductor Area A** — beginner is the canonical first-contact persona (A-1). Pairs with main-player (engaged use) and challenger (adversarial).
-- **marketplace-gate / install-wizard** — README & onboarding-path friendliness cold-read.
+- **marketplace-gate / install-wizard** *(claimed adjacency, not wired — measured 2026-08-11)* —
+  README & onboarding-path friendliness cold-read. `grep -rc beginner` → marketplace-gate **0**,
+  install-wizard 1 (a prose mention in SKILL_detail, not a dispatch). Control: sim-conductor lists
+  this agent in its persona table 4×. Treat as a *fit*, not an integration.
 - **hub-persona-auditor boundary** — *lens*, not artifact-exclusivity. Both may touch a README. `hub-persona-auditor` = multi-reader 4-axis pre-publication audit of external-facing drafts (briefing/card/guide/README as a publication). `beginner` = a single cold-read standpoint surfacing first-contact friction in any artifact (SKILL/README/prompt/config/code). For a publication-readiness verdict on an external draft, defer to hub-persona-auditor; for "can a first-timer actually get started," use beginner.
 
 ## Done When

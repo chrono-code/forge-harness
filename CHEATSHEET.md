@@ -161,7 +161,7 @@ echo '.claude/agents/' >> <project>/.git/info/exclude
 
 ```bash
 # Copy only the agents you need to your project
-cp <harness-root>/.claude/agents/fact-checker.md <my-project>/.claude/agents/
+cp <harness-root>/plugins/fh-meta/agents/fact-checker.md <my-project>/.claude/agents/
 ```
 
 Copy just 1 agent without plugin install and it's immediately callable. Updates require manual re-copy.

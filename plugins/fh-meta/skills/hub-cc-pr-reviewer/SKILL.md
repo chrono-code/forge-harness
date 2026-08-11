@@ -73,7 +73,7 @@ Self-precision catch areas after first cc review (following previous PR self-cat
 - Check explicit statement that audience-specific guides are limited to original developer environment
 - Check explicit statement of organization-specific areas
 
-Self-catch areas 0 items = skip this entire catch matrix (no token-filling / following `feedback_simplification_evidence`).
+Self-catch areas 0 items = skip this entire catch matrix — do not pad with token-filling to make the section look populated.
 
 ### Step 4. Review Comment Attachment
 
@@ -133,28 +133,91 @@ recommendation) via `gh pr comment`.
 
 - **This skill = review/recording automation / no merge authority** — user admin override or other reviewer merge decision
 - **No single-person decision application** — following `fact-checker` rule (narrow 1 / broad N+1 / this cc self-catch joins fact-checker count)
-- **Simplification guard consistency** (`feedback_simplification_evidence`) — when creating/modifying this skill, update SKILL.md only. No new auxiliary files
-- **Markdown editing discipline mandatory** (`feedback_markdown_edit_discipline`) — Edit first. No Write
-- **Frontmatter description plain text only baseline** (`feedback_skill_frontmatter_description_plain_text`) — avoid markdown bold
+- **Simplification guard consistency** — when creating/modifying this skill, update SKILL.md only. No new auxiliary files
+- **Markdown editing discipline mandatory** — Edit first. No Write
+- **Frontmatter description plain text only baseline** — avoid markdown bold
+
+> The three rules above were previously each attributed to a `memory feedback_*.md` file. Those files
+> do not exist (verified 2026-08-11 against the operator's memory root, with a known-positive control
+> in the same run). The **rules stand on their own**; only the pointers were dead, and citing a
+> non-resolving file as the authority is the phantom-reference class this skill is supposed to catch.
+> Do not re-attach a memory citation here unless `ls` resolves it **in the same run that cites it**.
 
 > **Detail**: See `SKILL_detail.md §Sister Asset Utilization Path`, `§External User Environment Adaptation Path`, `§Disable Path`, `§Persona Synergy Catch` — cross-ecosystem utilization, external-environment fallback, own-PRS disable resolution, and deep-insight simultaneous-activation handling — read when operating in an external user environment, resolving own-PRS conflict, or coordinating with deep-insight.
 
 ## Done When
 
+This is a **gate/routing skill** — its output is a merge verdict — so every judged condition below
+names its adversarial pairing. No judge-only path.
+
 ```
 All 5 Steps completed
-+ Baseline consistency check 8-matrix results output (✅/⚠️/❌ each item)
+  — mandatory-pass: each step produced its output or is marked N/A with a reason
+
++ Baseline consistency check 8-matrix results output (OK/WARN/BLOCK each item)
+  — measured: count items REPORTED vs items ACTUALLY CHECKED; the two must
+    match. Matrix #2 (memory baseline) reports SKIPPED when no memory file
+    resolves — it is never folded into the pass count (see §References)
+
++ Axis 1 run in --pr mode with a typed verdict read from
+  REGRESSION_GUARD_RESULT_FILE
+  — mandatory-pass: result is `pass` or `block`. `skip` and exit 3 are NOT
+    passes; they mean Axis 1 did not examine this PR and the recommendation
+    may not cite it as green
+
++ /public-surface-audit run over the composed comment text BEFORE any
+  gh pr comment
+  — mandatory-pass, fail-closed: CLEAN attaches; REVIEW/LEAK redact-and-rescan;
+    NOT_CONFIGURED or audit unavailable hands to the operator. A posted comment
+    is irreversible, so tooling-down is a block, never a free skip
+
 + Review comment attached via gh pr comment command
-+ Admin override merge recommendation output (merge execution is user's decision)
-+ External verification path: harvest-loop Step 3.75 Critic isolation Agent can independently judge based on above criteria (skill_quality_rubric.md verifiable criteria)
+  — mandatory-pass: the comment URL is returned by the command
+
++ Admin override merge recommendation output (merge execution is user's
+  decision)
+  — judged; adversarial pairing: the branch-protection state is re-read at run
+    time from BOTH layers (`.../branches/main/protection` and
+    `.../rules/branches/main`, strictest wins) in the same run that recommends.
+    A recommendation citing this file's prose instead of a live read is
+    unfounded — that exact defect already shipped once here, on a field that
+    had flipped
+
++ External verification path: an isolated Critic agent can reach the same
+  verdict from the artifacts alone
+  — judged; adversarial pairing: the reviewer-visible evidence must be
+    reproducible WITHOUT the author's local files. Any verdict resting on a
+    gitignored local artifact ships labelled LOCAL-ONLY ATTESTATION -
+    UNVERIFIED, which leaves the condition UNMET rather than met
+    (`.claude/rules/fh_4axis_gate.md` §Reviewer-visible evidence)
 ```
 
-**→ Mandatory when PR contains SKILL.md / rules / templates changes: `bash templates/regression_guard.sh`** — run Axis 1 (backward check) before merge recommendation is issued. If regression_guard exits with M-tier block, merge recommendation must change to ❌ regardless of other checks.
+**→ Mandatory when PR contains SKILL.md / rules / templates changes: run Axis 1 (backward check) in
+`--pr` mode, against the PR's head branch** — before the merge recommendation is issued. If
+regression_guard reports an M-tier block, the merge recommendation must change to ❌ regardless of
+other checks.
+
+```bash
+# Precondition: the PR head branch must exist locally. This skill reads the PR via `gh pr diff`
+# without checking anything out, so fetch the head ref first or --pr has nothing to resolve.
+PR_BRANCH="$(gh pr view "$PR" --json headRefName -q .headRefName)"
+git fetch origin "$PR_BRANCH":"refs/remotes/origin/$PR_BRANCH"   # skip if already present
+bash templates/regression_guard.sh --pr "origin/$PR_BRANCH"
+```
+
+⚠️ **Do not run it with no arguments.** Bare `bash templates/regression_guard.sh` diffs the **working
+tree**, and this skill's own workflow leaves the reviewer standing on a clean `main` — so the bare
+form returns `REGRESSION_GUARD_RESULT=skip` with `exit 0` **100% of the time**, and the mandatory
+Axis-1 gate never examines the PR at all. Measured 2026-08-11 on a clean checkout: bare form →
+`rc=0 / result=skip`; `--pr <branch>` on the same commit → `rc=0 / result=pass` having actually read
+the changed SKILL.md. Canonical form is `--pr {BRANCH}` (`.claude/rules/fh_4axis_gate.md`).
+
 **Read the verdict from the typed channel, not the exit code** — `exit 0` means pass **or** skip
 (not-checked). Run with `REGRESSION_GUARD_RESULT_FILE=/tmp/rg.$$` and read `result=` from that file:
-`skip` means Axis 1 **did not examine** this PR (no matching file) — record it as "Axis 1 N/A", never
-as a green check. A merge recommendation that cites an unexamined Axis 1 as PASS is the 2026-07-22
-fail-open class.
+`skip` means Axis 1 **did not examine** this PR (no matching file, or the wrong invocation form) —
+record it as "Axis 1 N/A", never as a green check. `exit 3` means the invocation itself failed
+(unresolvable branch) — also not a pass; fetch the ref and re-run. A merge recommendation that cites
+an unexamined Axis 1 as PASS is the 2026-07-22 fail-open class.
 
 ## References
 
@@ -165,8 +228,16 @@ fail-open class.
 > **Matrix #2 is therefore a 7-matrix in practice** — report it as `matrix 2: SKIPPED (no resolvable
 > memory baseline)` rather than folding it into the pass count (`not found ≠ 0`).
 > Re-populate this list only with paths verified by `ls` **in the same run that cites them**.
+>
+> **Arithmetic reconciled 2026-08-11**: the "8/8" above is now true of the list below — all 8 cited
+> filenames are struck (re-verified in one run: 8 cited / 8 absent, with a known-positive and a
+> known-negative control). Previously only 7 were struck while the 8th
+> (`feedback_autonomous_commit_proposal`) was still cited live, and three more were cited as live
+> authority up in §Constraints and §Step 3 — where an executor actually reads, since References is
+> not on the execution path. **Those live citations are removed; the rules they carried are stated
+> directly.** A struck entry in References is not a fix if the same name is still load-bearing above.
 
 - ~~Rule body: `memory feedback_command_tower_gate.md` + `memory feedback_field_to_hub_sync_protocol.md`~~ — **absent (verified 2026-08-11)**
 - ~~Consistency rules: `feedback_simplification_evidence` · `feedback_markdown_edit_discipline` · `feedback_skill_frontmatter_description_plain_text` · `feedback_bidirectional_self_validation` · `feedback_reference_own_hub_assets_first`~~ — **absent (verified 2026-08-11)**
 - Sister skills: `cross-ecosystem-synergy-detection` (sister asset cluster baseline) · `verify-bidirectional` (bidirectional self-validation automation / self-catch auxiliary axis) · `harvest-loop` (weekly audit automation / operation proof accumulation cross-link)
-- Autonomous commit proposal §2.19 baseline: `memory feedback_autonomous_commit_proposal.md` (① development source automation + PR proposal under human approval)
+- ~~Autonomous commit proposal §2.19 baseline: `memory feedback_autonomous_commit_proposal.md`~~ — **absent (verified 2026-08-11)**. The rule it stood for is live and lives in `CLAUDE.md §AI Contribution Model`: development-source automation is allowed, PR submission requires explicit human approval. Cite that, not this filename.

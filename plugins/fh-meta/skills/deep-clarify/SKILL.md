@@ -83,12 +83,30 @@ Draft the spec first, then single confirmation: "Is this the right direction?"
 
 ## Step 3. Generate Spec Document
 
-Structure and save the results of the conversation.
+Structure and save the results of the conversation. **This step writes a file** — outputting the
+path is not saving it.
+
+1. Derive the slug: `slug = kebab-case(spec title) + "-" + YYYYMMDD`
+   (lowercase, non-alphanumerics → `-`, collapse repeats, strip leading/trailing `-`).
+   Example: "Rewrite the login flow" on 2026-08-11 → `rewrite-the-login-flow-20260811`.
+2. If `.claude/specs/{slug}.md` **already exists → ABORT** and report the existing path.
+   Never overwrite and never silently suffix — an existing spec is a prior decision to extend or
+   supersede, and that is the user's call.
+3. Create the directory, then write the file with the **Write** tool (not a shell redirect):
 
 ```bash
-# Save path
-.claude/specs/{task-slug}.md
+mkdir -p .claude/specs
 ```
+
+Then `Write` → `.claude/specs/{slug}.md` with the format below, and verify:
+
+```bash
+test -f .claude/specs/{slug}.md && echo "SPEC SAVED: .claude/specs/{slug}.md"
+```
+
+**Residency**: the spec records the user's goals, constraints, and "must not touch" list.
+`.claude/specs/` is gitignored in this repo; **in a company project, confirm the path is gitignored
+there too before writing** — if it is not, write to a gitignored location instead.
 
 ### Spec Document Format
 
@@ -127,7 +145,7 @@ After generating the spec document, suggest the appropriate next path:
 | Situation | Connected skill |
 |---|---|
 | Agent orchestration needed for implementation | `agent-composer` — pass spec document path |
-| Plan / design review needed | `plan` agent — build plan based on spec |
+| Plan / design review needed | built-in `Plan` agent — build plan based on spec |
 | Single task is now clear | Start implementation directly |
 | Audit needed before external sharing | `hub-persona-auditor` |
 
@@ -135,10 +153,11 @@ After generating the spec document, suggest the appropriate next path:
 
 ## Done When
 
-| Condition | Completion verdict |
-|---|---|
-| Socratic dialogue complete + spec document saved | ✅ Clarification complete |
-| Spec path output: `.claude/specs/{slug}.md` | ✅ Save complete |
-| Follow-up skill connection suggestion output | ✅ Handoff complete |
+| Condition | Completion verdict | Check class |
+|---|---|---|
+| Socratic dialogue complete (≤3 rounds, ≤2 questions/round) | ✅ Clarification complete | **mandatory-pass** |
+| `test -f .claude/specs/{slug}.md` exits 0 — the file **exists on disk** | ✅ Save complete | **mandatory-pass** (a printed path is not a saved file) |
+| The spec's Completion Criteria are independently verifiable — someone other than the author could tell whether each is met | ✅ Spec actionable | **judged** — adversarial pairing: `fh-meta:beginner` cold-reads the spec and attempts to state, per criterion, how they would check it; a criterion they cannot operationalize fails |
+| Follow-up skill connection suggestion output | ✅ Handoff complete | **mandatory-pass** |
 
 **This skill's Done When = "actionable spec document saved".** Implementation itself is the domain of follow-up agents/skills.

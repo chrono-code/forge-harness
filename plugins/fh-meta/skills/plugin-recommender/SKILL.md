@@ -2,7 +2,7 @@
 name: plugin-recommender
 description: Given a task description, searches internal and external open-source ecosystems (including Codex marketplace and Claude Code marketplace) to find and recommend suitable plugins with installation guidance. Recommendation is quality-validation based (marketplace-listed + performance-validated), not source-origin based. Activates on "recommend a plugin", "what tool should I use?", "is there a plugin for this?", "recommend a tool". Also checks for duplicate installations.
 user-invocable: true
-allowed-tools: ["Grep", "GoogleWebSearch", "Bash"]
+allowed-tools: ["Read", "Grep", "Bash", "WebSearch", "WebFetch"]
 model: sonnet
 ---
 
@@ -59,7 +59,9 @@ Tier is **independent of platform origin** (Anthropic / OpenAI / community). A w
 
 2. **[Priority 1.5] Internal GHE Sister Assets (partially completed work — Tier 2)**: Check if user's task domain already exists in internal sister asset clusters. Prioritize direct use or adoption of sister assets if the user's task falls within these cluster domains.
 
-3. **[Priority 2.5] Project Reference/Contribution Path**:
+3. **[Priority 2] Organization's Internal GHE (Tier 1–4)**: Search internal GHE with keywords like `claude-plugin`, `gemini-plugin` + user keywords / API search. Replace with your organization's internal GHE orgs.
+
+4. **[Priority 2.5] Project Reference/Contribution Path**:
 
     For cases where referencing or contributing to the project itself is more appropriate than installing a plugin. Provide guidance when there's intent for medium-term contribution rather than immediate use.
 
@@ -71,9 +73,7 @@ Tier is **independent of platform origin** (Anthropic / OpenAI / community). A w
     - `plugin-recommender` [Priority 2.5]: When no immediately usable plugin is available → guide to project-level reference/contribution path (alternative to installing)
     - `cross-ecosystem-synergy-detection`: Discover hidden synergies among already-installed skills (post-install utilization optimization)
 
-    Activation condition: Automatically entered when Step 2 [Priority 1]~[Priority 2] search yields no suitable plugin.
-
-4. **[Priority 2] Organization's Internal GHE (Tier 1–4)**: Search internal GHE with keywords like `claude-plugin`, `gemini-plugin` + user keywords / API search. Replace with your organization's internal GHE orgs.
+    Activation condition: Automatically entered when Step 2 [Priority 1]~[Priority 2] search yields no suitable plugin. **This block therefore runs only after [Priority 2] has actually been executed** — the list above is in execution order (1 → 1.5 → 2 → 2.5 → 3), and the priority labels are names, not the run sequence.
 
 5. **[Priority 3] External Open-Source Ecosystem**: WebSearch / WebFetch — "best github actions for X", "claude plugin for Y", etc. Simplification guard: defer external install if internal assets suffice.
 
@@ -91,16 +91,18 @@ When queried for a specific capability (e.g., "adversarial reviewer for bash cod
 0. **Platform built-ins (Tier 0)** — does a built-in skill/command already cover the capability? Check the live session's available-skills list before any plugin search. A built-in that covers ~80% beats installing a plugin for the rest
 1. **Installed locally** — `.claude/agents/`, `plugins/` in current cwd
 2. **FH native skills** — always-loaded knowledge in `plugins/fh-meta/` and `plugins/fh-commons/`
-3. **Claude Code marketplace** — `claude mcp search [capability]` or known CC registry (see verified targets above)
-4. **Codex marketplace** — `npx @openai/codex list-agents [capability]` or known Codex registry
+3. **Claude Code marketplace** — `claude plugin list --available --json` (marketplace plugins; `--available` **requires** `--json`) + `claude plugin marketplace list` to see which marketplaces are even configured. There is **no** CLI keyword-search subcommand — filter the JSON yourself, and fall back to the known CC registry (see verified targets above) for anything not in a configured marketplace
+4. **Codex marketplace** — `npx --yes @openai/codex plugin list --available --json` (optionally `-m <marketplace>`) + `npx --yes @openai/codex plugin marketplace list`. Same limitation: no keyword search, filter the JSON
 5. **npm ecosystem** — `@chrono-meta/`, `@anthropic/`, and other known-quality scoped packages
+
+⚠️ **A failed or empty discovery lane is NOT "no candidates".** Both CLIs above list only *configured* marketplaces, and a non-zero exit / empty array means the lane did not answer — not that nothing exists. Report each lane's state explicitly (`EXECUTED` / `EMPTY` / `FAILED: <stderr>`) and never render a `FAILED` lane as a zero result; a lane that could not run must be re-run or replaced by the web-search fallback (Priority 3) before you tell the user nothing was found.
 
 **Discovery priority**: built-in (Tier 0) > installed > FH native > Tier 1 (any platform) > Tier 2 > Tier 3 > Tier 4
 **Tier 0 guard**: FH native wins over a built-in only when the FH skill adds governance the built-in lacks (e.g. `/goal` → `goal-quench` adds budget+quality gates; code diff review stays with built-in `/code-review`, FH-asset coherence with `hub-cc-pr-reviewer`)
 
 **When sim-conductor chains here for persona discovery**: apply the same platform-aware search scoped to persona/simulation/review capability tags. Return discovered agents with their Tier rating so sim-conductor can decide whether to install or use a built-in brief.
 
-For discovery bash commands (`claude mcp search`, `npx @openai/codex list-agents`, npm scoped search), see `SKILL_detail.md §Discovery-Bash`.
+For discovery bash commands (`claude plugin list --available --json`, `npx --yes @openai/codex plugin list --available --json`, npm scoped search), see `SKILL_detail.md §Discovery-Bash`.
 
 ### Step 2.6: Quality Validation Signals
 
@@ -214,9 +216,34 @@ sim-conductor needs persona X (no installed/built-in match)
 
 ```
 All Steps 0~5 completed
-+ Recommendation list table output (top 2~3 items, Tier + Platform + synergy grade included)
-+ Install completed after user selection (or install skipped / 5-B migration path guided)
+  — mandatory-pass: each step produced its stated output, or is
+    explicitly marked N/A with the reason
+
++ Recommendation list table output (top 2~3 items, Tier + Platform + synergy
+  grade included)
+  — mandatory-pass: the table exists with all three columns populated
+
++ Every discovery lane reported with an explicit state
+  (EXECUTED / EMPTY / FAILED: <stderr>)
+  — measured: count lanes attempted vs lanes reporting a state; the two
+    numbers must match. A FAILED lane rendered as "no candidates" is a FAIL
+    of this condition, not a pass — the CLI lanes have no keyword search and
+    see only configured marketplaces, so an empty result is routinely a
+    non-answer rather than an absence (`not found` != `0`)
+
++ Install completed after user selection (or install skipped / 5-B migration
+  path guided)
+  — mandatory-pass: explicit user consent recorded before any install ran
+
 + Duplicate detection results reported
+  — mandatory-pass: `claude plugin list` output consulted in this run
+
++ Every install string surfaced to the user resolves to the repository it is
+  cited from (§Constraints — resolved, not relayed)
+  — judged; adversarial pairing: in the same run, resolve one candidate name
+    you already know is correct AND check one near-name variant. If the
+    procedure cannot separate that pair, the resolution check is
+    UNCALIBRATED and no install string may be presented as verified
 ```
 
 ## Failure Response

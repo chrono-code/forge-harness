@@ -158,15 +158,29 @@ Max rounds: N | Actual convergence round: M
 
 ## Done When
 
+Each condition declares its check class (mandatory-pass / measured / judged); every judged condition
+names its adversarial pairing — no judge-only path.
+
 ```
 Setup complete (gate name, pass criteria, max rounds confirmed)
+  (mandatory-pass — all three named in writing BEFORE round 1; criteria written after seeing round-1
+   output are post-hoc and do not satisfy this)
 + Minimum 2 rounds executed
+  (measured: round count >= 2, read off the per-round table below)
 + Convergence declared (a round returns zero new failures AND you make no repairs in response to
   it, at any grade) or escalation triggered
+  (measured: the round's new-failure count = 0 AND its repair count = 0 — two numbers, both recorded
+   per round; a single-number reading is what let "0 new failures while still repairing" pass)
   ⚠️ NOT "2 consecutive rounds": while every round ships repairs that criterion can never fire, so
   it reads as permanently not-converged and gets shipped past. Adjudicated with measured evidence in
   `steel-quench` §Convergence Criteria (2026-08-02).
++ Escalation root cause classified when max rounds is hit without convergence
+  (judged — adversarial pairing: `fh-commons:quench-challenger` argues that the loop stopped because
+   the GATE is blind rather than because the artifact is clean; an unchallenged "converged" on a
+   gate that never produced a FAIL is the failure mode this pairing exists to catch)
 + Per-round result table output
+  (mandatory-pass — one row per executed round, each carrying its new-failure and repair counts;
+   a missing row makes the two measured conditions above unreadable)
 ```
 
 ## External anchor (independent convergence)

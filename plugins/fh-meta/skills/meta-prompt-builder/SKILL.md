@@ -153,11 +153,45 @@ Acceptable form examples:
 
 ## Done When
 
+This skill's own Done When must satisfy the 3-part completeness check it imposes on others
+(**measurement subject · measurement timing · version/baseline**). The previous version —
+`All steps 0–3 completed` — met 0 of 3 and matched its own `Unconditioned completion` WARN pattern.
+
 ```
-All steps 0–3 completed
-+ Per-agent prompt drafts output per Wave (Goal/Context/Constraints/Done When 4-field included)
-+ Step 3 quality self-validation complete ([WARN] items delegated to user if present)
-+ Generated prompts awaiting user review
+Measurement subject: this skill's own output — the prompt draft set
+                     produced in this invocation (not the dispatched
+                     agents' results, which this skill never sees)
+Measurement timing:  absolute, at end of this run — no comparison to a
+                     previous run is implied or required
+Version / baseline:  the Step 3 checklist and the WARN-trigger table in
+                     THIS file; note the SKILL.md revision used if the
+                     table has changed since the draft was written
+
+☐ Steps 0–3 each produced their named artifact — a step with no
+  artifact is incomplete, not "completed"                        (measured: 4 steps, 4 artifacts)
+☐ One prompt draft exists per agent named in the dispatch plan   (measured: drafts == agents
+                                                                  in plan)
+☐ Every draft carries all four fields (Goal / Context /
+  Constraints / Done When), none empty                           (measured: 4 fields × N drafts,
+                                                                  0 empty)
+☐ Each draft's own Done When was run through the 3-part
+  completeness check and the WARN-trigger table, with the
+  result recorded per draft                                      (mandatory-pass)
+☐ Every Goal was checked against the target agent's declared
+  allowed-tools by READING that agent's SKILL.md — not from
+  recall                                                          (mandatory-pass)
+☐ [WARN] items are surfaced to the user with the reason, and
+  the decision is the user's                                     (mandatory-pass)
+☐ Drafts are handed over for review, not dispatched              (mandatory-pass)
+☐ The drafts are usable by the target agent as written           (judged — adversarial pairing:
+                                                                  generator and validator are the
+                                                                  same model, so self-validation
+                                                                  repeats its own bias. Have the
+                                                                  target agent, or a different
+                                                                  model, read one draft cold and
+                                                                  state what it would do; a
+                                                                  divergence from the intended
+                                                                  task is a FAIL)
 ```
 
 ## Simplification Guard

@@ -18,7 +18,13 @@ The main agent passes you:
 2. The relevant scope (which directories, which memory files, which CATALOG sections)
 3. Any specific suspicions (e.g., "I think §X already covers this" or "memory may be stale")
 
-If scope is not specified, default scope = entire hub (`knowledge/`, `tracks/`, `memory/`, `CATALOG.md`).
+If scope is not specified, default scope = `knowledge/`, `tracks/`, `CATALOG.md`.
+**Check each scope element exists before searching it, and report a missing one — never fold it into
+a CLEAR.** Measured 2026-08-11: the previous default also listed `memory/`, which does not exist at
+the repo root (the memory index lives outside the repo, unreachable from `Read/Grep/Glob` without an
+absolute path), and `tracks/` is gitignored so a fresh clone has ~8 files in it. A scope element that
+resolves to nothing produces the exact failure this agent's own self-check names — *"Missing scope =
+false CLEAR"* — so emit `scope-missing: <path>` in the verdict block and mark the verdict PARTIAL.
 
 ## Two definitions of "fact-check"
 

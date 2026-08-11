@@ -55,13 +55,28 @@ For each section in target SKILL.md:
 
 ### Ambiguous content test
 
-When unsure, apply the **D-skill cold-start test mentally**:
+The D-skill cold-start question frames the decision:
 
 > *"If a consumer agent had only SKILL.md and typed the trigger phrase, would they need this content in the first 2 steps?"*
 > - YES → Always-loaded
-> - NO → On-demand
+> - NO → **candidate** for on-demand — not yet a verdict
 
-Behavioral rules always pass this test (even if rarely triggered, the consumer needs to know the constraint exists).
+**Do not answer it in your head.** AMBIGUOUS is precisely the case where the eyeball answer is
+unreliable, so the verdict is measured, per SKILL.md §Floor ① and CLAUDE.md's ablation procedure:
+
+```bash
+bash scripts/ablation_calibrate.sh          # runner precondition — must exit 0 before any arm runs
+# then run the pre-registered arms per scripts/probe_scope_check.sh (header = canon:
+#   arms · isolation · reps>=3 · pre-registration · the two leak channels)
+# verdict line → .claude/regression/ablation_verdicts.md
+```
+
+Read the result correctly: a section is CUT only when the **isolated arm B answers the pre-registered
+questions correctly**. Arm B answering **confidently wrong is a KEEP** — fluency is not recall, and
+that is the failure the isolation exists to expose.
+
+Behavioral rules skip the probe and stay Always-loaded (even if rarely triggered, the consumer needs
+to know the constraint exists) — that is a KEEP by classification, not an unmeasured cut.
 
 ---
 
@@ -148,19 +163,35 @@ Opening line:
 
 For each pointer in SKILL.md: create matching `## §SectionName` header, paste removed content under it.
 
-Orphan check: every `## §SectionName` in SKILL_detail.md must have a corresponding pointer in SKILL.md. If not → either add pointer or merge with adjacent section.
+Orphan check: every section header in SKILL_detail.md must have a corresponding pointer in SKILL.md.
+Scan `^## ` — **not** `^## §`: measured across this repo, 139 `## ` headers vs 97 `## §`, so a §-only
+scan is structurally blind to 42 (30%) of real sections and passes them forever. If a header has no
+pointer → add the pointer or merge with an adjacent section.
 
 ### Step 4: Verification sequence
 
 ```bash
-# 1. Pointer extraction from SKILL.md
-grep -oE "SKILL_detail\.md §[A-Za-z0-9_-]+" plugins/{plugin}/skills/{name}/SKILL.md
+S=plugins/{plugin}/skills/{name}
 
-# 2. Section headers in SKILL_detail.md
-grep "^## §" plugins/{plugin}/skills/{name}/SKILL_detail.md
+# 1+2+3 in one comparison. Three normalizations, each one learned from a false positive:
+#   · headers are written "## §Name — description"      → strip the em-dash tail
+#   · the marker word varies (**Detail**, **Template**) → match any bolded lead + "See"
+#   · one line may carry TWO pointers (documented variant, §Pointers)
+#                                                       → collect ALL §names on the line
+#   Anchoring on the pointer LINE (not "any mention of the detail file") is what keeps prose that
+#   merely DISCUSSES a pointer out — measured: a backtick-only filter counted an explanatory
+#   example as a live pointer, and a **Detail**-only filter called two real pointers orphans.
+diff <(grep -E '^> \*\*[A-Za-z]+\*\*: See ' "$S/SKILL.md" \
+         | grep -oE '§[A-Za-z0-9_-]+' | sed 's/^§//' | sort -u) \
+     <(grep '^## §' "$S/SKILL_detail.md" | sed 's/^## §//; s/ *—.*//' | sort -u)
+# rc=0 → every pointer resolves AND every §header has a pointer (both directions in one run)
+# rc=1 → the diff output names which side is missing what. Fix before commit.
 
-# 3. Diff — every pointer must have a matching section
-# Any pointer with no matching section = Phantom → fix before commit
+# 4. Orphan scan over the WIDER header form (see above — §-only misses 30%)
+grep -n '^## ' "$S/SKILL_detail.md"
+
+# 5. Gate coverage for the destination path (SKILL.md §Floor ②)
+bash scripts/gate_pathspec_check.sh
 ```
 
 Then run:
@@ -180,6 +211,8 @@ Use before committing a completed split:
 | All §pointers resolve | phantom-quench: 0 phantoms |
 | Cold-start grade F | sim-conductor Area D-skill: consumer reaches core completion |
 | No behavioral rule in SKILL_detail only | Any rule governing "what counts as X" present in SKILL.md |
-| No orphan §sections | Every ## §SectionName in SKILL_detail.md has a pointer from SKILL.md |
+| No orphan sections | Every `## ` header in SKILL_detail.md has a pointer from SKILL.md (scan `^## `, not `^## §` — §-only is blind to 30% of real headers) |
+| Gate coverage holds | `bash scripts/gate_pathspec_check.sh` exits 0, or the pathspec update ships in the same commit |
+| Ablation verdict for every AMBIGUOUS cut | Verdict line in `.claude/regression/ablation_verdicts.md`; arm B correct = CUT, arm B confidently wrong = KEEP |
 | SKILL.md ≤ 50% of original | Line count check |
 | SKILL.md flows without gaps | Reading SKILL.md alone gives complete step sequence understanding |

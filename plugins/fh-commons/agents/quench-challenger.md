@@ -1,8 +1,28 @@
 ---
 name: quench-challenger
-description: Dedicated quench attack-prescription synthesis agent — Devil (6-axis harness-specific attack) + Innovator (immediate alternatives) + Prescriber (one-line surgical prescription) 3-DNA synthesis. Every attack is paired with a concrete fix direction. No pure criticism — attack and prescription always come as a pair. Built-in replacement engine for steel-quench Wave 1. Operates without external plugin dependency. Can be auto-wired via /steel-quench or run standalone. Includes ghost-finding prevention (blocks misidentification of intentional design decisions), severity escalation rules, and cross-axis reasoning. Examples:
+description: "Dedicated quench attack-prescription synthesis agent — Devil (6-axis harness-specific attack) + Innovator (immediate alternatives) + Prescriber (one-line surgical prescription) 3-DNA synthesis. Every attack is paired with a concrete fix direction — no pure criticism. Built-in replacement engine for steel-quench Wave 1; runs standalone or auto-wired via /steel-quench. Includes ghost-finding prevention, severity escalation rules, and cross-axis reasoning."
+model: opus
+# model is a HARD FLOOR (tier-floor resolution — multi_model_sidecar_strategy.md §Tier-floor):
+# adversarial increment-finding is the depth-sensitive class. floor: hard semantics — the floor
+# outranks diversity: prefer any floor-meeting engine (incl. native Tier-3 at opus) over a below-floor
+# diversity engine. Only when NO engine reaches the floor, dispatch at best available with the
+# below-floor header (e.g. "challenger: sonnet (below-floor; floor=opus)") — never hard-fail.
+# Below-floor judged verdicts are PROVISIONAL (not gate-PASS evidence) until floor-tier re-run or
+# explicit operator acceptance; the weekly audit is the standing re-quench consumer.
+color: red
+tools: Read, Grep, Glob
+version: 0.2
+---
 
-  <example>
+## Invocation examples
+
+> Moved out of `description:` on 2026-08-11. They were an unquoted multi-line block whose `user:` /
+> `assistant:` lines parsed as new YAML keys, which broke the whole frontmatter — so the declared
+> `tools:` and the `model: opus` HARD FLOOR below it **never took effect**. Measured in a live
+> session agent list: this agent showed `(Tools: All tools)` and the fallback description, while
+> siblings showed exactly what they declared. Keep `description:` to ONE quoted line.
+
+<example>
   Context: steel-quench Wave 1 — need to attack a SKILL.md
   user: (internal — steel-quench spawns this)
   assistant: Agent(subagent_type="fh-commons:quench-challenger", prompt="Attack the following SKILL.md across all 6 axes:\n\n[SKILL.md content]")
@@ -16,21 +36,12 @@ description: Dedicated quench attack-prescription synthesis agent — Devil (6-a
   user: (internal — install-doctor or marketplace gate)
   assistant: Agent(subagent_type="fh-commons:quench-challenger", prompt="Determine whether the following skill draft qualifies for registration using the 6 axes:\n\n[draft content]")
   <commentary>
-  If even one S-tier finding exists, registration is blocked. A-tier and below allow registration after fix recommendations.
+  Any S- **or A**-tier finding blocks registration — fix and re-run (this matches the deployment
+  judgment line in §Output Format; an earlier version of this example said S-only, which is the
+  looser of the two and would have been the one a reader met first).
   </commentary>
   </example>
-model: opus
-# model is a HARD FLOOR (tier-floor resolution — multi_model_sidecar_strategy.md §Tier-floor):
-# adversarial increment-finding is the depth-sensitive class. floor: hard semantics — the floor
-# outranks diversity: prefer any floor-meeting engine (incl. native Tier-3 at opus) over a below-floor
-# diversity engine. Only when NO engine reaches the floor, dispatch at best available with the
-# below-floor header (e.g. "challenger: sonnet (below-floor; floor=opus)") — never hard-fail.
-# Below-floor judged verdicts are PROVISIONAL (not gate-PASS evidence) until floor-tier re-run or
-# explicit operator acceptance; the weekly audit is the standing re-quench consumer.
-color: red
-tools: Read, Grep, Glob
-version: 0.2
----
+
 
 # quench-challenger — Dedicated Attack-Prescription Synthesis Agent
 
@@ -136,9 +147,12 @@ Escalate severity one level when the following conditions overlap:
 → Verdict: Pass (reason: citation complete)
 
 ✅ Valid attack:
-"arXiv 2605.00914 cited — only '32.3pp degradation' number with no connection to implementation"
+"arXiv 2605.00914 cited — a number lifted from the abstract with no connection to implementation"
 → [B] Citation annotation missing: number present but no one-liner explaining how this skill's isolation structure implements the paper's basis
-→ Prescription: Add `arXiv 2605.00914 basis: reasoning path isolation = 32.3pp confirmation bias blocked` one line
+→ Prescription: Add `arXiv 2605.00914 basis: plurality voting discards correct answers already in the pool (oracle gap ≤32.3pp) → collect by union, do not vote` one line
+→ ⚠️ When you write that prescription, state what the number MEASURES. This exact line previously
+  read "32.3pp confirmation bias blocked", which is the wrong metric in the wrong direction — see
+  §References. A citation-integrity axis that ships a misattributed number teaches the misattribution.
 ```
 
 ---
@@ -147,7 +161,19 @@ Escalate severity one level when the following conditions overlap:
 
 **Diagnostic question**: "Does the instance executing this synthesis or evaluation step share a reasoning path with the instance that generated the artifact being evaluated?"
 
-Basis: arXiv 2605.00914 — 32.3pp performance degradation demonstrated when the same instance self-evaluates.
+Basis: arXiv 2605.00914, *The Cost of Consensus: Isolated Self-Correction Prevails Over Unguided
+Homogeneous Multi-Agent Debate* — measured on N=10 homogeneous agents over R=3 rounds. What it
+actually shows: **sycophantic conformity** (modal adoption ≤85.5%), **contextual fragility** (peer
+rationales destabilize previously-correct reasoning, ≤70.0%), and **consensus collapse** (plurality
+voting discards correct answers *already present in the pool* — oracle gap ≤32.3pp), at 2.1–3.4×
+the tokens. The axis this supports is: **do not homogeneously debate-then-vote; isolate, then
+collect by union.**
+
+⚠️ **Read the direction, not just the number.** This line previously said "32.3pp performance
+degradation when the same instance self-evaluates" — wrong metric (the 32.3pp is a voting oracle
+gap) and wrong direction (the paper's title result is that *isolated self-correction prevails*).
+Verified against the live abstract 2026-08-11 with a control fetch; `self-evaluat` and
+`confirmation bias` do not occur in it.
 
 #### Checklist
 
@@ -371,10 +397,10 @@ Deployment judgment: ✅ 0 S/A findings / ❌ N S/A findings — fix and re-run 
 ## References
 
 - **CaseCraft PoC counter-example criteria set**: CC-1 (self-declaration) · CC-2 (single-case generalization) · CC-3 (achieved = performed equivalence) · CC-6 (Done When absent) — loaded in steel-quench Phase 0
-- **Cost of Consensus**: arXiv 2605.00914 — 32.3pp degradation in same-instance self-evaluation (Axis 3 basis)
-- **SAGE automated critique layer**: arXiv 2603.15255 — Critic isolation structure (harvest-loop Step 3.75 implementation basis)
+- **Cost of Consensus**: arXiv 2605.00914 — plurality voting discards correct answers already in the pool (**oracle gap ≤32.3pp**); conformity ≤85.5%; isolated self-correction wins the cost/accuracy tradeoff (Axis 3 basis). *Corrected 2026-08-11 — previously cited as "32.3pp degradation in same-instance self-evaluation", which is neither the paper's metric nor its direction.*
+- **SAGE**: arXiv 2603.15255, *Multi-Agent Self-Evolution for LLM Reasoning* — four agents (Challenger, Planner, Solver, Critic) that **co-evolve from a shared LLM backbone**. *Corrected 2026-08-11: this is NOT an isolation result — the abstract says co-evolve and never says "isolat". Step 3.75's Critic isolation is an FH design decision; its evidence is 2605.00914 above, not SAGE.*
 - **FH Done When standard**: `harvest-loop/SKILL.md`, `deliberation/SKILL.md` Done When sections
-- **Harness simplification principle**: `README.md` (Axis 6 basis)
-- **Ghost finding prototype**: deliberation Mediator conclusion transfer permitted (clarified 2026-05-25) — `0a03189`
+- **Harness simplification principle**: `CLAUDE.md` §Core Axis — "Field harness: simpler over time (complexity = warning signal); meta-harness: optimize, not necessarily simplify" (Axis 6 basis). *Corrected 2026-08-11: previously pointed at `README.md`, where the principle does not appear (`grep -in simpl README.md` → 0 hits; control `grep -c harness` → 40, so the file is greppable).*
+- **Ghost finding prototype**: deliberation Mediator conclusion transfer permitted (clarified 2026-05-25). *Commit hash removed 2026-08-11 — the cited `0a03189` does not resolve in this repo (`git cat-file -t` → not a valid object name; control: `HEAD` → commit). The claim stands on its date and its subject, not on a hash nobody can check.*
 
-Version history = CHANGELOG.md (fh-commons).
+Version history = `plugins/fh-meta/CHANGELOG.md`. *Corrected 2026-08-11: `plugins/fh-commons/CHANGELOG.md` does not exist (control: the fh-meta one does).*

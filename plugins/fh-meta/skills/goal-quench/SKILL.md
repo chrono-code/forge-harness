@@ -1,9 +1,12 @@
 ---
 name: goal-quench
 description: >-
-  Wraps /goal with a tiered safety + orchestration ladder. core (default): a token budget gate (pre-run estimate), mid-run budget thresholds, and an automatic post-run quality verification via pipeline-conductor — closing /goal's two gaps (Haiku evaluates completion, pipeline-conductor evaluates correctness). pro: adds context-doctor token reduction and agent-composer goal decomposition. max: adds internal-first capability-gap fill (LOCAL_SKILL_REGISTRY skill-bus scan → plugin-recommender external search → auto_project_mapping map/cluster) and cross-ecosystem-synergy-detection pre-validation. The Phase-1 budget verdict auto-recommends the mode. Triggered by "goal with quality gate", "safe goal", "goal-quench", "orchestrate this goal", or before running /goal on high-stakes tasks.
+  Wraps /goal with a tiered safety + orchestration ladder. core (default): a token budget gate (pre-run estimate), mid-run budget thresholds, and an automatic post-run quality verification via pipeline-conductor — closing /goal's two gaps (the runner's per-turn judge evaluates completion, pipeline-conductor evaluates correctness). pro: adds context-doctor token reduction and agent-composer goal decomposition. max: adds internal-first capability-gap fill (LOCAL_SKILL_REGISTRY skill-bus scan → plugin-recommender external search → auto_project_mapping map/cluster) and cross-ecosystem-synergy-detection pre-validation. The Phase-1 budget verdict auto-recommends the mode. Triggered by "goal with quality gate", "safe goal", "goal-quench", "orchestrate this goal", or before running /goal on high-stakes tasks.
 user-invocable: true
-allowed-tools: ["Read", "Write", "Bash", "Grep"]
+allowed-tools: ["Read", "Write", "Bash", "Grep", "Agent", "WebSearch", "WebFetch"]
+# Agent: Steps at :198 / :216 dispatch sub-agents (skill-bus proposals, agent-composer panel).
+# WebSearch/WebFetch: max-mode deep-research rung 2 (:46). All three were commanded by the body
+# while undeclared here — a declaration that omits what the skill actually does is not a diet.
 model: sonnet
 complexity_routing:
   base: sonnet
@@ -19,13 +22,22 @@ complexity_routing:
 
 # goal-quench — /goal with Token Budget + Quality Gate
 
-`/goal` runs until Haiku says "done" — but Haiku only checks completion, not quality. Without a budget ceiling, sessions can exhaust tokens silently. goal-quench adds three things that /goal currently lacks:
+**Availability of `/goal` is unresolved** — treat it the way `CLAUDE.md` treats `/deep-research`:
+use the built-in **if present**, and do not assert it is absent either. Everything below applies to
+whatever autonomous-run command this environment actually has; goal-quench is the wrapper, not the
+runner. Probe before relying on it (`/help`, or the skill/command list), and say which you found.
+
+`/goal` is understood to run until a cheap per-turn judge (reported as Haiku) says "done" — that is
+**second-hand, not verified here**, so treat it as the assumption goal-quench is designed against
+rather than as a fact about the implementation. What matters for this skill holds either way: a
+completion judge is not a quality judge, and without a budget ceiling a session can exhaust tokens
+silently. goal-quench adds three things such a runner does not itself provide:
 
 1. **Pre-run**: token-budget-gate estimate — know the cost before committing
 2. **Mid-run**: budget threshold awareness — signal before exhaustion (instructional; not mechanically enforced)
 3. **Post-run**: pipeline-conductor — verify quality before accepting "done"
 
-The evaluator principle: Haiku judges completion (every turn, cheap). pipeline-conductor judges quality (once at the end, structured). Separating the two closes the self-evaluation bias that a single evaluator cannot avoid.
+The evaluator principle: the runner's own per-turn judge decides completion (every turn, cheap). pipeline-conductor judges quality (once at the end, structured). Separating the two closes the self-evaluation bias that a single evaluator cannot avoid — the principle holds whatever model that per-turn judge turns out to be.
 
 > **Scope by mode**: core = budget gate + stop-hook verification (v1 behavior, unchanged). pro/max add token reduction, goal decomposition, and external discovery (see Modes below). (Tier names mirror Claude Code's subscription units — core / pro / max — and avoid colliding with pipeline-conductor's `--full` flag.) Mid-run Sonnet quality signals remain deferred (requires empirical calibration).
 
@@ -323,17 +335,38 @@ After each goal-quench run, append a calibration entry to `tracks/_meta/goal_que
 ## Done When
 
 ```
-Phase 1: token-budget-gate verdict output + mode resolved (core default, or pro/max via budget verdict / explicit flag)
-+ .claude/goal-quench.active written (with mode: field) + thresholds injected
-+ If pro/max: Phase 1.5 ran — context-doctor pre-pass + agent-composer plan;
-  max additionally: GAP-triggered internal LOCAL_SKILL_REGISTRY scan FIRST (trust-gated dispatch);
-  plugin-recommender + cross-ecosystem-synergy pre-validation ONLY if no internal hit;
-  auto_project_mapping map/cluster deferred to session close only if an external capability was adopted (each surfaced for approval)
-+ Phase 3 (on next response after /goal): .pending file detected + pipeline-conductor run
-  (--quick for core/pro, --full for max)
-+ Verification verdict output (CLEAN/PENDING/BLOCKED/ESCALATE)
-+ If sidecar invoked (pro/max Step D): Step 3-c sidecar verdict resolved (PASS/CONDITIONAL_PASS) before closing
-+ .pending file deleted + calibration record appended
+☐ Phase 1: token-budget-gate verdict output + mode resolved
+  (core default, or pro/max via budget verdict / explicit flag)   (mandatory-pass)
+☐ .claude/goal-quench.active written (with mode: field) +
+  thresholds injected — the file exists on disk and is read back  (mandatory-pass)
+☐ If pro/max: Phase 1.5 ran — context-doctor pre-pass +
+  agent-composer plan; max additionally: GAP-triggered internal
+  LOCAL_SKILL_REGISTRY scan FIRST (trust-gated dispatch);
+  plugin-recommender + cross-ecosystem-synergy pre-validation
+  ONLY if no internal hit; auto_project_mapping map/cluster
+  deferred to session close only if an external capability was
+  adopted (each surfaced for approval)                            (mandatory-pass)
+☐ Phase 3 (on next response after /goal): .pending detected +
+  pipeline-conductor run (--quick core/pro, --full max)           (mandatory-pass)
+☐ Verification verdict output (CLEAN/PENDING/BLOCKED/ESCALATE)    (mandatory-pass)
+☐ If sidecar invoked (pro/max Step D): Step 3-c sidecar verdict
+  resolved (PASS/CONDITIONAL_PASS) before closing                 (mandatory-pass)
+☐ .pending deleted + calibration record appended                  (mandatory-pass)
+☐ Calibration record carries actual_tokens as a NUMBER or the
+  literal "unknown" — never 0, never blank, never omitted         (measured: field present and
+                                                                   non-empty)
+☐ Enumerated failed/skipped checks reconcile against the resolved
+  mode's in-scope set: len(list) == in-scope − passed             (measured: exact equality —
+                                                                   this is the anchor that keeps
+                                                                   the verdict off a judge-only
+                                                                   path)
+☐ The run actually achieved the stated goal, not merely finished  (judged — adversarial pairing:
+                                                                   pipeline-conductor's verdict is
+                                                                   the independent check; the
+                                                                   runner's own completion judge
+                                                                   does NOT satisfy this, which is
+                                                                   the entire reason this skill
+                                                                   exists)
 ```
 
 Verdict: PASS (CLEAN verification) | CONDITIONAL_PASS (PENDING verification) | FAIL (BLOCKED verification) | ESCALATE (user decision required on partial completion)

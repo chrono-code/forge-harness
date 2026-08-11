@@ -69,7 +69,13 @@ Additional checklist for the human operator:
 
 ### 1-a. Load naming history
 
-**Path A (hub environment with naming history)**: Read `MEMORY.md` (hub memory index), then load the naming-relevant files referenced there.
+**Path A (hub environment with naming history)**: read the naming history from `CATALOG.md` and
+`knowledge/shared/` (both repo-root, both present). *Corrected 2026-08-11: this said `MEMORY.md`,
+which does not exist at the repo root (`ls MEMORY.md` → No such file; control: `CATALOG.md` and
+`README.md` resolve). Path A therefore read nothing and rendered as "no naming gap found" — and
+Path B could not catch it, because its condition is "external environment" and this IS the hub.*
+**If neither source resolves, degrade to Path B and say so in Section 0 — a silent empty read is
+not a finding of zero.**
 
 **Path B (external environment)**: Skip memory read. Use only the naming pattern taxonomy below (§ Naming pattern taxonomy) and the current invocation context.
 
@@ -77,7 +83,9 @@ Additional checklist for the human operator:
 
 Scan current asset inventory using Grep/Glob:
 ```
-grep -r "candidate\|gap\|unnamed\|no name" <harness-root>/
+Grep tool: pattern `candidate|gap|unnamed|no name`, path `.` (repo root)
+    — stated as a Grep-tool call, not a shell line: this agent declares `tools: Read, Grep, Glob`
+      and has no Bash, so a shell command here is an instruction it cannot execute.
 ```
 
 Also look for:

@@ -2,7 +2,7 @@
 name: salience-splitter
 description: 'Splits an over-loaded always-loaded context asset — a SKILL.md, CLAUDE.md, or memory index — into a lean always-loaded layer + an on-demand layer, using a governance-semantic criterion (not length, but when the content is needed), connected by imperative pointers. Based on paper §9.5 Protocol-Priority Split pattern. Diagnoses, classifies, splits, and verifies in one pass. Renamed from skill-splitter (old name still routes here). Triggers: "SKILL.md too large", "split this skill", "skill is bloated", "skill file too long", "CLAUDE.md 너무 커".'
 user-invocable: true
-allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
+allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent"]
 model: sonnet
 ---
 
@@ -46,6 +46,43 @@ model: sonnet
 
 **One test**: *"If a consumer agent had only SKILL.md, could they recognize the trigger, understand the full step sequence, and make the key decisions?"* → Yes = correct split. No = something behavioral is missing from SKILL.md.
 
+### Two floors this skill must not cross (behavioral — resident on purpose)
+
+**① A cut is measured, never eyeballed** — and *which* measurement depends on what layer you are
+cutting from. Both branches forbid the same thing ("I read it and it looks redundant" is not a
+measurement); they differ in cost because the surfaces differ:
+
+| Cutting from | Measurement | Why this one |
+|---|---|---|
+| **Resident layer** — CLAUDE.md, a memory index (loaded every session, for every task) | **Ablation harness**: pre-registered question set · **isolated arm B** · `reps>=3` · runner precondition `bash scripts/ablation_calibrate.sh` exits 0 (canon = `scripts/probe_scope_check.sh` header) · verdict line → `.claude/regression/ablation_verdicts.md` | A wrong cut here degrades *every* session silently, and the cost is unattributable after the fact |
+| **SKILL.md → SKILL_detail.md** (loaded only when the skill is invoked) | **Cold-start sim**: `sim-conductor` Area D-skill on SKILL.md alone must reach grade F (see Done When) | The failure is scoped to one skill's invocation and the sim reproduces exactly that condition |
+
+**Arm B answering confidently wrong is a KEEP, not a pass** — fluency is not recall, and that is the
+whole reason the arm is isolated. The same reading applies to the sim: a consumer that improvises
+plausibly without the moved rule is grade P, not F.
+
+This skill is the one that executes resident removal, so the procedure is named *here* rather than
+assumed — an earlier version left the judgment "mentally", which is exactly the eyeball path both
+branches exist to replace. **Do not read the resident row onto the SKILL.md row**: requiring a full
+ablation for every ambiguous SKILL.md section would price routine splitting out of existence, which
+is how a floor turns into a bypass trainer (cross-family review 2026-08-11 flagged exactly that
+over-block in the first draft of this section).
+
+**② Every split must re-ask whether the destination is inside the gate.** Moving content to a new
+path can move it **out of the 4-axis gate's pathspec** — the gate-locality class has recurred four
+times, most sharply when `SKILL_detail.md` fell outside a literal `SKILL\.md` term and 27.7% of the
+skill-spec surface went ungated (it leaked twice for real). `.claude/rules/fh_4axis_gate.md` names
+*this skill* as the producer that **widens that hole every time the diet succeeds**. So coverage is
+re-verified mechanically at split time, not assumed:
+
+```bash
+bash scripts/gate_pathspec_check.sh    # exit 0 = known-pair coverage holds, 1 = a pair broke
+```
+
+A destination path the gate does not match is not a "later" item: **ship the pathspec update in the
+same commit as the split** — the split and its coverage are one change, and separating them is how
+the surface silently shrinks.
+
 ---
 
 ## Step Overview
@@ -64,12 +101,56 @@ Step 3 — Draft SKILL_detail.md
     One ## §SectionName header per pointer in SKILL.md
     Move removed content under its section
     Front-matter: name, description, load: on-demand
+    → Gate check (Floor ②): destination path inside the 4-axis pathspec?
+      bash scripts/gate_pathspec_check.sh — not-matched = update the pathspec in THIS commit
 
 Step 4 — Verify
     phantom-quench: every §pointer in SKILL.md resolves to ## §SectionName in SKILL_detail.md
     sim-conductor Area D-skill: consumer agent with SKILL.md only → must reach grade F
+      (grade scale — sim-conductor SKILL.md §Area-D: F = Functional/PASS · P = Partial · B = Broken)
     → Any pointer mismatch or grade P/B → fix before commit
 ```
+
+**Step 4 pointer↔header comparison — run it, don't eyeball it.** Both sides need normalizing or the
+check produces ~100% false positives: real headers are written `## §Name — description`, so a naive
+compare never matches. And extraction must be anchored to the **declared pointer form**
+(see "Imperative Pointer Format" below — a blockquote line whose bolded lead is followed by
+`See`), not to "a mention of the
+detail file": any prose that *discusses* a pointer, quoted or not, is otherwise collected as one.
+That is not hypothetical — a paragraph on this page names an example section, and a
+backtick-only filter counted it as a live pointer:
+
+```bash
+S="plugins/{plugin}/skills/{name}"   # the skill dir being split
+# pointer side: any bolded-lead "See" line (the marker word varies — **Detail**, **Template**, …),
+# and ALL §names on it (a documented variant puts two pointers on one line)
+diff <(grep -E '^> \*\*[A-Za-z]+\*\*: See ' "$S/SKILL.md" \
+         | grep -oE '§[A-Za-z0-9_-]+' | sed 's/^§//' | sort -u) \
+     <(grep '^## §' "$S/SKILL_detail.md" | sed 's/^## §//; s/ *—.*//' | sort -u)
+# rc=0 → every pointer resolves and every §header has a pointer. rc=1 → the diff names both directions
+#         ("<" = pointer with no section · ">" = section with no pointer, i.e. an orphan).
+```
+
+**Calibrate before trusting it** (this check was wrong twice while being written — each narrowing
+looked reasonable and produced false orphans): run it across sibling skills and confirm it
+*discriminates*. Measured 2026-08-11 over 6 FH skills: 5 exit 0, `steel-quench` exits 1 on a real
+orphan (`§Phase0` — no pointer anywhere in its SKILL.md), and this page's own prose example is not
+collected. A version of this check that flags everything, or nothing, is not measuring.
+
+**Orphan check covers `^## `, not `^## §` — and the two checks have different jobs.** The diff above
+compares §-prefixed headers against pointers; a header written *without* the `§` prefix is invisible
+to it. Measured across this repo's `SKILL_detail.md` files: **139 `## ` headers vs 97 `## §`**, so 42
+(30%) sit outside the comparison entirely and would pass forever. So run both, and read them as one
+rule:
+
+```
+diff (§ side)   → pointer↔header agreement, both directions
+grep '^## '     → coverage net: any header the diff could not see
+resolution      → give it the § prefix AND a pointer (then the diff covers it), or merge it away
+```
+
+A non-§ header listed by the grep and left alone is **not** a pass — it is the orphan the §-only
+scan used to hide.
 
 > **Detail**: See `SKILL_detail.md §Verification-Checklist` — pre-commit checklist table (8 checks) — read when running Step 4 verification.
 
@@ -120,17 +201,49 @@ Run on a SKILL.md when **any one** of:
 
 ## Done When
 
+**Common to all three scopes** (§Scope declares SKILL.md · CLAUDE.md · memory index — the conditions
+below are the ones that hold whatever was split; scope-specific conditions follow):
+
 ```
 Step 1 classification table produced
+  (mandatory-pass — the table exists and every section carries a verdict)
++ Every AMBIGUOUS section carries the measurement its layer requires (Floor ①)
+  (measured — resident layer: ablation verdict line in .claude/regression/ablation_verdicts.md
+   (pre-registered set, isolated arm B, reps>=3) · SKILL.md layer: cold-start sim grade F.
+   Eyeball judgment = NOT met on either branch)
++ Gate coverage re-verified for every destination path introduced by the split
+  (mandatory-pass — `bash scripts/gate_pathspec_check.sh` exits 0, or the pathspec update
+   ships in the same commit)
++ No behavioral rule lives only in the on-demand layer
+  (judged — pair: an isolated consumer read that has ONLY the always-loaded layer and must reach
+   a decision the moved rule governs; author re-reading their own split does not satisfy this)
+```
+
+**Scope-specific — SKILL.md split:**
+```
 + SKILL.md trimmed: triggers · principles · step overview · decision tables · Done When retained
-+ SKILL.md has imperative pointer for every removed section (> **Detail**: See SKILL_detail.md §<X>)
-+ SKILL_detail.md created: ## §SectionName header for every pointer in SKILL.md
++ Imperative pointer for every removed section; SKILL_detail.md carries one ## §header per pointer
+  (mandatory-pass — Step 4 normalized diff exits 0, both directions)
 + phantom-quench: 0 phantoms (all §pointers resolve)
   → Fallback (skill unavailable): run §Verification-Checklist manually from SKILL_detail.md
 + sim-conductor Area D-skill: grade F (consumer completes core task from SKILL.md alone)
-  → Fallback (skill unavailable): manually confirm "trigger → step overview → key decision → Done When" all present in SKILL.md
+  (measured — grade scale, sim-conductor SKILL.md §Area-D: F = Functional/PASS · P = Partial · B = Broken)
+  → Fallback (skill unavailable): manually confirm "trigger → step overview → key decision → Done When" present
 ```
 
-**Not done**: SKILL_detail.md has a §section with no pointer from SKILL.md (orphan section).
-**Not done**: Consumer agent grade P/B after split — a behavioral rule was moved to SKILL_detail.md when it should have stayed.
-**Not done**: Any behavioral rule present only in SKILL_detail.md.
+**Scope-specific — CLAUDE.md split:** the resident file keeps the rule *and* an imperative
+`> **Detail**: See …` pointer; the detail destination is inside the gate pathspec (Floor ②); a cold
+top-level session can still act on the rule without opening the detail file
+(judged — pair: a blind sim at the tier the rule must survive on, **not** the author's re-read).
+⚠️ Resident-footprint claims are measured only by a **fresh top-level `/context`** — file char counts
+are not resident measurements, and an agent-view window cannot measure it at all.
+
+**Scope-specific — memory index split:** every demoted entry is reachable from the archive by the
+recall path the index declares (mandatory-pass — grep the archive for the demoted entry's own nouns
+and hit it); the hot index keeps one line per surviving entry.
+
+**Not done**: an on-demand section with no pointer from the always-loaded layer (orphan) — scan
+`^## `, not `^## §` (30% of real headers carry no §).
+**Not done**: consumer grade P (Partial) or B (Broken) after split — a behavioral rule was moved out
+when it should have stayed.
+**Not done**: a section CUT on "it looked redundant" with no ablation verdict line.

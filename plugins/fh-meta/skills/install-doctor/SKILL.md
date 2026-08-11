@@ -221,19 +221,37 @@ If existing retrospective/audit files exist → `harvest-loop` will create files
 # Check MCP server transport settings
 grep -r "\"transport\"" .mcp.json 2>/dev/null | grep -i "http\|sse"
 
-# List MCP servers using HTTP transport
-python3 -c "
-import json, sys
+# List MCP servers using HTTP transport.
+# `except: pass` made this exit 0 on ANY failure, so the `|| echo` fallback was dead code and a
+# corrupt .mcp.json rendered identically to "no risky servers" — a silent pass on a security check.
+# Four states, four distinct exits: absent(0) · unparseable(2) · risky(1) · all-stdio(0).
+python3 - <<'PY'
+import json, os, sys
+p = '.mcp.json'
+if not os.path.exists(p):
+    print('  MCP-CHECK: NOT-APPLICABLE — .mcp.json absent (no MCP servers configured)')
+    sys.exit(0)
 try:
-    d = json.load(open('.mcp.json'))
-    servers = d.get('mcpServers', {})
-    for name, cfg in servers.items():
-        t = cfg.get('transport', 'stdio')
-        if t != 'stdio':
-            print(f'  ⚠️  {name}: transport={t}')
-except: pass
-" 2>/dev/null || echo "  .mcp.json absent or unparseable"
+    d = json.load(open(p))
+except Exception as e:
+    print(f'  MCP-CHECK: UNPARSEABLE — {p}: {e}')
+    print('  Transport risk UNMEASURED — this is NOT a pass. Fix the file and re-run.')
+    sys.exit(2)
+servers = (d.get('mcpServers') or {})
+risky = [(n, (c or {}).get('transport', 'stdio')) for n, c in servers.items()
+         if (c or {}).get('transport', 'stdio') != 'stdio']
+if risky:
+    for n, t in risky:
+        print(f'  WARNING  {n}: transport={t} — verify localhost binding + auth')
+    sys.exit(1)
+print(f'  MCP-CHECK: PASS — {len(servers)} server(s), all stdio')
+PY
 ```
+
+> **Read the exit code, not just the text.** `2` (unparseable) is an *unmeasured* check and must be
+> reported 🟧 in Step 3, never folded into 🟩. Known-pair calibration for this block: a deliberately
+> truncated `.mcp.json` must yield `2`, and a config with one `transport: http` server must yield `1`.
+> If both print nothing, the check is dead.
 
 **Known MCP HTTP transport vulnerability patterns** (based on HTTP port exposure security principles): When MCP servers using HTTP/SSE transport expose ports without authentication, remote access risk within local networks may occur. stdio transport is not affected.
 
@@ -283,10 +301,28 @@ If you installed only the plugin in a different project cwd:
 ## Done When
 
 ```
-All Steps 1~4 completed
-+ Step 3 diagnosis report output (🟥 immediate action / 🟧 check recommended / 🟩 no conflicts)
-+ "Plugin install is safe in current environment" confirmed when 0 conflicts
+Steps 0~4 completed                                              (mandatory-pass)
++ Step 0 node-floor results recorded per check, each as one of
+  PASS / FAIL / UNMEASURED — never blank                          (measured: 2 floors —
+                                                                   hook exec-bit, SessionStart
+                                                                   registration)
++ Step 2-6 MCP transport check exited 0/1/2 and the exit code is
+  carried into the Step 3 tier (2 = UNMEASURED → 🟧, never 🟩)     (mandatory-pass)
++ Step 3 diagnosis report emitted with a tier per area
+  (🟥 immediate action / 🟧 check recommended / 🟩 no conflicts)   (mandatory-pass)
++ Verdict is derived from the recorded per-area tiers: 🟩 only if
+  every area is 🟩 AND none is UNMEASURED                          (measured: count of
+                                                                   non-🟩 areas == 0)
 ```
+
+**Why `Steps 0~4`, not `1~4`**: Step 0 holds the only *mechanical floor* checks in this skill (hook
+exec-bit, SessionStart registration, Node floor). Leaving it outside the completion condition let a
+run report "done" having never touched the one part that is not judgement.
+
+**Why the verdict is counted, not stated**: the previous condition was `"Plugin install is safe in
+current environment" confirmed` — that measures whether a *sentence was printed*, which a run
+satisfies by printing it. An unmeasured area (e.g. an unparseable `.mcp.json`) must not be
+absorbed into 🟩; absence of a finding is not a finding of absence.
 
 ## Simplification Guard
 

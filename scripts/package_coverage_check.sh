@@ -104,6 +104,14 @@ ACCEPTED_ABSENT=(
   # machine is a bill is worse than omitting it. selfcheck reports it NOT EXERCISED (exit 2)
   # where the CLI is missing, so the package stays green without pretending the lanes ran.
   "scripts/test_sessionstart_multihook_lanes.sh"
+  # The launchd-driven daily cadence runner. Two independent reasons it must not ship: it is half of
+  # a pair whose other half is a machine-local plist (`scripts/com.forge-harness.frontier-digest.plist`),
+  # and every run spends `claude` CLI calls on the consumer's account — the same "its only effect on
+  # a consumer's machine is a bill" rule as `ablation_calibrate.sh` above. It also writes into
+  # `tracks/`, which does not ship. The frontier-digest SKILL names it as the *hub's* production
+  # runner (labelled hub-local at the reference), which is a pointer for contributors, not a promise
+  # of a shipped artifact — the skill's own save path works without it.
+  "scripts/frontier_digest_daily.sh"
 )
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'

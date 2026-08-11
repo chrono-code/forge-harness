@@ -2,6 +2,10 @@
 name: fh
 description: Renders the FH hub map on demand — the door menu, a starter set of skills, and the most-used trigger phrases — without requiring a greeting. State-aware; composes live candidates from the session card and tracks.
 user-invocable: true
+allowed-tools: ["Read", "Grep", "Glob"]
+# /fh is read-only by construction: it detects state and renders a map. It was the only one of
+# the 40 SKILL.md files with no allowed-tools declaration at all. Read/Grep/Glob is the full set
+# its body needs — no Bash, Write, Edit, or Agent appears anywhere in it.
 ---
 
 # /fh — hub map on demand

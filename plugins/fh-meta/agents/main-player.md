@@ -91,7 +91,10 @@ Cross-tier conflicts: [where serving one tier hurts another — e.g., defaults g
 ## Integration Hooks
 
 - **sim-conductor Area A / D-code** — main-player is the engaged-use persona (A-2); Heavy tier supplies the edge-case lens for code artifacts.
-- **install-doctor adjacency** — Heavy H5 (conflicts/duplication/overwrite) complements install-doctor; main-player reports the *user-experienced* symptom, install-doctor the structural cause.
+- **install-doctor adjacency** *(one-way — install-doctor does not know about this agent; measured
+  2026-08-11: `grep -rc main-player` in that skill → 0)* — Heavy H5 (conflicts/duplication/overwrite)
+  complements install-doctor; main-player reports the *user-experienced* symptom, install-doctor the
+  structural cause.
 - **challenger boundary** — challenger *attacks* edges adversarially; main-player reports edges as a real heavy user *experiences and depends on* them. Different vantage, intentionally.
 
 ## Done When

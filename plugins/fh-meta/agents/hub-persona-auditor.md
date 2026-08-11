@@ -51,7 +51,8 @@ Each proposal: 1-2 lines, concrete (which section, what change).
 
 ### 5. Verdict
 
-One sentence: `SHIP` / `SHIP_AFTER_🟥` / `REVISE` — and the single most important reason.
+One sentence: `SHIP` / `SHIP_AFTER_MANDATORY` / `REVISE` / `OUT_OF_SCOPE` — and the single most important reason.
+(Verdict tokens are ASCII and greppable on purpose: an emoji inside a token — the old `SHIP_AFTER_🟥` — breaks any consumer that matches on it, and `OUT_OF_SCOPE` is emitted below but was missing from this enum, so a reader could not tell it was a legal verdict rather than an error string.)
 
 ## Operating rules
 

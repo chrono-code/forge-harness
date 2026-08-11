@@ -56,15 +56,31 @@ re-verification is possible).
 
 ### Step 1 — Scan memory/*.md
 
+Enumerate **every** root with a per-root state — an absent root and an empty root are different
+facts, and the Step-4 snapshot scope is bound to this enumeration:
+
 ```bash
-ls ~/.claude/projects/*/memory/*.md 2>/dev/null
-# or hub-local:
-ls memory/*.md 2>/dev/null
+for ROOT in "$HOME"/.claude/projects/*/memory "$PWD/memory"; do
+  if [ -d "$ROOT" ]; then
+    n=$(ls "$ROOT"/*.md 2>/dev/null | wc -l | tr -d ' ')
+    echo "EXISTS(n=$n) $ROOT"
+  else
+    echo "ABSENT       $ROOT"
+  fi
+done
 ```
+
+**`ABSENT` is never counted as 0 entries.** Swallowing both into `2>/dev/null` makes "this root does
+not exist here" indistinguishable from "this root is empty" — and the snapshot in Constraints below
+must cover every root reported `EXISTS`, so a root mis-rendered as empty silently narrows the
+snapshot scope.
 
 For each file, extract:
 - `metadata.type` from frontmatter
-- `date:` or any date-like field in frontmatter or body
+- **Age source, in this order** (measured over the live corpus, n=267): `metadata.modified`
+  (ISO8601, present on 77/267) → else the file's filesystem mtime → else **`AGE-UNKNOWN`**.
+  There is **no top-level `date:` field in this corpus** (measured 0/267) — do not look for one,
+  and never treat `AGE-UNKNOWN` as fresh.
 - Key factual claims (GitHub URLs, status strings, version numbers, dates)
 
 ### Step 2 — Classify by Staleness
@@ -89,7 +105,9 @@ For each stale entry, run the appropriate re-verification:
 **Reference type** (URLs, DOIs, GitHub):
 - Use `gh api` for GitHub resources
 - Use `WebFetch` for DOIs and arXiv records
-- Mark `verified_at: YYYY-MM-DD` in frontmatter if still valid
+- Mark `metadata.verified_at: YYYY-MM-DD` — **nested under `metadata:`**, the layer this corpus
+  actually uses (`metadata:` present on 265/267; a top-level `verified_at` measured 0/267 and would
+  be invisible to the Step-1 extractor)
 - Flag `⚠ DRIFTED` if content has changed materially
 
 **Project type** (status, milestones):
@@ -121,11 +139,27 @@ Apply updates? [y / N per item]
 
 ### Step 5 — Record Run
 
+Use `printf`, never `echo "…\n…"` — `echo` expands `\n` in zsh but writes it **literally** in bash
+(measured: 6 lines vs 1), which silently produces a one-line file with a broken frontmatter.
+
 ```bash
-# Create hygiene log
-echo "---\ndate: $(date +%Y-%m-%d)\nentries_checked: N\nupdated: N\ndrifted: N\n---" \
-  > tracks/_meta/memory_hygiene_$(date +%Y-%m-%d).md
+mkdir -p tracks/_meta
+printf '%s\n' \
+  '---' \
+  "date: $(date +%Y-%m-%d)" \
+  "entries_checked: ${ENTRIES_CHECKED}" \
+  "demoted_to_archive: ${DEMOTED}" \
+  "orphans_indexed: ${ORPHANS}" \
+  "merged: ${MERGED}" \
+  "drifted: ${DRIFTED}" \
+  "hard_deleted: ${HARD_DELETED}" \
+  '---' \
+  > "tracks/_meta/memory_hygiene_$(date +%Y-%m-%d).md"
 ```
+
+**Every count is a measured value from Steps 1–4.** A log still containing a literal `N` (or an
+unexpanded `${…}`) is **an invalid log** — treat that run as not-recorded, because the log's
+existence is what arms the 7-day cadence guard, so a placeholder log suppresses the *next* real run.
 
 ## Constraints
 
@@ -133,7 +167,19 @@ echo "---\ndate: $(date +%Y-%m-%d)\nentries_checked: N\nupdated: N\ndrifted: N\n
 - **Snapshot before archive (Destructive-Op Gate for memory)**: before applying any confirmed
   archive/removal in Step 4, snapshot **every memory root the entry could live in** first — tar **all**
   roots Step 1 enumerated (`~/.claude/projects/*/memory/` AND hub-local `memory/`), not just one:
-  `tar czf tracks/_meta/memory_snapshot_$(date +%Y%m%d-%H%M%S).tgz <each Step-1 root that exists>` — so
+  the snapshot **must be gated on its own exit status** — an unwritable or missing `tracks/_meta`
+  makes `tar` exit 1 and produce no tarball (measured), and without a gate the irreversible archive
+  proceeds anyway:
+
+  ```bash
+  SNAP="tracks/_meta/memory_snapshot_$(date +%Y%m%d-%H%M%S).tgz"
+  mkdir -p tracks/_meta || { echo "SNAPSHOT FAILED (mkdir) — abort archive"; exit 1; }
+  tar czf "$SNAP" <each Step-1 root reported EXISTS> || { echo "SNAPSHOT FAILED (tar) — abort archive"; exit 1; }
+  [ -s "$SNAP" ] || { echo "SNAPSHOT FAILED (empty tarball) — abort archive"; exit 1; }
+  echo "SNAPSHOT OK: $SNAP"
+  ```
+
+  Only on `SNAPSHOT OK` may the archive proceed — so
   a wrong archive in any scanned root is one-command recoverable (a single-root snapshot can pass while
   the archived entry lived in the other root — bind the scope to the entry, not to "a tarball exists").
   Archive moves entries to a `.archive/` sibling, never hard-deletes (mirrors the Curator's
@@ -147,14 +193,15 @@ echo "---\ndate: $(date +%Y-%m-%d)\nentries_checked: N\nupdated: N\ndrifted: N\n
 
 ## Done When
 
-```
-Step 1~5 complete
-+ Staleness roster output (Step 2 = mechanical no-LLM pre-pass)
-+ Re-verification run for all STALE entries
-+ User gate presented and responded to (y/N per item)
-+ If any archive confirmed: snapshot covering the archived entry's root written before the move (tracks/_meta/memory_snapshot_*.tgz, spanning all existing Step-1 roots) — check class: mandatory-pass (snapshot covers the entry's dir, not merely "a tarball exists")
-+ Hygiene log written to tracks/_meta/memory_hygiene_{date}.md
-```
+| Condition | Check class |
+|---|---|
+| Step 1~5 complete, every memory root reported `EXISTS(n=…)` or `ABSENT` | **mandatory-pass** |
+| Staleness roster output (Step 2 = mechanical no-LLM pre-pass), with `AGE-UNKNOWN` entries listed separately and not as FRESH | **measured** (age from `metadata.modified` / mtime, not recall) |
+| Re-verification run for all STALE entries | **mandatory-pass** |
+| Each re-verified entry's verdict (VERIFIED / DRIFTED) is correct | **judged** — adversarial pairing: `fh-meta:fact-checker` re-greps the hub for the same claim; any disagreement downgrades the entry to DRIFTED (no judge-only PASS) |
+| User gate presented and responded to (y/N per item) | **mandatory-pass** |
+| If any archive confirmed: snapshot written **and its exit status checked** before the move (`tracks/_meta/memory_snapshot_*.tgz`, spanning every root reported `EXISTS`) | **mandatory-pass** — snapshot must cover the archived entry's dir; `SNAPSHOT OK` printed, not merely "a tarball exists" |
+| Hygiene log written to `tracks/_meta/memory_hygiene_{date}.md` with real counts (no literal `N`, no unexpanded `${…}`) | **measured** |
 
 ## References
 
