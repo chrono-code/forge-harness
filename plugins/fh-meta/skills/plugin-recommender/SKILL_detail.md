@@ -57,15 +57,23 @@ gh auth status  # default host (github.com) only
 # Unauthenticated → guide github.com PAT generation above
 ```
 
-**Claude Code marketplace search:**
+**Claude Code marketplace discovery** (there is **no** `search` subcommand — `claude mcp search` does not
+exist and exits 1 with `unknown command 'search'`; list, then filter yourself):
 ```bash
-claude mcp search [capability-keyword]
+claude plugin marketplace list --json      # which marketplaces are configured at all
+claude plugin list --available --json      # installed + available marketplace plugins (--available REQUIRES --json)
 ```
 
-**Codex marketplace search:**
+**Codex marketplace discovery** (`list-agents` does not exist either — the real noun is `plugin`):
 ```bash
-npx @openai/codex list-agents [capability-keyword]
+npx --yes @openai/codex plugin marketplace list
+npx --yes @openai/codex plugin list --available --json      # add -m <marketplace> to scope
 ```
+
+> **Lane-state reporting (mandatory).** Neither CLI supports a keyword query, and both see only
+> *configured* marketplaces. Record each lane as `EXECUTED` / `EMPTY` / `FAILED: <stderr>` and carry
+> that state into the recommendation. **A `FAILED` lane must never be rendered as "no candidates"** —
+> re-run it or fall back to Priority 3 web search before reporting an empty result.
 
 **npm ecosystem search (scoped packages):**
 ```bash
@@ -113,11 +121,20 @@ If either duplicate condition met → skip install → report "Already active" �
 #### 5-1 through 5-3. Install Steps
 
 1. Confirm intent: "Would you like to install the `[plugin-name]` plugin?"
-2. On agreement:
+2. On agreement — **the two commands take different arguments**: `marketplace add` takes a *source*
+   (`<owner/repo>`, a URL, or a local path), never a plugin name; only `install` takes the plugin name.
    ```bash
-   claude plugin marketplace add [plugin-name]
-   claude plugin install [plugin-name]
+   # Usage: claude plugin marketplace add [options] SOURCE
+   #   SOURCE = owner/repo, a URL, or a local path — NEVER a plugin name
+   SOURCE="owner/repo"
+   PLUGIN="plugin-name"        # optionally "plugin-name@marketplace" to disambiguate
+
+   claude plugin marketplace add "$SOURCE"
+   # Usage: claude plugin install|i [options] PLUGIN
+   claude plugin install "$PLUGIN"
    ```
+   Skip the `marketplace add` line when the plugin already resolves from a configured marketplace
+   (check `claude plugin marketplace list`).
 3. Post-install initial configuration guidance:
    - **API token input**: Guide token generation path for external service APIs (Jira/Confluence/Slack — specify each service's token page URL + env var or plugin config storage location)
    - **MCP connection**: If plugin uses MCP server, guide auto-update of `.mcp.json` or `claude mcp add` command

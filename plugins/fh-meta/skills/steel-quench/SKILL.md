@@ -43,7 +43,7 @@ A designer's anxiety is most dangerous when vague. steel-quench breaks that anxi
 
 | Wave | Role | Termination |
 |---|---|---|
-| **Phase 0** (optional) | Counterexample calibration — extract patterns from external bad cases, merge into Wave 1 | No external case → skip |
+| **Phase 0** (optional) | Counterexample calibration — extract patterns from external bad cases, merge into Wave 1 (→ `SKILL_detail.md §Phase0`) | No external case → skip |
 | **Wave 1** | Challenger attack (quench-challenger) — surface critical flaws, no defense | — |
 | **Wave 2** | Defense — defend or state as residual risk | — |
 | **Wave 3+** | Convergence — repeat until a round is clean AND triggers no repair | Zero new S/A **and no repairs made in response, B included** (§Convergence Criteria) |
@@ -51,6 +51,8 @@ A designer's anxiety is most dangerous when vague. steel-quench breaks that anxi
 | **Wave-P3** (optional) | Gate-passage re-attack — when an upstream gate declares PASS, re-attack the just-passed artifact on Coverage / Narrative / False-confidence | All 3 dimensions Attack Failed |
 | **Wave 5** (optional) | Multi-Team Adversarial Panel — external CLIs or cross-session Claude | Wave 3+ criterion, cross-team |
 | **Wave-T** (after convergence) | Temper — measure complexity the quench *added*; flag over-hardening | τ-PASS or named τ-FAIL |
+
+> **Detail**: See `SKILL_detail.md §Phase0` — counterexample calibration full spec (pattern extraction from an external bad case, merge rules into Wave 1) — read when an external bad case is supplied.
 
 ---
 

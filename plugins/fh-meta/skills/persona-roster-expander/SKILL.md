@@ -2,7 +2,7 @@
 name: persona-roster-expander
 description: Expands a named persona seed into a tiered, judgment-mapped cast — tiering each persona by a domain safety rule, mapping each to a decision-lens in the user's vocabulary, then proposing additional voices with sourced anchors.
 user-invocable: true
-allowed-tools: ["Read", "Grep", "WebSearch", "WebFetch"]
+allowed-tools: ["Read", "Grep", "WebSearch", "WebFetch", "Write", "Agent"]
 model: sonnet
 ---
 
@@ -15,7 +15,12 @@ caller-supplied safety rule so the expansion stays faithful to the domain's cons
 
 > Origin: harvested from the-bible (2026-06-20) — an operator persona seed (priest/nun/angel/devil/
 > God/Jesus/Holy-Spirit/apostles) tiered relay-vs-lens by a relay-safety rule and mapped to
-> engineering-judgment lenses, +4 sourced proposals. See
+> engineering-judgment lenses, +4 sourced proposals. **The grounds, inline, because the harvest
+> record does not ship**: an ungated persona cast drifts into inventing its own authority — a voice
+> given a lens will speak past what the domain lets it assert — so tiering by a *caller-supplied*
+> rule is what keeps the expansion faithful, and the lens mapping is what makes a named voice
+> usable as a decision instrument instead of flavor. Full harvest record — **hub-local, not
+> distributed in the npm package**:
 > `tracks/_contrib/field_harvest_2026-06-20_gate-locality-and-grounding-capabilities.md`.
 
 ## Triggers
@@ -41,14 +46,17 @@ caller-supplied safety rule so the expansion stays faithful to the domain's cons
 4. **Propose 2–4 additions** filling lenses the seed doesn't cover (delegate net-new *name*
    generation to the `persona-innovator` agent — this skill's distinct value is the tiering +
    lens-mapping, not naming). For the strongest 2–3, find a real anchor (a sourced
-   example/reference), not a shallow stub.
-5. **Emit the tiered, lens-mapped cast** (named + proposed) as a structured artifact the system can
-   load (e.g. `personas.json`).
+   example/reference); **any remaining proposal ships with a literal `stub:` prefix** — unanchored
+   and unlabeled is not an allowed output (see Done When).
+5. **Emit the tiered, lens-mapped cast** (named + proposed) by **writing it to a structured file**
+   the system can load (e.g. `personas.json`), then confirm the written file parses. Leaving the
+   cast in the response text only does not complete this step.
 
 ## Done When
 - **Every persona has a tier + lens label + invoke-condition.** *Check class: mandatory-pass (binary — all three fields present per persona).*
-- **Each net-new proposal names a real anchor** (not a stub). *Check class: judged, pair: an anchor-existence check (the cited source/reference resolves).*
-- **The tiering respects the caller's safety rule** (no persona exceeds its tier's allowed emission). *Check class: judged, pair: an adversarial read — find a persona whose mapping lets it act beyond its tier.*
+- **Every proposal is either anchored or explicitly labeled a stub.** An anchored proposal names a source/reference that resolves; a proposal without one is emitted with a literal `stub:` prefix and is **not counted as a candidate**. *Check class: mandatory-pass (binary — each proposal carries either a resolving anchor or a `stub:` label; an unanchored, unlabeled proposal is FAIL). Anchor resolution is checked mechanically (fetch/look up the cited reference), not by judgment.* (This is the Done-When floor; Step 4's "strongest 2–3" is the effort target that sits above it — a 4th proposal may ship as `stub:` without violating either.)
+- **The cast is materialized as a loadable artifact** (e.g. `personas.json`) that a consumer can parse — the file exists on disk and a parse of it succeeds against the declared schema (per persona: tier / lens / invoke-condition; per proposal additionally `anchor` or `stub:`). *Check class: mandatory-pass (binary — file exists and parses; a cast that exists only in the response text is UNMET).*
+- **The tiering respects the caller's safety rule** (no persona exceeds its tier's allowed emission). *Check class: judged, pair: dispatch `fh-meta:challenger` at the tier-escalation angle — "find a persona whose lens mapping lets it emit beyond its tier". The pairing is a **different-agent** read; the author's own re-read does not satisfy it. If that agent is unreachable, record `pair: unavailable (<reason>)` — the condition stays UNMET and is **reported as a named residual**, never self-scored closed. It does **not** block delivery: a roster is a reversible artifact, so the degrade direction here is declare-and-ship, not fail-closed (that direction is reserved for irreversible surfaces — publish, delete, history-rewrite). Shipping with an UNMET pairing is honest; silently marking it met is the defect.*
 
 ## Guards
 - **Caller-supplied safety rule is mandatory** — the skill tiers by the domain's rule, it does not
