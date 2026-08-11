@@ -48,6 +48,38 @@
 # would let a real token pass by merely CONTAINING a placeholder word.
 PSA_PLACEHOLDER='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxxx|/Users/(EXAMPLE|yourname|\{[a-z_]+\}|<[a-z0-9_-]+>)/|AKIAIOSFODNN7EXAMPLE)$'
 
+# ── file::token allowlist (ALL severities) — the SKILL's Step 2, finally implemented ────────────
+#
+# public-surface-audit SKILL.md §Step 2 has always specified a `file path :: token` allowlist whose
+# rule is severity-agnostic ("a hit on file F matching token T is suppressed iff a row exists with
+# file == F and T in that row's allowed tokens"). The library implemented only the LOW subset below,
+# so spec and implementation disagreed: a HIGH hit that the operator had deliberately published had
+# **no expressible disposition at all** — the only ways out were weakening a severity class or
+# editing the artifact. That is the divergent-normalizer shape, and it surfaced for real on
+# 2026-08-11 (a published paper's author-contact line and a rename changelog entry).
+#
+# Why this does not weaken the floor:
+#   · rows live in a **gitignored** source (`.claude/rules/.public-surface-allowlist`), so writing one
+#     never puts an operator token on the public surface — the same two-layer discipline as patterns.
+#   · a row is `path<TAB>token-regex` and is **anchored to both**: it suppresses that token on that
+#     file only. A wildcard path is not supported — a row cannot become a blanket mute.
+#   · absent file → no rows → behaviour is exactly as before (fail-closed by default).
+# Each row is an operator decision, recorded where it can be audited, instead of an undocumented
+# exception living in someone's head.
+psa_pair_allowlisted() {   # $1=path $2=matched token
+  local root="${PSA_REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || printf '.')}"
+  local src="${PSA_ALLOWLIST:-$root/.claude/rules/.public-surface-allowlist}"
+  [ -r "$src" ] || return 1
+  local apath atok
+  while IFS=$'\t' read -r apath atok || [ -n "$apath" ]; do
+    case "$apath" in ''|'#'*) continue ;; esac
+    [ -z "$atok" ] && continue
+    [ "$apath" = "$1" ] || continue
+    printf '%s' "$2" | grep -qE "$atok" 2>/dev/null && return 0
+  done < "$src"
+  return 1
+}
+
 # Files that name wiring/companion tokens as part of doing their job. LOW severity only — HIGH/MED
 # block everywhere, including here. Kept as a function so the list has exactly one definition.
 psa_low_allowlisted() {
@@ -177,6 +209,7 @@ psa_scan_tagged() {
         [ -z "$tok" ] && continue
         printf '%s' "$tok" | grep -qiE "$PSA_PLACEHOLDER" && continue
         if [ "$sev" = "LOW" ] && psa_low_allowlisted "$path"; then continue; fi
+        if psa_pair_allowlisted "$path" "$tok"; then continue; fi
         echo "  ❌ $sev leak — ${path}: '$tok'"
         hit=1
       done <<PSA_TOK

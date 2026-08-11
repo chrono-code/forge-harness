@@ -76,3 +76,4 @@ tracks/**
 # FH 는 공개 레포이므로 추적 대상이 되면 안 된다.
 outputs/
 .claude/mcp_circuit/
+.claude/rules/.public-surface-allowlist
