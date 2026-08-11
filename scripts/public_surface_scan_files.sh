@@ -125,6 +125,14 @@ while IFS= read -r f; do
       [ -z "$tok" ] && continue
       printf '%s' "$tok" | grep -qiE "$PSA_PLACEHOLDER" && continue
       if [ "$sev" = "LOW" ] && psa_low_allowlisted "$f"; then continue; fi
+      # file::token allowlist — the SAME rows the commit/push path honours (psa_scan_lib.sh).
+      # Before this line the publish path ignored them, so a token the operator had DELIBERATELY
+      # published had no expressible disposition **at the one boundary that matters most**: the only
+      # way past was the blanket `PUBLIC_SURFACE_OK=1` override. That is worse than a narrow row —
+      # a blanket override waves every OTHER finding through in the same run, and this repo's own
+      # doctrine says an override that becomes routine disarms the gate. Narrow, recorded, and
+      # logged beats broad and silent. (Rows are literal path + literal token, gitignored source.)
+      if psa_pair_allowlisted "$f" "$tok"; then continue; fi
       echo "  ❌ $sev leak — $f: '$tok' would ship to the registry"
       LEAK=1
       # -a forces every published file to scan as TEXT (challenger S1): -I skipped binary-classified
