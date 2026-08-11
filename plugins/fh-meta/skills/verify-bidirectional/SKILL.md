@@ -107,13 +107,22 @@ First identify the list of affected assets. Actual file modification is performe
 
 | Affected Asset | Update Location | Notes |
 |---|---|---|
-| memory `feedback_bidirectional_self_validation.md` | Add cumulative count + new round table | Self-perpetuation of this rule |
+| This SKILL.md §Validation Ledger | Add cumulative count + new round entry | Self-perpetuation of this rule. (Was `memory feedback_bidirectional_self_validation.md` — **absent, verified 2026-08-12**; the rule body is this file.) |
 | memory `project_*.md` (if affected) | Add relevant section | When naming, identity, or roadmap changes |
 | `tracks/_audit/*.md` (if affected) | Add pre-design section | When this validation affects persistent assets |
 | `CATALOG.md` | Add this session entry | For major decisions |
 | `reference_next_session_starter.md` §1 | Merge this conclusion | Material for next session entry |
 
-**Markdown editing discipline** (`feedback_markdown_edit_discipline`): Use Edit for existing `.md`. Write prohibited. If unavoidable, verify immediately with `git diff`.
+**Markdown editing discipline** — this skill's own rule, stated here rather than delegated:
+
+> Use `Edit` for any `.md` that already exists. `Write` on an existing file replaces it whole and
+> silently discards content this session never read — that is the failure mode the rule exists for,
+> not a style preference. If a full rewrite is genuinely unavoidable, `Read` the file first, then
+> verify immediately with `git diff` and report what changed.
+
+(Previously cited as `feedback_markdown_edit_discipline` — that memory key is **absent, verified
+2026-08-12**. The rule is live; only the pointer was dead, so it is written out here. A prohibition
+that rests on a file nobody can open is not enforceable.)
 
 ### Step 4.5. Change `diff` Review (User Gate Required)
 
@@ -144,7 +153,9 @@ Skip this step if no compatibility enhancement found (no token-filler).
 
 ### Step 6. Update Trigger Count + Skill Update Review
 
-Update trigger count in `memory feedback_bidirectional_self_validation.md`:
+Update the trigger count in the **§Validation Ledger** at the bottom of this file. (It formerly
+pointed at `memory feedback_bidirectional_self_validation.md`, **absent, verified 2026-08-12** —
+so the count had nowhere to land and this step could not actually be performed.)
 
 - 5+ accumulated = Skill promotion review (already fulfilled by creating this skill ✅)
 - 8+ accumulated = skill update review (rule refinement + round table compression + update this skill)
@@ -209,8 +220,8 @@ Speak up **before** entering implementation if any of these apply:
 
 - **This skill = validation and recording automation. Core decisions belong to the user** — this harness AI has no independent decision authority
 - **This harness AI self-catch cannot be applied alone** — follow `fact-checker` rule (narrow 1 / broad N+1)
-- **Simplification guard compliance** (`feedback_simplification_evidence`) — when creating/modifying this skill, only update SKILL.md. Do not create additional auxiliary files
-- **Markdown editing discipline obligation** (`feedback_markdown_edit_discipline`) — prefer Edit. Write prohibited
+- **Simplification guard compliance** — when creating or modifying this skill, update SKILL.md only. Do not spawn auxiliary files; a change that needs a new file needs a reason stated in the same edit. (Formerly cited `feedback_simplification_evidence` — **absent, verified 2026-08-12**)
+- **Markdown editing discipline obligation** — `Edit` on existing `.md`; `Write` only after reading the file, and verified with `git diff` (full statement in Step 4 above). (Formerly cited `feedback_markdown_edit_discipline` — **absent, verified 2026-08-12**)
 
 ## External User Environment Adaptation
 
@@ -220,7 +231,7 @@ This skill's core essence = "channel for updating baseline when user refinement 
 
 | Origin Environment Dependency | External User Environment Fallback |
 |---|---|
-| `memory feedback_bidirectional_self_validation.md` (rule body) | User environment's own `memory/` or `notes/` bidirectional validation rule / if absent, follow this skill's own rule baseline |
+| Rule body — **this SKILL.md itself** (the origin environment's `memory feedback_bidirectional_self_validation.md` is **absent, verified 2026-08-12**; there is no origin-side file to fall back from) | User environment's own `memory/` or `notes/` bidirectional validation rule / if absent, this skill's own rule baseline — which is now the only baseline in either environment |
 | `memory feedback_*.md` grep scope (Step 2 priority 1) | User environment's own `learnings/` · `docs/` · `CLAUDE.md` grep (user's own baseline) |
 | `tracks/*/learnings/feedback_*.md` (Step 2 priority 2) | User environment's own learnings area (auto-detect naming variations) |
 | `knowledge/shared/harness-core/*.md` (Step 2 priority 4) | User environment's own `docs/` or `knowledge/` grep |
@@ -245,17 +256,64 @@ This skill's core essence = "channel for updating baseline when user refinement 
 ## Done When
 
 ```
-Steps 1~6 all executed
-+ fact-checker self-catch mark output
-+ Step 4.5 diff gate user confirmation complete (y/N response received)
-+ Update trigger count updated
-+ External validation path: harvest-loop's Critic isolation pass (SAGE automated critique) can independently judge based on above criteria (skill_quality_rubric.md verifiable criteria)
+☐ Steps 1~6 all executed — a step that produced no artifact is
+  not executed                                                  (measured: 6 steps, 6 artifacts)
+☐ Step 1 baseline update applied BEFORE Step 2 grep runs — the
+  order is the point of the skill, not a formality              (mandatory-pass)
+☐ Step 2 consistency grep ran across all 4 priority scopes, and
+  each scope reports hits or an explicit "0 hits, scope exists"
+  — a scope that does not exist reports MISSING, never 0        (measured: 4 scopes reported)
+☐ fact-checker self-catch mark output                           (mandatory-pass)
+☐ Step 4.5 diff gate: user confirmation received (y/N) before
+  any file was modified; no answer == N                         (mandatory-pass, HITL)
+☐ §Validation Ledger has one new row and the Count line matches
+  the row total                                                 (measured: rows == Count)
+☐ Every memory/asset key cited in the round was confirmed to
+  RESOLVE before being used as grounds                          (mandatory-pass — an absent key
+                                                                 is cited as absent, never as
+                                                                 support)
+☐ The counter-argument was actually re-examined rather than
+  conceded to                                                   (judged — adversarial pairing:
+                                                                 `fact-checker` (narrow 1 /
+                                                                 broad N+1) re-runs the grep
+                                                                 independently; agreement with
+                                                                 the user is not evidence the
+                                                                 user was right)
+☐ External validation path available: harvest-loop's Critic
+  isolation pass can independently judge on the above criteria  (judged — adversarial pairing:
+                                                                 Critic runs isolated, not in
+                                                                 this session's context)
 ```
+
+> **Why the last two are judged, and paired.** This skill fires when the user pushes back, which is
+> precisely the moment agreement is cheapest. A Done When that only counts steps is satisfied by a
+> run that folded immediately. The pairing is the whole check: an isolated re-grep, and an isolated
+> critic — neither of which has seen this session's reasoning.
 
 Verdict: PASS (Step 4.5 diff gate confirmed, baseline updated) | CONDITIONAL_PASS (update applied, external validation still pending) | FAIL (counter-argument confirmed — AI recommendation was wrong, baseline requires redesign) | ESCALATE (counter-argument ambiguous, human judgment required)
 
 ## References
 
-- Rule body: `memory feedback_bidirectional_self_validation.md`
-- Operating model text: `memory feedback_hub_cc_operating_model.md §2.5·§2.6` — Insight 5 meta dimension + refinement challenge 4 patterns
-- Consistency rules: `feedback_external_ai_github_recommendation_verification` · `feedback_reference_own_hub_assets_first` · `feedback_simplification_evidence` · `feedback_markdown_edit_discipline` · `feedback_impact_first_then_tune`
+> **All memory keys below were checked on 2026-08-12 and every one is absent** (same-run
+> known-positive control: `feedback_verify_before_downgrade.md` and `memory_intent_recall.md`
+> both resolve, so the check is not misreporting). A struck entry here is not a fix if the same
+> name is still load-bearing above — the rules those keys carried have been written into the body
+> of this skill (Step 4 markdown discipline, §Constraints, §Validation Ledger), which is why the
+> strikethroughs below are safe to leave as history.
+
+- ~~Rule body: `memory feedback_bidirectional_self_validation.md`~~ — **absent (verified 2026-08-12)**. The rule body is **this file**; the cumulative count lives in §Validation Ledger.
+- ~~Operating model text: `memory feedback_hub_cc_operating_model.md §2.5·§2.6`~~ — **absent (verified 2026-08-12)**. The live equivalent is `CLAUDE.md §Identity — 3-Layer Mission + Core Axis`; cite that, not this filename.
+- ~~Consistency rules: `feedback_external_ai_github_recommendation_verification` · `feedback_reference_own_hub_assets_first` · `feedback_simplification_evidence` · `feedback_markdown_edit_discipline` · `feedback_impact_first_then_tune`~~ — **absent (verified 2026-08-12)**. The two that this skill actually depends on are restated in §Constraints above.
+- Live, verified references (these resolve): `tracks/_meta/reference_next_session_starter.md` (session card, Step 4) · `CATALOG.md` · the `fact-checker` agent (Step 3).
+
+## Validation Ledger
+
+Cumulative trigger count for Step 6. Append one row per completed round; the count is the number of
+rows. This section is the landing site that the absent memory key used to be.
+
+| # | Date | Trigger (user's counter-argument, one line) | Verdict | Baseline change |
+|---|---|---|---|---|
+| — | — | (no rounds recorded in-file yet — prior rounds lived in the now-absent memory key and are not recoverable) | — | — |
+
+**Count**: 0 recorded rounds. Do not restate a remembered historical total here; an unrecoverable
+count is `unknown`, not a number carried over from a file nobody can open.

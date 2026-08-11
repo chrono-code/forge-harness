@@ -222,13 +222,23 @@ echo "CC_HUB_DIR=${CC_HUB_DIR:-not set}"
 basename "$(pwd)"
 ls .claude/ 2>/dev/null
 
-# CC settings (handle both dict and list for plugins)
-cat .claude/settings.json 2>/dev/null | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-p=d.get('plugins',{})
-print('plugins:', list(p.keys()) if isinstance(p,dict) else p)
-" 2>/dev/null || echo "settings.json not found"
+# CC settings (handle both dict and list for plugins).
+# Split existence from parseability FIRST. The old `cat file | python3 … || echo "not found"` read
+# $? from python, so a CORRUPT settings.json printed "settings.json not found" — the wizard would
+# then happily create a fresh one and silently clobber the user's real (broken) config.
+if [ ! -f .claude/settings.json ]; then
+  echo "settings.json: ABSENT"
+else
+  python3 - <<'PY' || echo "settings.json: UNPARSEABLE (present but unreadable — NOT the same as absent; do NOT overwrite, ask the user)"
+import json, sys
+try:
+    d = json.load(open('.claude/settings.json'))
+except Exception as e:
+    print(f'  parse error: {e}', file=sys.stderr); sys.exit(2)
+p = d.get('plugins', {})
+print('settings.json: OK — plugins:', list(p.keys()) if isinstance(p, dict) else p)
+PY
+fi
 
 # MCP plugin connection status
 python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude.json'))); print('MCP:', list(d.get('mcpServers',{}).keys()))" 2>/dev/null || echo "MCP config not found"
@@ -493,6 +503,15 @@ propose adding rows to `agent-composer/SKILL.md` Step 1 mapping table in this fo
 | {skill name} related task | {skill name} (S) | — |
 ```
 
+> **Verify this block against a temp file, never against `~/.zshrc`.** Set `ZSHRC_TARGET` to a
+> scratch path and run the five arms: FH_DIR unset → rc=1, nothing written · CC_HUB_DIR unset →
+> rc=1, nothing written · `$FH_DIR` without the script → ABORT, nothing written · consent absent →
+> SKIPPED, nothing written · consent Y with both vars → block appended with values **substituted**
+> and `$HOME`/`$FH_DIR` left literal, then `zsh -c 'source <temp>'` exits 0. Re-running must not
+> duplicate the block. **Beware a contaminated control**: if your own shell already exports
+> `FH_DIR`, the "unset" arm is not actually negative — isolate with `env -u FH_DIR`. That mistake
+> made the first pass of this very verification report a false PASS.
+
 Output preview before execution:
 ```
 ▶ agent-composer mapping update
@@ -507,18 +526,37 @@ Output preview before execution:
 
 ```bash
 # zshrc hook — preview then confirm. The wizard is AI-mediated: SHOW the user the exact block
-# below and ask in-chat "Append this to ~/.zshrc? (Y/N)" BEFORE running the append. An earlier
-# revision's comment promised preview-then-confirm while the bash appended unconditionally —
-# the decline-integrity sim (2026-08-10) caught the mismatch; the gate is the instruction, the
-# bash below runs ONLY on Y.
-if ! grep -q "fh_audit_check.zsh" ~/.zshrc 2>/dev/null; then
-  # (run only after an explicit in-chat Y)
-  cat >> ~/.zshrc << 'EOF'
-export FH_DIR="{FH_DIR}"
-export CC_HUB_DIR="{CC_HUB_DIR}"
-export CC_SENTINELS_DIR="$HOME/.cc_sentinels"
-source "$FH_DIR/templates/fh_audit_check.zsh"
+# below and ask in-chat "Append this to ~/.zshrc? (Y/N)" BEFORE running the append.
+#
+# TWO defects were fixed here (2026-08-12), both of which corrupt every future shell:
+#  (1) The heredoc was QUOTED (<< 'EOF'), so the literal text `{FH_DIR}` was written to ~/.zshrc.
+#      The resulting `source "$FH_DIR/templates/fh_audit_check.zsh"` then resolved to
+#      `{FH_DIR}/templates/...` and every subsequent shell start failed with
+#      `no such file or directory` (rc=127, reproduced in a sandbox against a temp file).
+#      Fix: unquoted heredoc so FH_DIR/CC_HUB_DIR expand AT WRITE TIME, with `\$HOME` and
+#      `\$FH_DIR` escaped so THOSE stay literal and resolve at shell-start.
+#  (2) The consent gate was a COMMENT ("run only after an explicit in-chat Y"). A comment does
+#      not gate anything — pasted or scripted, the block appended unconditionally. It is now a
+#      real conditional on FH_WIZARD_ZSHRC_CONSENT, default N (fail-closed).
+#
+# Set FH_WIZARD_ZSHRC_CONSENT=Y only after the user answers Y in chat.
+ZSHRC="${ZSHRC_TARGET:-$HOME/.zshrc}"
+: "${FH_DIR:?FH_DIR is unset — refusing to write a broken source line into $ZSHRC}"
+: "${CC_HUB_DIR:?CC_HUB_DIR is unset — refusing to write an incomplete block into $ZSHRC}"
+if [ ! -f "$FH_DIR/templates/fh_audit_check.zsh" ]; then
+  echo "ABORT: \$FH_DIR/templates/fh_audit_check.zsh does not exist — would wire a dead source line"
+elif [ "${FH_WIZARD_ZSHRC_CONSENT:-N}" != "Y" ]; then
+  echo "zshrc hook: SKIPPED (no explicit Y) — nothing written"
+elif grep -q "fh_audit_check.zsh" "$ZSHRC" 2>/dev/null; then
+  echo "zshrc hook: already present — no change"
+else
+  cat >> "$ZSHRC" <<EOF
+export FH_DIR="$FH_DIR"
+export CC_HUB_DIR="$CC_HUB_DIR"
+export CC_SENTINELS_DIR="\$HOME/.cc_sentinels"
+source "\$FH_DIR/templates/fh_audit_check.zsh"
 EOF
+  echo "zshrc hook: appended"
 fi
 # On N: do NOT append; record the decline and state its consequence in one line —
 #   echo "zshrc_hook" >> "$HOME/.cc_sentinels/{project}_wizard_declined"

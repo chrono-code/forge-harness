@@ -76,9 +76,16 @@
 
 ---
 
-**Count**: 32 probes (A:4 B:8 C:9 D:3 E:8 — mandatory-pass 26 · measured 1 · judged 5, all judged paired).
+**Count**: 33 probes (A:5 B:8 C:9 D:3 E:8 — mandatory-pass 27 · measured 1 · judged 5, all judged paired).
 
-**Live coverage**: 30. Two probe rows are inert deletion anchors. `/prompt-regression` loads them
+> Recount it, do not trust this line. Probe rows are table lines whose first cell is a
+> backticked ID: `grep -cE '^\| *`[A-Z][A-Z0-9-]*-[0-9]+` *\|' .claude/regression/probes.md` → 33.
+> The tally said `32 … A:4 … mandatory-pass 26` until 2026-08-12; section A had grown to 5 rows
+> (`G-GREET-05`) and the summary was never updated, so both this line and the SKILL.md that cites
+> it were stale. Any commit adding or removing a probe row updates this line **and**
+> `prompt-regression/SKILL.md` in the same commit.
+
+**Live coverage**: 31 (33 − 2). Two probe rows are inert deletion anchors. `/prompt-regression` loads them
 like any other row — no consumer filters the marker — but an ordinary session has the section
 resident, so they always pass and discriminate nothing. They earn their place only against a cut of
 that section. They are marked in their Input cell and

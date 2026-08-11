@@ -335,13 +335,33 @@ cross_model_coverage: [external | cross-session | NONE]   # NONE on risk≥mediu
 ```bash
 cd "$HARNESS_ROOT"
 BRANCH="fix/sim-$(date +%Y%m%d)-m-tier"
-git checkout -b "$BRANCH"
-# [process M-tier items]
-git add -p
+git switch -c "$BRANCH"
+# [process M-tier items] — collect the files this run actually edited
+FILES="path/to/edited1.md path/to/edited2.md"   # explicit list; never a glob, never -A, never .
+git add -- $FILES
+git diff --cached --name-only    # confirm the staged set IS the intended set before committing
 git commit -m "fix(sim-conductor): resolve M-tier findings from simulation YYYY-MM-DD"
 git push -u origin "$BRANCH"
 # PR creation requires explicit user request per CLAUDE.md PR principle
 ```
+
+> **Never `git add -p` here — this skill runs to completion unattended.** `-p` is interactive: with
+> no TTY it either blocks forever, or (with stdin closed) exits **0 having staged nothing**. Measured
+> 2026-08-12 on the documented chain: `add -p` → rc 0, nothing staged → `git commit` → **rc 1**,
+> while `git switch -c` had **already created the branch** — so the run leaves a branch behind, the
+> fixes uncommitted, and a success-shaped exit on the staging step. A silent no-op in the middle of
+> an auto-commit chain is worse than a hang, because only the hang is visible.
+>
+> **Why an explicit list rather than `-A` or `.`**: `sim-conductor` frequently runs in a checkout
+> shared with other work. `git add -A` sweeps up whatever else is dirty — measured above: a
+> co-resident `b.txt` was left untouched by `git add -- a.txt` and would have been swallowed by
+> `-A`. Note the boundary: `git add -- <file>` stages **the whole file**, including lines this run
+> did not write, so if another session has appended to a file you also edited, commit that append
+> first rather than absorbing it.
+>
+> `git diff --cached --name-only` before the commit is the mechanical check that the staged set
+> equals the intended set. Do not skip it — it is what turns "I passed the right paths" from a
+> belief into an observation.
 
 ---
 

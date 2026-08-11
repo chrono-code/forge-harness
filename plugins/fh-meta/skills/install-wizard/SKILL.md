@@ -301,13 +301,32 @@ On Claude API / MCP failure → refer to [`references/fallback-guide.md`](../../
 ## Done When
 
 ```
-☐ Environment detection complete: shell, CC version, OS, project type identified
-☐ Gap diagnosis output: present vs missing items listed
-☐ User approval/decline recorded for each suggested item
-☐ All approved items installed with no failure state
-  (failed installs surfaced to user — not silently skipped)
-☐ Acceleration baseline confirmed: zshrc alias + sentinels active (or user declined)
-☐ Summary output: "N items installed, M items skipped — setup complete"
+☐ Environment detection complete: shell, CC version, OS, project type
+  identified — each field carries a value or the literal "unknown",
+  never blank                                                    (measured: 4 fields resolved)
+☐ Settings probe distinguished ABSENT / UNPARSEABLE / OK — an
+  unparseable config is never treated as absent                  (mandatory-pass)
+☐ Gap diagnosis output: present vs missing items listed          (measured: count of items
+                                                                  present + missing == items
+                                                                  scanned)
+☐ User approval/decline recorded for each suggested item —
+  a missing answer is a decline, never an assumed yes            (measured: recorded answers
+                                                                  == suggested items)
+☐ All approved items installed with no failure state; every
+  failure surfaced to the user, not silently skipped             (mandatory-pass)
+☐ Acceleration baseline: zshrc block either appended with
+  SUBSTITUTED values (no literal "{FH_DIR}" in the target file)
+  or explicitly declined and the decline recorded                (mandatory-pass)
+☐ Step 3-D dispatch consent recorded in the three-part form
+  (quoted words · dated lease · scope) or a recorded decline —
+  a two-part record is invalid and counts as absent              (mandatory-pass)
+☐ Summary output: "N items installed, M items skipped" where
+  N + M equals the number of items offered                       (measured: N + M == offered)
+☐ Nothing was overwritten that the user did not approve          (judged — adversarial pairing:
+                                                                  re-run the wizard on a
+                                                                  populated .claude/ and diff
+                                                                  the tree before/after; any
+                                                                  unapproved delta is a FAIL)
 ```
 
 `--dry-run` mode Done When: gap diagnosis report written, no installation executed.
