@@ -1801,7 +1801,7 @@
 - date: 2026-08-11
   session: qasp-axready-night-autonomous
   agents_summary: "7 열거 + 훅 집계 9 (consolidated): ① Explore 필드 정본 읽기(MTM/2막 계약/발화 자격) ② Explore 데이터-플레인 오라클 삽입지점 설계(bg) ③ codex gpt-5.5 1R (야간 5커밋 diff 적대 감사) ④ fh-meta:beginner 콜드리드 1차(기술문서 삽입 초안) ⑤ general-purpose 독립 2차 지각 QA(PDF 8쪽, 200dpi 크롭) ⑥ fh-meta:beginner 콜드리드 2차(수리본 재검 — 1차 후 고친 것을 다시 읽힌 라운드) ⑦ general-purpose@sonnet 블라인드 sim(ko-tech-writer 보강본, 심은 결함 3종)"
-  dispatch_count: 9
+  dispatch_count: 13
   dispatch_count_note: "훅 집계 9 · 내가 이름으로 열거 가능한 것 7. 차이 2건은 귀속 미상이라 지어내지 않는다 — 세션 로그를 뒤져 채우는 대신 미상으로 남긴다(없는 엔트리를 만드는 것이 빠진 엔트리보다 나쁘다). 초판은 3으로 적혀 있었고 마감 체크 ④-e 가 9를 찍어 드러났다."
   outcome: accepted
   evidence: "④⑤⑥ 는 기술문서 축(같은 세션 후속) — ⑥ 이 **1차 콜드리드 수리본을 다시 읽힌 라운드**이고 거기서 «반례 흔한 단정 + 배치 오류» 가 나와 §7→§6 이동으로 이어졌다(그 경험이 스킬 Step 5 재콜드리드 규율의 근거다). ⑦ sim = 심은 결함 3/3 검출·오탐 0. ① 정본 Explore 가 «MTM=블박+화박 동시 실행, verdict 불변, 표기 4상태» 를 정본 인용으로 확정 — 이후 2-arm 실측(판정 51/51 동일 · mtm_cited 17)이 그 계약과 일치함을 확인하는 근거가 됐다. 일반 개념(«화이트박스 모드») 정규화를 사전 차단. ② 설계 Explore 가 relations.py 5곳·triage.py:258 닫힌 어휘·sourced 레인 선점 함정·데이터 리더 부재(known-positive 컨트롤 동반)를 특정 — 이번 세션은 그 능력을 안 지었으나(잔여 S1) 지도는 그대로 유효. ③ codex 1R: S/A/B/C 4축 반증 중 **헤드라인 반증 1건 수용** — 「품절 배지 검출」 주장이 로케일 축 오귀속임을 App.tsx/en.ts 근거로 지적, governor 가 소스 재확인 후 철회하고 attribution_risk 를 기계에 실었다(86dc8bf). 추가로 C-1(미생성 사유가 stdout 전용) 수용·수리, 잔여 4건은 명명"
@@ -1858,8 +1858,17 @@
 
 - date: 2026-08-11
   session: reship-campaign-stier-wave2-night
-  agents_summary: "9 dispatches: fh-meta:challenger×3 (S티어 9종 findings **재생성** — 직전 세션이 요지만 남기고 세부를 트랜스크립트와 함께 잃었다) + general-purpose×3 (수리, 파일 분리 소유) + codex gpt-5.5 ×3 (diff 축 cross-family — 앞 2회는 판정 없이 종료) + fh-meta:challenger×3 진행중(agents 8종 · R티어 23종 스윕)"
+  agents_summary: "9 dispatches: fh-meta:challenger×3 (S티어 9종 findings **재생성** — 직전 세션이 요지만 남기고 세부를 트랜스크립트와 함께 잃었다) + general-purpose×3 (수리, 파일 분리 소유) + codex gpt-5.5 ×3 (diff 축 cross-family — 앞 2회는 판정 없이 종료) + fh-meta:challenger×3 (agents 8종 · R티어 23종 스윕 2배치) + general-purpose×2 (R티어 수리 2배치)"
   dispatch_count: 9
   outcome: accepted
   evidence: "감사 47건 회수 → governor 스팟체크 11/11 CONFIRMED(전건 known-positive 컨트롤 동반) → 수리 47건 → Axis 1 `pass · M-tier 0` → codex 16건 중 수용 3·기각 3(소스 대조)·계기산물 7. 되돌림 실측 1건(steel-quench §Phase0 포인터 제거→rc=1, 복원→rc=0)"
   notes: "★**수리자 셋 중 둘이 내 브리프의 오류를 되돌려 왔다** — ⓐ 나는 memory-hygiene 나이 소스를 `metadata.modified` 로 단정하라고 지시했는데 실측이 77/267 뿐이라, 그대로 썼으면 190건이 «최신»으로 렌더될 뻔했다(폴백 체인+AGE-UNKNOWN 으로 정정해 옴) ⓑ corpus/persona 수리자는 자기 수리 6건에 러너가 없다는 걸 스스로 명시하고 «돌려서 뒤집혔다»를 주장하지 않았다. 지시자가 감사자보다 정확할 거라는 가정이 틀렸다. ★**나와 배치②가 같은 함정을 각자 밟았다**: 코드펜스의 `<placeholder>` 가 bash 리다이렉트로 파싱돼 구문오류가 됐고, 배치②는 자체 적발했으나 나는 못 봤다 — Axis 1 이 `0 → 1` 로 잡아줬다. 계기가 없었으면 둘 다 통과했을 것이다. 🟥 **codex 가 3회 중 2회 판정 없이 종료**(레포 훅 `UserPromptSubmit Failed`) — 레포 밖 cwd 로 우회해 3회차 성공. 「돌았다≠결과 냈다」의 사이드카판이고, 우회했을 뿐 원인은 안 고쳤다. 🟥 **내가 「diff 만 보라」고 묶은 제약이 findings 의 44%(7/16)를 계기 산물로 만들었다** — 「측정 근거가 diff 에 없다」는 판정이 아니라 내 프롬프트의 그림자다. 탈상관 채널에 무엇을 보내느냐가 무엇을 받느냐를 정한다([[feedback_decorrelation_axis_is_what_you_send]])는 것의 비용 쪽 얼굴"
+  night_addendum: "야간 완주분(3차 웨이브) 결과 추가 — agents 8종에서 M8·S9·R4, R티어 23종에서 M16·S18. **최대 발견은 계기가 대상에 안 닿는 형태였다**: `validate_yaml.sh` 가 에이전트를 스캔 대상에서 빼고 있었고, 그 사이 `quench-challenger` 의 frontmatter 가 깨져 선언한 `tools`·`model: opus` HARD FLOOR 가 둘 다 무효인 채로 돌고 있었다(런타임 agent 목록이 증거 — 이 에이전트만 `All tools`). 두 계기를 배선으로 닫았다(에이전트 편입 + 마크다운 펜스 추출). ★**수리 에이전트들이 내 브리프의 오류를 3회 되돌렸다**: 나이 소스 단정(실측 77/267) · 「모든 제안에 앵커」 대신 stub 라벨 · `fh-goal` 처방을 추측으로 쓰지 않고 2×2 프로브로 근본원인(npx 버전 스펙) 확정. 지시자가 감사자보다 정확할 거라는 가정은 이 세션에서 세 번 틀렸다. ★**자기 계기 결함 자체적발 3건**(내 셸 env 오염으로 음성 arm 이 거짓 PASS · 계수 grep 형식 불일치로 전부 0 · 첫 arXiv 조회가 http 라 컨트롤까지 실패) — 전부 「숫자를 말하기 전에 계기를 의심」으로 잡혔다. 🟥 codex 는 3회 중 2회 판정 없이 종료(레포 훅), 3차 웨이브에는 cross-family 미실시(마커에 typed)"
+
+- date: 2026-08-12
+  session: qasp-declaration-channel-night
+  agents_summary: "5 dispatches: Explore×1 (MECE page↔area 좌표계 조사 — 인수인계 §4 전제 확인) + codex gpt-5.5 ×3 (R1 diff 축 · 주장 축 · R2 수리 재감사) + fh-meta:persona-innovator×1 (Mode F 완주 — 운영자 명시 요청)"
+  dispatch_count: 5
+  outcome: accepted
+  evidence: "R1(diff 축) 1S·2A·5B → 전부 **재현 후** 수리 6건, B2 만 근거 명시 수용. 주장 축 10개 전부 TRUE·FALSE 0(명령+컨트롤 동반). 전량 2956 passed/43 skipped · 라이브 known-pair 유지(생성 TC 가 손 미션과 **grounds 바이트 동일**). PR qasp-dev #156"
+  notes: "★**Explore 축이 인수인계의 전제를 반증했다** — 11c §4 「page↔area 를 선언 채널에 얹으면 NO_MATCH 6건이 열린다」가 틀렸다. 페이지 토큰은 매칭 키가 아니고(surface_inventory 에 `page` 0회, control `route` 36회), 같은 «p3 영역» 토큰인 TC_MT_005 는 매칭 성공·TC_MT_019 는 NO_MATCH 다. 나는 **그 위에 스키마를 이미 얹은 뒤** 실측했다 — 「남이 준 다음 할 일」도 전제부터 재야 하고, 특히 범위를 **줄이는** 방향일 때 소스 그라운딩이 제일 허술해진다([[feedback_scope_widening_needs_grounding]] 의 반대편 얼굴). 🟥 **선언 채널이 자기 실패모드를 맞았다** — 「선언 파일을 줬는데 선언이 없으면」 3가지 입력 전부 rc=0 으로 조용히 통과, cross-family 가 잡았고 자력 적발 0. 🟥 **되돌림 프로브가 내 테스트 하나를 장식으로 적발** — origin 을 spec_dictionary 로 위조해도 62건 전건 초록이었다(`anchors: []` 라 qualify_anchor 가 origin 을 보기도 전에 빠진다). 「자격이 안 나온다」를 확인했지 「origin 게이트가 산다」를 확인한 게 아니었다. 🟥 **계기가 세 번 거짓말했다**: `tail -1` 이 요약 대신 DeprecationWarning · 파이프 뒤 `$?` 가 필터 상태(훅이 잡아줌) · **pytest 색상 escape 때문에 `1 failed, 71 passed` 를 「71 passed」로 읽음**. 셋째는 실제 실패 1건을 숨겼다 — 전량 판정은 `--color=no` 필수. ★innovator 리포트의 B6(「처방 전사 검사 없음」)은 **오판** — 그 에이전트가 테스트 파일을 안 읽었다. 해당 레인은 존재하고 되돌림에서 2 적색. 남의 리포트도 대조 대상이다"
