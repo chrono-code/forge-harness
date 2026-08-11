@@ -49,8 +49,10 @@ CLOSED_KEYS="id entry requires_cwd verdict_channel verdict_enum verdict_stdout_k
 # 「안 돌았다」를 뜻하는 이름들 — 추가조항(§ⓑ.4 B1)이 요구하는 구분항
 DIDNOTRUN_NAMES="DID_NOT_RUN DIDNOTRUN NOT_RUN NO_TARGET SKIPPED UNMEASURED NOT_CONFIGURED HARNESS_ERROR"
 
-FAILED=0
-_fail() { printf '  ❌ %s — %s\n' "$1" "$2"; FAILED=1; }
+FAILED=0        # 전 파일 누적 (종료코드용)
+FILE_FAILED=0   # 현재 capfile 한정 — 파일마다 초기화한다. 이게 없으면 앞 파일의 실패가
+                # 뒤 파일의 M4 를 SKIPPED 로 만들어, 뒤 파일의 실제 결함이 안 보인다(보고 결함).
+_fail() { printf '  ❌ %s — %s\n' "$1" "$2"; FAILED=1; FILE_FAILED=1; }
 _ok()   { printf '  ✅ %s — %s\n' "$1" "$2"; }
 _die()  { printf '❌ HARNESS_ERROR: %s\n' "$*" >&2; exit "$RC_HARNESS"; }
 
@@ -89,6 +91,21 @@ _enum_name_of() {   # $1=exit code, $2=enum string → 이름 or ""
   printf ''
 }
 
+# 🟥 capfile 은 **실행 신뢰경계**다 — M4 는 선언된 arm 을 «실제로 실행» 하는 것이 요점이므로,
+#    검사기에 넘긴 capfile 은 그 자체로 "이 명령을 돌려도 된다"는 선언이다. 신뢰하지 않는
+#    capfile 을 이 검사기에 넘기지 마라. 배포 전 보안 패스가 실증한 것: `entry: /usr/bin/touch`
+#    + cal args 로 **REJECTED 판정이 나는 와중에도 부작용이 이미 발생**했다(판정 전에 arm 이 돈다).
+#    아래 검문은 그 경계를 없애지 못한다 — 우발적 형태만 막는다.
+_validate_arm_args() {   # $1=args → 셸 메타문자/상위경로 탈출을 거부
+  case "$1" in
+    *'|'*|*';'*|*'&'*|*'>'*|*'<'*|*'`'*|*'$('*|*$'\n'*)
+      _fail "M4" "캘리브레이션 args 에 셸 메타문자가 있다(entry 와 같은 인젝션 표면): $1"; return 1 ;;
+    *'../'*)
+      _fail "M4" "캘리브레이션 args 가 상위 경로로 탈출한다: $1"; return 1 ;;
+  esac
+  return 0
+}
+
 _run_arm() {   # $1=extra args → ARM_RC / ARM_NAME. 파이프로 읽지 않는다(PIPE-VERDICT).
   ( cd "$CAP_requires_cwd" 2>/dev/null || exit 127
     # shellcheck disable=SC2086  # argv 토큰 분리는 의도 (noglob 로 확장은 막혀 있다)
@@ -101,6 +118,7 @@ _check_one() {
   local f="$1"
   [ -r "$f" ] || _die "capfile 도달 불가: $f"
   _parse "$f"
+  FILE_FAILED=0
   printf '\n── %s (%s)\n' "${CAP_id:-<id 미선언>}" "$f"
 
   [ -n "$UNKNOWN_KEYS" ] && _fail "SCHEMA" "닫힌 키 목록 밖:$UNKNOWN_KEYS (오타 축 무음드롭 방지 — 무시하지 않는다)"
@@ -166,8 +184,10 @@ _check_one() {
   # ── M4 캘리브레이션 쌍 — 선언 + **실행** ──────────────────────────────────
   if [ -z "$CAP_cal_pos_expect" ] || [ -z "$CAP_cal_neg_expect" ]; then
     _fail "M4" "캘리브레이션 쌍 미선언(양성·음성 expect 둘 다 필요) — 답을 아는 케이스를 못 가르는 계기는 재는 게 아니다"
-  elif [ "$FAILED" -eq 1 ] && [ -z "${CRC_FORCE_M4:-}" ]; then
+  elif [ "$FILE_FAILED" -eq 1 ] && [ -z "${CRC_FORCE_M4:-}" ]; then
     printf '  ⏭  M4 — 앞선 축이 실패해 실행 생략(SKIPPED, PASS 아님)\n'
+  elif ! _validate_arm_args "$CAP_cal_pos_args" || ! _validate_arm_args "$CAP_cal_neg_args"; then
+    printf '  ⏭  M4 — args 검문 실패로 arm 을 실행하지 않았다(SKIPPED, PASS 아님)\n'
   else
     local pos_name neg_name pos_rc neg_rc pos_name2
     _run_arm "$CAP_cal_pos_args"; pos_rc="$ARM_RC"; pos_name="$ARM_NAME"

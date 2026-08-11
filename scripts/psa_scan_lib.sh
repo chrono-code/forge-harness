@@ -61,8 +61,18 @@ PSA_PLACEHOLDER='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxx
 # Why this does not weaken the floor:
 #   · rows live in a **gitignored** source (`.claude/rules/.public-surface-allowlist`), so writing one
 #     never puts an operator token on the public surface — the same two-layer discipline as patterns.
-#   · a row is `path<TAB>token-regex` and is **anchored to both**: it suppresses that token on that
-#     file only. A wildcard path is not supported — a row cannot become a blanket mute.
+#   · a row is `path<TAB>literal-token`. **Both sides are literal, whole-value comparisons** — the
+#     path with `=`, the token with `grep -qxF`. Neither is a pattern, so one row suppresses exactly
+#     one token on exactly one file.
+#     ⚠️ Two versions of this got it wrong, and the second is the instructive one. v1 claimed a row
+#     "cannot become a blanket mute" while the code used an UNANCHORED `grep -qE`: a `path<TAB>.*`
+#     row muted every hit in that file, silently, at every severity (pre-publish security pass proved
+#     it with a known pair). v2 force-anchored to `^(…)$` — and `^(.*)$` still matches everything, so
+#     the blanket mute survived the "fix". Only making the field a **literal** actually closes it.
+#     The lesson is the file's own doctrine: a claim is not a control, and neither is a repair that
+#     was not re-measured against the same known pair.
+#   · every suppression **prints a line**. A mute that leaves no trace is indistinguishable from a
+#     clean scan — the same `not found ≠ 0` shape the verdict enum exists to prevent.
 #   · absent file → no rows → behaviour is exactly as before (fail-closed by default).
 # Each row is an operator decision, recorded where it can be audited, instead of an undocumented
 # exception living in someone's head.
@@ -75,7 +85,13 @@ psa_pair_allowlisted() {   # $1=path $2=matched token
     case "$apath" in ''|'#'*) continue ;; esac
     [ -z "$atok" ] && continue
     [ "$apath" = "$1" ] || continue
-    printf '%s' "$2" | grep -qE "$atok" 2>/dev/null && return 0
+    # LITERAL, whole-token (`-x -F`). Not a regex — anchoring alone was not enough: `^(.*)$` still
+    # matches everything, so an anchored `.*` row remained a blanket mute. Treating the field as a
+    # literal is what makes "one row = one token" true rather than merely asserted.
+    if printf '%s' "$2" | grep -qxF "$atok" 2>/dev/null; then
+      echo "  ⚪ allowlisted — ${1}: '${2}' (row: ${apath} :: ${atok})"
+      return 0
+    fi
   done < "$src"
   return 1
 }

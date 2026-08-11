@@ -31,6 +31,7 @@ trap _cleanup EXIT
 
 MODE="${1:-}"
 IN="$OWNED_TMP/in"
+SCAN_NOTE=""
 
 # 합성 양성 토큰은 **조각으로 보관하고 실행 시 조립**한다. 통짜 리터럴을 두면 이 파일 자체가
 # MED 히트가 되어 pre-commit 기밀 스캔에 걸린다 — 실제로 걸렸고(2026-08-11), 그 차단은 옳았다.
@@ -43,12 +44,19 @@ case "$MODE" in
   --known-negative)   # 답을 아는 음성: 어떤 패턴에도 안 걸리는 합성 입력
     printf 'synthetic_fixture.md\tperfectly ordinary documentation line\n' > "$IN" ;;
   --tracked|'')       # 실사용: 이 레포의 tracked 파일 전량
-    git -C "$REPO_ROOT" ls-files > "$OWNED_TMP/files" 2>/dev/null || { echo "psa-probe: git 도달 불가"; exit 10; }
-    : > "$IN"
-    while IFS= read -r f; do
-      [ -f "$REPO_ROOT/$f" ] || continue
-      awk -v p="$f" '{printf "%s\t%s\n", p, $0}' "$REPO_ROOT/$f" 2>/dev/null >> "$IN"
-    done < "$OWNED_TMP/files" ;;
+    # `-z` (NUL 구분) 필수: 기본 `core.quotePath=true` 는 비-ASCII 파일명을 따옴표+8진
+    # 이스케이프로 내보내므로, 줄 단위로 읽으면 그 파일들이 **무음으로 스캔에서 빠지고**
+    # 결과는 CLEAN 이 된다(못 잰 것을 0으로 렌더). 드롭은 세어서 보고한다.
+    git -C "$REPO_ROOT" ls-files -z > "$OWNED_TMP/files" 2>/dev/null || { echo "psa-probe: git 도달 불가"; exit 10; }
+    : > "$IN"; scanned=0; dropped=0
+    while IFS= read -r -d '' f; do
+      if [ ! -f "$REPO_ROOT/$f" ]; then dropped=$((dropped+1)); continue; fi
+      if awk -v p="$f" '{printf "%s\t%s\n", p, $0}' "$REPO_ROOT/$f" >> "$IN" 2>/dev/null; then
+        scanned=$((scanned+1))
+      else dropped=$((dropped+1)); fi
+    done < "$OWNED_TMP/files"
+    SCAN_NOTE=" (스캔 $scanned 파일$([ "$dropped" -gt 0 ] && printf ', 드롭 %s' "$dropped"))"
+    [ "$dropped" -gt 0 ] && { echo "psa-probe: HARNESS_ERROR — 읽지 못한 tracked 파일 $dropped 개(부분 스캔은 CLEAN 을 증명하지 못한다)"; exit 10; } ;;
   *) echo "psa-probe: 알 수 없는 모드 '$MODE'"; exit 10 ;;
 esac
 
@@ -64,7 +72,7 @@ fi
 
 psa_scan_tagged < "$IN"; hit_rc=$?     # verdict 는 직접 취한다(PIPE-VERDICT)
 case "$hit_rc" in
-  0) echo "psa-probe: CLEAN"; exit 0 ;;
-  1) echo "psa-probe: LEAK"; exit 1 ;;
+  0) echo "psa-probe: CLEAN${SCAN_NOTE}"; exit 0 ;;
+  1) echo "psa-probe: LEAK${SCAN_NOTE}"; exit 1 ;;
   *) echo "psa-probe: HARNESS_ERROR — scan_tagged 가 enum 밖 $hit_rc 반환"; exit 10 ;;
 esac
