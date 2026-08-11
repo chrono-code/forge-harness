@@ -104,8 +104,10 @@ the date, matching `date +%Y_%m_%d`. Fallback when no FH install is resolvable:
 ⚠️ **This path is load-bearing, not cosmetic.** The cadence detector in `CLAUDE.md §Cadence Rules`
 globs exactly `tracks/_meta/frontier_digest_*.md` to decide whether the 7-day proposal is overdue, so
 a digest written anywhere else — or with hyphens instead of underscores — is **invisible to the
-cadence check forever**, and the skill silently looks never-run. The production runner
-(`scripts/frontier_digest_daily.sh`) already writes this exact path; the previously documented
+cadence check forever**, and the skill silently looks never-run. The hub's production runner
+(`scripts/frontier_digest_daily.sh` — **hub-local, not distributed in the npm package**: it is half of
+a launchd pair and spends CLI calls per run, so an installed copy does not have it and does not need
+it — this skill's save path stands alone) already writes this exact path; the previously documented
 `digests/frontier_{today}.md` matched neither, and measured 2026-08-11 it had produced **0** files
 against 53 real digests in `tracks/_meta/`. Keep this path, the runner, and the cadence glob in sync
 — changing one alone re-opens the same hole.
