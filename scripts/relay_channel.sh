@@ -92,7 +92,12 @@ ORDER_judge="mechanical model"
 # 집합 축
 AXES_SET="verdict_binding"
 # 선언 파일이 쓸 수 있는 비-축 키 (메타데이터)
-META_KEYS="id entry requires_cwd verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream"
+# 스펙 §ⓑ.2 의 `calibration:` 블록(known_positive/known_negative)은 등록 시점 필드다.
+# 여기는 call moment 라 그 값을 **쓰지 않지만**, CLOSED 목록에서 빠뜨리면 스펙대로 쓴
+# 선언이 VIOLATION 으로 거부된다 — 2026-08-11 실측: registry_check 를 통과한 capfile 2개가
+# relay 에서 8건 VIOLATION. 같은 스펙에 대해 두 계기가 서로 다른 스키마를 든
+# divergent-normalizer 이고, 관대함이 갈리면 한쪽만 통과하는 입력이 생긴다.
+META_KEYS="id entry requires_cwd verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream calibration_positive_args calibration_positive_expect calibration_negative_args calibration_negative_expect"
 
 _die() { printf '❌ %s\n' "$*" >&2; exit "$RC_HARNESS"; }
 _violation() { printf '⛔ COMPOSITION_VIOLATION — %s\n' "$*" >&2; VIOLATED=1; }
