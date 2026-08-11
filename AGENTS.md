@@ -33,6 +33,15 @@ operations or steel-quench.
 
 Machine-readable mirror: `.claude/registry/agent_cards.json`.
 
+> **Agent frontmatter must be valid YAML — and this bites non-Claude runtimes hardest.** Claude Code's
+> loader is lenient (it accepted an unquoted `description:` containing `": "`); a strict YAML parser
+> does not, and then **every key below the bad line is silently dropped** — including `tools:` and any
+> `model:` floor. Measured 2026-08-11: one agent's multi-line unquoted `description` (with `user:` /
+> `assistant:` lines inside it) invalidated its declared `tools: Read, Grep, Glob` and its `model: opus`
+> floor; the agent ran with all tools and no pin. Keep `description:` to **one quoted line** and put
+> examples in the body. `bash scripts/validate_yaml.sh` now covers `plugins/*/agents/*.md` as well as
+> skills, and reports a zero-file scan as an instrument error rather than a pass.
+
 ### Tool restrictions
 
 | Agent | Allowed tools |
@@ -42,6 +51,15 @@ Machine-readable mirror: `.claude/registry/agent_cards.json`.
 | `hub-persona-auditor` | Read, Grep, Glob |
 | `quench-challenger` | Read, Grep, Glob |
 | `persona-innovator` | Read, Grep, Glob, WebSearch, WebFetch |
+| `beginner` | Read |
+| `main-player` | Read, Grep, Glob |
+| `expert` | Read, WebSearch, WebFetch |
+
+The table is the whole roster — all eight agents above appear here. *Three were missing until
+2026-08-11; the omission read as "unrestricted" to anyone checking this page, which is the wrong
+default for a table whose subject is restriction.* Cross-check with the files themselves rather
+than trusting either side alone: the same audit found `challenger` documented here with a tool set
+its file never declared at all.
 
 ## Runtime Boundaries
 
