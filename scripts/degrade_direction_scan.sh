@@ -40,7 +40,14 @@ PASS='(True|"PASS"|'"'"'PASS'"'"'|"ALLOW"|'"'"'ALLOW'"'"'|"OK"|'"'"'OK'"'"'|"VAL
 # incl. this gate's own pre-push/pre-commit-hook trigger category — must not be invisibly dropped).
 # Anything else is tracked as UNSCANNABLE so a load-bearing surface in another language is reported
 # as "not covered", never silently folded into an "advisory clean" (M#2, steel-quench 2026-07-03).
-FILES=(); UNSCANNABLE=(); MD_ORIGIN=()
+FILES=(); UNSCANNABLE=(); MD_ORIGIN=(); UNMEASURED=()
+# UNSCANNABLE vs UNMEASURED — 한 통에 넣으면 S 가 살아난다(재검 2026-08-12 지목).
+#   UNSCANNABLE = 측정 대상이 아니다(펜스 없는 산문 md, py/sh 아닌 파일). 정상 상태.
+#   UNMEASURED  = 재려 했는데 **못 쟀다**(python3/cksum 부재로 추출 실패). 이건 절대 CLEAN 이 아니다.
+# 첫 수리는 둘을 UNSCANNABLE 하나에 담았고, 그 배열은 `FILES` 가 **완전히 빌 때만** exit 2 로
+# 승격된다 — 스캔 가능한 .sh 가 하나라도 섞이면 추출 실패가 note 한 줄로 강등되고 rc=0 이 나갔다.
+# 즉 「측정 못 함을 CLEAN 으로 렌더」가 지배 경로(디렉터리 스캔 → typed capability)에 그대로 남아
+# 있었다 — 이 릴리스가 고치겠다고 선언한 바로 그것이다.
 
 # ── Markdown fence extraction (2026-08-11) ────────────────────────────────────────────────────
 # The bash this harness actually EXECUTES largely does not live in .sh files — it lives in ```bash
@@ -55,11 +62,26 @@ FILES=(); UNSCANNABLE=(); MD_ORIGIN=()
 # line numbers and whose every other line is blank. Line numbers then map 1:1, so an emitted
 # finding points at the real file:line with no offset arithmetic to get wrong. A markdown file
 # with NO bash fence stays UNSCANNABLE — nothing was extracted, so nothing was measured.
-_MD_TMP="$(mktemp -d 2>/dev/null || echo /tmp/degradescan.$$)"
-trap 'rm -rf "$_MD_TMP"' EXIT
+# python3 는 이 레포의 선언된 런타임이 아니다(`package.json engines` = node 만). 부재하면 추출이
+# 불가능하고, 그때 md 를 FILES 에도 UNSCANNABLE 에도 넣지 않으면 **요약에서 통째로 사라져**
+# "no smells in N scanned files / exit 0" 이 된다 — 이 릴리스가 고치는 바로 그 클래스를 수리가
+# 재생산한 것이다(배포 직전 보안 패스가 적발, 2026-08-12). 자매 스크립트들은 이미 옳게 한다:
+# validate_yaml → UNCALIBRATED + exit 2, package_coverage → exit 1. 여기도 같은 방향으로 맞춘다.
+_MD_OK=1
+for _dep in python3 cksum; do command -v "$_dep" >/dev/null 2>&1 || _MD_OK=0; done
+# cksum 도 미선언 의존성이다 — 첫 수리는 python3 만 가드하고 cksum 은 rc 미검사로 도입했다.
+# 부재 시 유일성 토큰이 **빈 문자열**이 돼 shadow 이름 충돌(A-1)이 그대로 부활한다(실증).
+# mktemp 실패 시 예측 가능한 경로(/tmp/degradescan.$$)로 폴백하던 것을 제거했다: 그 경로를 mkdir
+# 하지 않아 정상 폴백은 100% 실패하고, 반대로 공격자가 그 이름에 심링크를 심어두면 **성공해서
+# 레포 밖에 쓴다**(실증됨). 즉 "공격받을 때만 동작하는 코드" 였다.
+_MD_TMP="$(mktemp -d 2>/dev/null)" || { _MD_TMP=""; _MD_OK=0; }
+trap '[ -n "$_MD_TMP" ] && rm -rf "$_MD_TMP"' EXIT
 _md_shadow() {   # $1 = markdown path; echoes shadow path, or nothing when no bash fence exists
   local src="$1" out
-  out="$_MD_TMP/$(echo "$src" | tr '/' '_').sh"
+  [ "$_MD_OK" = 1 ] || return 1        # 추출 불가 → 호출부가 UNSCANNABLE 로 보낸다(드롭 금지)
+  # 경로 해시를 붙인다: `tr '/' '_'` 만 쓰면 a/b.md 와 a_b.md 가 **같은 shadow** 로 매핑돼
+  # 뒤엣것이 앞엣것을 덮고, 결함 파일이 통째로 사라진 채 카운트는 2로 찍힌다(실증됨).
+  out="$_MD_TMP/$(echo "$src" | tr '/' '_')-$(printf '%s' "$src" | cksum | cut -d' ' -f1).sh"
   python3 - "$src" "$out" <<'PYEOF' || return 1
 import sys, re
 src, out = sys.argv[1], sys.argv[2]
@@ -101,7 +123,13 @@ for t in "${TARGETS[@]}"; do
       head -n1 "$f" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b' && FILES+=("$f")
     done < <(find "$t" -type f 2>/dev/null)
     while IFS= read -r f; do
-      sh=$(_md_shadow "$f") && [ -n "$sh" ] && { FILES+=("$sh"); MD_ORIGIN+=("$sh=$f"); }
+      if sh=$(_md_shadow "$f") && [ -n "$sh" ]; then
+        FILES+=("$sh"); MD_ORIGIN+=("$sh=$f")
+      elif [ "$_MD_OK" = 1 ]; then
+        UNSCANNABLE+=("$f")   # 펜스가 없다 — 측정 대상이 아님(정상)
+      else
+        UNMEASURED+=("$f")    # 추출 자체가 불가 — 못 쟀다(CLEAN 으로 접히면 안 된다)
+      fi
     done < <(find "$t" -type f -name '*.md' 2>/dev/null)
   elif [ -f "$t" ]; then
     tb="${t##*/}"
@@ -110,14 +138,24 @@ for t in "${TARGETS[@]}"; do
       *.md)
         if sh=$(_md_shadow "$t") && [ -n "$sh" ]; then
           FILES+=("$sh"); MD_ORIGIN+=("$sh=$t")
+        elif [ "$_MD_OK" = 1 ]; then
+          UNSCANNABLE+=("$t")      # no bash fence — not a measurement target
         else
-          UNSCANNABLE+=("$t")      # no bash fence extracted → genuinely not measured
+          UNMEASURED+=("$t")       # extraction impossible — could not measure
         fi ;;
       *.*) UNSCANNABLE+=("$t") ;;
       *) if head -n1 "$t" 2>/dev/null | grep -qE '^#!.*\b(ba|z|k)?sh\b'; then FILES+=("$t"); else UNSCANNABLE+=("$t"); fi ;;
     esac
   fi
 done
+# 못 잰 파일이 있으면 hits 와 무관하게 비-clean 이다. 이 블록이 FILES 비었을 때만 도는 구조가
+# S 의 정체였다 — 스캔 가능한 파일이 하나라도 있으면 「못 쟀다」가 note 로 강등되고 rc=0 이 나갔다.
+if [ ${#UNMEASURED[@]} -gt 0 ]; then
+  echo "degrade-scan: ${#UNMEASURED[@]} file(s) COULD NOT BE MEASURED (markdown fence extraction unavailable — python3/cksum missing):"
+  printf '  (unmeasured) %s\n' "${UNMEASURED[@]}"
+  echo "This is NOT 'clean' — the fence surface was not scanned at all. Install python3+cksum or scan those files elsewhere."
+  _FORCE_NONCLEAN=2
+fi
 if [ ${#FILES[@]} -eq 0 ]; then
   if [ ${#UNSCANNABLE[@]} -gt 0 ]; then
     echo "degrade-scan: ${#UNSCANNABLE[@]} changed file(s) are OUTSIDE the scannable set (py/sh) — NOT scanned, NOT 'clean':"
@@ -125,7 +163,7 @@ if [ ${#FILES[@]} -eq 0 ]; then
     echo "A load-bearing surface in another language must go straight to cross-family review."
     exit 2   # advisory non-clean — an orchestrator keying on exit code must not read this as clean
   fi
-  echo "degrade-scan: no scannable (py/sh) target files"; exit 0
+  echo "degrade-scan: no scannable (py/sh) target files"; exit "${_FORCE_NONCLEAN:-0}"
 fi
 
 hits=0
@@ -325,4 +363,4 @@ fi
 # it does NOT assert the changed load-bearing surface is safe (other languages, non-code surfaces,
 # and the lint's own recall gaps are out of scope). The load-bearing check is the cross-family review.
 echo "degrade-scan: no default-toward-PASS smells in ${#FILES[@]} scanned py/sh file(s) — does NOT cover other languages / non-code surfaces / the cross-family check (advisory)."
-exit 0
+exit "${_FORCE_NONCLEAN:-0}"   # 못 잰 파일이 있으면 0 이 아니다 — "안 쟀다"는 "깨끗하다"가 아니다

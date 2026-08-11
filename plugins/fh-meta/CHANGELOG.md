@@ -10,6 +10,42 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [1.4.96] — 2026-08-12
+
+**fix: 전수 재출하 캠페인 — 「돌았다고 보고하는데 안 도는」 계기들 · 선언이 무효였던 에이전트**
+
+스킬 40종 + 에이전트 8종 전수 적대검토 후 수리(PR #348 · #349). 지배 결함은 하나의 얼굴이었다 —
+**계기가 대상에 안 닿는데 출력은 무결**.
+
+- **`quench-challenger` 의 frontmatter 가 깨져 선언이 무효였다.** 비인용 멀티라인 `description`
+  안의 `user:`/`assistant:` 줄이 새 YAML 키로 파싱돼 그 아래 `tools: Read, Grep, Glob` 과
+  `model: opus`(HARD FLOOR) 를 **둘 다 무효화**했다. 읽기전용으로 선언된 적대 에이전트가 전체
+  도구로 돌고 있었다. `description` 을 한 줄 인용으로, 예시는 본문으로.
+- **`scripts/validate_yaml.sh`** — 스캔 대상에 **에이전트 8종 편입**(종전 SKILL.md 만). 양 surface
+  중 하나라도 0건이면 `INSTRUMENT ERROR`(exit 3) — 스캔 0을 통과로 렌더하지 않는다. **신규 출하**.
+- **`scripts/degrade_direction_scan.sh`** — **마크다운 ```bash 펜스 추출**. FH 가 실제로 실행하는
+  bash 는 대부분 SKILL.md 펜스 안에 사는데 스캐너가 `.py`/`.sh` 만 봤다. 그림자 파일이 **원본
+  줄번호를 보존**해 findings 가 `SKILL.md (```bash fence):202` 로 나온다. 펜스 없는 md 는 종전대로
+  `UNSCANNABLE`(미측정을 커버리지로 바꾸지 않는다).
+- **인용 무결성 2건 정정**(원문 직독) — arXiv 2605.00914 의 32.3pp 는 **다수결 oracle gap** 이지
+  「자기평가 시 성능저하」가 아니고(논문 결론은 *isolated self-correction prevails*), arXiv
+  2603.15255(SAGE)는 **co-evolve** 라 「Critic 격리」 근거가 될 수 없다. `harvest-loop` 의 같은
+  오귀속도 동시 수리.
+- **`salience-splitter`** — 4축 게이트가 이름으로 지목한 의무(«split 마다 목적지가 게이트 안인지
+  재질문») 를 본문에 배선 · 컷 판정 「머릿속으로」를 **레이어별 측정 2분기**로(상주=ablation
+  하네스 / SKILL.md=콜드스타트 sim) · 포인터↔헤더 대조를 실행 가능한 형태로(오탐 100% 였다) ·
+  orphan 스캔을 `^## §` → `^## ` 로(실물 헤더 139 중 97만 보던 30% 사각).
+- **죽은 명령·경로 정리** — `claude mcp search`(부재) · `codex list-agents`(부재) ·
+  `marketplace add` 인자 · `GoogleWebSearch`(존재하지 않는 도구명) · `frontier-digest` 저장 경로가
+  카덴스 글롭과 어긋나 **7일 카덴스에 영원히 안 잡히던** 것.
+- **거짓 PASS 계기들** — `harness-doctor` E7/E3/Step-11(`grep -c || echo 0` 일가가 음성 arm 을
+  통과로 렌더) · `install-doctor` 의 `except: pass`(깨진 MCP 설정이 「위험 없음」과 구별 불가) ·
+  `asset-placement-gate`(죽은 스캔과 진짜 무충돌이 둘 다 count=0) · `auto-decorrelation`(zsh 에서
+  다중 사이드카가 **무음 탈락** → single-family degrade).
+- **`AGENTS.md`** — 도구 표 누락 3종(beginner·main-player·expert) 보강 + frontmatter YAML 유효성
+  규율(비-CC 파서에서는 깨진 줄 아래 키가 전부 드롭된다). 문서↔파일 전수 대조 불일치 0.
+
+
 ### [1.4.86] — 2026-08-03
 
 **fix: 격리를 자칭하던 어블레이션 절차 + ambig 게이트 앵커 + 밀린 출하 자산 반영**

@@ -114,8 +114,30 @@ if [ -r "$README_FMT_FILE" ]; then
 else
   README_FMT='%s skills · %s agents'
 fi
-# shellcheck disable=SC2059  # 템플릿은 선언 파일에서 온다 — 그게 이 기능의 요점
-[ -n "$README_FMT" ] && count_check "README header" README.md "$(printf "$README_FMT" "$total_sk" "$total_ag")"
+# 렌더 결과를 **검사한 뒤에** 패턴으로 쓴다. 렌더된 문자열이 그대로 `grep -qE` 패턴이 되므로:
+#   · 개행이 들어가면 grep -E 는 그것을 패턴 구분자로 읽어 **OR 검색**이 된다 — 실측: 템플릿
+#     `%s\n%s` 는 stale README(99/99)를 PASS 시켰다(뒷조각 `8` 이 "Node 18" 에 걸림).
+#   · printf 가 실패해도(잘못된 지시자) rc 를 안 봐서 **부분 렌더**가 패턴이 됐다.
+# 이건 mandatory-pass 게이트이고 selfcheck→prepublishOnly · pre-commit · CI 세 경계에 물려 있다.
+# 대상 독자가 하류 하네스 저자(한국어 템플릿 끝에 개행을 붙이는 건 자연스러운 실수)라 더 그렇다.
+# 기존 가드 `*%s*%s*` 는 "%s 가 둘인가" 만 보지 **렌더 결과**를 안 본다. (배포 직전 보안 패스 A-2)
+if [ -n "$README_FMT" ]; then
+  # shellcheck disable=SC2059  # 템플릿은 선언 파일에서 온다 — 그게 이 기능의 요점
+  README_STR=$(printf "$README_FMT" "$total_sk" "$total_ag") || {
+    echo "FAIL  count: README format override 를 렌더할 수 없다: '$README_FMT' ($README_FMT_FILE)"; fail=1; README_STR=""; }
+  case "$README_STR" in
+    *"
+"*) echo "FAIL  count: README format override 가 개행을 렌더한다 — grep -E 패턴이 쪼개져 OR 검색이 된다: '$README_FMT'"; fail=1; README_STR="" ;;
+  esac
+  # 두 수치가 실제로 렌더 결과에 들어갔는지(`%.0s` 류가 값을 삼키는 경우 차단)
+  if [ -n "$README_STR" ]; then
+    case "$README_STR" in *"$total_sk"*) : ;; *) echo "FAIL  count: 렌더 결과에 skills 수($total_sk)가 없다: '$README_STR'"; fail=1; README_STR="" ;; esac
+  fi
+  if [ -n "$README_STR" ]; then
+    case "$README_STR" in *"$total_ag"*) : ;; *) echo "FAIL  count: 렌더 결과에 agents 수($total_ag)가 없다: '$README_STR'"; fail=1; README_STR="" ;; esac
+  fi
+  [ -n "$README_STR" ] && count_check "README header" README.md "$README_STR"
+fi
 count_check "local_fh_context fh-meta" templates/local_fh_context.md                 "(fh-meta, ${meta_sk})"
 
 if [ "$fail" -ne 0 ]; then

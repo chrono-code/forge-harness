@@ -184,6 +184,21 @@ else
   fail=1
 fi
 
+# count_check's README format override is a mandatory-pass gate whose pattern is caller-supplied.
+# Same subject-present/anchor-gone shape as the block above: if the guard ships without its known
+# pair, a template that defeats the gate (a rendered newline turns the pattern into an OR search)
+# passes silently — measured 2026-08-12 on a stale README that the gate reported as PASS.
+if [ ! -f scripts/count_check.sh ]; then
+  echo "SKIP  count_check README-format lanes (subject scripts/count_check.sh absent)"
+elif [ -f scripts/test_count_check_readme_format_lanes.sh ]; then
+  if ! bash scripts/test_count_check_readme_format_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  count_check README-format lanes: count_check.sh present but its anchor is missing"
+  fail=1
+fi
+
 # package-coverage — a shipped doc must not point at a file the tarball omits. Distinct from the
 # ref-path check below: that one asks "does this path exist at all", this one asks "does the
 # CONSUMER get it". Measured 2026-07-28: 35 paths existed, were named by a shipped doc, and were
