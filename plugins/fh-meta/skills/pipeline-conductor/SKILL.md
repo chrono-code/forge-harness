@@ -94,7 +94,11 @@ The four constituent skills use heterogeneous scope models. Translate the pipeli
 
 ## Step 0.5. return-path-gate — Pre-flight Chain Audit
 
-> Skip if return-path-gate is not installed or scope is a single non-pipeline skill.
+> Skip only when scope is a single non-pipeline skill. **return-path-gate not installed is a recorded
+> degrade, never a free skip**: proceed, but record `degraded: return-path-gate (not installed)` in the
+> final report — and, symmetric with the user-override row below, the sweep **cannot reach
+> `CLEAN (--full)`**. A missing tool must not pass more cheaply than an explicit refusal (that
+> asymmetry trains uninstalling the gate).
 
 Run `/return-path-gate --skill [scope]`.
 
@@ -197,7 +201,8 @@ After all steps complete (or after chain halt), output the aggregated report (te
 
 | Condition | Overall |
 |---|---|
-| All steps PASS | `CLEAN ({mode})` |
+| All steps PASS, zero `degraded:` entries | `CLEAN ({mode})` |
+| All steps PASS but 1+ `degraded:` entries (skip/not-installed/override) | `CLEAN ({mode}, degraded: [list])` — and the mode may not render `--full` (the Step 0.5 "cannot reach CLEAN (--full)" rule binds HERE, in the aggregate, not only in prose) |
 | Any step CONDITIONAL_PASS or accepted ESCALATE; none FAIL | `PENDING` |
 | Any step FAIL or unresolved ESCALATE (option c) | `BLOCKED` |
 
@@ -263,7 +268,7 @@ complexity_routing:
 
 ```
 Step 0 scope confirmed and scope translation table applied
-+ Step 0.5 return-path-gate pre-flight: PASS / CONDITIONAL_PASS / FAIL (halts sweep) / explicitly skipped / degraded (user override)
++ Step 0.5 return-path-gate pre-flight: PASS / CONDITIONAL_PASS / FAIL (halts sweep) / explicitly skipped / degraded (user override | not installed)
 + All in-scope steps executed and verdicts emitted
 + Aggregated report output (Step 5 format)
 + Report saved to tracks/_meta/ (or skip warning issued)
@@ -272,6 +277,11 @@ Step 0 scope confirmed and scope translation table applied
 + If PENDING: pending items listed in report
 + If ESCALATE occurred: user presented three options; choice recorded in report
 ```
+
+**Check classes**: every fence row above is *mandatory-pass*, except the completion-claim discipline
+below, which is *measured* — its reconciliation (failed+skipped list length vs. in-scope − passed) is
+the mechanical anchor. No Done When row here is judged: verdict aggregation is per-step-typed, not
+discretionary.
 
 Verdict: PASS (all conditions met, sweep complete) | CONDITIONAL_PASS (sweep complete, pending items captured) | FAIL (chain halted, blocking items remain) | ESCALATE (chain paused, human decision required)
 

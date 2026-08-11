@@ -79,7 +79,22 @@ Classify each commit using the following criteria (commit message + changed-file
 
 Output the candidate list (format in §ModeA-Blocks): scanned count, FH absorption candidates with type/location/impact stars, field-only skipped count, then ask `[all / select number / skip]`. If 0 candidates, report "no absorption candidates" and exit.
 
-## Step 4. PR Creation (upon user approval)
+## Step 3.5. contention-layer — Collision Gate (mandatory when candidates ≥ 1)
+
+Run `contention-layer` on the confirmed candidate list **before any PR is created** — a new pattern
+must be checked for collision with existing skill role clusters before registration. Skip only when
+Step 3 found 0 candidates.
+
+| contention-layer result | Behavior |
+|---|---|
+| No collision | Proceed to Step 4 |
+| Collision / blocked registration | **No PR** — verdict `FAIL` per the enum below |
+| Role collision needing a human call | **No PR** — verdict `ESCALATE` |
+
+(This step previously existed only as a line *below* Done When — a cold executor reading Steps 0–4
+had no occasion to see it before `gh pr create`. It is now in the execution path it gates.)
+
+## Step 4. PR Creation (upon user approval, after Step 3.5)
 
 Create a `harvest/{project}-{date}` branch in FH, apply approved patterns, commit, push, and `gh pr create` (bash + PR body checklist in §ModeA-Blocks).
 
@@ -215,24 +230,32 @@ One pass per session; never blocks the Mode B commit.
 
 **Mode A (Pattern Harvest)**:
 ```
-All stages Step 0~4 complete
-+ Step 3 harvest candidate list output (N candidates + M field-only)
-+ Upon user approval, Step 4 PR creation complete (gh pr create executed)
-+ When 0 candidates, "no absorption candidates" reported then exit
+All stages through the exit point complete (Step 0~4; or
+  Step 0~3 + the 0-candidate exit, which is a valid terminal)          — mandatory-pass
++ Step 3 harvest candidate list output (N candidates + M field-only)  — measured (counts)
++ Step 3.5 contention-layer ran on the confirmed list (or its
+  0-candidate skip recorded) and its verdict gated Step 4             — mandatory-pass
++ Upon user approval, Step 4 PR creation complete (gh pr create ran)  — mandatory-pass
++ When 0 candidates, "no absorption candidates" reported then exit    — mandatory-pass
 ```
 
 **Mode B (Session Log)**:
 ```
-All Steps 0-B ~ 5-B executed
-+ Step 0-B.1 detection-skip ledger applied (already-logged commits filtered)
-+ Session markdown file generated from git log  (or "all commits already logged" exit)
-+ Hub commit created (no auto-push)
-+ Confirmation output with push offer
+All Steps 0-B ~ 5-B executed                                          — mandatory-pass
++ Step 0-B.1 detection-skip ledger applied (already-logged filtered)  — mandatory-pass
++ Session markdown file generated from git log
+  (or "all commits already logged" exit)                              — mandatory-pass
++ Hub commit created (no auto-push)                                   — mandatory-pass
++ Confirmation output with push offer                                 — mandatory-pass
 ```
+
+The harvest-worthiness classification itself (Steps 1–2) is *judged* — its adversarial pairing is
+Step 3.5 `contention-layer` plus the PR-side `asset-placement-gate`; no candidate registers on the
+author's judgment alone.
 
 Verdict: PASS (harvest candidates output and PR created, or 0 candidates confirmed) | CONDITIONAL_PASS (candidates found but PR pending user approval; or Mode B commit created, push pending) | FAIL (contention-layer blocked candidate registration; or hub path not found) | ESCALATE (role collision with existing skill requires human decision)
 
-**→ Mandatory next: `contention-layer`** — run immediately after Step 3 candidate list is confirmed, before Step 4 PR creation. New patterns must be checked for collision with existing skill role clusters before registration. Skip only when 0 candidates found.
+**→ Mandatory next: `contention-layer`** — executed as Step 3.5 above (kept here in closed-chain form for chain auditors: run after Step 3 candidate confirmation, before Step 4 PR creation; skip only at 0 candidates).
 
 ## Linked Skills
 

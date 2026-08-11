@@ -38,7 +38,9 @@ deliberately excluded — `CLAUDE.local.md`, the companion store, and local sess
 *correct* home for operator-private tokens, so finding them there is not a leak.
 
 ```bash
-REPO_PATH="${ARGUMENTS#--target }"
+ARGS="${ARGUMENTS//--json/}"            # strip flags first — "--json" alone must not become the path
+REPO_PATH="${ARGS#--target }"
+REPO_PATH="$(printf '%s' "$REPO_PATH" | xargs)"
 REPO_PATH="${REPO_PATH:-$(pwd)}"
 git -C "$REPO_PATH" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
   || { echo "Not a git repo — public-surface-audit scans git-tracked files only. Aborting."; exit 1; }
@@ -50,12 +52,18 @@ git -C "$REPO_PATH" ls-files | wc -l | xargs echo "Tracked files:"
 
 ## Step 1. Pattern List (configurable)
 
-The patterns **are themselves operator-private** — your real username and employer name must not be
-hardcoded *here*, on the public surface, or this skill would leak exactly what it hunts. So the literal
-values live in a **gitignored source you supply** (`.claude/rules/.public-surface-patterns`, or a
-section of `CLAUDE.local.md`) — one `severity<TAB>regex` per line. This SKILL.md carries only
-placeholders; the scan reads the gitignored file, never literals from this table. The skill dogfoods
-its own rule.
+The pattern source is **two layers, matching the mechanical scan layer** (`scripts/psa_scan_lib.sh`,
+shared with the pre-commit/pre-push/pre-publish hooks — this skill must render the same verdict the
+hooks would, or the same repo state gets two answers):
+
+1. **`.claude/rules/.public-surface-patterns.defaults`** — committed, universal placeholder-grade
+   patterns (safe to publish; carries no operator literal).
+2. **`.claude/rules/.public-surface-patterns`** — **gitignored, operator literals** (or `PSA_PATTERNS`
+   env override). Your real username and employer name live *only* here — hardcoding them in a tracked
+   file would leak exactly what this skill hunts. One `severity<TAB>regex` per line.
+
+The scan reads the **union of both layers**. This SKILL.md carries only placeholders; the skill
+dogfoods its own rule.
 
 | # | Token class | Severity | Placeholder (real value goes in the gitignored source) | Why private |
 |:-:|---|:-:|---|---|
@@ -71,12 +79,16 @@ its own rule.
 - **LOW** — companion-store / private-wiring name. Methodology should be model-agnostic; naming a private
   store is drift, not a confidentiality breach.
 
-> **Setup**: put your real values in the gitignored pattern source (one `severity<TAB>regex` per line);
-> the scan reads that file, never literals from this SKILL.md. If the source is **absent**, the scan
-> reports **NOT CONFIGURED** — *not* CLEAN. A missing pattern file must never masquerade as a clean bill
-> of health (that would be a silent failure: "nothing scanned" misread as "nothing leaked"). To declare
-> "I genuinely have no private tokens", create the file **empty** — an empty file is an explicit CLEAN,
-> an absent file is unconfigured.
+> **Setup**: put your real values in the gitignored override (one `severity<TAB>regex` per line).
+> Degrade states, by layer — never collapse them:
+> - **Neither layer present** → **NOT CONFIGURED** — *not* CLEAN. A missing pattern source must never
+>   masquerade as a clean bill of health ("nothing scanned" misread as "nothing leaked").
+> - **Defaults only** (override absent) → scan runs, but the verdict carries the label
+>   `operator literals NOT CONFIGURED — universal patterns only; identity/company classes UNSCANNED`.
+>   This mirrors what the hooks scan in the same state, instead of reporting NOT CONFIGURED while the
+>   hook path quietly scans defaults (two verdicts for one repo state — the divergence this line closes).
+> - To declare "I genuinely have no private tokens", create the override **empty** — an empty file is
+>   an explicit declaration, an absent file is unconfigured.
 
 ---
 
@@ -85,6 +97,11 @@ its own rule.
 Some tracked files legitimately reference otherwise-private tokens — the scan must not flag these as
 leaks. Maintain an allowlist of `file path :: token` pairs. A match is suppressed only when **both**
 the file and the token are on the allowlist row.
+
+**Where the filled allowlist lives**: a populated allowlist row *names private tokens*, so it belongs
+in a **gitignored** source beside the pattern override (`.claude/rules/.public-surface-allowlist`, or a
+section of `CLAUDE.local.md`) — never in a tracked file. The table below shows generic shapes only; a
+tracked copy of your real allowlist would itself be the leak this skill scans for.
 
 | Tracked file | Allowed tokens | Reason |
 |---|---|---|
@@ -172,10 +189,16 @@ class of leak). Diagnostic-only: this step never writes — it reports, the oper
 Report per-hit `file:line → matched token [class]` grouped by severity, then the overall verdict.
 **Verdict thresholds** (behavioral — these define the gate):
 
-- ⚪ **NOT CONFIGURED** — pattern source absent (nothing scanned — NOT a clean result; set up first)
-- 🟢 **CLEAN** — pattern source present (incl. empty), 0 HIGH + 0 MED + 0 LOW (after allowlist)
+- ⚪ **NOT CONFIGURED** — no pattern layer present (nothing scanned — NOT a clean result; set up first)
+- 🟢 **CLEAN** — pattern source present (incl. empty override), 0 HIGH + 0 MED + 0 LOW (after allowlist)
 - 🟡 **REVIEW** — 0 HIGH + 0 MED, LOW-only (drift, not a breach)
 - 🔴 **LEAK** — 1+ HIGH or 1+ MED (block publish / fix before commit)
+
+**Every verdict line carries a `coverage:` qualifier** — `full` (both layers loaded) or
+`defaults-only` (override absent: operator identity/company classes UNSCANNED). The qualifier exists
+because the enum alone cannot preserve the defaults-only state: `CLEAN (coverage: defaults-only)` on
+an operator-configured checkout is missing evidence, not a pass — publish-gating callers there must
+require `coverage: full`.
 
 > **Detail**: See `SKILL_detail.md §Report-Template` — the full human-report ASCII layout (severity
 > buckets, allowlist-suppressed line) — read when formatting the Step 4 report.
@@ -207,7 +230,9 @@ enforceable (FH's "enforcement is a hook, not a prompt" principle). Imported fro
 authoritative — never gate on `counts` alone**: a counts-only check (`HIGH==0 && MED==0`) misreads
 `NOT_CONFIGURED` (which also has zero counts) as a pass. A caller blocks when `verdict` is `LEAK` **or**
 `NOT_CONFIGURED` — an unconfigured scan is not a pass (the same silent-failure guard as the human path:
-absence ≠ CLEAN).
+absence ≠ CLEAN). The JSON carries the same `coverage` field as Step 4; on an operator-configured
+checkout a publish-gating caller additionally blocks on `coverage: "defaults-only"` (identity/company
+classes unscanned there — zero counts prove nothing about the classes that never ran).
 
 ---
 
@@ -236,15 +261,24 @@ Usable standalone — no hub clone required.
 ## Done When
 
 ```
-Step 1 pattern list confirmed (defaults shown / user-adapted)
-+ Step 2 allowlist applied
-+ Step 3 scan run for every pattern over git ls-files (tracked only — gitignored excluded)
-+ Step 4 report output: per-hit file:line + token + severity, plus overall verdict
-+ "public-surface-audit Complete" declaration output
+Step 1 pattern source resolved (both layers checked; absent/partial
+  states rendered as their labeled degrade state, never as CLEAN)      — mandatory-pass
++ Step 2 allowlist applied (from a gitignored source)                  — mandatory-pass
++ Step 3 scan run for every pattern over git ls-files (tracked only —
+  gitignored excluded), malformed pattern rows counted and reported,
+  never silently dropped                                               — measured (hit + malformed counts)
++ Step 3b/3c run (FP-hygiene on matched tokens; ignore-verification
+  for expected-private paths) or explicitly skipped with reason        — mandatory-pass
++ Step 4 report output: per-hit file:line + token + severity, plus
+  overall verdict                                                      — mandatory-pass
++ "public-surface-audit Complete" declaration output                   — mandatory-pass
 ```
 
 Verdict: **CLEAN** (0 tokens after allowlist) | **REVIEW** (LOW-only — drift, prescriptions noted) |
-**LEAK** (1+ HIGH or 1+ MED — block publish, prescriptions attached).
+**LEAK** (1+ HIGH or 1+ MED — block publish, prescriptions attached) | **NOT_CONFIGURED** (no pattern
+source — nothing scanned, not a pass; same 4-value enum as Step 5 `--json`. An earlier version of this
+enum had 3 values here, so a session following only Done When would force absent-config into CLEAN/
+REVIEW/LEAK — re-opening the exact silent-pass the body closes).
 
 ---
 

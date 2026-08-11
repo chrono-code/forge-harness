@@ -11,18 +11,57 @@ cd "$REPO_PATH" || exit 1
 # Build the tracked-file list once.
 git ls-files > /tmp/_psa_tracked.txt
 
-# Load your real patterns from the gitignored source (one "severity<TAB>regex" per line).
-PATTERN_SRC="${PSA_PATTERNS:-.claude/rules/.public-surface-patterns}"
-# Absent file ≠ CLEAN. An absent file is unconfigured (silent-failure risk); an EMPTY file is an
-# explicit "no tokens to protect" → CLEAN. Distinguish the two.
-[ -e "$PATTERN_SRC" ] || { echo "⚪ NOT CONFIGURED: no pattern source at $PATTERN_SRC. Create it (empty = explicit CLEAN) before trusting any verdict. Not scanning."; exit 2; }
+# ── Single-source preference: when the shared library exists, use it and write NO second loop ──
+# scripts/psa_scan_lib.sh owns loading + row validation + exemptions for the hook layer; a hand-rolled
+# copy here is a second normalizer with its own leniency (the divergence class this rewrite removed).
+if [ -r "scripts/psa_scan_lib.sh" ]; then
+  . scripts/psa_scan_lib.sh
+  psa_load ".claude/rules/.public-surface-patterns.defaults" \
+           "${PSA_PATTERNS:-.claude/rules/.public-surface-patterns}"
+  { [ "$PSA_DEFAULTS_OK" -eq 1 ] || [ "$PSA_OVERRIDE_PRESENT" -eq 1 ]; } \
+    || { echo "⚪ NOT CONFIGURED: neither pattern layer present. Not scanning."; exit 2; }
+  [ "$PSA_BAD_ROWS" -gt 0 ] \
+    && { echo "HARNESS_ERROR: $PSA_BAD_ROWS unusable pattern row(s) — verdict cannot be CLEAN"; exit 10; }
+  # Feed every tracked file as path<TAB>line, the stream psa_scan_tagged consumes. Sourcing the lib
+  # without these calls is a no-op scan — measured on this repo (PSA_STREAM stayed unset), so the
+  # calls are spelled out here rather than pointed at.
+  while IFS= read -r f; do
+    awk -v p="$f" '{printf "%s\t%s\n", p, $0}' "$f" 2>/dev/null
+  done < /tmp/_psa_tracked.txt | psa_scan_tagged
+  [ "$PSA_OVERRIDE_PRESENT" -eq 1 ] \
+    || echo "coverage: defaults-only — operator literals NOT CONFIGURED (identity/company classes UNSCANNED)"
+else
+  # ── Standalone fallback (no hub scripts in this repo) — validated loop, malformed rows COUNTED ──
+  PSA_DEFAULTS=".claude/rules/.public-surface-patterns.defaults"
+  PATTERN_SRC="${PSA_PATTERNS:-.claude/rules/.public-surface-patterns}"
+  SRC_LIST=""
+  [ -e "$PSA_DEFAULTS" ] && SRC_LIST="$PSA_DEFAULTS"
+  [ -e "$PATTERN_SRC" ]  && SRC_LIST="$SRC_LIST $PATTERN_SRC"
+  [ -n "$SRC_LIST" ] || { echo "⚪ NOT CONFIGURED: no pattern source (neither defaults nor override). Not scanning."; exit 2; }
 
-# One grep pass per pattern row; the regex comes from the file, never hardcoded here.
-while IFS=$'\t' read -r severity regex; do
-  [ -z "$regex" ] && continue
-  grep -nIE "$regex" $(cat /tmp/_psa_tracked.txt) 2>/dev/null | sed "s/^/[$severity] /"
-done < "$PATTERN_SRC"
+  MALFORMED=0
+  cat $SRC_LIST > /tmp/_psa_rows.txt    # no pipe into the loop — a piped while runs in a subshell and loses MALFORMED
+  # `|| [ -n "$severity" ]` keeps a final row that lacks a trailing newline — `read` alone drops it silently.
+  while IFS=$'\t' read -r severity regex || [ -n "$severity" ]; do
+    case "$severity" in ''|'#'*) continue ;; esac                     # blank / comment rows
+    if [ -z "$regex" ]; then                                          # no tab separator → malformed, VISIBLE
+      MALFORMED=$((MALFORMED+1)); echo "MALFORMED ROW (no <TAB>): $severity" >&2; continue
+    fi
+    printf 'x\n' | grep -qE "$regex" 2>/dev/null
+    rc=$?                                                             # plain rc capture — `if !` would negate $?
+    if [ "$rc" -ge 2 ]; then                                          # grep rc≥2 = invalid regex, not "no match"
+      MALFORMED=$((MALFORMED+1)); echo "MALFORMED ROW (bad regex): $regex" >&2; continue
+    fi
+    grep -nIE "$regex" $(cat /tmp/_psa_tracked.txt) | sed "s/^/[$severity] /"
+  done < /tmp/_psa_rows.txt
+  # Malformed rows poison the verdict: part of the pattern file never scanned → CLEAN is unprovable.
+  [ "$MALFORMED" -gt 0 ] && { echo "HARNESS_ERROR: $MALFORMED malformed pattern row(s) — verdict cannot be CLEAN"; exit 10; }
+fi
 ```
+
+**Why the fallback validates instead of skipping**: the previous loop dropped a malformed row with a
+bare `continue` and discarded grep's stderr — a broken pattern file scanned "clean" by silently not
+scanning. `not found ≠ 0`: a row that never ran is not a row with zero hits.
 
 For each pattern, run `grep -nIE "<regex>" $(git ls-files)`:
 - `-n` → line numbers (required for `file:line` output)
