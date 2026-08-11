@@ -91,7 +91,31 @@ count_check() { # count_check <label> <file> <expected-string>
 count_check "fh-meta plugin.json"      plugins/fh-meta/.claude-plugin/plugin.json    "${meta_sk} skills + ${meta_ag} agents"
 count_check "fh-commons plugin.json"   plugins/fh-commons/.claude-plugin/plugin.json "${com_sk} skills"
 count_check "marketplace.json fh-meta" .claude-plugin/marketplace.json               "${meta_sk} skills + ${meta_ag} agents"
-count_check "README header"            README.md                                     "${total_sk} skills · ${total_ag} agents"
+# ── README 렌더링만 per-repo override 를 받는다 ──────────────────────────────────────────────
+# 왜 이 한 줄만 다른가: plugin.json·marketplace.json 의 문자열은 **기계 결합**(영문 고정,
+# 소비처가 파싱한다)이지만 README 헤더는 **사람이 읽는 산문**이라 하류 하네스가 자기 언어로 쓴다.
+# 이 스크립트는 공유층이라 여기에 렌더링을 하드코딩하면 다음 sync 가 하류의 지역화를 덮고,
+# 그 레인은 **이식 이후 한 번도 통과 못 하는 검사**가 된다 — 통과 불가능한 게이트는 게이트가
+# 아니라 `--no-verify` 훈련기다(실측: pmh-dev #55 가 그 상태를 손으로 되돌려야 했고, 다음
+# sync 에 다시 깨질 예정이었다. 이슈 chronoloy-dev/pmh-dev#57).
+#
+# 규약: 소비 레포는 `.claude/rules/count_readme_format` 에 printf 템플릿 한 줄을 둔다
+#       (`%s` 두 개 = skills 수, agents 수). 그 파일을 **자기 sync 제외목록에 등재**해야 한다 —
+#       등재 안 하면 이 override 자체가 덮이므로, 그 등재가 이 규약의 전제다.
+# 부재 → 영문 기본값. 즉 FH 자신과 지역화 안 한 설치는 종전과 동일하다(fail-closed 아님:
+#       README 렌더링은 가역 표면이고, 없는 파일을 요구하면 새 설치가 전부 막힌다).
+README_FMT_FILE="${COUNT_README_FORMAT_FILE:-.claude/rules/count_readme_format}"
+if [ -r "$README_FMT_FILE" ]; then
+  README_FMT=$(head -1 "$README_FMT_FILE")
+  case "$README_FMT" in
+    *%s*%s*) : ;;   # %s 두 개 필수 — 하나뿐이면 두 번째 수치가 검사에서 빠진다(무음 축소)
+    *) echo "FAIL  count: README format override 가 %s 를 두 개 갖지 않는다: '$README_FMT' ($README_FMT_FILE)"; fail=1; README_FMT="" ;;
+  esac
+else
+  README_FMT='%s skills · %s agents'
+fi
+# shellcheck disable=SC2059  # 템플릿은 선언 파일에서 온다 — 그게 이 기능의 요점
+[ -n "$README_FMT" ] && count_check "README header" README.md "$(printf "$README_FMT" "$total_sk" "$total_ag")"
 count_check "local_fh_context fh-meta" templates/local_fh_context.md                 "(fh-meta, ${meta_sk})"
 
 if [ "$fail" -ne 0 ]; then
