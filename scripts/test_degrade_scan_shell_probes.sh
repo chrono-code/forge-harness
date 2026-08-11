@@ -198,6 +198,58 @@ n=$(p_hits "$TMP/kn.py")
 [ "$n" -eq 0 ] && ok "python known-negative: still silent" \
                 || bad "python known-negative: $n hit(s) — Python probes became noisy"
 
+# ── Markdown-fence lanes (added 2026-08-12) ───────────────────────────────────────────────────
+# WHY THESE EXIST: the fence-extraction feature shipped with ZERO anchors, and a revert probe run
+# by the pre-publish security pass proved it — neutralizing `_md_shadow()` entirely left this suite
+# at "14 passed, 0 failed". A feature you can delete without reddening a lane is not covered, and
+# that gap is exactly why the python3-absence hole below reached a release candidate.
+MDT="$TMP/mdlanes"; mkdir -p "$MDT"
+printf '# t\n\n```bash\nverify() { run || return 0; }\n```\n' > "$MDT/pos.md"
+printf '# t\n\nprose only, no fence\n' > "$MDT/neg.md"
+
+# L-MD1 known-positive: a defect inside a ```bash fence is FOUND (the whole point of the feature)
+out=$(bash "$SCAN" "$MDT/pos.md" 2>&1); rc=$?
+if printf '%s' "$out" | grep -q 'bash fence'; then
+  ok "MD1 a defect inside a bash fence is detected and reported at the ORIGIN path"
+else
+  bad "MD1 fence extraction found nothing in a known-positive — feature is inert (rc=$rc)"
+fi
+
+# L-MD2 known-negative: a markdown file with NO fence must stay UNSCANNABLE, never 'clean'
+out=$(bash "$SCAN" "$MDT/neg.md" 2>&1); rc=$?
+if printf '%s' "$out" | grep -qi 'unscannable' && [ "$rc" -ne 0 ]; then
+  ok "MD2 fence-less markdown reports UNSCANNABLE (not measured != clean)"
+else
+  bad "MD2 fence-less markdown did not report UNSCANNABLE (rc=$rc) — absence rendered as pass"
+fi
+
+# L-MD3 THE REGRESSION THIS SUITE WAS MISSING: with python3 unreachable, extraction is impossible.
+# The file must land in UNSCANNABLE and the run must NOT exit 0. Before the fix it fell into
+# neither set and vanished from the summary, so the scan reported "no smells ... exit 0".
+MDBIN="$TMP/mdbin"; mkdir -p "$MDBIN"
+for c in bash grep sed awk find cksum cut tr mktemp rm cat sort head wc; do
+  src=$(command -v "$c" 2>/dev/null) && ln -sf "$src" "$MDBIN/$c"
+done
+out=$(env PATH="$MDBIN" bash "$SCAN" "$MDT/pos.md" 2>&1); rc=$?
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'unscannable'; then
+  ok "MD3 python3 unreachable -> markdown is UNSCANNABLE and exit != 0 (never a silent clean)"
+else
+  bad "MD3 python3 unreachable produced rc=$rc without UNSCANNABLE — the not-found==0 hole is open"
+fi
+
+# L-MD4 shadow-name collision: `a/b.md` and `a_b.md` must not map to the same shadow file, or one
+# of them is silently overwritten while the scanned COUNT still says 2 (coverage counted, detection
+# impossible). Measured before the fix: the defective file disappeared and the run exited 0.
+mkdir -p "$MDT/col/a"
+printf '# c\n\n```bash\nverify() { run || return 0; }\n```\n' > "$MDT/col/a/b.md"
+printf '# c\n\n```bash\nverify() { run || return 1; }\n```\n' > "$MDT/col/a_b.md"
+out=$(bash "$SCAN" "$MDT/col/a/b.md" "$MDT/col/a_b.md" 2>&1); rc=$?
+if printf '%s' "$out" | grep -q 'a/b.md'; then
+  ok "MD4 colliding basenames keep separate shadows (the defective file is still reported)"
+else
+  bad "MD4 a/b.md vanished under collision with a_b.md — shadow name is not unique"
+fi
+
 # The field-propagated copy must not drift from the canonical one. Two copies of the same
 # normalizer diverge, and the lenient half silently drops what the strict half catches — measured
 # 2026-07-28: `templates/` was 2 lines behind BEFORE this session's fix and then a full 8 KB behind
