@@ -1822,3 +1822,11 @@
   outcome: accepted
   evidence: "5 findings 전건 수용·수리: F1(S — NO_FORM 이 «레시피 타깃 부재»를 «벽 부재»로 오판, SSO/타언어 벽 반례 → expect 증인 결박 + ENTRY_NO_FORM_UNVERIFIED fail-closed) · F2(venue 경유 basis 가 EVIDENCE_SPAN_SECTION 으로 오표기 — 시험관 선택이 기획서 지정으로 읽힘 → basis 분리) · F3(importer 가 generated_from 폐기 — 귀속위험이 하류 미결박 → 보존+report per_tc 표면화, exit 결박 잔여) · F4(무스코프 롤카운트 전역 오염/상쇄 → UNSCOPED_ROLE_COUNT typed, within= 잔여) · F5(부정 표시문 열거 추출 — codex 가 .venv 로 재현 실증 → 부정문 가드 양쪽). 수리 후 레인 69 + 전량 2,805 passed · 라이브 재검증 R9_1 BLOCKED→FAIL(typed)"
   notes: "F5 는 감사자가 처방 전에 재현을 직접 실행해 보인 사례(«짧은 함수 재현은 .venv 로 확인») — finding 수용의 소스검증 비용을 감사자가 선지불. F1 은 governor 의 «전원 부재 = 벽 부재» 가정을 반례(SSO/한국어 벽)로 무너뜨림 — 증인(positive witness) 요구가 처방으로 그대로 채택됨"
+
+- date: 2026-08-11
+  session: qasp-m1b-finding-identity
+  agents_summary: "1 dispatch: codex gpt-5.5 1R — M1-b diff(finding 정체성 P6/P4→P7 관통) 적대 감사, **오귀속 방향** 지시(틀린 finding/화면 결박)"
+  dispatch_count: 1
+  outcome: accepted
+  evidence: "4 findings 전건 수용·수리·되돌림 검증: F3(S — `references` 가 이미 5곳에서 4의미로 쓰임(finding_id·BVA source_defect_id·StateMatrix_combo_N·조인 id·row id) → 값만 보고 finding 해석 시 SM/BVA TC 오귀속, 감사자가 함수 실행으로 /orders 주입 재현 → reference_kind 선언 자격) · F2(S — sibling 위반은 행 쌍인데 조인이 첫 행에서 break, row1=/customers·row2=/orders 가 /customers 로 결박 → distinct 2+ 면 scalar 비움) · F1(S — 저신뢰 AREA_LABEL 이 선언된 유래를 이김 → 유예+충돌 typed, 유예가 좌표 손실이면 후퇴라 복원 경로 동반) · F4(M — 색인 raw / 소비 strip 불일치로 'dup'/'dup ' 미검출). 수리 4건 **각각 되돌려 정확히 그 앵커 1개씩 적색** 확인 후 커밋. 재생성 무회귀(app_id 40/51 · basis 분포 동일) · 전량 2,819 passed"
+  notes: "감사자가 «일반 import 는 fitz/docx 부재로 막혀 P7·surface_inventory 를 직접 로드해 함수 단위로 확인» 이라고 **계기 한계를 스스로 명시**했다. 자체 적발 1건 — F3 게이트가 F 계열의 정당한 직결까지 막아 app_id 40→39(자격 게이트 도입은 기존 통과 경로에도 선언을 요구한다는 표준 회귀). peer 세션(로컬 다른 축)이 같은 라운드에 **두 축을 더** 잡았다: ⓐ 내 신규 앵커가 장식(생산자 배선 되돌려도 16 전건 초록 — 호출부 우회) ⓑ DISPLAY_MAPPING 의 case-insensitive 부분수리 함정(en.ts 직독 확인: 6종 중 5종만 통과). ★**갈림의 원인은 계열이 아니라 «무엇을 받았느냐» 다**(peer 정정 수용): codex 에게는 **diff** 를 줬고 → 코드 경로 결함 4건, peer 에게는 **내 보고서(주장)** 가 갔고 → 장치·주장 결함 4건. 계열이 같아도 diff 를 받았으면 같은 것을 봤을 것이다. 재사용 가능한 형태는 «탈상관 축은 누가 보느냐만이 아니라 **무엇을 받느냐**» — 적대검증을 아무리 붙여도 **전부 diff 를 주면 주장 축은 계속 빈다**([[feedback_grounding_audit_of_own_record]] 와 같은 축). peer 도 그 넷을 설계해서 잡은 게 아니라 **주장을 읽는 채널에 있었기 때문**이라고 자기 몫을 정직하게 낮췄다 — «피어 세션은 장치 결함을 잡는다» 가 아니라 «**주장을 받은 쪽**이 장치 결함을 잡는다» 가 맞는 모델이고, 그 차이가 다음에 누구에게 무엇을 보낼지를 바꾼다"
