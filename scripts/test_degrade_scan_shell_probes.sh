@@ -230,11 +230,19 @@ MDBIN="$TMP/mdbin"; mkdir -p "$MDBIN"
 for c in bash grep sed awk find cksum cut tr mktemp rm cat sort head wc; do
   src=$(command -v "$c" 2>/dev/null) && ln -sf "$src" "$MDBIN/$c"
 done
+# The stub must be CONTROLLED — a stub missing `find` makes the scan report "no scannable target
+# files" and this lane would then pass for a reason unrelated to python3.
+_mdbin_ok=$(env PATH="$MDBIN" bash -c 'command -v find >/dev/null 2>&1 && echo 1 || echo 0')
 out=$(env PATH="$MDBIN" bash "$SCAN" "$MDT/pos.md" 2>&1); rc=$?
-if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'unscannable'; then
-  ok "MD3 python3 unreachable -> markdown is UNSCANNABLE and exit != 0 (never a silent clean)"
+if [ "$_mdbin_ok" != "1" ]; then
+  bad "MD3 stub PATH lacks find — lane NOT RUN (not a pass)"
+elif [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'COULD NOT BE MEASURED'; then
+  # NOTE the wording: this asserts UNMEASURED, not UNSCANNABLE. The two were one bucket in the
+  # first fix and a re-verification round showed why that mattered — "no fence here" (a normal
+  # state) and "extraction impossible" (a blind spot) must not share an exit path.
+  ok "MD3 python3 unreachable -> markdown reports COULD-NOT-MEASURE and exit != 0 (never a silent clean)"
 else
-  bad "MD3 python3 unreachable produced rc=$rc without UNSCANNABLE — the not-found==0 hole is open"
+  bad "MD3 python3 unreachable produced rc=$rc without a could-not-measure signal — the not-found==0 hole is open"
 fi
 
 # L-MD4 shadow-name collision: `a/b.md` and `a_b.md` must not map to the same shadow file, or one
@@ -248,6 +256,43 @@ if printf '%s' "$out" | grep -q 'a/b.md'; then
   ok "MD4 colliding basenames keep separate shadows (the defective file is still reported)"
 else
   bad "MD4 a/b.md vanished under collision with a_b.md — shadow name is not unique"
+fi
+
+# L-MD5/MD6 — THE DIRECTORY ARM. MD3 only exercises the single-file path, and a re-verification
+# round proved that mattered: the first fix promoted "could not measure" to exit 2 ONLY when FILES
+# was empty, so a directory containing one scannable .sh demoted the failure to a note line and the
+# run exited 0 = CLEAN. That is the dominant path (typed capability scans directories), i.e. the
+# defect this release claims to fix was still live where it actually runs.
+# The stub PATH is CONTROLLED first: `command -v` under zsh can return a bare name, which produces
+# a self-referential symlink and a stub with no `find` — then the scan reports "no scannable target
+# files" and the lane would pass for a reason that has nothing to do with python3.
+MDD="$TMP/mddir"; mkdir -p "$MDD/repo" "$MDD/bin"
+printf '# t\n\n```bash\nverify() { run || return 0; }\n```\n' > "$MDD/repo/SKILL.md"
+printf '#!/usr/bin/env bash\necho ok\n' > "$MDD/repo/helper.sh"
+for c in bash sh grep sed awk find cut tr mktemp rm cat sort head wc printf cksum dirname basename; do
+  p=$(command -v "$c" 2>/dev/null); case "$p" in /*) ln -sf "$p" "$MDD/bin/$c" ;; esac
+done
+_stub_md=$(env PATH="$MDD/bin" find "$MDD/repo" -type f -name '*.md' 2>/dev/null | grep -c .)
+if [ "$_stub_md" != "1" ]; then
+  bad "MD5/MD6 stub PATH is unusable (find missing) — lanes NOT RUN, which is not a pass"
+else
+  out=$(env PATH="$MDD/bin" bash "$SCAN" "$MDD/repo" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'COULD NOT BE MEASURED'; then
+    ok "MD5 directory scan + python3 unreachable -> non-clean exit (not demoted to a note)"
+  else
+    bad "MD5 directory scan with python3 unreachable exited $rc — 'could not measure' rendered as clean"
+  fi
+  # cksum is the OTHER undeclared dependency: without it the uniqueness token is empty and the
+  # shadow-name collision (MD4) silently returns, so it must gate the same way python3 does.
+  cp -R "$MDD/bin" "$MDD/bin2"
+  p=$(command -v python3 2>/dev/null); case "$p" in /*) ln -sf "$p" "$MDD/bin2/python3" ;; esac
+  rm -f "$MDD/bin2/cksum"
+  out=$(env PATH="$MDD/bin2" bash "$SCAN" "$MDD/repo" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'COULD NOT BE MEASURED'; then
+    ok "MD6 cksum unreachable -> non-clean exit (collision guard cannot silently degrade)"
+  else
+    bad "MD6 cksum unreachable exited $rc — the A-1 collision returns without any signal"
+  fi
 fi
 
 # The field-propagated copy must not drift from the canonical one. Two copies of the same

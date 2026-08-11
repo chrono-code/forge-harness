@@ -120,6 +120,7 @@
     "templates/PRE-PUBLISH-CHECKLIST.md",
     "scripts/degrade_direction_scan.sh",
     "scripts/validate_yaml.sh",
+    "scripts/test_count_check_readme_format_lanes.sh",
     "scripts/test_degrade_scan_shell_probes.sh",
     "scripts/gate_pathspec_check.sh",
     "scripts/prepush_guard_check.sh",
