@@ -353,10 +353,31 @@ Split honestly by moment; only one of the three is closable today.
 
 - **Registration moment — reachable.** The reviewer is inside the registry when it applies. Pointers
   from `.claude/registry/README.md` and `fh_detail_protocols.md §1-c` put the M1–M5 bar in front of
-  them. **Named residual, not built**: a `scripts/capability_registry_check.sh` that validates the
-  schema and runs each declared M4 pair would make registration *measured* rather than reviewed. It
-  does not exist. Until it does, M1–M5 is a reviewed bar, and this file says so rather than implying a
-  floor it does not have.
+  them. ~~**Named residual, not built**: a `scripts/capability_registry_check.sh`…~~ → **built
+  2026-08-11.** `scripts/capability_registry_check.sh` validates the schema (closed key list — an
+  unknown key is a failure, never an ignore) and **runs each declared M4 pair**, so registration is
+  now *measured* on those axes rather than reviewed. Known-pair calibrated, 7 lanes, BLOCK/PASS
+  symmetric. Two capabilities are registered through it (`fh_psa_leak.cap` · `fh_degrade_verdict.cap`).
+
+  🟥 **What the checker measures, and the axis it provably does NOT — learned by being bitten.**
+  M1–M5 answer *"is the declaration well-formed, and does the instrument separate a case whose
+  answer we already know?"*. They do **not** answer *"is the declaration true"*, and one axis made
+  that concrete the same day it was built: a capability declaring **`writes: read-only`** passed all
+  five criteria — executable entry, closed enum with a did-not-run value, `judge: mechanical`, M4
+  known-pair green ×2, valid `requires_cwd` — and its entry point then **`rm -rf`'d this repo's
+  `scripts/` directory** on a no-argument invocation (a cleanup `trap` whose variable was reassigned
+  to a real path after the trap was installed). Tracked files were recovered by `git checkout`;
+  three untracked new scripts were not, and the recovery checkout also reverted an unrelated
+  in-flight edit. Nothing in the bar could have caught it: M4 exercised the two *declared* arms, and
+  the destructive path was the *undeclared* default arm.
+  - **Partial fix applied** (entry-point discipline, both probes): the cleanup variable is never
+    reassigned, the scan target is a separate variable, and the trap re-checks that the path it is
+    about to delete is under a temp root. Calibrated with a canary file in an isolated repo.
+  - **Structural fix, not built**: run the M4 pair under a read-only mount / sandbox and *observe*
+    whether a write is attempted. Until that exists, `writes:` (and `reversibility:`) are the
+    **registrant's claim**, and the checker prints them as such rather than implying it verified
+    them. A bar that silently accepts an unverifiable axis is how a `read-only` capability deletes a
+    directory with every light green.
 - **Call moment — salience-only, no mechanical floor exists.** No hook can observe "a session is about
   to compose a capability call"; the trigger is intent, exactly like the Instrument-Calibration rule.
   The strongest available lever is structural: §ⓑ.3 makes the merged constraint set **step 2 of the

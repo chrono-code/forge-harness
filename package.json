@@ -85,6 +85,7 @@
     "templates/goal-quench-hook-setup.md",
     "templates/.claude/rules/session.md",
     "scripts/below_floor_scan.sh",
+    "scripts/capability_registry_check.sh",
     "scripts/chamber_run.sh",
     "scripts/fh_env_delta_scan.sh",
     "scripts/substrate_jump_detector.sh",

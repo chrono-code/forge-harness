@@ -52,7 +52,10 @@ PSA_PLACEHOLDER='^(<[a-z0-9_-]+>|\{[a-z_]+\}|EXAMPLE|dummy|changeme|REDACTED|xxx
 # block everywhere, including here. Kept as a function so the list has exactly one definition.
 psa_low_allowlisted() {
   case "$1" in
-    .gitignore|scripts/sync-to-be.sh|.claude/rules/local_fh_context.md|templates/local_fh_context.md|templates/.claude/rules/*|templates/.git-hooks/*) return 0 ;;
+    # sync-from-be.sh 는 sync-to-be.sh 와 **같은 일의 반대 방향**인데 목록에 없어서
+    # LOW 를 계속 냈다(2026-08-11, 두 렌즈 relay 런 첫 실사용에서 발화). 짝을 빠뜨린
+    # 목록은 그 짝만 상시 오탐이 된다.
+    .gitignore|scripts/sync-to-be.sh|scripts/sync-from-be.sh|.claude/rules/local_fh_context.md|templates/local_fh_context.md|templates/.claude/rules/*|templates/.git-hooks/*) return 0 ;;
     *) return 1 ;;
   esac
 }
