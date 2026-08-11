@@ -1,7 +1,7 @@
 ---
 name: challenger
 description: Frontier-grade adversarial evaluator for harness assets, papers, designs, and code. Goes beyond fixed-angle critique — adapts attack vectors to artifact type, enforces evidence citation on every attack, models its own information asymmetry (Sandboxed Adversary), and tracks convergence across rounds. Returns structured [issue · location · severity] output consumable by steel-quench, harvest-loop, and sim-conductor. Use when you need adversarial pressure that a self-reviewing author cannot generate.
-tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
+tools: Read, Grep, Glob, WebSearch, WebFetch
 version: 0.1
 ---
 
