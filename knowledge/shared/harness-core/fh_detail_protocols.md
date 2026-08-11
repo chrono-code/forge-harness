@@ -224,6 +224,18 @@ FH에서 발화 문구·규약 파일명을 **추가하거나 바꾸는 변경�
 갈림 판별 기준: **사용자-대면 발화이거나 게이트가 찾는 파일명이면 remap 대상, 환경변수·훅
 스크립트명·npm bin 같은 기계 결합 이름은 불변**(변환하면 파손된다).
 
+⚠️ **「게이트가 찾는」이 두 뜻으로 읽힌다 — 기계적으로 가른다** (pmh-dev #54 보류 2건 판정이
+이 구분을 요구했다). 「찾는다」가 *런타임 탐색*인지 *정적 참조*인지가 판정을 뒤집는다:
+
+| 「찾는」의 종류 | 판정 | 실례 | 왜 |
+|---|---|---|---|
+| **런타임 패턴 매칭 산물** — 검사기가 디렉토리에서 글롭/정규식으로 훑어 찾는 *산출물* 파일명 | **remap 대상** | `fh_completed_*` · `fh_signal_*` | 하류 실물이 `pmh_completed_*` 인데 검사기가 `fh_completed_*` 를 훑으면 **거짓 실패**(위 ④-log 3개월 오귀인이 그 사례) |
+| **정적 경로 참조** — 스크립트가 **상수로 들고 있는** 규약/설정 파일명 | **불변(기계 결합)** | `.claude/rules/fh_4axis_gate.md` (`gate_pathspec_check.sh` 의 `CANON=` · `selfcheck.sh` · pre-commit 이 같은 경로) · `scripts/fh-gate.sh` (npm bin · 테스트가 못박은 경로) | 이름을 바꾸면 스크립트가 **대상을 못 찾아 파손**된다 |
+
+판별 절차(1줄): **그 이름이 코드에 리터럴 상수로 박혀 있으면 불변**, **패턴의 일부로 훑이는
+대상이면 remap**. `grep -n '<이름>' scripts/ templates/` 한 번이면 갈린다 — 상수 대입
+(`X="…<이름>…"`)으로 나오면 전자, 글롭/정규식 안에 있으면 후자다.
+
 ### Why the greeting branch test is session files, never git history
 
 A fresh-clone Sonnet simulation rendered the **returning-user menu** to a brand-new install, because it

@@ -77,14 +77,44 @@ Self-catch areas 0 items = skip this entire catch matrix (no token-filling / fol
 
 ### Step 4. Review Comment Attachment
 
-Attach the review comment (8-matrix results + self-catch + refinement suggestions + merge recommendation) via `gh pr comment`. Within this skill's execution authority (automatic).
+**Mandatory before any `gh pr comment`: run `/public-surface-audit` over the composed comment text.**
+A PR comment is a **paste on a public surface**, and the repo's mechanical privacy floor does not
+reach it — the pre-commit confidentiality guard scans *staged tracked content* and has **no view of
+PR-body text** (`.claude/rules/fh_4axis_gate.md §Reviewer-visible evidence` says so explicitly).
+This step's own inputs make that acute: Step 2 matrix #2 greps the operator's **local memory files**,
+so an unfiltered paste can carry absolute home paths and private memory prose onto a public PR.
+
+```
+verdict CLEAN                     → attach (automatic, within this skill's authority)
+verdict REVIEW / LEAK             → do NOT attach. Redact the flagged spans, re-scan, then attach
+verdict NOT_CONFIGURED, or the
+  skill is unavailable            → do NOT attach automatically. This is an irreversible surface
+                                    (a posted comment is public the instant it lands and may be
+                                    mirrored before deletion) → **fail-closed**: hand the composed
+                                    text to the operator, or take an explicit logged override
+```
+
+**Never paste raw Step 2 grep output.** Write a *sanitized capsule* — what was checked, what it
+returned, what was found — never the matched lines themselves. Same rule as the marker: the file is
+a local artifact, the capsule is what crosses the boundary.
+
+Then attach the review comment (8-matrix results + self-catch + refinement suggestions + merge
+recommendation) via `gh pr comment`.
 
 > **Detail**: See `SKILL_detail.md §Step 4 Comment Template` — `gh pr comment` heredoc template — read when attaching the comment.
 
 ### Step 5. Admin Override Merge Recommendation
 
 **User decision delegation** (this skill = review/recording automation / no merge authority):
-- Beta stage policy (`enforce_admins: false`) adherence → admin override possible
+- **Read the branch-protection state at run time — never from this line.** This repo moved to
+  `enforce_admins: true` + `required_approving_review_count: 0` on 2026-07-20, and an earlier version
+  of this bullet still claimed `false`: a gate skill was recommending an override on a **field that
+  had already flipped**. Protection is also two independent layers (legacy + rulesets, strictest
+  wins), so one object is never the effective answer — check both:
+  `gh api repos/{owner}/{repo}/branches/main/protection` **and**
+  `gh api repos/{owner}/{repo}/rules/branches/main`
+- Self-approve is impossible when this cc authored the PR → after a completed review, `--admin` is
+  the normal route, not a shortcut
 - Self-approve blocked (GHE policy) → admin override path adherence
 - When this cc authored the change, admin override path is mandatory
 - N+1th operation proof = baseline stabilization acceleration path
@@ -96,7 +126,7 @@ Attach the review comment (8-matrix results + self-catch + refinement suggestion
 | Stage | Approval |
 |---|---|
 | Step 1~3 check auto-activation | **Automatic** (editable afterward) |
-| Step 4 review comment attachment | **Automatic** (gh pr comment within this skill's execution authority) |
+| Step 4 review comment attachment | **Automatic only after `/public-surface-audit` on the comment text returns CLEAN.** REVIEW/LEAK → redact and re-scan; NOT_CONFIGURED or audit unavailable → **fail-closed**, hand to the operator (a posted comment is public on landing) |
 | Step 5 admin override merge execution | **User decision** (this skill = recommendation only / no merge authority) |
 
 ## Constraints
@@ -128,7 +158,15 @@ fail-open class.
 
 ## References
 
-- Rule body: `memory feedback_command_tower_gate.md` (hub gate accumulated naming baseline) + `memory feedback_field_to_hub_sync_protocol.md` (Option C Hybrid sync policy)
-- Consistency rules: `feedback_simplification_evidence` · `feedback_markdown_edit_discipline` · `feedback_skill_frontmatter_description_plain_text` · `feedback_bidirectional_self_validation` · `feedback_reference_own_hub_assets_first`
+> ⚠️ **The memory filenames below were audited 2026-08-11 and **none of them exist** — 8/8 absent in
+> the operator's own memory root, i.e. they were never reachable, not merely absent externally. They
+> are kept, struck, as the record of a phantom-reference class: a gate skill citing rule bodies that
+> resolve nowhere, while matrix #2 silently "skips" and the run still reports an 8-matrix pass.
+> **Matrix #2 is therefore a 7-matrix in practice** — report it as `matrix 2: SKIPPED (no resolvable
+> memory baseline)` rather than folding it into the pass count (`not found ≠ 0`).
+> Re-populate this list only with paths verified by `ls` **in the same run that cites them**.
+
+- ~~Rule body: `memory feedback_command_tower_gate.md` + `memory feedback_field_to_hub_sync_protocol.md`~~ — **absent (verified 2026-08-11)**
+- ~~Consistency rules: `feedback_simplification_evidence` · `feedback_markdown_edit_discipline` · `feedback_skill_frontmatter_description_plain_text` · `feedback_bidirectional_self_validation` · `feedback_reference_own_hub_assets_first`~~ — **absent (verified 2026-08-11)**
 - Sister skills: `cross-ecosystem-synergy-detection` (sister asset cluster baseline) · `verify-bidirectional` (bidirectional self-validation automation / self-catch auxiliary axis) · `harvest-loop` (weekly audit automation / operation proof accumulation cross-link)
 - Autonomous commit proposal §2.19 baseline: `memory feedback_autonomous_commit_proposal.md` (① development source automation + PR proposal under human approval)
