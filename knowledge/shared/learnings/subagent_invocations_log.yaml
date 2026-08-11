@@ -1800,8 +1800,9 @@
 
 - date: 2026-08-11
   session: qasp-axready-night-autonomous
-  agents_summary: "3 dispatches (consolidated): Explore 필드 정본 읽기(MTM/2막 계약/발화 자격, bg=false) · Explore 데이터-플레인 오라클 삽입지점 설계 조사(bg) · codex gpt-5.5 sidecar 1R (야간 5커밋 diff 적대 감사)"
-  dispatch_count: 3
+  agents_summary: "7 열거 + 훅 집계 9 (consolidated): ① Explore 필드 정본 읽기(MTM/2막 계약/발화 자격) ② Explore 데이터-플레인 오라클 삽입지점 설계(bg) ③ codex gpt-5.5 1R (야간 5커밋 diff 적대 감사) ④ fh-meta:beginner 콜드리드 1차(기술문서 삽입 초안) ⑤ general-purpose 독립 2차 지각 QA(PDF 8쪽, 200dpi 크롭) ⑥ fh-meta:beginner 콜드리드 2차(수리본 재검 — 1차 후 고친 것을 다시 읽힌 라운드) ⑦ general-purpose@sonnet 블라인드 sim(ko-tech-writer 보강본, 심은 결함 3종)"
+  dispatch_count: 9
+  dispatch_count_note: "훅 집계 9 · 내가 이름으로 열거 가능한 것 7. 차이 2건은 귀속 미상이라 지어내지 않는다 — 세션 로그를 뒤져 채우는 대신 미상으로 남긴다(없는 엔트리를 만드는 것이 빠진 엔트리보다 나쁘다). 초판은 3으로 적혀 있었고 마감 체크 ④-e 가 9를 찍어 드러났다."
   outcome: accepted
-  evidence: "① 정본 Explore 가 «MTM=블박+화박 동시 실행, verdict 불변, 표기 4상태» 를 정본 인용으로 확정 — 이후 2-arm 실측(판정 51/51 동일 · mtm_cited 17)이 그 계약과 일치함을 확인하는 근거가 됐다. 일반 개념(«화이트박스 모드») 정규화를 사전 차단. ② 설계 Explore 가 relations.py 5곳·triage.py:258 닫힌 어휘·sourced 레인 선점 함정·데이터 리더 부재(known-positive 컨트롤 동반)를 특정 — 이번 세션은 그 능력을 안 지었으나(잔여 S1) 지도는 그대로 유효. ③ codex 1R: S/A/B/C 4축 반증 중 **헤드라인 반증 1건 수용** — 「품절 배지 검출」 주장이 로케일 축 오귀속임을 App.tsx/en.ts 근거로 지적, governor 가 소스 재확인 후 철회하고 attribution_risk 를 기계에 실었다(86dc8bf). 추가로 C-1(미생성 사유가 stdout 전용) 수용·수리, 잔여 4건은 명명"
+  evidence: "④⑤⑥ 는 기술문서 축(같은 세션 후속) — ⑥ 이 **1차 콜드리드 수리본을 다시 읽힌 라운드**이고 거기서 «반례 흔한 단정 + 배치 오류» 가 나와 §7→§6 이동으로 이어졌다(그 경험이 스킬 Step 5 재콜드리드 규율의 근거다). ⑦ sim = 심은 결함 3/3 검출·오탐 0. ① 정본 Explore 가 «MTM=블박+화박 동시 실행, verdict 불변, 표기 4상태» 를 정본 인용으로 확정 — 이후 2-arm 실측(판정 51/51 동일 · mtm_cited 17)이 그 계약과 일치함을 확인하는 근거가 됐다. 일반 개념(«화이트박스 모드») 정규화를 사전 차단. ② 설계 Explore 가 relations.py 5곳·triage.py:258 닫힌 어휘·sourced 레인 선점 함정·데이터 리더 부재(known-positive 컨트롤 동반)를 특정 — 이번 세션은 그 능력을 안 지었으나(잔여 S1) 지도는 그대로 유효. ③ codex 1R: S/A/B/C 4축 반증 중 **헤드라인 반증 1건 수용** — 「품절 배지 검출」 주장이 로케일 축 오귀속임을 App.tsx/en.ts 근거로 지적, governor 가 소스 재확인 후 철회하고 attribution_risk 를 기계에 실었다(86dc8bf). 추가로 C-1(미생성 사유가 stdout 전용) 수용·수리, 잔여 4건은 명명"
   notes: "cross-family 가 **내 커밋 메시지의 주장** 을 반증한 사례 — 코드 결함이 아니라 «주장의 귀속» 이 틀린 경우라 레인·적대검증·되돌림 셋 다 못 잡았을 축이다([[feedback_grounding_audit_of_own_record]] 형). 자력 적발 0. 반대로 생성기 1차 산출의 오탐 공장 성질은 **손검사로 자력 적발**했다 — 기계 감사와 육안 표본이 서로 다른 결함을 잡았다"
