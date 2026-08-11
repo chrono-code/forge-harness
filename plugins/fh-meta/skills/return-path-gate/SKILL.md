@@ -66,7 +66,27 @@ find plugins/ -name "SKILL.md" | sort
 find plugins/ -path "*[name]/SKILL.md"
 ```
 
-If 0 SKILL.md files are in scope, output: "No SKILL.md files in scope — audit skipped." and stop.
+If 0 SKILL.md files are in scope, **distinguish the two causes before stopping** — a failed scope
+command and a genuinely empty scope both render as zero lines, and only one of them is skippable:
+
+```bash
+git rev-parse --git-dir >/dev/null 2>&1 \
+  || { echo "HARNESS_ERROR: git unavailable — scope could NOT be measured (not an empty scope)"; exit 10; }
+
+# Repo-liveness alone is NOT enough: a broken ref (e.g. missing origin/main in --pr mode) fails the
+# scope command with rc=1 and empty output while rev-parse stays green. Capture the scope command's
+# OWN exit status — before the grep, which legitimately returns 1 on no-match:
+scope_out=$(git diff --name-only origin/main...HEAD 2>&1); scope_rc=$?
+[ "$scope_rc" -ne 0 ] \
+  && { echo "HARNESS_ERROR: scope command failed (rc=$scope_rc): $scope_out"; exit 10; }
+printf '%s\n' "$scope_out" | grep "SKILL\.md"
+# (same rc-capture shape applies to the default and --all scope commands)
+```
+
+With both controls green and genuinely 0 files in scope, output:
+"No SKILL.md files in scope — audit skipped (control: git rev-parse OK)." and stop.
+A HARNESS_ERROR is a distinct non-pass — it must never be reported as "audit skipped", because this
+skill is pipeline-conductor's Step 0.5 pre-flight and a tooling-down skip would render as a pass there.
 
 ---
 
@@ -221,11 +241,19 @@ Next actions:
 ## Done When
 
 ```
-Step 0 scope determined; SKILL.md files identified
-+ Step 1 two-pass extraction complete (Pass A caller-wait + Pass B callee-output evaluated separately)
-+ Step 2 every (caller → callee) pair classified CLOSED or OPEN with two-dimension severity
-+ Step 3 fix prescriptions output for each OPEN chain (core FH skills: proposal-only)
-+ Step 4 summary report with CLOSED/OPEN counts output
+Step 0 scope determined; a failed scope command reported as
+  HARNESS_ERROR, never as empty scope                           — mandatory-pass
++ Step 1 two-pass extraction complete (Pass A caller-wait +
+  Pass B callee-output evaluated separately)                    — mandatory-pass
++ Step 2 every (caller → callee) pair classified CLOSED or
+  OPEN with two-dimension severity                              — judged (adversarial pairing:
+  before ANY chain is reported OPEN, the ground-truth CLOSED
+  pair from §Operating Notes must classify CLOSED in the same
+  run — an instrument that cannot separate the known pair
+  reports nothing)
++ Step 3 fix prescriptions output for each OPEN chain
+  (core FH skills: proposal-only)                               — mandatory-pass
++ Step 4 summary report with CLOSED/OPEN counts output          — measured (counts)
 ```
 
 > Fix prescriptions are text output only (Write not in allowed-tools). Prescription application is manual and out of scope for this skill. Verification of applied fixes requires re-running `/return-path-gate --skill [name]`.
@@ -254,4 +282,5 @@ Verdict: PASS (0 HIGH severity OPEN chains) | CONDITIONAL_PASS (MEDIUM/LOW sever
 - **CONDITIONAL_PASS gate is the highest-risk gap**: A chain where CONDITIONAL_PASS conditions are listed by the callee but the caller has no enforcement path is OPEN even if other verdict paths fold correctly.
 - **Scope default is narrow by design**: Default captures modified + newly added files (not just staged changes). Use `--pr` for PR-relative mode in worktrees, `--all` for periodic sweeps.
 - **Core FH skill prescriptions are proposals only**: Edits to harvest-loop, steel-quench, sim-conductor, and other core skills require deliberate review — output proposal notes, not standard prescriptions.
-- **Reference pattern**: `knowledge/shared/harness-core/return_path_gate.md` defines the canonical closed-loop structure and verified instances (apex-review → sim-conductor, agent-composer ↔ deliberation). These are the ground-truth CLOSED examples for calibrating classification.
+- **Reference pattern**: `knowledge/shared/harness-core/return_path_gate.md` defines the canonical closed-loop structure and verified instances (apex-review → sim-conductor, agent-composer ↔ deliberation). These are the ground-truth CLOSED examples for calibrating classification — and that calibration is a Done When condition (Step 2's adversarial pairing), not an optional note.
+- **The Pass A signal list is a closed English keyword list — know its degrade direction**: synonyms ("blocks until", "halts on") and non-English documentation will read as false OPEN. That direction is by design (over-report, never silent-close), but treat an OPEN verdict on unconventional wording as a candidate for human reading before prescribing a fix.

@@ -53,9 +53,19 @@ Default thresholds:
 Identify the failing tool and failure mode:
 
 ```bash
-# Check MCP server config
-cat .claude/settings.json 2>/dev/null | grep -A5 '"mcpServers"' || echo "No MCP config found"
+# MCP mounts live in SEVERAL scopes — check all that this shell can see. Project settings.json is
+# usually NOT one of them (it commonly holds hooks only), so a single-file read renders "no config"
+# on a session with live MCP servers — a wrong-location instrument, not a measurement.
+for f in .mcp.json .claude/settings.json .claude/settings.local.json; do
+  [ -e "$f" ] && { echo "== $f =="; grep -A5 '"mcpServers"' "$f" 2>/dev/null || echo "(present, no mcpServers key)"; }
+done
+[ -e ~/.claude.json ] && grep -c '"mcpServers"' ~/.claude.json | xargs echo "user-scope ~/.claude.json mcpServers blocks:"
 ```
+
+An empty result above means **"no project/user-scope config found"** — never "no MCP mounted":
+plugin-provided and remotely-managed servers appear in no local file. The live mount evidence is the
+failing tool call itself (`mcp__{server}__{tool}` in this session); classify from that name even when
+every config read comes back empty.
 
 Classify failure type:
 
@@ -98,6 +108,10 @@ Failure type: {TYPE}  |  Consecutive failures: {N}
 Further calls to this tool are blocked until circuit resets.
 ```
 
+(Blocking is **session-level discipline** — this skill's protocol, not a mechanical hook; no
+PreToolUse gate enforces it. State it that way if asked — a protocol honestly labeled beats a
+phantom enforcement claim.)
+
 ---
 
 ### Step 3. Log Circuit State
@@ -106,17 +120,16 @@ Write state to session-local file (in-memory is insufficient — logs survive /c
 
 ```bash
 mkdir -p .claude/mcp_circuit/
-# Append to circuit log
-```
-
-Log entry format:
-```yaml
+grep -qxF '.claude/mcp_circuit/' .gitignore 2>/dev/null \
+  || echo "NOTE: add '.claude/mcp_circuit/' to .gitignore — session state must not become a tracked file (the ignored-but-committed class public-surface-audit Step 3c hunts)"
+cat >> .claude/mcp_circuit/circuit_log.yaml << EOF
 - tool: {tool-name}
-  state: OPEN
+  state: OPEN            # OPEN | HALF-OPEN | CLOSED — same enum as Done When
   failure_type: {TYPE}
   failure_count: {N}
   tripped_at: {ISO-8601}
   reset_at: null
+EOF
 ```
 
 ---
@@ -133,7 +146,8 @@ Present the relevant fallback options ranked by effort (at least 3):
 | **3 — Pause and retry** | Wait for server recovery (HALF-OPEN probe after cooldown) | Transient failure (TIMEOUT, RATE_LIMIT) |
 
 > **Gating carries over to the substitute** (cross-ref the external-MCP tool-gating rule
-> `mcp_tool_gating.md`). A REST/API or
+> `templates/.claude/rules/mcp_tool_gating.md` — template path; if installed live, your repo's
+> `.claude/rules/` copy). A REST/API or
 > workflow-automation tool adopted under Priority 1b is still an external-action surface: classify its
 > calls under the same ask/allow tiers — reads are `allow (untrusted-read)` only after behavior
 > confirmation; any write / send / delete / permission-change stays `ask`. Trading a gated MCP mount for
@@ -197,10 +211,13 @@ Recommendations:
 
 ## Done When
 
-- Failure pattern classified (type + count)
-- Circuit state logged (OPEN / HALF-OPEN / CLOSED)
-- At least 3 fallback alternatives proposed when circuit is OPEN
-- Recovery probe offered with reset path
+- Failure pattern classified (type + count) — *judged* (adversarial pairing: an `UNKNOWN`
+  classification must state which Step 1 config reads ran and came back empty — "couldn't determine"
+  without the read evidence is not a classification)
+- Circuit state logged to `.claude/mcp_circuit/circuit_log.yaml` (OPEN / HALF-OPEN / CLOSED) —
+  *mandatory-pass*
+- At least 3 fallback alternatives proposed when circuit is OPEN — *measured* (count ≥3)
+- Recovery probe offered with reset path — *mandatory-pass*
 
 ---
 

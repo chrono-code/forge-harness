@@ -1806,3 +1806,19 @@
   outcome: accepted
   evidence: "④⑤⑥ 는 기술문서 축(같은 세션 후속) — ⑥ 이 **1차 콜드리드 수리본을 다시 읽힌 라운드**이고 거기서 «반례 흔한 단정 + 배치 오류» 가 나와 §7→§6 이동으로 이어졌다(그 경험이 스킬 Step 5 재콜드리드 규율의 근거다). ⑦ sim = 심은 결함 3/3 검출·오탐 0. ① 정본 Explore 가 «MTM=블박+화박 동시 실행, verdict 불변, 표기 4상태» 를 정본 인용으로 확정 — 이후 2-arm 실측(판정 51/51 동일 · mtm_cited 17)이 그 계약과 일치함을 확인하는 근거가 됐다. 일반 개념(«화이트박스 모드») 정규화를 사전 차단. ② 설계 Explore 가 relations.py 5곳·triage.py:258 닫힌 어휘·sourced 레인 선점 함정·데이터 리더 부재(known-positive 컨트롤 동반)를 특정 — 이번 세션은 그 능력을 안 지었으나(잔여 S1) 지도는 그대로 유효. ③ codex 1R: S/A/B/C 4축 반증 중 **헤드라인 반증 1건 수용** — 「품절 배지 검출」 주장이 로케일 축 오귀속임을 App.tsx/en.ts 근거로 지적, governor 가 소스 재확인 후 철회하고 attribution_risk 를 기계에 실었다(86dc8bf). 추가로 C-1(미생성 사유가 stdout 전용) 수용·수리, 잔여 4건은 명명"
   notes: "cross-family 가 **내 커밋 메시지의 주장** 을 반증한 사례 — 코드 결함이 아니라 «주장의 귀속» 이 틀린 경우라 레인·적대검증·되돌림 셋 다 못 잡았을 축이다([[feedback_grounding_audit_of_own_record]] 형). 자력 적발 0. 반대로 생성기 1차 산출의 오탐 공장 성질은 **손검사로 자력 적발**했다 — 기계 감사와 육안 표본이 서로 다른 결함을 잡았다"
+
+- date: 2026-08-11
+  session: plugin-reship-campaign-mtier-precheck
+  agents_summary: "3 dispatches (parallel): fh-meta:challenger×3 — pmh-dev M티어 8스킬 선-적대검토 (배치1 게이트3종 · 배치2 감사/차단2종 · 배치3 오케스트레이션3종)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "M 22건·S 12건 회수, governor 소스 재검증 spot-check 9건 전건 CONFIRMED (marketplace plugin.json skills 키 부재 실측 · PSA 2층 패턴 스펙불일치 · MCB 계기 위치 stale · sidecar MEMORY.md 팬텀 · field-harvest 의무체인 Done When 미배선 등). 공통 M = 8스킬 전부 Done When check-class 0 (known-positive 컨트롤: 타 11스킬 히트) — 센서스 triage 와 일치. 배치3이 경계규칙(local_pmh_context.md:7 재인라인 금지) 발굴 → synced 7종 수리는 FH 상류 라우팅 확정"
+  notes: "센서스(기계 grep triage) → 병렬 적대검토 → governor 재검증의 3단이 전수조사 표준 후보. 배치1이 known-pair 캘리브레이션을 자발 수행(BSD grep 오탐 후보를 스스로 기각) — challenger 에 계기 규율이 전이된 사례"
+
+- date: 2026-08-11
+  session: qasp-m1-tc-coordinates
+  agents_summary: "1 dispatch: codex gpt-5.5 1R — M1 diff(좌표 3축·생성기 확장·entry NO_FORM·node 가드) 적대 감사, 낙관 방향(정상 FAIL/결함 PASS/BLOCKED 소실) 특정 지시"
+  dispatch_count: 1
+  outcome: accepted
+  evidence: "5 findings 전건 수용·수리: F1(S — NO_FORM 이 «레시피 타깃 부재»를 «벽 부재»로 오판, SSO/타언어 벽 반례 → expect 증인 결박 + ENTRY_NO_FORM_UNVERIFIED fail-closed) · F2(venue 경유 basis 가 EVIDENCE_SPAN_SECTION 으로 오표기 — 시험관 선택이 기획서 지정으로 읽힘 → basis 분리) · F3(importer 가 generated_from 폐기 — 귀속위험이 하류 미결박 → 보존+report per_tc 표면화, exit 결박 잔여) · F4(무스코프 롤카운트 전역 오염/상쇄 → UNSCOPED_ROLE_COUNT typed, within= 잔여) · F5(부정 표시문 열거 추출 — codex 가 .venv 로 재현 실증 → 부정문 가드 양쪽). 수리 후 레인 69 + 전량 2,805 passed · 라이브 재검증 R9_1 BLOCKED→FAIL(typed)"
+  notes: "F5 는 감사자가 처방 전에 재현을 직접 실행해 보인 사례(«짧은 함수 재현은 .venv 로 확인») — finding 수용의 소스검증 비용을 감사자가 선지불. F1 은 governor 의 «전원 부재 = 벽 부재» 가정을 반례(SSO/한국어 벽)로 무너뜨림 — 증인(positive witness) 요구가 처방으로 그대로 채택됨"

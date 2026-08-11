@@ -1,6 +1,6 @@
 ---
 name: token-budget-gate
-description: Estimates token cost before a multi-step task and outputs a Green/Yellow/Red gate verdict. Tracks actual vs. estimated after completion for calibration. Triggers on "token budget", "how much will this cost", "will this be expensive", "estimate tokens", before long multi-agent tasks.
+description: Estimates token cost before a multi-step task and outputs a 4-tier Green/Yellow/Orange/Red gate verdict. Records actual vs. estimated after completion when a mechanical usage source exists. Triggers on "token budget", "how much will this cost", "will this be expensive", "estimate tokens", before long multi-agent tasks.
 user-invocable: true
 allowed-tools: ["Read", "Bash"]
 model: sonnet
@@ -76,6 +76,14 @@ Base estimates per task type:
 
 Apply dimension multipliers from Step 1 to the base estimate.
 
+**Calibration override (read leg)**: if `.claude/token_calibration/log.tsv` exists and holds ≥1 row
+for this task type, derive the base as `median(actual_i / mult_i)` over its rows — each row's `mult`
+column records the dimension-multiplier product that was in effect, so dividing recovers a
+dimension-neutral base. **Never use raw `actual` as the base**: actual already contains that run's
+multipliers, and re-applying this run's multipliers on top double-counts scope. The table above is the
+uncalibrated default; measured local data outranks it. State which source the estimate used
+(`base: table (uncalibrated)` or `base: calibration log, n={rows}`).
+
 **Final formula:**
 ```
 Estimated = base × file_multiplier × agent_multiplier × iteration_multiplier
@@ -131,35 +139,46 @@ Scope reduction options table (ORANGE/RED):
 
 ---
 
-### Step 5. Post-Task Calibration (optional)
+### Step 5. Post-Task Calibration (offered, not required)
 
 After task completion, if user says "how much did that cost" or "calibrate":
+
+**`Actual` must come from a mechanical source** — the user pasting `/cost` output, or `budget.spent()`
+in a Workflow context. A model cannot read its own token consumption by introspection; a reconstructed
+number written into the log poisons every future estimate that reads it (the read leg in Step 2).
+No mechanical source available → render `Actual: UNMEASURED` and **write no row**.
 
 ```
 ## Calibration
 
 Estimated: ~16K tokens
-Actual: ~{actual}K tokens
-Error: {+/-N}%
-
-Calibration note saved → improves next estimate for this task type.
+Actual: ~{actual}K tokens   (source: /cost paste | budget.spent() | UNMEASURED)
+Error: {+/-N}%   (omit when UNMEASURED)
 ```
 
-Write calibration data:
+Write calibration data (only when Actual is mechanically sourced):
 ```bash
 mkdir -p .claude/token_calibration/
-# Append: task_type, estimated, actual, date
+# mult = this run's dimension-multiplier product (Step 1) — stored so the read leg can divide it
+# back out; a log without it makes every future estimate double-count scope.
+printf '%s\t%s\t%s\t%s\t%s\n' "{task_type}" "{estimated_k}" "{actual_k}" "{mult}" "$(date +%F)" \
+  >> .claude/token_calibration/log.tsv
 ```
 
-Calibration data improves future estimates for the same task type (no model training — local record only).
+Recorded rows feed the Step 2 calibration override for the same task type (no model training — local record only).
 
 ---
 
 ## Done When
 
-- Gate verdict output (GREEN/YELLOW/ORANGE/RED) with estimated cost breakdown
-- For ORANGE/RED: scope reduction options presented and user decision recorded
-- Calibration offered after task completion (optional, not mandatory)
+- Gate verdict output (GREEN/YELLOW/ORANGE/RED) with estimated cost breakdown, naming the estimate's
+  base source (table-uncalibrated or calibration log) — *mandatory-pass*
+- For ORANGE/RED: scope reduction options presented and user decision recorded — *mandatory-pass*
+- Any calibration row written this run carries a mechanically-sourced `actual` (pasted `/cost` or
+  `budget.spent()`); no mechanical source → `Actual: UNMEASURED`, no row — *mandatory-pass*
+
+(Post-task calibration is an offer in Step 5, not a completion condition — a completion condition
+marked "optional" is not a completion condition.)
 
 ---
 

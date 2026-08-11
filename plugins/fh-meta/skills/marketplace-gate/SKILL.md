@@ -84,7 +84,7 @@ Result: **PASS** / **PARTIAL** / **FAIL**
 ### Check 3 — Maintenance Signals
 
 ```bash
-cd "$REPO_PATH" 2>/dev/null || cd "$(pwd)"
+cd "$REPO_PATH" 2>/dev/null || { echo "ABORT: cannot cd to $REPO_PATH — refusing to measure the current repo in its place"; exit 1; }
 git log -1 --format="Last commit: %ar (%ad)" --date=short 2>/dev/null
 ls CHANGELOG* 2>/dev/null && echo "CHANGELOG found" || echo "No CHANGELOG"
 git tag -l 2>/dev/null | tail -5
@@ -101,47 +101,66 @@ Result: **ACTIVE** / **STALE** (60–180 days) / **ABANDONED** (180+ days)
 ### Check 4 — Duplication / Conflict Detection
 
 ```bash
-# list skills in current repo (directory-based)
-find "$REPO_PATH" -name "SKILL.md" 2>/dev/null | xargs -I{} dirname {} | xargs -I{} basename {}
-# compare with existing FH skills (if FH_DIR is set)
-[ -n "$FH_DIR" ] && ls "$FH_DIR/plugins/fh-meta/skills/" 2>/dev/null
-# cross-check registered skills in plugin.json (SoT)
-[ -n "$FH_DIR" ] && python3 -c "
-import json, sys
-with open('$FH_DIR/plugins/fh-meta/.claude-plugin/plugin.json') as f:
-    d = json.load(f)
-skills = [s['name'] for s in d.get('skills', [])]
-print('plugin.json registered skills (' + str(len(skills)) + '):', ', '.join(skills))
-" 2>/dev/null || echo "plugin.json parse failed (FH_DIR not set or path error)"
+# list skills in target repo (directory-based — skills are directory-registered in this ecosystem;
+# plugin.json carries no skills array, so a manifest read is NOT a skill list. An earlier version
+# of this check read `plugin.json["skills"]`, a key that never exists, so it rendered every healthy
+# repo as STALE — a broken instrument, calibrated against this very repo.)
+find "$REPO_PATH" -name "SKILL.md" 2>/dev/null | xargs -I{} dirname {} | xargs -I{} basename {} | sort > /tmp/_mkt_target_skills.txt
+cat /tmp/_mkt_target_skills.txt
+# compare with hub skills — SKIPPED must be visible, never silent. The readability test matters:
+# FH_DIR set-but-wrong yields an empty ls through the pipe, which reads as "0 overlaps" — a silent
+# skip wearing a pass. Set-but-unreadable is its own labeled state.
+if [ -n "$FH_DIR" ] && [ -d "$FH_DIR/plugins" ]; then
+  ls "$FH_DIR"/plugins/*/skills/ 2>/dev/null | grep -v ':$' | grep -v '^$' | sort > /tmp/_mkt_hub_skills.txt
+  comm -12 /tmp/_mkt_target_skills.txt /tmp/_mkt_hub_skills.txt | sed 's/^/NAME-OVERLAP: /'
+elif [ -n "$FH_DIR" ]; then
+  echo "SKIPPED: FH_DIR set but $FH_DIR/plugins unreadable — hub cross-check NOT run (not a CLEAN signal)"
+else
+  echo "SKIPPED: FH_DIR unset — hub cross-check NOT run (this is not a CLEAN signal)"
+fi
 ```
 
-**Duplication verdict**: If directory-based list and plugin.json list don't match → **STALE** warning.
+**Duplication verdict**: name overlap with hub skills → **OVERLAP**/**CONFLICT** by role comparison.
+Hub cross-check skipped → report `CLEAN (target-internal only — hub cross-check SKIPPED)`, never bare CLEAN.
 
 | Criterion | Check |
 |---|---|
-| No name conflict with existing FH skills | name comparison |
+| No name conflict with existing FH skills | name comparison (or visible SKIPPED) |
 | No functional duplication | description keyword comparison |
-| plugin.json list matches directory list | cross-check (SoT consistency) |
 
 Result: **CLEAN** / **OVERLAP** (N candidates) / **CONFLICT** (direct conflict)
 
 ### Check 5 — Public Safety
 
+**Primary path (no-reinvention)**: when `public-surface-audit` is installed, run it against
+`$REPO_PATH` and map its verdict — `LEAK` → **BLOCKED** · `REVIEW` → **WARNING** · `CLEAN` → **SAFE**
+· `NOT_CONFIGURED` → **WARNING(NOT_CONFIGURED)** (pattern source absent — not a clean bill). That
+skill is the real token scanner; this check does not re-implement it. The `NOT_CONFIGURED` qualifier
+survives into the Step 2 aggregate — see the 🟢 rule there (an unmeasured public surface must not be
+absorbed into an ignorable ⚠️).
+
+**Fallback (screening-grade only)** — when public-surface-audit is not installed:
+
 ```bash
-# detect hardcoded internal domains
-grep -r "<your-ghe-url>\|internal-domain\|sandbox\|internal-api" \
+# placeholder-literal screening — catches template residue, NOT real internal hostnames or secrets
+grep -r "<your-ghe-url>\|internal-domain\|internal-api" \
   "$REPO_PATH" --include="*.md" --include="*.json" --include="*.yaml" -l 2>/dev/null | head -10
-# sensitive information exposure
-grep -r "API_KEY\s*=\|SECRET\s*=\|PASSWORD\s*=" \
-  "$REPO_PATH" --include="*.md" --include="*.json" -l 2>/dev/null | head -5
+# sensitive information exposure (assignment shapes only)
+grep -rE "API_KEY\s*=|SECRET\s*=|PASSWORD\s*=" \
+  "$REPO_PATH" --include="*.md" --include="*.json" --include="*.yaml" --include="*.yml" \
+  --include="*.sh" --include="*.env*" -l 2>/dev/null | head -5
 # license
 ls "$REPO_PATH"/LICENSE* 2>/dev/null && echo "LICENSE found" || echo "No LICENSE"
 ```
 
+Fallback results are always labeled `(screening-grade — placeholder patterns; not a hostname/secret
+scanner)`. A go-public action still owes the Pre-Publish Surface Gate's full chain regardless of a
+SAFE here — this check screens listing readiness, it does not clear publication.
+
 | Criterion | Check |
 |---|---|
-| No hardcoded internal domains (or clearly marked as internal-only) | grep |
-| No sensitive information exposed | grep |
+| No hardcoded internal domains (or clearly marked as internal-only) | public-surface-audit (or screening-grade grep, labeled) |
+| No sensitive information exposed | public-surface-audit (or screening-grade grep, labeled) |
 | LICENSE file exists | ls |
 
 Result: **SAFE** / **WARNING** (N items to review) / **BLOCKED** (sensitive info exposed)
@@ -161,10 +180,14 @@ marketplace-gate — Listing Suitability Verdict
   Check 4 Duplication detection: ✅ CLEAN / ⚠️ OVERLAP({N}) / ❌ CONFLICT
   Check 5 Public safety        : ✅ SAFE / ⚠️ WARNING({N}) / ❌ BLOCKED
 
-  Overall verdict:
-    🟢 Recommended for listing  — 0 FAIL + 0 BLOCKED
-    🟡 Conditional listing      — ≤1 FAIL + 0 BLOCKED
-    🔴 Listing on hold          — 2+ FAIL or 1+ BLOCKED
+  Overall verdict — counted over the ❌-class {FAIL, ABANDONED, CONFLICT, BLOCKED}
+  (each check has its own vocabulary; the aggregate counts the ❌ column, not the token "FAIL" —
+   an ABANDONED or CONFLICT is a failure even though its word differs):
+    🟢 Recommended for listing  — 0 ❌-class results, AND Check 5 does not carry the
+                                  NOT_CONFIGURED qualifier (an unmeasured surface caps
+                                  the verdict at 🟡 — unmeasured ≠ pass)
+    🟡 Conditional listing      — exactly 1 ❌-class result, and it is not BLOCKED
+    🔴 Listing on hold          — 2+ ❌-class results, or any BLOCKED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -182,12 +205,17 @@ marketplace-gate — Listing Suitability Verdict
 ## Done When
 
 ```
-All steps 0–2 completed
-+ Full 5-point check results output (Check 1–5 individual verdicts)
-+ Overall verdict output (🟢 Recommended / 🟡 Conditional / 🔴 On hold)
+All steps 0–2 completed                                        — mandatory-pass
++ Full 5-point check results output (Check 1–5 individual
+  verdicts, skipped legs rendered as visible SKIPPED)          — mandatory-pass
++ Overall verdict output (🟢/🟡/🔴) counted over the ❌-class    — measured (❌-class count)
++ Before any 🟢 Recommended verdict: phantom-quench ran over
+  the target's citations/URLs/path refs; phantom refs found
+  → verdict auto-downgrades to 🟡 Conditional                   — mandatory-pass
 ```
 
-**→ Mandatory before 🟢 Recommended verdict: `phantom-quench`** — forward axis check on all citations, external URLs, and file path references in the asset being reviewed. A 🟢 verdict without phantom-quench is incomplete. If phantom-quench finds phantom refs → verdict downgrades to 🟡 Conditional automatically.
+(The phantom-quench leg sits inside Done When on purpose — an earlier version stated it below the
+fence, so the fence alone could be satisfied without it.)
 
 > When `agent-composer` receives a "comprehensive marketplace listing audit" request,
 > recommend: Wave 0 `fact-checker` → Wave 1 `marketplace-gate` + `hub-persona-auditor` in parallel.
