@@ -142,7 +142,10 @@ no output line about the discard, and never force an angle that isn't there.
 
 Output format:
 ## This Week's Frontier Highlights (max 3)
-**[Title]** — FH connection point in one sentence
+**[Title]** `<source-id>` — FH connection point in one sentence
+<!-- source-id is MANDATORY (SKILL.md §Citation anchors): arXiv:NNNN.NNNNN | HN:<item-id> | <url>.
+     No id → drop the item and count the drop. A recognized title is not a citation. -->
+
 
 ## FH Immediate Application Candidates
 2-3 specific ideas
