@@ -97,29 +97,54 @@ EXEMPT=(
 # (callers = grep over selfcheck.sh + .github/workflows/*.yml + templates/.git-hooks/*, the same
 # three surfaces this check enumerates. All four SHIP.) selfcheck.sh wires exactly three embedded
 # self-tests by name — compaction_probe · judgment_circuit_lint · novelty_claim_check — and these
-# four are not among them. So "0 declared debt" is true of the filename-convention population and
-# false of "every lane suite in this repo executes". A second lens over `--self-test` dispatchers is
+# four are not among them. So the debt number below is true of the filename-convention population
+# and false of "every lane suite in this repo executes". A second lens over `--self-test` dispatchers is
 # the honest next step and is NOT built here; it is carried to the card as a measured residual so
 # the number in this file cannot be read as a claim it does not make.
 # (Raised by adversarial review against this delta, which called C1 "partially refuted" for exactly
 # this reason. It was right: the denominator was mine to state and I had stated it as if it were the
 # population.)
 #
-# ── EMPTY as of 2026-08-13 (PR: reship — lane-debt wiring). All twelve were discharged in one ──
-# change, and the list is kept (rather than deleted) because an empty DEBT array is what makes the
-# UNDECLARED arm above a hard FAIL: a new unwired suite now cannot join a list, it fails the check.
+# ── 12 → 2 as of 2026-08-13 (PR: reship — lane-debt wiring) ──────────────────────────────────
+# TEN of the twelve are discharged by the pair-loop in scripts/selfcheck.sh. TWO are back here,
+# and the point of this block is that THE REASON CHANGED. Before today the entry meant "nothing
+# runs this, and we do not know what happens if it does". Now it means "we ran it, and it fails
+# outside this operator's machine" — which is a different, smaller, and actionable debt.
 #
-# What the twelve were, so the number in the card is auditable after this file stops naming them:
-# capability_entrypoint_shipping · chamber_run · destructive_pre_gate · env_purity · field_canon ·
-# frontier_digest_retry · knowledge_seam · marker_crossfamily · marker_floor · residency_closure ·
-# reviewer_capability_conformance · stale_clone_guard. Nine of the twelve were in the published
-# tarball, so consumers were carrying nine suites nothing called. The two that mattered most were
-# the marker pair: test_marker_crossfamily_lanes.sh calibrates the `crossfamily:` enum that has
-# hard-blocked commits since 2026-08-08 (the hook names the file only in a COMMENT —
-# templates/.git-hooks/pre-commit:1068 — which is what made a hand-rolled probe report 11 not 12),
-# and test_marker_floor_lanes.sh calibrates pre-commit's live validate_marker_floor().
-# They are discharged by the pair-loop in scripts/selfcheck.sh, not by being forgotten here.
-DEBT=()
+# What the twelve were: capability_entrypoint_shipping · chamber_run · destructive_pre_gate ·
+# env_purity · field_canon · frontier_digest_retry · knowledge_seam · marker_crossfamily ·
+# marker_floor · residency_closure · reviewer_capability_conformance · stale_clone_guard.
+# Nine were in the published tarball, so consumers carried nine suites nothing called. The two
+# that mattered most were the marker pair: test_marker_crossfamily_lanes.sh calibrates the
+# `crossfamily:` enum that has hard-blocked commits since 2026-08-08 (the hook names it only in a
+# COMMENT — templates/.git-hooks/pre-commit:1068 — which is what made a hand-rolled probe report
+# 11 not 12), and test_marker_floor_lanes.sh calibrates pre-commit's live validate_marker_floor().
+# Both are wired now.
+#
+# 🟥 THE TWO BELOW WERE WIRED, MEASURED RED IN CI, AND DELIBERATELY MOVED BACK. Making them green
+# was available and is the wrong move: their failures are TRUE — the suites really do depend on
+# things a CI runner does not have — so forcing a pass would be routing a real failure to green in
+# the same delta that spent nine repairs closing exactly that. A suite whose preconditions are
+# undeclared belongs in the todo list, not in the mandatory path.
+DEBT=(
+  # PASS 19 · FAIL 0 locally; PASS 12 · FAIL 7 in CI. Reproduced locally by pointing HOME at an
+  # empty directory — 12/7, the same split — so the dependency is exact and not a guess:
+  # field_canon_preload.sh resolves `${HOME}/projects` and seven lanes assume the operator's
+  # mapped-project layout is there. Nothing in the suite declares that precondition, so on a
+  # machine without it the suite reports a REGRESSION rather than "not exercised here".
+  # Fix before re-wiring: the suite must detect the missing layout and exit NOT-EXERCISED (the
+  # shape test_sessionstart_multihook_lanes.sh already uses for its CLI dependency), or build its
+  # own fixture HOME for those seven the way it already does for the no-HOME lane.
+  "test_field_canon_lanes.sh"
+  # 17/17 locally; 2/17 in CI. And this one was PREDICTED: the adversarial review of this very
+  # delta flagged `elapsed < 10` as a wall-clock assertion that would go falsely red on a loaded CI
+  # runner, naming this file and that line. It was filed as a low-severity residual and not acted
+  # on; CI then produced exactly it. ★ The finding named a MECHANISM (a wall-clock assertion is now
+  # on a mandatory path), and a mechanism does not become less true for being labelled R.
+  # Fix before re-wiring: give the timing assertions headroom or gate them behind an explicit
+  # opt-in, so the default run measures logic and not the runner's load.
+  "test_stale_clone_guard_lanes.sh"
+)
 
 if [ "${1:-}" = "--list-debt" ]; then
   # Same bash-3.2 empty-array guard as the scan call below. This site was MISSED when that one was
@@ -390,7 +415,8 @@ if [ -n "$GONE" ]; then
 fi
 
 if [ "$N_DEBT" -gt 0 ]; then
-  echo "⚠️  lane-runner: ${N_DEBT} suite(s) still have NO runner (declared debt, measured 2026-08-12)."
+  echo "⚠️  lane-runner: ${N_DEBT} suite(s) still have NO runner (declared debt — see DEBT for the"
+  echo "    per-entry reason and the date each was measured; they are not all from one measurement)."
   echo "    They are shipped or present but never execute — see DEBT in this file. This number must"
   echo "    only go down; a new one fails the check rather than joining the list silently."
 fi
