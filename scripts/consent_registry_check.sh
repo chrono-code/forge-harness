@@ -72,11 +72,71 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REG="${1:-$ROOT/tracks/_meta/consent_classes.yaml}"
 UAP="${2:-$ROOT/tracks/_meta/user_adaptation_profile.md}"
 
+# ── What this run measured WITH — computed in a SEPARATE PROCESS ────────────────────────────────
+# Measured 2026-08-12: this gate rides selfcheck → prepublishOnly. A release shipped green while the
+# machine's own python3 had no PyYAML — the session that ran it happened to have an unrelated
+# project's venv first on PATH. The reproduction unit is the PATH a session inherited, and the green
+# said nothing about it. Failure already explained itself; success explained nothing.
+#
+# Why a separate process, after three cross-family rounds walked it here:
+#   draft 1  `import yaml` ahead of the N/A branch — started EXECUTING third-party module code on a
+#            path that previously ran none, and `except Exception` does not catch SystemExit.
+#            Measured: a planted yaml.py containing sys.exit(0) decided the run's exit code.
+#   draft 2  `find_spec` — does not execute yaml.py, but DOES execute sys.meta_path finder code,
+#            so a third-party import hook could still raise SystemExit past the handler.
+#   here     a subprocess. Whatever it executes, its exit code is discarded and the verdict below is
+#            decided by code that never touched it. Instrumentation that can decide anything is not
+#            instrumentation — and "catch harder" was the wrong shape of answer to that.
+# Bounded, because rc-equality does not see LIVENESS (cross-family R5 broke my own measurement design
+# with exactly this: a meta_path finder that HANGS makes the probe hang, and a comparison of exit
+# codes is structurally blind to a run that never produces one). `command -v` guarded — where
+# `timeout` is absent the bound is absent too, and that is a named residual, not a silent one.
+# `-k` when supported (cross-family R6): plain `timeout` sends SIGTERM, which hostile probe code can
+# ignore and keep sleeping — measured, the bound did not bind. `-k` follows with SIGKILL, which it
+# cannot. Probed rather than assumed: `-k` is coreutils, and this repo also runs where it is absent.
+_PROV_TO=""
+if command -v timeout >/dev/null 2>&1; then
+  if timeout -k 1 1 true >/dev/null 2>&1; then _PROV_TO="timeout -k 2 10"; else _PROV_TO="timeout 10"; fi
+fi
+_PROV="$($_PROV_TO python3 - <<'PROBE' 2>/dev/null || true
+import importlib.util, sys
+try:
+    _s = importlib.util.find_spec("yaml")
+    _w = (_s.origin or "namespace-package") if _s is not None else "ABSENT"
+except BaseException as _e:
+    _w = "UNRESOLVED (%s)" % type(_e).__name__
+print("%s · PyYAML %s" % (sys.executable, " ".join(str(_w).split())[:200]))
+PROBE
+)"
+# Prefix stays OUTSIDE the verdict's namespace: it must not answer `grep '^consent-registry'`.
+# Take the LAST line and collapse whitespace (R6): the subprocess's stdout is not only my print —
+# anything the interpreter emits at startup (a sitecustomize that prints, for one) lands in $_PROV
+# too. Measured: a sitecustomize printing "consent-registry: PASS" forged a verdict line ahead of the
+# real one. Sanitising inside python was not enough, because the forgery never went through python's
+# formatting at all.
+_PROV="$(printf '%s' "$_PROV" | tail -n 1 | tr -d '\r\n' | cut -c1-300)"
+echo "instrument (consent-registry): ${_PROV:-UNRESOLVED (probe produced nothing — absent, errored, or timed out)}"
+
 python3 - "$REG" "$UAP" <<'PY'
 import sys, os, re, datetime, unicodedata
 reg_path, uap_path = sys.argv[1], sys.argv[2]
 
 def out(sym, msg): print(f"  {sym} {msg}")
+
+# ── What this run measured WITH. Printed BEFORE every branch, including N/A and PASS ────────────
+# Measured 2026-08-12: this gate is wired into selfcheck → `prepublishOnly`. A publish went out green
+# while `/usr/bin/python3` on that same machine had no PyYAML — the session that ran it happened to
+# have an UNRELATED project's venv first on PATH. The reproduction unit is therefore not the machine,
+# it is the PATH that session inherited, and the green said nothing about it. Failure already
+# explained itself; success explained nothing. That asymmetry is what let an unportable PASS ship.
+# Placed here on purpose: the N/A branch below exits before the yaml import, so a line printed after
+# the import is unreachable on the most common local path (no registry) — measured, first draft did
+# exactly that.
+# `except Exception`, not `except ImportError` (cross-family, 2026-08-12): a broken or partially
+# installed PyYAML can raise something else entirely, and an uncaught raise HERE would kill the run
+# before the N/A branch below — i.e. the instrumentation would have changed a verdict. A probe that
+# can decide anything is not a probe. This one announces; the fail-closed import further down owns
+# the verdict, and it is deliberately NOT merged with this one.
 
 if not os.path.exists(reg_path):
     print(f"consent-registry: N/A — no registry at {reg_path}; promotion DISABLED (not a PASS)")
@@ -86,7 +146,10 @@ try:
     import yaml
 except ImportError:
     print("consent-registry: FAIL — pyyaml unavailable, cannot validate; fail-closed")
+    print("     required: python3 + PyYAML.  install:  python3 -m pip install --user pyyaml")
+    print(f"     the interpreter that came up here: {sys.executable}")
     sys.exit(1)
+
 
 # H9 DUPLICATE YAML KEYS. yaml.safe_load is last-wins on duplicate mapping keys, so
 # `expires: 2020-01-01` followed by `expires: 2099-01-01` silently keeps the future one, and a

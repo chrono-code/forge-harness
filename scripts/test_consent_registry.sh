@@ -728,6 +728,36 @@ YAML
 lane "P-SPELL a grant WIDER than its class is still refused (the paired control)" 1 "R7"
 
 
+# ── PROV : every verdict states what it measured WITH, and that statement is alive ───────────────
+# 2026-08-12. This gate rides selfcheck → prepublishOnly. A release shipped green from a session
+# whose `python3` resolved to an unrelated project's venv that had PyYAML, while the machine's own
+# python3 did not. Nothing was bypassed — the PASS simply was not portable, and said nothing about
+# what produced it. The line is only worth anything if it CHANGES with the instrument, so this is a
+# known-pair, not a presence check: a hard-coded string would pass a presence check forever.
+_prov_with=$(bash "$CHK" 2>&1 | grep -o 'instrument (consent-registry): .*' | head -1)
+_prov_without=$(/usr/bin/env -i PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 \
+                bash "$CHK" 2>&1 | grep -o 'instrument (consent-registry): .*' | head -1)
+if [ -z "$_prov_with" ]; then
+  echo "  ❌ PROV-1 no instrument line on the ordinary path"; fail=$((fail+1))
+elif [ -z "$_prov_without" ]; then
+  echo "  ❌ PROV-1 no instrument line when PyYAML is hidden (the path that most needs it)"; fail=$((fail+1))
+elif [ "$_prov_with" = "$_prov_without" ]; then
+  echo "  ❌ PROV-1 instrument line does not change with the instrument — decorative ($_prov_with)"; fail=$((fail+1))
+elif ! printf '%s' "$_prov_with" | grep -qE 'PyYAML /.*yaml'; then
+  # cross-family 2026-08-12: "two values that differ" is spoofable — anything varying by interpreter
+  # or env satisfies it. The with-arm must look like a VERSION and the without-arm must say ABSENT,
+  # or the pair proves only that something changed, not that the right thing was reported.
+  echo "  ❌ PROV-1 present-arm does not resolve PyYAML to a path: [$_prov_with]"; fail=$((fail+1))
+elif ! printf '%s' "$_prov_with" | grep -q ': /'; then
+  # cross-family R2: the first lane discarded the interpreter entirely, so a planted yaml.py with
+  # __version__="6.0" satisfied it. The interpreter path is half of what this line exists to report.
+  echo "  ❌ PROV-1 present-arm does not name an absolute interpreter path: [$_prov_with]"; fail=$((fail+1))
+elif ! printf '%s' "$_prov_without" | grep -q 'ABSENT'; then
+  echo "  ❌ PROV-1 absent-arm does not report ABSENT: [$_prov_without]"; fail=$((fail+1))
+else
+  echo "  ✅ PROV-1 instrument line is live: [$_prov_with] vs [$_prov_without]"; pass=$((pass+1))
+fi
+
 echo "----"
 echo "consent-registry anchor: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
