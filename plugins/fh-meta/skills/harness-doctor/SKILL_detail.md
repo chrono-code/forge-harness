@@ -157,7 +157,17 @@ done
 #### 5-2. CATALOG.md Open Item Count
 
 ```bash
-awk '/^### /{count++} count<=5{print}' CATALOG.md 2>/dev/null | grep -c "^- Open:" || echo "0"
+# An ABSENT CATALOG.md must not render as "0 open items" — that is the not-found-as-zero class this
+# whole file exists to close, and the old form produced it twice over: `2>/dev/null` swallowed awk's
+# error, and `grep -c … || echo "0"` printed a SECOND "0" on no-match (the counter already prints
+# its own "0" before exiting non-zero). `|| true` is the safe fallback — it prints nothing.
+if [ ! -f CATALOG.md ]; then
+  echo "5-2 UNMEASURED: CATALOG.md not found — absent is not 'no open items'"
+else
+  open_count=$(awk '/^### /{count++} count<=5{print}' CATALOG.md | grep -c "^- Open:" || true)
+  open_count=$(( ${open_count:-0} + 0 ))
+  echo "5-2 Open items (5 most recent sections): ${open_count}"
+fi
 ```
 
 > Do not use `grep -c "^- Open:" CATALOG.md` — returns hundreds as false positives counting entire history.
@@ -190,23 +200,33 @@ fi
 ### L5-A Skill Activity (bash)
 
 ```bash
+# SHELL PORTABILITY (2026-08-12, measured): the earlier form used `for f in $recent_sessions`.
+# bash word-splits an unquoted parameter expansion on IFS; **zsh does not** (SH_WORD_SPLIT is off by
+# default, and zsh is the macOS login shell these fences get pasted into). Under zsh the loop ran
+# ONCE with the entire newline-joined list as a single filename, every grep missed, and this block
+# reported EVERY skill as INACTIVE_90D — the harness declaring its own skills dead. Note the
+# direction: not a permissive false clean, a false ALARM, which is why no lane caught it.
+# `printf | while IFS= read -r` is the portable iteration; it is also correct for names with spaces.
+# `grep -qi` (not `-li`) — `-l` printed each matching filename into the report as noise.
+# `count=$(... | grep -c x || true)`: `|| true` PRINTS NOTHING, so it cannot produce the "0\n0"
+# two-line disarm that `|| echo 0` produces (see the L5-C note below). Do not "simplify" it back.
 recent_sessions=$(find tracks/ -name "session_*.md" -mtime -30 2>/dev/null)
 if [ -z "$recent_sessions" ]; then
   echo "L5-A SKIP: no session records — re-diagnose after 30 days"
 else
-  installed_skills=$(ls plugins/fh-meta/skills/ 2>/dev/null)
+  sessions_90d=$(find tracks/ -name "session_*.md" -mtime -90 2>/dev/null)
 
-  for skill in $installed_skills; do
-    count=0
-    for f in $recent_sessions; do
-      grep -li "$skill\|/$skill" "$f" 2>/dev/null && ((count++)) || true
-    done
+  ls plugins/fh-meta/skills/ 2>/dev/null | while IFS= read -r skill; do
+    [ -n "$skill" ] || continue
+    count=$(printf '%s\n' "$recent_sessions" | while IFS= read -r f; do
+              [ -f "$f" ] && grep -qi "$skill" "$f" 2>/dev/null && printf 'x\n'
+            done | grep -c x || true)
+    count=$(( ${count:-0} + 0 ))
     if [ "$count" -eq 0 ]; then
-      sessions_90d=$(find tracks/ -name "session_*.md" -mtime -90 2>/dev/null)
-      count_90d=0
-      for f in $sessions_90d; do
-        grep -li "$skill\|/$skill" "$f" 2>/dev/null && ((count_90d++)) || true
-      done
+      count_90d=$(printf '%s\n' "$sessions_90d" | while IFS= read -r f; do
+                    [ -f "$f" ] && grep -qi "$skill" "$f" 2>/dev/null && printf 'x\n'
+                  done | grep -c x || true)
+      count_90d=$(( ${count_90d:-0} + 0 ))
       if [ "$count_90d" -eq 0 ]; then
         echo "INACTIVE_90D: $skill (no call record in 90 days)"
       else
@@ -228,7 +248,10 @@ recent_sessions=$(find tracks/ -name "session_*.md" -mtime -30 2>/dev/null)
 [ -z "$recent_sessions" ] && echo "L5-B SKIP: no session records" && exit 0
 
 # hub-persona-auditor misuse: code PR or internal refactoring context
-for f in $recent_sessions; do
+# `printf | while read`, not `for f in $recent_sessions` — zsh does not word-split a parameter
+# expansion, so the `for` form scanned one bogus blob filename and reported "no misuse" every time.
+printf '%s\n' "$recent_sessions" | while IFS= read -r f; do
+  [ -f "$f" ] || continue
   if grep -q "hub-persona-auditor" "$f" 2>/dev/null; then
     context=$(grep -n "hub-persona-auditor" "$f" | head -3)
     echo "$context" | while IFS=: read linenum rest; do
@@ -241,7 +264,8 @@ for f in $recent_sessions; do
 done
 
 # sim-conductor misuse: first run without onboarding context
-for f in $recent_sessions; do
+printf '%s\n' "$recent_sessions" | while IFS= read -r f; do
+  [ -f "$f" ] || continue
   if grep -q "sim-conductor" "$f" 2>/dev/null; then
     context=$(grep -n "sim-conductor" "$f" | head -3)
     echo "$context" | while IFS=: read linenum rest; do
@@ -254,7 +278,8 @@ for f in $recent_sessions; do
 done
 
 # harness-doctor self-loop misuse
-for f in $recent_sessions; do
+printf '%s\n' "$recent_sessions" | while IFS= read -r f; do
+  [ -f "$f" ] || continue
   # `grep -c` prints 0 AND exits 1 on no-match, so `|| echo 0` appends a SECOND line
   # ("0\n0") and every later [ -eq/-gt ] test dies with "integer expression expected".
   # `|| true` keeps the exit code from killing the assignment without corrupting the value.

@@ -164,6 +164,18 @@ if [ -f .claude/goal-quench.pending ]; then
   PENDING_TIME=$(grep "^timestamp:" .claude/goal-quench.pending | sed 's/^timestamp: //')
   NOW=$(date +%s)
   PENDING_EPOCH=$(date -d "$PENDING_TIME" +%s 2>/dev/null || date -j -f "%Y-%m-%d %H:%M" "$PENDING_TIME" +%s 2>/dev/null)
+  # UNPARSEABLE IS NOT STALE (2026-08-12). Without this guard, a missing `timestamp:` line or a
+  # format neither `date` form accepts left PENDING_EPOCH EMPTY; the arithmetic below then failed,
+  # `[ "$AGE_HOURS" -lt 4 ]` errored to stderr, control fell through to the `else`, and the run was
+  # announced as "STALE … exit 0" — i.e. a pending verification was silently DROPPED and the third
+  # branch (we do not know how old this is) was spelled the same way as the benign one.
+  case "$PENDING_EPOCH" in
+    ''|*[!0-9]*)
+      echo "UNKNOWN AGE: .claude/goal-quench.pending has no parseable 'timestamp:' (got: '${PENDING_TIME}')."
+      echo "  This is NOT 'stale' and NOT 'fresh' — the pending verification is still OPEN."
+      echo "  Run /goal-quench --verify, or delete the file deliberately to clear it."
+      exit 1 ;;
+  esac
   AGE_HOURS=$(( (NOW - PENDING_EPOCH) / 3600 ))
   if [ "$AGE_HOURS" -lt 4 ]; then
     echo "goal-quench verification pending (created: $PENDING_TIME — ${AGE_HOURS}h ago)"

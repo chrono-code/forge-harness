@@ -329,9 +329,18 @@ Reduction targets are only meta operation rules (PR procedures, commit guides, F
 **Detection bash:**
 
 ```bash
-# Detect existing harness scale
-CLAUDE_MD_LINES=$(wc -l < CLAUDE.md 2>/dev/null || echo 0)
-RULES_COUNT=$(ls .claude/rules/*.md 2>/dev/null | wc -l || echo 0)
+# Detect existing harness scale.
+# `| wc -l || echo 0` is a conditional disarm, not a harmless idiom: with `set -o pipefail` active
+# (which the caller's shell may well have) a failing upstream stage makes the pipeline exit non-zero
+# AFTER wc has already printed its count, so the fallback appends a SECOND line, the value becomes
+# "0\n0", and the `-ge 3` test below dies with "integer expression expected" — on stderr only —
+# leaving the guard silent. Measured both directions 2026-08-12: single line without pipefail,
+# two lines with it. Sanitize instead of falling back.
+CLAUDE_MD_LINES=$(wc -l < CLAUDE.md 2>/dev/null || true)
+RULES_COUNT=$(ls .claude/rules/*.md 2>/dev/null | wc -l || true)
+# head -n1 FIRST, then strip: `tr -dc '0-9'` alone would fuse a two-line "12\n0" into "120".
+CLAUDE_MD_LINES=$(printf '%s\n' "$CLAUDE_MD_LINES" | head -n1 | tr -dc '0-9'); CLAUDE_MD_LINES=${CLAUDE_MD_LINES:-0}
+RULES_COUNT=$(printf '%s\n' "$RULES_COUNT" | head -n1 | tr -dc '0-9');         RULES_COUNT=${RULES_COUNT:-0}
 
 echo "CLAUDE.md: ${CLAUDE_MD_LINES} lines"
 echo ".claude/rules/: ${RULES_COUNT} files"
