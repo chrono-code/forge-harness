@@ -184,6 +184,75 @@ _OUT=$(_show_failure "$_MANY")
 [ "$(printf '%s\n' "$_OUT" | grep -c '════ lanes: 9 passed')" -ge 1 ]
 chk $? "the summary banner still prints when a truncated-away line quotes it"
 
+# ── ref-path + SessionStart-pair: `.git` presence is not "is this absence declared OK" ─────────
+# WHY (2026-08-12, cross-family review, card §🔱⑮ G): both blocks used to key their package-mode
+# SKIP on `[ -e .git ]`. A git-TRACKED tree that vendors this package (a monorepo committing
+# node_modules, or a consumer who runs `git init` after install) has `.git` present and is still a
+# package consumer — the predicate answered "source checkout" for it anyway, ran the full check, and
+# reproduced the exact FAIL both blocks exist to prevent. The fix routes through a single declaration
+# (`_pkg_accepted_absent`, backed by package_coverage_check.sh's ACCEPTED_ABSENT) instead. Anchored
+# here because this file is the state-lanes suite and an adversarial read is what caught the first
+# version of this same fix landing without a regression lane.
+_PA_FN=$(grep -n '^_pkg_accepted_absent()' "$SELFCHECK")
+if [ -z "$_PA_FN" ]; then
+  echo "FAIL  _pkg_accepted_absent() is no longer defined in selfcheck.sh — this lane cannot verify"
+  echo "      what it claims to. Update the lane WITH the subject."
+  exit 1
+fi
+echo "── discriminator located: selfcheck.sh:${_PA_FN%%:*}"
+
+# route_refpath(git_present, path_exists, is_accepted_absent) mirrors the real per-path decision
+# inside the `if [ -e ".git" ]` block: no .git → the whole scan is skipped regardless of any single
+# path's state (package mode); .git present → PASS if the path exists, else consult the declaration.
+route_refpath() {
+  local git="$1" exists="$2" accepted="$3"
+  if [ "$git" = 0 ]; then echo SKIP-package; return; fi
+  if [ "$exists" = 1 ]; then echo PASS; return; fi
+  if [ "$accepted" = 1 ]; then echo SKIP-accepted; return; fi
+  echo FAIL
+}
+# route_refpath_OLD is the reverted predicate: package-mode SKIP gated on .git alone, with no
+# fallback to the declaration when .git is present and the path is genuinely missing.
+route_refpath_OLD() {
+  local git="$1" exists="$2"
+  if [ "$git" = 0 ]; then echo SKIP-package; return; fi
+  if [ "$exists" = 1 ]; then echo PASS; return; fi
+  echo FAIL
+}
+[ "$(route_refpath 0 0 1)" = SKIP-package ]  ; chk $? "no .git → SKIP regardless of the individual path"
+[ "$(route_refpath 1 1 0)" = PASS ]          ; chk $? "source tree, path exists → PASS"
+[ "$(route_refpath 1 0 0)" = FAIL ]          ; chk $? "source tree, path genuinely missing, not declared → FAIL (a real defect still fails)"
+[ "$(route_refpath 1 0 1)" = SKIP-accepted ] ; chk $? "known-POSITIVE (the bug this fix closes): .git present (vendored/tracked package) + path missing + DECLARED accepted-absent → SKIP, not FAIL"
+[ "$(route_refpath_OLD 1 0)" = FAIL ]        ; chk $? "known-POSITIVE control: the reverted .git-only predicate DOES mis-route that same state to FAIL (the bug is real, not theoretical)"
+
+# The two paths this fix was written for must actually be present in the declaration it now consults
+# — otherwise the lanes above prove the routing logic works while the real inputs still fall through it.
+_PA_LIST=$(bash "$SCRIPT_DIR/package_coverage_check.sh" --list-accepted 2>/dev/null)
+printf '%s\n' "$_PA_LIST" | grep -qxF ".claude/regression/ablation_verdicts.md"
+chk $? "premise holds: .claude/regression/ablation_verdicts.md is in the live ACCEPTED_ABSENT list"
+printf '%s\n' "$_PA_LIST" | grep -qxF "scripts/probe_scope_check.sh"
+chk $? "premise holds: scripts/probe_scope_check.sh is in the live ACCEPTED_ABSENT list"
+printf '%s\n' "$_PA_LIST" | grep -qxF "scripts/test_sessionstart_multihook_lanes.sh"
+chk $? "premise holds: scripts/test_sessionstart_multihook_lanes.sh is in the live ACCEPTED_ABSENT list"
+
+# The SessionStart-pair loop's mode field: unrecognized values must FAIL closed, not fall through to
+# whichever string-match branch happens to miss (codex cross-family finding, 2026-08-12).
+_MODE_CASE=$(grep -n 'package-optional|always-shipped) ;;' "$SELFCHECK")
+if [ -z "$_MODE_CASE" ]; then
+  echo "FAIL  the pair-mode validation case is no longer in selfcheck.sh — this lane cannot verify"
+  echo "      what it claims to. Update the lane WITH the subject."
+  exit 1
+fi
+route_pair_mode() {
+  case "$1" in
+    package-optional|always-shipped) echo VALID ;;
+    *) echo FAIL-badmode ;;
+  esac
+}
+[ "$(route_pair_mode package-optional)" = VALID ]        ; chk $? "known mode 'package-optional' validates"
+[ "$(route_pair_mode always-shipped)" = VALID ]           ; chk $? "known mode 'always-shipped' validates"
+[ "$(route_pair_mode alway-shipped)" = FAIL-badmode ]     ; chk $? "known-POSITIVE: a typo'd mode is rejected, not silently treated as either known state"
+
 # ── SCOPE OF THIS ANCHOR — stated so it is not over-trusted ───────────────────
 # These lanes catch REVERSION (the run-twice form coming back, the helper being gutted, the
 # call-site redirect returning). They do NOT catch deliberate EVASION: a cross-family round

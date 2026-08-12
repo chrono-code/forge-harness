@@ -21,28 +21,6 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
-# Source-checkout test uses `-e`, not `-d`. In a git WORKTREE `.git` is a FILE (a gitdir pointer),
-# so the old `-d` test read every worktree as "installed package" and skipped the check entirely —
-# silently, with exit 0. Measured 2026-07-31: a worktree created specifically to approximate CI
-# reported PASS while this check had not run at all, i.e. the instrument used to justify wiring CI
-# was itself fail-open on the surface it was standing in. `-e` covers both the ordinary checkout
-# (dir) and the worktree (file); genuine package mode has no `.git` of either kind, so it still
-# skips. Anchored by scripts/test_package_coverage_lanes.sh.
-if [ ! -e .git ]; then
-  echo "SKIP  package-coverage (not a source checkout)"
-  exit 0
-fi
-# PREDICATE SPLIT (cross-family review, 2026-07-31). These were one condition, and folding them
-# together meant `.git` present + manifest missing returned SKIP + exit 0 — "we are in a checkout
-# and cannot read what ships" reported as "nothing to check here". Absence of the input is not
-# absence of the defect; `not found != 0` (CLAUDE.md §Instrument-Calibration). Only the no-.git
-# case is a legitimate skip (an installed package, where the un-shipped files are correctly gone).
-if [ ! -f package.json ]; then
-  echo "FAIL  package-coverage: source checkout with no package.json — the shipped file list is"
-  echo "      unreadable, so coverage is UNMEASURED, not clean"
-  exit 1
-fi
-
 # ── Accepted-absent, with the reason each one is NOT a defect ────────────────────────────────
 # Adding a line here is a decision, not a silencer: each entry states why shipping it would be
 # wrong. If you cannot write that sentence, the file probably belongs in files[].
@@ -99,10 +77,13 @@ ACCEPTED_ABSENT=(
   # selfcheck goes red on a subject they do not have.
   "scripts/test_probe_scope_lanes.sh"
   # Measures what the LIVE `claude` CLI does with several SessionStart hooks on one matcher —
-  # so every run needs the CLI, auth, and spends tokens on the consumer's account. Same reason
-  # `ablation_calibrate.sh` is absent: shipping a script whose only effect on a consumer's
-  # machine is a bill is worse than omitting it. selfcheck reports it NOT EXERCISED (exit 2)
-  # where the CLI is missing, so the package stays green without pretending the lanes ran.
+  # so every run needs the CLI, auth, and spends tokens on the consumer's account. This anchor DOES
+  # get a live run attempt when its subject ships and the file itself is present (selfcheck reports
+  # NOT EXERCISED, exit 2, when that run finds no CLI). This entry covers the OTHER case: the anchor
+  # FILE ITSELF is not shipped, so selfcheck never gets far enough to attempt the run at all — that
+  # case renders SKIP, not NOT EXERCISED (the two are for missing-file vs. present-file-no-CLI,
+  # not interchangeable; corrected 2026-08-12, cross-family review — the two exit paths were
+  # conflated in an earlier revision of this comment).
   "scripts/test_sessionstart_multihook_lanes.sh"
   # The launchd-driven daily cadence runner. Two independent reasons it must not ship: it is half of
   # a pair whose other half is a machine-local plist (`scripts/com.forge-harness.frontier-digest.plist`),
@@ -113,6 +94,45 @@ ACCEPTED_ABSENT=(
   # of a shipped artifact — the skill's own save path works without it.
   "scripts/frontier_digest_daily.sh"
 )
+
+# `--list-accepted`: print the ACCEPTED_ABSENT paths, one per line, and exit — no git/package.json
+# dependency, deliberately callable from a context this script's own coverage scan cannot run in
+# (package mode, or a vendored tree with `.git` present but no `package.json` at this root). This is
+# the single declared source of "known-legitimately-unshipped" for OTHER checks to consult instead of
+# re-deriving the same judgment from an environment predicate (`.git` presence, directory existence)
+# that answers a different question and can diverge from this list's actual coverage. Added
+# 2026-08-12 (reship axis, cross-family review of card §🔱⑮ G/D) after selfcheck.sh's ref-path block
+# was found re-deriving "is this legitimately absent" from `[ -e .git ]` — which reproduces the
+# original bug in any git-tracked tree that vendors this package (a monorepo committing
+# node_modules, or a consumer who runs `git init` after install): `.git` exists there, so the old
+# predicate ran the check, found these exact paths missing, and FAILed — the same false-FAIL this
+# array already declares correct to omit.
+if [ "${1:-}" = "--list-accepted" ]; then
+  printf '%s\n' "${ACCEPTED_ABSENT[@]}"
+  exit 0
+fi
+
+# Source-checkout test uses `-e`, not `-d`. In a git WORKTREE `.git` is a FILE (a gitdir pointer),
+# so the old `-d` test read every worktree as "installed package" and skipped the check entirely —
+# silently, with exit 0. Measured 2026-07-31: a worktree created specifically to approximate CI
+# reported PASS while this check had not run at all, i.e. the instrument used to justify wiring CI
+# was itself fail-open on the surface it was standing in. `-e` covers both the ordinary checkout
+# (dir) and the worktree (file); genuine package mode has no `.git` of either kind, so it still
+# skips. Anchored by scripts/test_package_coverage_lanes.sh.
+if [ ! -e .git ]; then
+  echo "SKIP  package-coverage (not a source checkout)"
+  exit 0
+fi
+# PREDICATE SPLIT (cross-family review, 2026-07-31). These were one condition, and folding them
+# together meant `.git` present + manifest missing returned SKIP + exit 0 — "we are in a checkout
+# and cannot read what ships" reported as "nothing to check here". Absence of the input is not
+# absence of the defect; `not found != 0` (CLAUDE.md §Instrument-Calibration). Only the no-.git
+# case is a legitimate skip (an installed package, where the un-shipped files are correctly gone).
+if [ ! -f package.json ]; then
+  echo "FAIL  package-coverage: source checkout with no package.json — the shipped file list is"
+  echo "      unreadable, so coverage is UNMEASURED, not clean"
+  exit 1
+fi
 
 out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'
 import re, os, json, sys
