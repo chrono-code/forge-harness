@@ -77,10 +77,22 @@ EOF
 
 PROMPT='List verbatim, one per line, every line in your session-start context that contains the string MARKER. If there are none, reply exactly NONE.'
 
+# Timeout guard (2026-08-12, cross-family review flagged the unbounded call as the only genuinely
+# blocking point this suite's two `claude -p` invocations reach — a hung/slow CLI call had no upper
+# bound, so a source-tree `selfcheck.sh` run could hang indefinitely on this lane alone. `timeout` is
+# GNU coreutils and stock macOS does not ship it — same availability gap compaction_probe.sh's
+# --self-test already guards for, same fix shape: probe once, use it if present, run unguarded (the
+# pre-existing residual) if not, rather than hard-failing on a missing tool this lane does not own.
+_TO=""; command -v timeout >/dev/null 2>&1 && _TO="timeout 120"
+
 _run() {  # $1=project dir → writes $1/stream.jsonl ; sets CLI_RC
-  ( cd "$1" && claude -p "$PROMPT" --model haiku --dangerously-skip-permissions \
+  ( cd "$1" && $_TO claude -p "$PROMPT" --model haiku --dangerously-skip-permissions \
       --output-format stream-json --verbose </dev/null >"$1/stream.jsonl" 2>"$1/cli.err" )
   CLI_RC=$?   # read DIRECTLY off the subshell, never through a pipe
+  # A `timeout`-killed call exits 124 and leaves stream.jsonl empty — the existing
+  # `[ ! -s stream.jsonl ]` branches at both call sites already route that to _unexercised/_fail
+  # correctly (empty stream, not a crash to diagnose), so 124 needs no separate branch here. Named so
+  # a future reader does not add one on the mistaken belief 124 is unhandled.
 }
 
 # typed-channel query. $1=stream file $2=one of: markers|exit:<marker>|outcome:<marker>|

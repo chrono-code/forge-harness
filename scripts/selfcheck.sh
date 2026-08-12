@@ -15,6 +15,21 @@ set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 fail=0
 
+# Single source of "declared legitimately unshipped" — package_coverage_check.sh's ACCEPTED_ABSENT,
+# read once via its --list-accepted flag. Two blocks below (ref-path, SessionStart anchor pairs) used
+# to each re-derive "is this absence OK" from an environment predicate (`.git` presence) instead of
+# consulting this declaration — which reproduces the exact bug the declaration exists to prevent in
+# any git-TRACKED tree that vendors this package (a monorepo committing node_modules, or a consumer
+# who runs `git init` after install): `.git` is present there, so the environment predicate answered
+# "source checkout", ran the full check, and FAILed on paths the declaration had already said were
+# fine to omit. Cross-family review, 2026-08-12 (reship axis, card §🔱⑮ G). `--list-accepted` has no
+# git/package.json dependency itself, so this load is safe to attempt unconditionally.
+_PKG_ACCEPTED_ABSENT=""
+if [ -f scripts/package_coverage_check.sh ]; then
+  _PKG_ACCEPTED_ABSENT="$(bash scripts/package_coverage_check.sh --list-accepted 2>/dev/null)"
+fi
+_pkg_accepted_absent() { printf '%s\n' "$_PKG_ACCEPTED_ABSENT" | grep -qxF "$1"; }
+
 check() { # check <label> <cmd...>
   local label="$1"; shift
   if "$@" 2>/dev/null; then
@@ -484,12 +499,41 @@ else
 fi
 
 # SessionStart multi-hook + install-wizard snippet merge. Subject for both = the shipped settings
-# snippets; a clone without them is a legitimate SKIP, a clone with them and no anchor is not.
+# snippets; a clone without them is a legitimate SKIP, a clone with them and no anchor is not —
+# UNLESS the anchor itself is declared package-mode-optional. test_sessionstart_multihook_lanes.sh
+# is exactly that. Its ACCEPTED_ABSENT entry (package_coverage_check.sh) covers a DIFFERENT case than
+# this loop implements: that entry's "selfcheck reports it NOT EXERCISED (exit 2)" describes the
+# anchor RUNNING and finding no CLI (handled a few lines below, rc==2). It never claimed anything
+# about the anchor FILE being missing — a real consumer never gets to run it at all (the file is not
+# in files[]), and this loop had no branch for that at all, so every installed package hit
+# "FAIL … anchor is missing" (corrected 2026-08-12, cross-family review — an earlier revision of this
+# comment miscited the ACCEPTED_ABSENT entry as already covering the missing-file case). Fixed by
+# consulting the SAME declaration (`_pkg_accepted_absent`, loaded once near the top of this file) that
+# the ref-path block above uses — not an environment predicate — because `.git` presence answers "is
+# there a git repo here", not "was this anchor declared intentionally unshipped", and the two diverge
+# in a git-tracked vendored tree (a monorepo committing node_modules, `git init` after install): `.git`
+# exists there too, which would silently reproduce the original FAIL.
+# test_wizard_snippet_merge_lanes.sh is NOT in ACCEPTED_ABSENT (it does ship, per files[]) — routing
+# both anchors through the same declaration lookup, rather than hardcoding one as always-FAIL, means a
+# future person who genuinely needs to exempt it does so by editing ONE list, not by finding this loop.
 for _pair in \
-  "templates/settings.SessionStart.snippet.json|scripts/test_sessionstart_multihook_lanes.sh" \
-  "templates/settings.SessionStart.snippet.json|scripts/test_wizard_snippet_merge_lanes.sh"
+  "templates/settings.SessionStart.snippet.json|scripts/test_sessionstart_multihook_lanes.sh|package-optional" \
+  "templates/settings.SessionStart.snippet.json|scripts/test_wizard_snippet_merge_lanes.sh|always-shipped"
 do
-  _subj="${_pair%%|*}"; _anc="${_pair#*|}"
+  _subj="${_pair%%|*}"; _rest="${_pair#*|}"; _anc="${_rest%%|*}"; _mode="${_rest#*|}"
+  # This mode field is a gate-verdict policy value (does a missing anchor FAIL or SKIP), not free
+  # text — an unrecognized value must not silently fall through to whichever branch string-matching
+  # happens to miss. Cross-family review, 2026-08-12: the two known values were previously the only
+  # ones exercised, so a typo (e.g. "alway-shipped") landed in the `else` FAIL branch by accident of
+  # string mismatch rather than by a checked policy — fail-closed in practice, but undeclared.
+  case "$_mode" in
+    package-optional|always-shipped) ;;
+    *)
+      echo "FAIL  ${_anc##*/}: unrecognized pair mode '$_mode' (expected package-optional or always-shipped)"
+      fail=1
+      continue
+      ;;
+  esac
   if [ ! -f "$_subj" ]; then
     echo "SKIP  ${_anc##*/} (subject $_subj absent)"
   elif [ -f "$_anc" ]; then
@@ -510,6 +554,8 @@ do
     elif [ "$_rc" -ne 0 ]; then
       fail=1
     fi
+  elif [ "$_mode" = "package-optional" ] && _pkg_accepted_absent "$_anc"; then
+    echo "SKIP  ${_anc##*/} (declared ACCEPTED_ABSENT — CLI/cost-gated, see package_coverage_check.sh)"
   else
     echo "FAIL  ${_anc##*/}: $_subj present but its anchor is missing"
     fail=1
@@ -782,7 +828,28 @@ fi
 
 # Referenced-path existence is a source-tree check. The npm package intentionally
 # ships a narrower runtime surface, so package-mode selfcheck skips this section.
-if [ -d ".claude/rules" ]; then
+# ⚠️ The skip predicate used to be `[ -d ".claude/rules" ]`. That broke the moment the tarball
+# started shipping PART of that directory (`.claude/rules/fh_4axis_gate.md` etc. are in files[]) —
+# the directory then exists in BOTH source and package mode, so the check never skipped in package
+# mode at all. It ran, extracted refs from the shipped CLAUDE.md/.claude/rules/*.md (which still
+# name `.claude/regression/ablation_verdicts.md` and `scripts/probe_scope_check.sh` — both
+# deliberately unshipped, per package_coverage_check.sh's own ACCEPTED_ABSENT list), then tried
+# `git check-ignore` against a tree with no `.git` at all (a real `npm pack` tarball is not a git
+# repo) — that call errors rather than confirming "ignored", so the fallback `[ -f "$p" ]` ran and
+# correctly found nothing, and the check reported FAIL on two paths it had already been told, one
+# check over, were fine to omit. First fix (2026-08-12, reship axis, card §🔱⑮ G/D) swapped the skip
+# predicate for `[ -e .git ]`. Cross-family review then caught that `[ -e .git ]` answers a different
+# question than the one this check needs: a git-TRACKED vendor of this package (a monorepo that
+# commits node_modules, or a consumer who runs `git init` after installing) has `.git` and IS a
+# legitimate package consumer, yet the predicate would route it into the full extraction and
+# reproduce the exact original FAIL on these same two paths — the fix would have closed the bug only
+# in the one shape it was tested against. The general fix is not a better environment predicate; it
+# is not re-deriving "is this legitimately absent" from the environment at all when a DECLARED answer
+# already exists — `_pkg_accepted_absent()`, loaded once near the top of this file — this block now
+# consults it before FAILing, so the two paths render SKIP regardless of how `.git` happens to be
+# shaped in the consumer's tree. `[ -e .git ]` still gates whether the SCAN runs at all (an installed
+# package with no tracked-refs source to lint), which is a real and unrelated question.
+if [ -e ".git" ]; then
   # Backtick-quoted repo-relative file refs in the always-loaded governance surface
   # (CLAUDE.md + .claude/rules/*.md) must exist. Phantom-reference class recurred
   # N>=3 in the 2026-06-11 audit window — instrument-not-habit.
@@ -827,6 +894,8 @@ REFPY
         echo "SKIP  ref-path (gitignored): $p"
       elif [ -f "$p" ]; then
         echo "PASS  ref-path: $p"
+      elif _pkg_accepted_absent "$p"; then
+        echo "SKIP  ref-path (declared ACCEPTED_ABSENT — see package_coverage_check.sh): $p"
       else
         echo "FAIL  ref-path: $p — referenced in CLAUDE.md/.claude/rules but missing"
         fail=1
@@ -836,7 +905,7 @@ $_refs
 REFS
   fi
 else
-  echo "SKIP  ref-path (package mode: .claude/rules absent)"
+  echo "SKIP  ref-path (package mode: no .git at package root — source-tree-only check)"
 fi
 
 if [ "$fail" -ne 0 ]; then

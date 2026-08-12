@@ -327,8 +327,21 @@ self_test() {
   local dg; dg="$(do_digest "$T/out3b" 2>/dev/null)"
   case "$dg" in *"열어야 할 정본"*) r=YES ;; *) r=NO ;; esac
   t "#3 digest 가 정본 포인터를 주입한다" YES "$r"
-  case "$dg" in *"브랜치:"*) r=YES ;; *) r=NO ;; esac
-  t "#3 digest 가 git 상태를 주입한다" YES "$r"
+  # ⚠️ 이 레인은 한때 "브랜치:" 등장을 무조건 YES 로 기대했다. **REPO_ROOT 가 git 저장소인지는
+  # self-test 가 통제하지 않는 환경 조건**이다(스크립트 위치로 계산되는 값이지 $T 픽스처가 아니다) —
+  # 그래서 non-git 트리(예: 소비자가 tarball 을 git 밖 스크래치 디렉터리에 풀어 실행)에서는 항상
+  # FAIL 했다. known-pair 로 확인: 레포 rc=0 · non-git tmp rc=1 · **같은 tmp 에 `git init` 만 해도
+  # rc=0**(2026-08-12, 재출하 축). do_seal 자신은 두 경우 다 올바르게 렌더한다("브랜치: …" 또는
+  # "(git 레포 아님)") — 결함은 self-test 가 그 중 한쪽만 정답으로 하드코딩한 것이었다. 지금 실제
+  # 상태를 물어 그 상태에 맞는 렌더를 기대한다 — 두 분기 다 계측한다(브랜치 있음일 때만 잰 것이
+  # 아니라 없음일 때도 "(git 레포 아님)" 이 실제로 나오는지 검증).
+  if git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    case "$dg" in *"브랜치:"*) r=YES ;; *) r=NO ;; esac
+    t "#3 digest 가 git 상태를 주입한다 (REPO_ROOT=git repo)" YES "$r"
+  else
+    case "$dg" in *"(git 레포 아님)"*) r=YES ;; *) r=NO ;; esac
+    t "#3 digest 가 git 상태를 주입한다 (REPO_ROOT=non-git, graceful render)" YES "$r"
+  fi
 
   # #4 세션 교차 주입 — 다른 세션의 봉인을 "직전 압축"이라고 주장하면 안 된다
   # ⚠️ 이 레인은 1차 수리 때 "라벨하면 된다"는 전제로 썼다가 **갱신됐다**. 라벨은 오배달을

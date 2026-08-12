@@ -1872,3 +1872,61 @@
   outcome: accepted
   evidence: "R1(diff 축) 1S·2A·5B → 전부 **재현 후** 수리 6건, B2 만 근거 명시 수용. 주장 축 10개 전부 TRUE·FALSE 0(명령+컨트롤 동반). 전량 2956 passed/43 skipped · 라이브 known-pair 유지(생성 TC 가 손 미션과 **grounds 바이트 동일**). PR qasp-dev #156"
   notes: "★**Explore 축이 인수인계의 전제를 반증했다** — 11c §4 「page↔area 를 선언 채널에 얹으면 NO_MATCH 6건이 열린다」가 틀렸다. 페이지 토큰은 매칭 키가 아니고(surface_inventory 에 `page` 0회, control `route` 36회), 같은 «p3 영역» 토큰인 TC_MT_005 는 매칭 성공·TC_MT_019 는 NO_MATCH 다. 나는 **그 위에 스키마를 이미 얹은 뒤** 실측했다 — 「남이 준 다음 할 일」도 전제부터 재야 하고, 특히 범위를 **줄이는** 방향일 때 소스 그라운딩이 제일 허술해진다([[feedback_scope_widening_needs_grounding]] 의 반대편 얼굴). 🟥 **선언 채널이 자기 실패모드를 맞았다** — 「선언 파일을 줬는데 선언이 없으면」 3가지 입력 전부 rc=0 으로 조용히 통과, cross-family 가 잡았고 자력 적발 0. 🟥 **되돌림 프로브가 내 테스트 하나를 장식으로 적발** — origin 을 spec_dictionary 로 위조해도 62건 전건 초록이었다(`anchors: []` 라 qualify_anchor 가 origin 을 보기도 전에 빠진다). 「자격이 안 나온다」를 확인했지 「origin 게이트가 산다」를 확인한 게 아니었다. 🟥 **계기가 세 번 거짓말했다**: `tail -1` 이 요약 대신 DeprecationWarning · 파이프 뒤 `$?` 가 필터 상태(훅이 잡아줌) · **pytest 색상 escape 때문에 `1 failed, 71 passed` 를 「71 passed」로 읽음**. 셋째는 실제 실패 1건을 숨겼다 — 전량 판정은 `--color=no` 필수. ★innovator 리포트의 B6(「처방 전사 검사 없음」)은 **오판** — 그 에이전트가 테스트 파일을 안 읽었다. 해당 레인은 존재하고 되돌림에서 2 적색. 남의 리포트도 대조 대상이다"
+
+
+- date: 2026-08-12
+  session: ifkakao-deck-notes-parallel
+  agents_summary: "3 dispatches: general-purpose×3 — ⓐ 챔버 런 원장 1차기록 재측정(승격 후보) · ⓑ 창작 도메인 «죽인 것» 1차기록 대조(승격 후보) · ⓒ 창작 대체안 B 5건 커밋 diff 직독"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "세 리포트의 load-bearing 주장을 거버너가 **전건 원문·컨트롤로 재검증**했다.
+    ⓐ 런#10 판정문:31 «10런 중 9 KILL» 오기 확인 · 디렉터리 9 ↔ 판정파일 9 대응 ·
+    `chamber_ordering_witness.yaml` 부재(컨트롤 = 같은 디렉터리 `subagent_invocations_log.yaml` 존재) ·
+    #5 «5/5 false-positive on 111 real source files» 축자 확인.
+    ⓑ `codex_decorrelation_audit_2026-07-25.md:14` 축자 · 신호 `:52` «독트린화는 여전히 보류» ·
+    `tracks/noblewriter/` 대상 grep rc=1 + **컨트롤 rc=0(10파일)**.
+    ⓒ `fh_completed_2026-08-01.md:76` 축자 · 캐논 검사기 부재(target rc=1, control rc=0) ·
+    커밋 `7046798` diff 축자.
+    산출: 원장 승격 1(인큐베이션) · 기각 2(창작 A·B) · 발표 출하 1장(S18-b)"
+  notes: "★**ⓒ가 내 중계 오류를 반증했다 — 이 세션 최대 소득이고 자력 적발 0이다.**
+    ⓑ의 요약을 받아 «typed 캐논이 저자를 잡은 3건»으로 운영자에게 **원문을 안 열고 중계**했는데,
+    요약 로그 원문은 그중 **둘을 «운영자 캐치»로 명시**한다 — 게이트가 *놓친* 것이라 실적으로 세면
+    논지가 뒤집힌다. 「대화에서 말한 것도 publish 다」(§Instrument-Calibration publish-order)가
+    always-loaded 인데도 뚫렸고, 잡은 건 후속 격리 에이전트다.
+    ★**세 리포트 모두 «부재»를 주장할 때 컨트롤을 스스로 동반했다** — 브리프에 명시한 결과이고,
+    ⓒ는 첫 컨트롤 실행이 파이프 오염($? 가 head 를 읽음)이었음을 **스스로 적발**해 rc 캡처로 재실행했다.
+    ★**ⓐ가 손 집계와 자동 grep 이 갈리는 지점을 지목**: `grep -c 'EMIT|KILL'` 은 27/43 을 뱉는데
+    그건 파일 내 토큰 계수이지 런별 판정이 아니다(#2·#3 이 `KILL / PARTIAL-EMIT` 형태).
+    ★**분모가 셋 다 방어 가능하다는 것을 ⓐ가 먼저 말했다** — 원장 행 전체(10, #1 오염) vs
+    완주 런(9, 권고) vs 아티팩트 완비(8). 어느 걸 쓰는지가 정직성 갈림길이라는 지적이 그대로
+    발표 인용 형태 결정(계수 대신 한 건)의 입력이 됐다.
+    🟥 **리포트를 그대로 옮기지 않은 것이 세 번 다 옳았다** — 세 건 모두 거버너 재검증에서
+    라벨/귀속이 교정됐다(ⓐ 「첫 정식 런 #10」 기계 미판별 · ⓑ 도메인 라벨 · ⓒ 캐치 주체)."
+
+- date: 2026-08-12
+  agent: general-purpose
+  task: "qasp 상류 라우팅 축 — 1.5막 질문 게이트 + 이관 처분 상태 신설 (설계·구현·cross-family 수렴·PR·머지까지 완주)"
+  dispatcher: FH 세션 (qasp+psa 축)
+  tier: opus-5[1m]
+  duration: "약 3.5시간 (bg, 재개 2회)"
+  outcome: accepted
+  evidence: "qasp-dev PR #157 MERGED (squash → main 8ff549e) · 파일 19 · +2735/-26 · CI 4/4 SUCCESS · 회귀 3043 passed/43 skipped (기준선 2967 대비 +76) · cross-family 7R CONVERGED(codex/gpt-5.5). 자기 반증 5건을 스스로 보고했고 그중 하나(자리표시자 18→17)는 내 독립 측정과 일치했다. 전수 되돌림 프로브로 **자기 수리 24종 중 4건이 장식**임을 스스로 적발. 시험관(나)의 몫은 메타감사·정본 지시·머지 조건(사설 companion-store 매니페스트) 강제였고, 실제 설계·구현·수렴은 에이전트가 완주했다."
+  note: "④-e 훅은 이 세션에서 47 dispatch 를 셌는데, 그중 대부분은 이 에이전트 자신의 하위 디스패치(cross-family 7R + 되돌림 프로브)다. 한 클래스로 묶어 1 엔트리로 기록한다 — 규율이 허용하는 형태이고 총 미기록을 막는 것이 훅의 목적이다."
+
+- date: 2026-08-12
+  invoker: FH 재출하 축 병렬세션 (Opus 5 1M)
+  subagent: codex/gpt-5.5 (cross-family 사이드카, headless `codex exec -m gpt-5.5 -`)
+  count: 6
+  purpose: v1.4.96 npm publish 게이트 — 독립검증. 채널 3종으로 나눠 발주(diff 리뷰 · 클레임 13건 검증 · 동결 게이트리뷰 4회)
+  outcome: accepted
+  evidence: "S 22건 회수 중 실건 19 수리 · 2건은 기계로 반증(count_check 이스케이프 known-pair · 되돌림 프로브 2pass/3fail) · 1건 미수리 잔여(B, 의도). 실건 벡터 3→6→5→2→3. **자력 적발 0 이었던 결함 5건을 잡았다** — 그중 3건이 직전 라운드 수리 산물. 레인 20→46 은 전부 이 회수분의 앵커다."
+  cost_note: "1라운드 killed(내가 레인 전수 스윕을 시켜 시간초과 — 발주자 결함, 범위 축소 후 재주행). 1라운드 절반 무효(WRONG-TARGET — 발주 후 트리 수정)."
+
+- date: 2026-08-12
+  invoker: FH ifkakao 병렬세션 (Sonnet 5 → Opus 5 중도 전환)
+  subagent: fh-commons:quench-challenger (Axis 2 적대검증, in-session)
+  count: 1
+  purpose: CLAUDE.md §257·§331 stale 브랜치보호 서술 정정본의 사실성·내부정합 검증
+  outcome: accepted
+  evidence: "S 1건 + A 2건 회수, 전부 실건이고 **자력 적발 0**. S = `validate` 필수체크를 «Axis 1 워크플로»로 오귀속(실제로는 별개 잡 — regression-guard.yml 은 여전히 필수 아니고 paths: 필터로 4축 대상 자산 다수에 돌지도 않는다). A1 = «PR 오픈 시점» 과잉주장(실제 synchronize 마다 재실행). A2 = «both layers» 근거 미인용. 셋 다 수정 후 워크플로 YAML + 라이브 gh api 재대조. PR #354 머지(main f62a5a9)."
+  note: "정정이 원 서술보다 더 틀릴 수 있다는 사례 — stale 한 것은 `contexts=[]` 라는 «목록»이었지 «Axis 1 이 필수가 아니다»라는 «귀속»이 아니었는데, 초안이 후자까지 지웠다. 적대검증이 그 구분을 복원했다."
