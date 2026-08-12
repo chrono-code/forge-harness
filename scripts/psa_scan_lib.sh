@@ -239,3 +239,167 @@ $PSA_STREAM
 PSA_PAT
   return $hit
 }
+
+# _psa_can_assign <name> <value> — 0 = "this exact assignment will succeed", 1 = it will not.
+#
+# Rounds 4→7 walked this from a declaration parse to a proxy probe to the real thing:
+#   R4  parsed `readonly -p` for `NAME=` — missed `readonly FOO` (prints `declare -r FOO`, no `=`)
+#       and false-positived on an unrelated readonly whose VALUE contained the string.
+#   R5  replaced it with a behavioural probe — but the probe assigned the variable's OWN CURRENT
+#       VALUE, while the caller then assigns something else.
+#   R7  found the gap that leaves: `declare -i PSA_ALLOWLIST` makes the self-assignment succeed and
+#       `PSA_ALLOWLIST=/dev/null` fail. Measured — probe=writable, real=FAIL. The caller then died
+#       mid-run, and on the psa_scan_file path a hit that psa_scan_tagged WOULD have reported was
+#       lost with it.
+# So the probe now takes the value: it tests the operation that is actually about to happen, in a
+# subshell where failure cannot reach the caller. Every earlier version tested a stand-in for it.
+_psa_can_assign() {
+  case "$1" in
+    ''|*[!A-Za-z0-9_]*|[0-9]*)
+      echo "  ❌ _psa_can_assign: refusing non-identifier argument" >&2
+      return 1 ;;   # cannot-assign → the caller refuses to mutate. Degrades away from mutating.
+  esac
+  ( eval "$1=\"\$2\"" ) 2>/dev/null
+}
+
+# psa_require_live — prove the scanner actually RUNS before a 0 from it is allowed to mean "clean".
+# Returns 0 = alive, 1 = dead (and says so on stderr).
+#
+# Why this exists (measured 2026-08-12): a caller hand-built the path-tagged stream and piped it into
+# psa_scan_tagged from a shell whose PATH lacked `cat`. The function died on its first line, printed
+# `command not found` into the captured output, and returned 0 — so the caller's known-positive
+# (a file dense with operator literals) reported **0 hits**, indistinguishable from clean. The control
+# is what caught it: the run was only recognisable as dead because a file that MUST hit did not.
+# This function makes that control intrinsic instead of remembered — it does not check that binaries
+# exist (a presence check is the weaker instrument this repo keeps re-learning), it checks that a
+# synthetic token which MUST be reported IS reported, end to end through the real matcher.
+#
+# Cross-family round 1 (2026-08-12) refuted three things about the first draft; all three are fixed
+# here and named so the next reader does not re-introduce them:
+#   · it exercised only the stdin path, so a missing `awk` — the binary the file path actually needs —
+#     was outside what "alive" certified. The self-test now goes through the SAME tagging path
+#     `psa_scan_file` uses, from a real temp file.
+#   · the canary was allowlistable: a `psa/selftest<TAB>PSA_SELFTEST_CANARY` row would mute it and a
+#     healthy scanner would report itself dead. The self-test now runs with the allowlist disabled.
+#   · it was not `errexit`-safe: under `set -e` the nonzero return from the hit-reporting path exited
+#     the caller's shell before the restore line. Status capture is now inside an `if`.
+psa_require_live() {
+  local saved_stream saved_allow saved_stream_set saved_allow_set tmpd out rc _canary
+  saved_stream="${PSA_STREAM-}"; saved_allow="${PSA_ALLOWLIST-}"
+  saved_stream_set=""; saved_allow_set=""
+  [ "${PSA_STREAM+x}" = "x" ] && saved_stream_set=1
+  [ "${PSA_ALLOWLIST+x}" = "x" ] && saved_allow_set=1
+  tmpd=$(mktemp -d 2>/dev/null) || { echo "  ❌ INSTRUMENT DEAD — mktemp unavailable." >&2; return 1; }
+  # Round 4 refuted the round-3 fix: `|| :` does NOT rescue an assignment to a readonly variable —
+  # bash aborts the shell before the `||` is ever considered. So the only safe move is to REFUSE
+  # before mutating anything. Detected, reported as DEAD, and the caller survives.
+  _canary=$(printf 'HIGH\tPSA_SELFTEST_CANARY')
+  if ! _psa_can_assign PSA_STREAM "$_canary" || ! _psa_can_assign PSA_ALLOWLIST /dev/null; then
+    echo "  ❌ INSTRUMENT DEAD — PSA_STREAM/PSA_ALLOWLIST cannot take the values the self-test needs." >&2
+    echo "     (readonly, or an attribute such as \`declare -i\` that rejects the value)" >&2
+    echo "     Not attempting it: a failed assignment aborts an errexit caller outright." >&2
+    rm -rf "$tmpd" 2>/dev/null || :
+    return 1
+  fi
+  PSA_STREAM="$_canary"
+  PSA_ALLOWLIST=/dev/null
+  printf 'PSA_SELFTEST_CANARY\n' > "$tmpd/canary" 2>/dev/null
+  # Same pipeline shape as psa_scan_file: awk tags the file, psa_scan_tagged matches it.
+  if out=$(awk -v P="psa/selftest" '{print P "\t" $0}' "$tmpd/canary" 2>&1 | psa_scan_tagged 2>&1); then
+    rc=0
+  else
+    rc=$?
+  fi
+  rm -rf "$tmpd" 2>/dev/null || :
+  # Restore EXACTLY, including the difference between unset and set-empty (round 2): the first draft
+  # always re-set PSA_STREAM, turning an unset variable into an empty one — which the very guard in
+  # psa_scan_file below keys on. A restore that changes state is not a restore.
+  if [ -n "${saved_stream_set:-}" ]; then PSA_STREAM="$saved_stream"; else unset PSA_STREAM; fi
+  if [ -n "${saved_allow_set:-}" ]; then PSA_ALLOWLIST="$saved_allow"; else unset PSA_ALLOWLIST; fi
+  case "$out" in
+    *PSA_SELFTEST_CANARY*) [ "$rc" -eq 1 ] && return 0 ;;
+  esac
+  echo "  ❌ INSTRUMENT DEAD — the scanner did not report a synthetic known-positive." >&2
+  echo "     self-test rc=$rc out=[$out]" >&2
+  echo "     A 0 from this scanner is UNMEASURED, not clean — do not report or publish a count from it." >&2
+  return 1
+}
+
+# psa_scan_file <path> — scan ONE file through the shared matcher.
+#
+# Three-valued on purpose: 0 = scanned, nothing reportable · 1 = scanned, hit(s) reported ·
+# 3 = NOT SCANNED (instrument dead, bad usage, or missing file). Folding 3 into 0 is the exact defect
+# this repo keeps meeting — `not found` is not `0`, and a file that does not exist is not an empty file.
+# Callers that only branch on `if psa_scan_file f; then clean; fi` would read 3 as dirty (safe) and
+# never as clean; callers that check `-eq 0` must treat 3 as unmeasured.
+#
+# ⚠️ The caller still owns the DISPLAY. A hit line (❌) and an allowlisted line (⚪) are different
+# outcomes, and a display filter that greps only ❌ renders "allowlisted" as "no match" — measured
+# on 2026-08-12, which is how an existing operator allowlist decision was misread as an absent
+# pattern. If you filter this function's output, keep both markers or state which you dropped.
+psa_scan_file() {
+  local out rc
+  if [ "$#" -ne 1 ]; then
+    echo "  ⚠️  USAGE — psa_scan_file <path> (got $# argument(s)); NOT SCANNED" >&2
+    return 3
+  fi
+  # Patterns-not-loaded is the highest-value guard here, and it was missing from the first draft.
+  # Cross-family round 1 found it by simply following THIS FILE'S OWN advertised usage line, which
+  # said `. psa_scan_lib.sh && psa_scan_file <path>` and omitted psa_load — reproduced: a file dense
+  # with a known-positive token returned rc=0 with empty output. An empty pattern stream scans
+  # everything and reports nothing, which is the false-clean this whole change exists to remove.
+  if [ -z "${PSA_STREAM:-}" ]; then
+    echo "  ⚠️  PATTERNS NOT LOADED — call psa_load <defaults> <override> first; NOT SCANNED" >&2
+    echo "     (an empty pattern stream reports nothing, which is indistinguishable from clean)" >&2
+    return 3
+  fi
+  # A NON-EMPTY stream is not a COMPLETE one (round 2). If the committed defaults failed to load, or
+  # rows were dropped as unusable, the stream still matches *something* and a clean verdict from it
+  # is a verdict about a partial instrument.
+  #
+  # `case`, not `[ -ne ]` (round 3): a non-numeric value made `[` return 2, the `if` read that as
+  # false, and the guard fell through — reproduced with PSA_DEFAULTS_OK=x, which scanned a file to
+  # rc=0 CLEAN using a stream that did not contain the token. A guard that a garbage value walks
+  # straight past is not a guard, and the shell's own error line scrolled by unnoticed.
+  local _incomplete=""
+  case "${PSA_DEFAULTS_OK:-}" in 1) ;; *) _incomplete="defaults_ok=${PSA_DEFAULTS_OK:-unset}" ;; esac
+  case "${PSA_BAD_ROWS:-0}" in 0) ;; *) _incomplete="${_incomplete:+$_incomplete }bad_rows=${PSA_BAD_ROWS}" ;; esac
+  # The operator override carries the HIGH company/companion literals. Its absence is survivable for a
+  # single-file query (the committed defaults still apply) but the caller must never read the result as
+  # a full clean — so it is announced, not silently folded in.
+  # Round 4: this used to WARN and still return 0. That is the exact false-clean this change exists to
+  # remove — the override carries the HIGH company/companion literals, so without it the scan did not
+  # look at the highest-severity class at all, and "clean" is a claim the run cannot support. It now
+  # joins _incomplete. (No existing caller breaks: psa_scan_file is new in this change.)
+  case "${PSA_OVERRIDE_PRESENT:-}" in
+    1) ;;
+    *) _incomplete="${_incomplete:+$_incomplete }override_absent(HIGH operator literals unscanned)" ;;
+  esac
+  psa_require_live || return 3
+  if [ ! -f "$1" ]; then
+    echo "  ⚠️  MISSING — $1 : NOT SCANNED (unmeasured, not 0 hits)" >&2
+    return 3
+  fi
+  # `awk | psa_scan_tagged` hides an awk read failure when the caller has no pipefail: awk fails,
+  # psa_scan_tagged sees an empty stream and returns 0 = clean. Materialise the tagged stream first
+  # so the read is a checkable step of its own (cross-family round 1).
+  local tmpf
+  tmpf=$(mktemp 2>/dev/null) || { echo "  ⚠️  mktemp failed; NOT SCANNED" >&2; return 3; }
+  if ! awk -v P="$1" '{print P "\t" $0}' "$1" > "$tmpf" 2>/dev/null; then
+    rm -f "$tmpf" || :
+    echo "  ⚠️  READ FAILED — $1 could not be tagged for scanning; NOT SCANNED" >&2
+    return 3
+  fi
+  if out=$(psa_scan_tagged < "$tmpf"); then rc=0; else rc=$?; fi
+  rm -f "$tmpf" || :
+  # Print findings FIRST, verdict second — round 3 caught the previous order suppressing real hits:
+  # an incomplete instrument returned 3 and emitted nothing, so a token the loaded patterns DID match
+  # was lost. "I could not certify this" and "I saw nothing" are different, and the fix for the second
+  # must not create the first. Partial evidence is reported; the verdict still refuses to say clean.
+  [ -n "$out" ] && printf '%s\n' "$out"
+  if [ -n "$_incomplete" ]; then
+    echo "  ⚠️  INCOMPLETE PATTERN INSTRUMENT — $_incomplete : verdict is NOT SCANNED (any hits above are partial)" >&2
+    return 3
+  fi
+  return "$rc"
+}

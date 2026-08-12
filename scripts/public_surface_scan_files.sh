@@ -24,6 +24,36 @@
 
 set -uo pipefail
 
+# ── Misuse fails CLOSED, before the banner ──────────────────────────────────────────────────────
+# This script scans the npm-published file set (derived from `npm pack --dry-run`). It takes NO
+# positional arguments, and until 2026-08-12 it did not parse any either — it silently ignored them
+# and printed its normal green. That turned a misuse into a false certification: a caller who ran
+#   bash scripts/public_surface_scan_files.sh <some/path>
+# to ask "is THIS file clean?" got `✅ PASS`, about a file set that never contained <some/path>.
+# Measured known-pair: no args → rc=0 PASS; `/nonexistent/definitely_not_a_file_zzz.md` → byte-identical
+# rc=0 PASS; `PSA_PATTERNS=/nonexistent/nope` → rc=1 (so the green was a live green, not a dead one).
+# The first person to hit it was not the author but the first real user, who nearly recorded
+# "paper/forge_harness_v1.0.html is clean" from a scan that never opened that file.
+# On an irreversible surface (publish) an instrument that cannot answer the question it was asked
+# must refuse, not answer a different question in the affirmative.
+# rc=2 is deliberately distinct from rc=1 (a real leak/incomplete instrument) and rc=0 (clean):
+# "you used it wrong" and "your content is dirty" are different states and must not be collapsed.
+if [ "$#" -gt 0 ]; then
+  echo "[Pre-Publish] public-surface scan — ✋ USAGE ERROR: this script takes no arguments (got $#: $*)" >&2
+  echo "     It scans the npm-published file set only (npm pack --dry-run), never a path you pass in." >&2
+  # The psa_load call is NOT optional and is spelled out here on purpose: the first draft of this
+  # message omitted it, and cross-family review found that following it verbatim scans a
+  # known-positive file to rc=0/clean (empty pattern stream). An instruction that produces a false
+  # clean is the same defect as the guard above, one layer out.
+  echo "     To scan ONE file:" >&2
+  echo "       . scripts/psa_scan_lib.sh \\" >&2
+  echo "         && psa_load .claude/rules/.public-surface-patterns.defaults .claude/rules/.public-surface-patterns \\" >&2
+  echo "         && psa_scan_file <path>        # rc: 0 clean · 1 hit(s) · 3 NOT SCANNED" >&2
+  echo "     To scan tracked files: use the /public-surface-audit skill." >&2
+  echo "     Refusing rather than reporting a PASS about a different file set (fail-closed)." >&2
+  exit 2
+fi
+
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 PSA_DEFAULTS="$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults"
 PSA_OVERRIDE="${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
