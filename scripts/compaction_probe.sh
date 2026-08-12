@@ -179,17 +179,62 @@ do_digest() {
   if [ ! -f "$sealfile" ]; then return 0; fi
 
   # 신선도·세션 정합을 **주장에 반영**한다. 안 맞으면 주입은 하되 "직전 압축"이라고 말하지 않는다.
-  local _now _age _stale="" _xsess=""
-  _now=$(date +%s); _age=$(( _now - ${sealts:-$_now} ))
-  [ "$_age" -gt 43200 ] && _stale=" ⚠️ ${_age}초 전 봉인 — 이 세션의 직전 압축이 아닐 수 있다"
-  if [ -n "${sealsess:-}" ] && [ "${sealsess}" != "unknown" ] && [ -n "$DIGEST_SESSION" ] \
-     && [ "$DIGEST_SESSION" != "unknown" ] && [ "${sealsess}" != "$DIGEST_SESSION" ]; then
-    _xsess=" ⚠️ 다른 세션(${sealsess})의 봉인이다"
-  fi
-  if [ -n "$_stale$_xsess" ]; then
-    echo "🧭 [FH 압축 복구] 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다.$_stale$_xsess"
+  # ⚠️ 두 가드 모두 초판에서 **조용히 꺼지는 경로**를 갖고 있었다(실측 2026-08-13, 4-arm 재현).
+  # 공통 축은 하나다 — **미측정을 「정상」으로 렌더**했다(`not found ≠ 0`).
+  # ⚠️ `_age` 초기화 = **2중 방어**. 산술이 실패하면 대입이 안 되고, 다음 줄의 `$_age` 가 `set -u`
+  #    아래 unbound 로 셸을 그 자리에서 죽인다 — 훅은 `exit 0` 에 도달 못 하고 **stdout 이
+  #    통째로 폐기**된다(비영 종료 = 무음). 이 파일이 스스로 못 박은 불변식이 거기서 깨진다.
+  #    🔍 **정직한 표시**: 아래 `case` 가 숫자만 통과시키고 `10#` 이 진법을 고정하는 한, 이 줄은
+  #    **도달 불가능하고 레인도 없다**(되돌림 arm D 실측: 이 줄만 지우면 47쌍 전부 초록).
+  #    앵커가 걸린 것은 `10#` 쪽(arm A)이다. 이 줄은 그게 지워졌을 때를 위한 두 번째 층이지,
+  #    회귀 앵커가 아니다 — 있는 척하지 않으려고 여기 적는다.
+  local _now _age=0 _stale="" _note="" _xsess="" _sessmatch=no
+  _now=$(date +%s)
+  # ⓑ 를 **먼저** 계산한다 — 나이 문구가 세션 일치 여부에 의존하기 때문이다(아래 ⓐ-3).
+  # 세션 대조는 **양쪽을 다 알 때만** 성립한다. 한쪽이라도 unknown 이면 결과는 「일치」가 아니라
+  # **「대조 불가」**다. 초판은 그 경우 경고를 껐는데, 소비자가 unknown 인 경로가 바로
+  # 주인 없는 남의 마커를 집는 경로(line 165)여서 **가장 필요한 자리에서 꺼져 있었다**.
+  if [ -n "${sealsess:-}" ] && [ "${sealsess}" != "unknown" ] \
+     && [ -n "$DIGEST_SESSION" ] && [ "$DIGEST_SESSION" != "unknown" ]; then
+    if [ "${sealsess}" = "$DIGEST_SESSION" ]; then
+      _sessmatch=yes
+    else
+      _xsess=" ⚠️ 다른 세션(${sealsess})의 봉인이다"
+    fi
   else
-    echo "🧭 [FH 압축 복구] 직전 압축 전에 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다."
+    _xsess=" ⚠️ 세션 대조 불가(봉인=${sealsess:-미상} · 소비=${DIGEST_SESSION:-미상}) — 남의 원장일 수 있다"
+  fi
+  # ⓐ 봉인 시각이 없거나 숫자가 아니면 나이는 **미상**이다. 초판은 `${sealts:-$_now}` 로 「지금」을
+  #    기본값으로 써서 _age=0 을 만들었고, 구형식 pending(경로 한 줄)에서 신선도 가드가 통째로
+  #    무음 소실했다 — 실측: 5일 묵은 봉인이 "직전 압축"이라고 주장하며 나갔다.
+  case "${sealts:-}" in
+    ''|*[!0-9]*) _stale=" ⚠️ 봉인 시각 미상 — 이 세션의 직전 압축인지 확인 불가" ;;
+    # `10#` 으로 진법을 고정한다. 선행 0(`08…`)은 8진수로 읽혀 `value too great for base` 를
+    # 내고, 위에서 적은 무음 사망 경로가 정확히 그 입력으로 열린다(실측: 산술 다음 줄에 도달 못 함).
+    *) _age=$(( _now - 10#$sealts ))
+       # 미래 시각이면 _age 가 음수라 `-gt 43200` 이 거짓이 되고 가드가 **또 조용히 꺼진다** —
+       # 이 파일이 이번에 두 번 밟은 그 축의 세 번째 얼굴이다(cross-family codex/gpt-5.5 지목,
+       # 자력 적발 0). 시계 어긋남이거나 마커가 손대진 것이고, 둘 다 「방금 봉인」이 아니다.
+       if [ "$_age" -lt 0 ]; then
+         _stale=" ⚠️ 봉인 시각이 미래($(( - _age ))초 뒤) — 시계 어긋남 또는 손댄 마커, 신선도 판정 불가"
+       elif [ "$_age" -gt 43200 ]; then
+         # ⓐ-3 **세션이 일치하면 이 경고는 반증 가능하게 틀렸다.** 마커는 봉인마다 세션별로
+         #    덮어써지므로(line 150), 일치하는 마커가 가리키는 것은 정의상 그 세션의 **가장
+         #    최근** 봉인이다. 그때 나이는 주장을 낮출 근거가 아니라 부가 정보다 — 주장 정확도를
+         #    위해 만든 가드가 스스로 틀린 말을 하던 자리(Axis 2 M-4 지목).
+         if [ "$_sessmatch" = yes ]; then
+           _note=" (${_age}초 전 봉인 — 같은 세션의 가장 최근 봉인이다)"
+         else
+           _stale=" ⚠️ ${_age}초 전 봉인 — 이 세션의 직전 압축이 아닐 수 있다"
+         fi
+       fi ;;
+  esac
+  # `_note` 는 **주장을 낮추지 않는다** — 분기 조건에서 뺀 이유가 그것이다. 나이를 알려주되
+  # 「직전 압축」이 참인 경우(세션 일치)에는 그 주장을 유지한다.
+  if [ -n "$_stale$_xsess" ]; then
+    echo "🧭 [FH 압축 복구] 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다.$_stale$_xsess$_note"
+  else
+    echo "🧭 [FH 압축 복구] 직전 압축 전에 봉인된 포인터 원장이 있다 — 내용이 아니라 경로다.$_note"
   fi
   echo "   정본: $sealfile"
   echo
@@ -359,6 +404,91 @@ self_test() {
   t "#4 같은 세션이면 직전-압축 주장 유지 (과경고 아님)" YES "$rc"
   case "$d4b" in *"다른 세션"*) rc=YES ;; *) rc=NO ;; esac
   t "#4 같은 세션에 교차 경고 안 뜬다" NO "$rc"
+
+  # #11 신선도 가드가 **구형식 pending(경로 한 줄)** 에서 무음으로 꺼지지 않는다.
+  # 실측 2026-08-13: 이 경로로 5일 묵은 봉인이 "직전 압축"이라고 주장하며 실제 세션에 주입됐다.
+  do_seal "$T/tr.jsonl" "$T/out11" "SESSA" >/dev/null 2>&1
+  local p11; p11="$(ls "$T/out11"/.pending_* 2>/dev/null | head -1)"
+  cut -f1 "$p11" > "$p11.t" 2>/dev/null && mv "$p11.t" "$p11"    # 구형식으로 강등 = 봉인 시각 소실
+  local d11; d11="$(do_digest "$T/out11" "SESSA" 2>/dev/null)"
+  case "$d11" in *"직전 압축 전에"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11 시각 미상 봉인을 '직전 압축'이라 주장하지 않는다" NO "$rc"
+  case "$d11" in *"봉인 시각 미상"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11 ★ 시각 미상이 타입으로 남는다 (0 으로 렌더 금지)" YES "$rc"
+
+  # #11 known-negative — 정상 형식엔 과경고가 붙으면 안 된다. 이게 없으면 "항상 경고"로도 통과한다.
+  do_seal "$T/tr.jsonl" "$T/out11b" "SESSA" >/dev/null 2>&1
+  local d11b; d11b="$(do_digest "$T/out11b" "SESSA" 2>/dev/null)"
+  case "$d11b" in *"봉인 시각 미상"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11 known-negative: 정상 봉인엔 미상 라벨 안 붙는다" NO "$rc"
+  case "$d11b" in *"직전 압축 전에"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11 known-negative: 정상 봉인은 직전-압축 주장 유지" YES "$rc"
+
+  # #11c **미래 시각**도 신선도 판정 불가다 — 음수 _age 는 `-gt 43200` 을 통과 못 해서
+  # 가드가 또 조용히 꺼진다. cross-family(codex/gpt-5.5)가 이번 수리 안에서 지목한 세 번째 얼굴.
+  do_seal "$T/tr.jsonl" "$T/out11c" "SESSA" >/dev/null 2>&1
+  local p11c; p11c="$(ls "$T/out11c"/.pending_* 2>/dev/null | head -1)"
+  awk -v ts="$(( $(date +%s) + 86400 ))" 'BEGIN{FS=OFS="\t"}{$3=ts;print}' "$p11c" > "$p11c.t" \
+    && mv "$p11c.t" "$p11c"
+  local d11c; d11c="$(do_digest "$T/out11c" "SESSA" 2>/dev/null)"
+  case "$d11c" in *"직전 압축 전에"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11c 미래 시각 봉인을 '직전 압축'이라 주장하지 않는다" NO "$rc"
+  case "$d11c" in *"미래"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11c ★ 미래 시각이 타입으로 남는다 (음수 나이 무음 금지)" YES "$rc"
+  case "$d11b" in *"미래"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11c known-negative: 정상 시각엔 미래 라벨 안 붙는다" NO "$rc"
+
+  # #11d **묵은-봉인 가지(>43200)에 앵커가 0개였다** — 실측 발현(5일 묵은 봉인)의 정상-형식
+  # 판본인데, 레인이 수리의 어휘(미상 라벨)만 따라가고 결함의 어휘(나이)를 안 따라갔다.
+  # 검증: 이 레인 없이 `elif [ "$_age" -gt 43200 ]` 가지를 통째로 지워도 39쌍 전부 초록이었다.
+  # (Axis 2 M-3 지목. 세션 일치 케이스라 주장은 유지되고 나이는 부가정보로 붙는다 — M-4)
+  do_seal "$T/tr.jsonl" "$T/out11d" "SESSA" >/dev/null 2>&1
+  local p11d; p11d="$(ls "$T/out11d"/.pending_* 2>/dev/null | head -1)"
+  awk -v ts="$(( $(date +%s) - 432000 ))" 'BEGIN{FS=OFS="\t"}{$3=ts;print}' "$p11d" > "$p11d.t" \
+    && mv "$p11d.t" "$p11d"
+  local d11d; d11d="$(do_digest "$T/out11d" "SESSA" 2>/dev/null)"
+  case "$d11d" in *"초 전 봉인"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11d ★ 묵은 봉인의 나이가 실제로 인쇄된다 (가지 삭제를 잡는 유일한 앵커)" YES "$rc"
+  case "$d11d" in *"직전 압축이 아닐 수 있다"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11d 세션 일치면 '아닐 수 있다'는 거짓 주장을 안 한다" NO "$rc"
+  case "$d11b" in *"초 전 봉인"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11d known-negative: 신선한 봉인엔 나이 문구 없음" NO "$rc"
+
+  # #11e 선행 0 타임스탬프가 **훅을 죽이지 않는다**. set -u 아래 산술 실패 → 다음 줄 unbound →
+  # 셸 즉시 종료 → exit 0 미도달 → stdout 통째 폐기. 이 파일의 「훅은 절대 비영 종료 안 한다」
+  # 불변식이 입력 하나로 깨지던 자리다(Axis 2 M-1, 실측 재현).
+  do_seal "$T/tr.jsonl" "$T/out11e" "SESSA" >/dev/null 2>&1
+  local p11e; p11e="$(ls "$T/out11e"/.pending_* 2>/dev/null | head -1)"
+  awk 'BEGIN{FS=OFS="\t"}{$3="08123456";print}' "$p11e" > "$p11e.t" && mv "$p11e.t" "$p11e"
+  local d11e d11e_rc
+  d11e="$(do_digest "$T/out11e" "SESSA" 2>&1)"; d11e_rc=$?
+  t "#11e ★ 선행 0 타임스탬프에도 digest 가 정상 종료한다" 0 "$d11e_rc"
+  case "$d11e" in *"정본:"*) rc=YES ;; *) rc=NO ;; esac
+  t "#11e 선행 0 에도 포인터가 실제로 인쇄된다 (무음 아님)" YES "$rc"
+
+  # #13 「다른 세션의 봉인이다」 분기는 **살아있는데 앵커가 0개**였다 — #4 는 라우팅(0바이트)만
+  # 재서 이 문자열에 도달할 수 없다. 프로덕션 도달 경로 = 구형식 단일 `.pending` 관용(line 167).
+  do_seal "$T/tr.jsonl" "$T/out13" "SESSX" >/dev/null 2>&1
+  local sf13; sf13="$(ls -t "$T/out13"/seal_*.md 2>/dev/null | head -1)"
+  printf '%s\t%s\t%s\n' "$sf13" "SESSX" "$(( $(date +%s) - 432000 ))" > "$T/out13/.pending"
+  local d13; d13="$(do_digest "$T/out13" "SESSA" 2>/dev/null)"
+  case "$d13" in *"다른 세션(SESSX)"*) rc=YES ;; *) rc=NO ;; esac
+  t "#13 ★ 교차세션 경고가 실제로 인쇄된다 (분기 무앵커 폐쇄)" YES "$rc"
+  case "$d13" in *"세션 대조 불가"*) rc=YES ;; *) rc=NO ;; esac
+  t "#13 양쪽을 아는 불일치는 '대조 불가'가 아니다" NO "$rc"
+  case "$d13" in *"초 전 봉인"*) rc=YES ;; *) rc=NO ;; esac
+  t "#13 세션 불일치 + 묵음이면 나이 경고가 붙는다" YES "$rc"
+
+  # #12 소비자 세션이 미상이면 결과는 「일치」가 아니라 **「대조 불가」**다.
+  # 그 경로(line 165)가 바로 주인 없는 남의 마커를 집는 경로여서, 초판은 가장 필요한 자리에서 꺼졌다.
+  do_seal "$T/tr.jsonl" "$T/out12" "SESSA" >/dev/null 2>&1
+  local d12; d12="$(do_digest "$T/out12" "unknown" 2>/dev/null)"
+  case "$d12" in *"세션 대조 불가"*) rc=YES ;; *) rc=NO ;; esac
+  t "#12 소비자 미상이면 대조 불가로 라벨된다" YES "$rc"
+  case "$d12" in *"직전 압축 전에"*) rc=YES ;; *) rc=NO ;; esac
+  t "#12 대조 불가면 '직전 압축' 주장 안 한다" NO "$rc"
+  case "$d11b" in *"세션 대조 불가"*) rc=YES ;; *) rc=NO ;; esac
+  t "#12 known-negative: 양쪽 아는 경로엔 대조불가 라벨 없음" NO "$rc"
 
   # #8 포인터 절은 **절대 안 잘린다** — 더티파일 목록이 길어도
   do_seal "$T/tr.jsonl" "$T/out8" "SESS8" >/dev/null 2>&1
