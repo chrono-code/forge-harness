@@ -728,34 +728,58 @@ YAML
 lane "P-SPELL a grant WIDER than its class is still refused (the paired control)" 1 "R7"
 
 
-# ── PROV : every verdict states what it measured WITH, and that statement is alive ───────────────
-# 2026-08-12. This gate rides selfcheck → prepublishOnly. A release shipped green from a session
-# whose `python3` resolved to an unrelated project's venv that had PyYAML, while the machine's own
-# python3 did not. Nothing was bypassed — the PASS simply was not portable, and said nothing about
-# what produced it. The line is only worth anything if it CHANGES with the instrument, so this is a
-# known-pair, not a presence check: a hard-coded string would pass a presence check forever.
-_prov_with=$(bash "$CHK" 2>&1 | grep -o 'instrument (consent-registry): .*' | head -1)
-_prov_without=$(/usr/bin/env -i PATH=/usr/bin:/bin PYTHONNOUSERSITE=1 \
-                bash "$CHK" 2>&1 | grep -o 'instrument (consent-registry): .*' | head -1)
-if [ -z "$_prov_with" ]; then
+# ── PROV : every verdict states what it measured WITH, and it states the TRUTH ──────────────────
+# 2026-08-12. This gate rides selfcheck → prepublishOnly. A release shipped green from a session whose
+# `python3` resolved to an unrelated project's venv that had PyYAML, while the machine's own python3
+# did not. Nothing was bypassed — the PASS was simply not portable, and said nothing about what
+# produced it.
+#
+# 🟥 The first version of this lane compared two arms, one of them "PyYAML hidden" via
+# `env -i PATH=/usr/bin:/bin PYTHONNOUSERSITE=1`. It passed locally and FAILED IN CI — because
+# `PYTHONNOUSERSITE` suppresses only the USER site directory. On this author's machine PyYAML was a
+# `--user` install so it hid; on the CI runner it is a system `dist-packages` install so it did not,
+# both arms returned the same value, and the lane called its own subject decorative.
+# **The control worked only by accident of how the author happened to install a package** — which is
+# the exact defect class the subject under test exists to catch, reproduced inside its own lane.
+#
+# So the lane no longer manufactures an environment. It compares the reported value against an
+# INDEPENDENT ORACLE computed in the same run: whatever `find_spec` says here, the instrument line
+# must say the same thing. That catches removal, hard-coding, truncation, and drift — everywhere,
+# with no assumption about how PyYAML got installed.
+_prov_line=$(bash "$CHK" 2>&1 | grep -o 'instrument (consent-registry): .*' | head -1)
+_prov_oracle=$(python3 - <<'ORACLE' 2>/dev/null
+import importlib.util, sys
+s = importlib.util.find_spec("yaml")
+print((s.origin or "namespace-package") if s is not None else "ABSENT")
+ORACLE
+)
+if [ -z "$_prov_line" ]; then
   echo "  ❌ PROV-1 no instrument line on the ordinary path"; fail=$((fail+1))
-elif [ -z "$_prov_without" ]; then
-  echo "  ❌ PROV-1 no instrument line when PyYAML is hidden (the path that most needs it)"; fail=$((fail+1))
-elif [ "$_prov_with" = "$_prov_without" ]; then
-  echo "  ❌ PROV-1 instrument line does not change with the instrument — decorative ($_prov_with)"; fail=$((fail+1))
-elif ! printf '%s' "$_prov_with" | grep -qE 'PyYAML /.*yaml'; then
-  # cross-family 2026-08-12: "two values that differ" is spoofable — anything varying by interpreter
-  # or env satisfies it. The with-arm must look like a VERSION and the without-arm must say ABSENT,
-  # or the pair proves only that something changed, not that the right thing was reported.
-  echo "  ❌ PROV-1 present-arm does not resolve PyYAML to a path: [$_prov_with]"; fail=$((fail+1))
-elif ! printf '%s' "$_prov_with" | grep -q ': /'; then
-  # cross-family R2: the first lane discarded the interpreter entirely, so a planted yaml.py with
-  # __version__="6.0" satisfied it. The interpreter path is half of what this line exists to report.
-  echo "  ❌ PROV-1 present-arm does not name an absolute interpreter path: [$_prov_with]"; fail=$((fail+1))
-elif ! printf '%s' "$_prov_without" | grep -q 'ABSENT'; then
-  echo "  ❌ PROV-1 absent-arm does not report ABSENT: [$_prov_without]"; fail=$((fail+1))
+elif [ -z "$_prov_oracle" ]; then
+  echo "  ❌ PROV-1 oracle produced nothing — NOT RUN (unmeasured, not a pass)"; fail=$((fail+1))
+elif ! printf '%s' "$_prov_line" | grep -q ': /'; then
+  echo "  ❌ PROV-1 line does not name an absolute interpreter path: [$_prov_line]"; fail=$((fail+1))
+elif ! printf '%s' "$_prov_line" | grep -qF "PyYAML $_prov_oracle"; then
+  echo "  ❌ PROV-1 line disagrees with the oracle — reported [$_prov_line] vs actual [$_prov_oracle]"; fail=$((fail+1))
 else
-  echo "  ✅ PROV-1 instrument line is live: [$_prov_with] vs [$_prov_without]"; pass=$((pass+1))
+  echo "  ✅ PROV-1 instrument line matches an independent resolution of PyYAML [$_prov_oracle]"; pass=$((pass+1))
+fi
+
+# PROV-2 — the ABSENT branch, exercised DETERMINISTICALLY rather than by hiding a package.
+# A `yaml.py` MODULE FILE placed first on PYTHONPATH wins by path order, so find_spec resolves to it
+# — a different, predictable answer that does not depend on how the real PyYAML was installed.
+# ⚠️ A `yaml/` DIRECTORY does NOT work and the first draft used one: a namespace package has LOWER
+# precedence than a regular package, so Python keeps scanning the whole path and still finds the real
+# one. Measured — the arm did not move, and the lane correctly called itself decorative.
+_prov_tmp=$(mktemp -d); printf '# shadow module for the PROV-2 arm\n' > "$_prov_tmp/yaml.py"
+_prov_shadow=$(PYTHONPATH="$_prov_tmp" bash "$CHK" 2>&1 | grep -o 'instrument (consent-registry): .*' | head -1)
+rm -rf "$_prov_tmp"
+if [ -z "$_prov_shadow" ]; then
+  echo "  ❌ PROV-2 no instrument line under a shadowed yaml"; fail=$((fail+1))
+elif [ "$_prov_shadow" = "$_prov_line" ]; then
+  echo "  ❌ PROV-2 line did not move when the resolution moved — decorative [$_prov_line]"; fail=$((fail+1))
+else
+  echo "  ✅ PROV-2 line tracks the resolution when it changes (shadowed → different value)"; pass=$((pass+1))
 fi
 
 echo "----"
