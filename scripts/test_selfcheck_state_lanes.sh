@@ -253,6 +253,110 @@ route_pair_mode() {
 [ "$(route_pair_mode always-shipped)" = VALID ]           ; chk $? "known mode 'always-shipped' validates"
 [ "$(route_pair_mode alway-shipped)" = FAIL-badmode ]     ; chk $? "known-POSITIVE: a typo'd mode is rejected, not silently treated as either known state"
 
+# ── 삭제→SKIP: the fourth face. A declared-shipped subject's absence is not "package mode" ─────
+# WHY (measured 2026-08-12, card §🔱⑮ A2): **18 blocks** in selfcheck.sh rendered a green SKIP when
+# their subject was missing, and all 18 subjects are in package.json files[] AND in the real tarball
+# (`npm pack --dry-run --json`, 20/20 — so routing them to FAIL cannot over-block a real consumer).
+# For an always-shipped subject, "absent" can only mean deletion or a broken install. Two of the 18
+# read as already-handled and were not: the gate_pathspec block printed "— not-checked, NOT a pass"
+# without setting fail, and the --self-test loop's comment claims "never a silent pass" directly above
+# the arm that was one. A comment asserting a property is not the property; both were hand-verified.
+# LIFTED, not re-spelled — same reason as the discriminators above.
+_ASV=$(sed -n '/^_absent_subject_verdict()/,/^}/p' "$SELFCHECK")
+_SPF=$(sed -n '/^_ships_per_files()/,/^}/p' "$SELFCHECK")
+if [ -z "$_ASV" ] || [ -z "$_SPF" ]; then
+  echo "FAIL  _absent_subject_verdict / _ships_per_files no longer defined in selfcheck.sh —"
+  echo "      this lane cannot verify what it claims. Update the lane WITH the subject."
+  exit 1
+fi
+echo "── 삭제→SKIP discriminator located (both helpers present)"
+
+_asv() {  # $1=subject → prints verdict, returns its rc
+  ( cd "$SCRIPT_DIR/.." && bash -c "
+$_SPF
+$_ASV
+_absent_subject_verdict 'lane' '$1'" 2>&1 )
+}
+_asv_rc() { _asv "$1" >/dev/null 2>&1; echo $?; }
+
+# known-POSITIVE: a declared-shipped subject going missing must FAIL, not SKIP. Three different
+# shapes (a script, a hook under a directory files[] entry, an anchor's subject).
+[ "$(_asv_rc scripts/count_check.sh)" = 1 ]
+chk $? "known-POSITIVE: declared-shipped script absent → FAIL (was a green SKIP for 18 blocks)"
+[ "$(_asv_rc templates/.git-hooks/pre-commit)" = 1 ]
+chk $? "known-POSITIVE: hook covered by a DIRECTORY files[] entry → FAIL (prefix match, not equality)"
+# ⚠️ Capture, THEN grep. `_asv` deliberately returns 1 here, and this file runs under `pipefail`, so
+# `_asv … | grep -q …` yields the pipeline's rightmost non-zero — i.e. the assertion failed while
+# grep had actually matched. Measured on this very lane's first run
+# ([[feedback_pipefail_fallback_disarms_guard]]: `out=$(cmd); rc=$?` is the canonical form).
+_asv_out=$(_asv scripts/count_check.sh)
+printf '%s' "$_asv_out" | grep -q 'DECLARED SHIPPED'
+chk $? "…and the message names WHY, so the verdict is diagnosable"
+
+# known-NEGATIVE: an ACCEPTED_ABSENT subject must still SKIP. Without this arm the fix would be an
+# over-block, which trains --no-verify — the trade this repo has logged explicitly.
+[ "$(_asv_rc scripts/probe_scope_check.sh)" = 0 ]
+chk $? "known-NEGATIVE: genuinely-unshipped subject absent → SKIP (no over-block)"
+[ "$(_asv_rc scripts/sync-to-be.sh)" = 0 ]
+chk $? "known-NEGATIVE: operator-private subject absent → SKIP"
+
+# The UNKNOWN arm: an unreadable manifest cannot tell deletion from package mode, so it must NOT
+# take the lenient branch. `not found != 0` applied to the oracle itself.
+_TD=$(mktemp -d)
+_urc=$( ( cd "$_TD" && bash -c "
+$_SPF
+$_ASV
+_absent_subject_verdict 'lane' 'scripts/x.sh'" >/dev/null 2>&1 ); echo $? )
+rm -rf "$_TD"
+[ "$_urc" = 1 ]
+chk $? "UNKNOWN (no readable package.json) → FAIL, not a lenient SKIP"
+
+# REVERSION: every one of the 18 call sites must route through the helper. A site that re-spells the
+# old `echo "SKIP … absent"` without setting fail has restored the defect. Counting call sites rather
+# than grepping for the old string, because the old string is what a reverter would reproduce.
+_ASV_CALLS=$(grep -c '_absent_subject_verdict "' "$SELFCHECK" || true)
+[ "$_ASV_CALLS" -ge 18 ]
+chk $? "all 18 absent-subject sites route through the helper (found $_ASV_CALLS, expected >=18)"
+# And no site may print a bare absent-SKIP for a subject that IS declared shipped.
+# ⚠️ The first draft asserted ZERO bare absent-SKIP echoes and failed with 5 — all five legitimate:
+# the helper's own SKIP arm, plus four subjects that genuinely never ship (probe_scope_check.sh,
+# ablation_calibrate.sh, sync-to-be.sh, sync-from-be.sh — all ACCEPTED_ABSENT). A green SKIP is
+# CORRECT there, and an assertion that forbids it would have forced an over-block. So the predicate
+# is the same one the fix uses — is the named subject declared shipped — not a count that would need
+# hand-tuning every time an exception is added ([[feedback_control_presence_is_not_discrimination]]:
+# a control that fires on everything measures nothing).
+_BARE=$( ( cd "$SCRIPT_DIR/.." && python3 - <<'BAREPY'
+import re, json
+sc = open('scripts/selfcheck.sh', encoding='utf-8').read().split('\n')
+files = json.load(open('package.json'))['files']
+def ships(p): return any(p == f or p.startswith(f.rstrip('/') + '/') for f in files)
+bad = []
+for i, l in enumerate(sc, 1):
+    if '_absent_subject_verdict' in l:      # the helper itself, and its call sites
+        continue
+    m = re.search(r'echo "SKIP\s+.*subject ([A-Za-z0-9_./-]+) absent', l)
+    if m and ships(m.group(1)):
+        bad.append(f"{i}:{m.group(1)}")
+print(' '.join(bad))
+BAREPY
+) )
+[ -z "$_BARE" ]
+chk $? "no bare absent-SKIP remains for a DECLARED-SHIPPED subject (found: ${_BARE:-none})"
+# Control for the line above: the predicate must be able to FIRE. If ships() ever returns False for
+# everything (unreadable manifest, changed schema), the assertion passes vacuously and certifies
+# nothing — so prove the same detector flags a planted declared-shipped subject.
+_BARE_CTL=$( ( cd "$SCRIPT_DIR/.." && python3 - <<'CTLPY'
+import re, json
+files = json.load(open('package.json'))['files']
+def ships(p): return any(p == f or p.startswith(f.rstrip('/') + '/') for f in files)
+planted = 'echo "SKIP  planted (subject scripts/count_check.sh absent)"'
+m = re.search(r'echo "SKIP\s+.*subject ([A-Za-z0-9_./-]+) absent', planted)
+print('FIRED' if (m and ships(m.group(1))) else 'DEAD')
+CTLPY
+) )
+[ "$_BARE_CTL" = FIRED ]
+chk $? "CONTROL: that detector fires on a planted declared-shipped subject (got $_BARE_CTL)"
+
 # ── SCOPE OF THIS ANCHOR — stated so it is not over-trusted ───────────────────
 # These lanes catch REVERSION (the run-twice form coming back, the helper being gutted, the
 # call-site redirect returning). They do NOT catch deliberate EVASION: a cross-family round

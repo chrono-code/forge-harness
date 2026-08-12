@@ -53,6 +53,40 @@ sys.exit(0 if any(p == f or p.startswith(f.rstrip('/') + '/') for f in files) el
 SHIPPY
 }
 
+# ── The single verdict for "my subject is not here" ───────────────────────────────────────────
+# Measured 2026-08-12 (card §🔱⑮ A2): **18 blocks in this file** rendered a green SKIP when their
+# subject was absent, and **all 18 subjects are declared in package.json files[] and present in the
+# real tarball** (verified with `npm pack --dry-run --json`, 20/20 — so routing them to FAIL cannot
+# over-block a legitimate consumer). For a subject that always ships, "absent" cannot mean "package
+# mode"; the only ways to reach it are DELETION or a broken install, and both were reported green.
+# That is the fourth face of the axis the card names three of: 미측정→clean · 미측정→findings ·
+# 해당없음→FAIL · **삭제→SKIP** — and it is the quiet one, which is why it survived longest.
+#
+# Two of the eighteen are worth naming because they read as already-handled and were not:
+#   · the gate_pathspec block printed "— not-checked, NOT a pass" and then did not set fail. The
+#     LABEL was honest and the VERDICT was green; a reader greps the message and believes it.
+#   · the --self-test loop's comment says "never a silent pass" directly above the arm that was one.
+# A comment asserting a property is not the property. Both were hand-verified by eye, not inferred.
+#
+# THE UNKNOWN ARM IS NOT A SKIP. `_ships_per_files` exits 2 when package.json is unreadable, and an
+# unreadable manifest means we cannot tell deletion from package mode — `not found != 0`, so that
+# case must not silently take the lenient branch (this repo's whole §Instrument-Calibration rule).
+# Usage:  [ -f "$subj" ] || { _absent_subject_verdict "<label>" "$subj" || fail=1; }
+_absent_subject_verdict() {
+  local label="$1" subj="$2"
+  _ships_per_files "$subj"
+  case $? in
+    0) echo "FAIL  $label: $subj is DECLARED SHIPPED (package.json files[]) but absent — that is a"
+       echo "      deletion or a broken install, not package mode. The subject itself is missing."
+       return 1 ;;
+    1) echo "SKIP  $label (subject $subj not in package.json files[], and absent)"
+       return 0 ;;
+    *) echo "FAIL  $label: cannot read package.json, so '$subj absent' is UNDECIDABLE between a"
+       echo "      deletion and package mode — unmeasured, not clean."
+       return 1 ;;
+  esac
+}
+
 check() { # check <label> <cmd...>
   local label="$1"; shift
   if "$@" 2>/dev/null; then
@@ -231,7 +265,7 @@ fi
 # (scripts/degrade_direction_scan.sh) and the anchor both ship, so this runs in package mode too;
 # only a missing SUBJECT is a legitimate skip.
 if [ ! -f scripts/degrade_direction_scan.sh ]; then
-  echo "SKIP  degrade-scan shell probes (subject scripts/degrade_direction_scan.sh absent)"
+  _absent_subject_verdict "degrade-scan shell probes" "scripts/degrade_direction_scan.sh" || fail=1
 elif [ -f scripts/test_degrade_scan_shell_probes.sh ]; then
   if ! bash scripts/test_degrade_scan_shell_probes.sh; then
     fail=1
@@ -247,7 +281,7 @@ fi
 # pair, a template that defeats the gate (a rendered newline turns the pattern into an OR search)
 # passes silently — measured 2026-08-12 on a stale README that the gate reported as PASS.
 if [ ! -f scripts/count_check.sh ]; then
-  echo "SKIP  count_check README-format lanes (subject scripts/count_check.sh absent)"
+  _absent_subject_verdict "count_check README-format lanes" "scripts/count_check.sh" || fail=1
 elif [ -f scripts/test_count_check_readme_format_lanes.sh ]; then
   if ! bash scripts/test_count_check_readme_format_lanes.sh; then
     fail=1
@@ -263,7 +297,7 @@ fi
 # Wired here on purpose (cross-family round 2): the lane file existed and was syntax-checked only, so
 # `npm test` and `prepublishOnly` never executed it. A checker nobody calls is prose.
 if [ ! -f scripts/psa_scan_lib.sh ]; then
-  echo "SKIP  psa single-file lanes (subject scripts/psa_scan_lib.sh absent)"
+  _absent_subject_verdict "psa single-file lanes" "scripts/psa_scan_lib.sh" || fail=1
 elif [ -f scripts/test_psa_singlefile_lanes.sh ]; then
   if ! bash scripts/test_psa_singlefile_lanes.sh; then
     fail=1
@@ -287,7 +321,7 @@ fi
 # to reason about CI. scripts/test_package_coverage_lanes.sh pins the predicate across all four
 # tree shapes plus a known pair.
 if [ ! -f scripts/package_coverage_check.sh ]; then
-  echo "SKIP  test_package_coverage_lanes.sh (subject scripts/package_coverage_check.sh absent)"
+  _absent_subject_verdict "test_package_coverage_lanes.sh" "scripts/package_coverage_check.sh" || fail=1
 elif [ -f scripts/test_package_coverage_lanes.sh ]; then
   if ! bash scripts/test_package_coverage_lanes.sh; then
     fail=1
@@ -311,10 +345,26 @@ fi
 # unconditionally when present because its own absence is the defect class it exists to detect —
 # there is no package-mode arm to skip into (a consumer running `npm test` should learn that a
 # shipped suite of theirs is dead code just as much as we should).
+# THREE-VALUED, and the third value exists because the two-valued version was this session's own
+# instance of the defect it detects. The first draft was `if [ -f … ]; then run; fi` — an absent
+# checker fell through to nothing, silently. That is "미측정을 0으로 렌더" reproduced by the commit
+# that closed it: a 1.4.96 consumer has no lane_runner_check.sh (it was added to files[] AFTER that
+# publish), so on their machine this block would have printed nothing at all and `npm test` would
+# have reported a clean run of a check that never existed there.
+# The three states are distinguished by the DECLARATION, not by the environment (same discipline as
+# the pre-push block above): present → run · absent-but-declared-shipped → FAIL (deletion or broken
+# install) · absent-and-not-declared → SKIP, saying so. For a 1.4.96 consumer the third arm is the
+# correct and honest answer, and it names itself rather than being silent.
 if [ -f scripts/lane_runner_check.sh ]; then
   if ! bash scripts/lane_runner_check.sh; then
     fail=1
   fi
+elif _ships_per_files "scripts/lane_runner_check.sh"; then
+  echo "FAIL  lane-runner: scripts/lane_runner_check.sh is DECLARED SHIPPED but absent — deletion or"
+  echo "      broken install. The check that detects unrun lane suites is itself missing."
+  fail=1
+else
+  echo "SKIP  lane-runner (not in this package's files[] — predates the version that ships it)"
 fi
 
 # embedded --self-test suites (compaction_probe · judgment_circuit_lint · novelty_claim_check).
@@ -326,7 +376,7 @@ fi
 # but self-test missing → FAIL, never a silent pass.
 for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
   if [ ! -f "scripts/$_subj.sh" ]; then
-    echo "SKIP  $_subj --self-test (subject scripts/$_subj.sh absent)"
+    _absent_subject_verdict "$_subj --self-test" "scripts/$_subj.sh" || fail=1
   else
     # ⚠️ **문자열 존재로 판정하지 마라.** 초판은 `grep -q -- '--self-test'` 였는데, 그 문자열은
     # 헤더 주석과 usage echo 에도 있어서 **디스패처 한 줄만 지워도 여전히 매치**한다. 그리고
@@ -382,7 +432,7 @@ fi
 # anchor was written into tests/ with ZERO callers first — the same defect this file already
 # records twice above; wiring it here is the fix, not a note about the fix.
 if [ ! -f scripts/consent_registry_check.sh ]; then
-  echo "SKIP  test_consent_registry.sh (subject scripts/consent_registry_check.sh absent)"
+  _absent_subject_verdict "test_consent_registry.sh" "scripts/consent_registry_check.sh" || fail=1
 elif [ -f scripts/test_consent_registry.sh ]; then
   if ! bash scripts/test_consent_registry.sh; then
     fail=1
@@ -397,7 +447,7 @@ fi
 # cross-family verification. The anchor's first version shipped in tests/ with ZERO callers — the
 # same defect the comment above records for test_card_drift_probe.sh, repeated one file later.
 if [ ! -f scripts/sidecar_wait.sh ]; then
-  echo "SKIP  test_sidecar_wait_stdin.sh (subject scripts/sidecar_wait.sh absent)"
+  _absent_subject_verdict "test_sidecar_wait_stdin.sh" "scripts/sidecar_wait.sh" || fail=1
 elif [ -f scripts/test_sidecar_wait_stdin.sh ]; then
   if ! bash scripts/test_sidecar_wait_stdin.sh; then
     fail=1
@@ -416,7 +466,7 @@ fi
 # states that look identical from outside ("the sidecar ran" vs "the model I pinned answered",
 # "absent" vs "unmeasured"), and its lanes are hermetic stubs, so running them costs nothing.
 if [ ! -f scripts/sidecar_calibrate.sh ]; then
-  echo "SKIP  test_sidecar_calibrate_lanes.sh (subject scripts/sidecar_calibrate.sh absent)"
+  _absent_subject_verdict "test_sidecar_calibrate_lanes.sh" "scripts/sidecar_calibrate.sh" || fail=1
 elif [ -f scripts/test_sidecar_calibrate_lanes.sh ]; then
   if ! bash scripts/test_sidecar_calibrate_lanes.sh; then
     fail=1
@@ -513,7 +563,7 @@ _gps_missing=""
 [ -f templates/.git-hooks/pre-commit ] || _gps_missing="templates/.git-hooks/pre-commit"
 [ -f templates/regression_guard.sh ] || _gps_missing="${_gps_missing:+$_gps_missing, }templates/regression_guard.sh"
 if [ -n "$_gps_missing" ]; then
-  echo "SKIP  gate_pathspec_check.sh (subject absent: $_gps_missing) — not-checked, NOT a pass"
+  _absent_subject_verdict "gate_pathspec_check.sh" "$_gps_missing" || fail=1
 elif [ -f scripts/gate_pathspec_check.sh ]; then
   if ! bash scripts/gate_pathspec_check.sh; then
     fail=1
@@ -535,7 +585,7 @@ else
 fi
 
 if [ ! -f scripts/fh_node_check.sh ]; then
-  echo "SKIP  test_node_check_lanes.sh (subject scripts/fh_node_check.sh absent)"
+  _absent_subject_verdict "test_node_check_lanes.sh" "scripts/fh_node_check.sh" || fail=1
 elif [ -f scripts/test_node_check_lanes.sh ]; then
   if ! bash scripts/test_node_check_lanes.sh; then
     fail=1
@@ -548,7 +598,7 @@ fi
 # The infra-delta half of the same subject. Separate suite, same pairing rule: it exists only because
 # fh_node_check.sh does, so its absence beside a present subject is a FAIL, not a skip.
 if [ ! -f scripts/fh_node_check.sh ]; then
-  echo "SKIP  test_node_infra_delta_lanes.sh (subject scripts/fh_node_check.sh absent)"
+  _absent_subject_verdict "test_node_infra_delta_lanes.sh" "scripts/fh_node_check.sh" || fail=1
 elif [ -f scripts/test_node_infra_delta_lanes.sh ]; then
   if ! bash scripts/test_node_infra_delta_lanes.sh; then
     fail=1
@@ -595,7 +645,7 @@ do
       ;;
   esac
   if [ ! -f "$_subj" ]; then
-    echo "SKIP  ${_anc##*/} (subject $_subj absent)"
+    _absent_subject_verdict "${_anc##*/}" "$_subj" || fail=1
   elif [ -f "$_anc" ]; then
     # THREE-valued, like the session-close anchors above — and for a third reason they do not have.
     # test_sessionstart_multihook_lanes.sh measures what the LIVE `claude` CLI does with several
@@ -626,7 +676,7 @@ done
 # 2026-07-31; the pipe-verdict lane shipped in PR #209 WITHOUT this wiring, which is itself the
 # half-fix class the second guard exists to catch — found by running that guard on this repo.
 if [ ! -f scripts/sidecar_calibrate.sh ]; then
-  echo "SKIP  test_ollama_panel_lanes.sh (subject scripts/sidecar_calibrate.sh absent)"
+  _absent_subject_verdict "test_ollama_panel_lanes.sh" "scripts/sidecar_calibrate.sh" || fail=1
 elif [ -f scripts/test_ollama_panel_lanes.sh ]; then
   if ! bash scripts/test_ollama_panel_lanes.sh; then
     fail=1
@@ -637,7 +687,7 @@ else
 fi
 
 if [ ! -f scripts/pipe_verdict_guard.sh ]; then
-  echo "SKIP  test_pipe_verdict_guard_lanes.sh (subject scripts/pipe_verdict_guard.sh absent)"
+  _absent_subject_verdict "test_pipe_verdict_guard_lanes.sh" "scripts/pipe_verdict_guard.sh" || fail=1
 elif [ -f scripts/test_pipe_verdict_guard_lanes.sh ]; then
   if ! bash scripts/test_pipe_verdict_guard_lanes.sh; then
     fail=1
@@ -648,7 +698,7 @@ else
 fi
 
 if [ ! -f scripts/halffix_propagation_scan.sh ]; then
-  echo "SKIP  test_halffix_lanes.sh (subject scripts/halffix_propagation_scan.sh absent)"
+  _absent_subject_verdict "test_halffix_lanes.sh" "scripts/halffix_propagation_scan.sh" || fail=1
 elif [ -f scripts/test_halffix_lanes.sh ]; then
   if ! bash scripts/test_halffix_lanes.sh; then
     fail=1
@@ -672,7 +722,7 @@ fi
 
 for _anchor in scripts/test_session_close_lanes.sh scripts/test_card_drift_probe.sh scripts/test_session_close_chain_lanes.sh; do
   if [ ! -f scripts/session_close_check.sh ]; then
-    echo "SKIP  ${_anchor##*/} (subject scripts/session_close_check.sh absent)"
+    _absent_subject_verdict "${_anchor##*/}" "scripts/session_close_check.sh" || fail=1
   elif [ -f "$_anchor" ]; then
     # Preserve the anchor's two failure CLASSES instead of flattening them into one `fail=1`.
     # An anchor exits 3 when a fixture's premise never obtained — "this run's verdicts prove
@@ -782,7 +832,7 @@ fi
 # tag reached the remote and a publish from the wrong tree was stopped only by npm's own collision
 # check, so an unrun anchor here would be the same luck-as-floor arrangement one layer up.
 if [ ! -f templates/.git-hooks/pre-push ]; then
-  echo "SKIP  test_tag_version_lanes.sh (subject templates/.git-hooks/pre-push absent)"
+  _absent_subject_verdict "test_tag_version_lanes.sh" "templates/.git-hooks/pre-push" || fail=1
 elif [ -f scripts/test_tag_version_lanes.sh ]; then
   # RUN-ONCE, CAPTURE (2026-08-05) — rationale in the sync_from_be_lanes block later in this file.
   if _out=$(bash scripts/test_tag_version_lanes.sh 2>&1); then
@@ -802,7 +852,7 @@ fi
 # per-plugin entries inside marketplace.json, which the tag lane never opens. Measured 2026-08-06:
 # a bump left the second marketplace entry behind and the tag lane passed 8/8 straight through it.
 if [ ! -f scripts/version_lockstep_check.sh ]; then
-  echo "SKIP  test_version_lockstep_lanes.sh (subject scripts/version_lockstep_check.sh absent)"
+  _absent_subject_verdict "test_version_lockstep_lanes.sh" "scripts/version_lockstep_check.sh" || fail=1
 elif [ -f scripts/test_version_lockstep_lanes.sh ]; then
   if _out=$(bash scripts/test_version_lockstep_lanes.sh 2>&1); then
     echo "PASS  test_version_lockstep_lanes.sh (drift blocks · aligned silent · unreadable = exit 2, not pass)"
