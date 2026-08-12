@@ -26,7 +26,7 @@
   "scripts": {
     "prepare": "chmod +x bin/fh-gate.js bin/fh-run.js bin/fh-goal.js bin/fh-codex-doctor.js scripts/fh-gate.sh scripts/fh-run.sh scripts/fh-goal.sh",
     "test": "bash scripts/selfcheck.sh",
-    "prepublishOnly": "bash scripts/version_lockstep_check.sh && bash scripts/selfcheck.sh && bash scripts/public_surface_scan_files.sh",
+    "prepublishOnly": "bash scripts/version_lockstep_check.sh && bash scripts/selfcheck.sh && bash scripts/package_coverage_check.sh --vs-tarball && bash scripts/public_surface_scan_files.sh",
     "release": "bash scripts/public_surface_scan_files.sh && npm publish"
   },
   "engines": {
@@ -84,6 +84,7 @@
     "templates/temper_check.sh",
     "templates/contrib_session.md",
     "templates/goal-quench-hook-setup.md",
+    "templates/goal-quench-settings-merged.json",
     "templates/.claude/rules/session.md",
     "scripts/below_floor_scan.sh",
     "scripts/capability_registry_check.sh",
