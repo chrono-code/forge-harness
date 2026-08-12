@@ -293,6 +293,21 @@ else
   else
     bad "MD6 cksum unreachable exited $rc — the A-1 collision returns without any signal"
   fi
+  # MD8 — `cut` is the THIRD undeclared dependency of the same pipeline (`cksum | cut`). Guarding
+  # cksum alone left it half-guarded: without `cut` the uniqueness token is empty and the MD4
+  # collision returns. Cross-family finding (gpt-5.5, 2026-08-12); the guard shipped without an
+  # anchor, so deleting it left every lane green — this is that missing half.
+  cp -R "$MDD/bin" "$MDD/bin3"
+  for c in python3 cksum; do
+    p=$(command -v "$c" 2>/dev/null); case "$p" in /*) ln -sf "$p" "$MDD/bin3/$c" ;; esac
+  done
+  rm -f "$MDD/bin3/cut"
+  out=$(env PATH="$MDD/bin3" bash "$SCAN" "$MDD/repo" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'COULD NOT BE MEASURED'; then
+    ok "MD8 cut unreachable -> non-clean exit (the cksum|cut pipeline is guarded as a whole)"
+  else
+    bad "MD8 cut unreachable exited $rc — the uniqueness token silently empties and MD4's collision returns"
+  fi
 fi
 
 # The field-propagated copy must not drift from the canonical one. Two copies of the same
@@ -310,6 +325,309 @@ elif cmp -s "$TPL" "$SCAN"; then
   ok "field-propagated copy is byte-identical to scripts/ (no divergent-normalizer drift)"
 else
   bad "templates/degrade_direction_scan.sh has DRIFTED from scripts/ — the field copy is what qasp/pmh run; sync it (cp scripts/degrade_direction_scan.sh templates/)"
+fi
+
+# MD7 — "extraction FAILED" must not be spelled the same way as "this file has no fence".
+# Cross-family finding (gpt-5.5, 2026-08-12) against the first language-split draft: an unreadable
+# SKILL.md fell into UNSCANNABLE, and one clean .sh in the same directory then carried the run to
+# exit 0 = clean. The scanner would have reported a corpus it could not open as verified.
+MDE="$TMP/mderr"; mkdir -p "$MDE"
+printf '# t\n\n```bash\nverify() { run || return 0; }\n```\n' > "$MDE/SKILL.md"
+printf '#!/usr/bin/env bash\necho ok\n' > "$MDE/clean.sh"
+chmod 000 "$MDE/SKILL.md" 2>/dev/null
+# CONTROL: root (and some filesystems) ignore mode 000, and then this lane would pass or fail for a
+# reason unrelated to the code. Prove unreadability before asserting on it.
+if head -c1 "$MDE/SKILL.md" >/dev/null 2>&1; then
+  printf '  – MD7 lane NOT RUN (file still readable at mode 000 — running as root?) — this is not a pass\n'
+else
+  out=$(bash "$SCAN" "$MDE" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'COULD NOT BE MEASURED'; then
+    ok "MD7 unreadable markdown reports COULD-NOT-MEASURE even with a clean .sh beside it"
+  else
+    bad "MD7 unreadable markdown exited $rc without a could-not-measure signal — extraction failure is being read as 'no fence'"
+  fi
+fi
+chmod 644 "$MDE/SKILL.md" 2>/dev/null
+
+# ── S6 word-split lanes (added 2026-08-12) ────────────────────────────────────────────────────
+# The probe claims a SHELL-BEHAVIOUR difference, so the fixtures are not enough on their own: a
+# regex can look right while the premise is wrong. S6c measures the premise itself in both shells.
+# The fixtures carry a ZSH shebang on purpose. S6 is scoped to surfaces whose execution shell is not
+# pinned to a splitting shell (markdown fences, zsh scripts) — see S6d for the measurement that
+# forced that scoping and for the bash-shebang arm that must stay silent.
+cat > "$TMP/s6_positive.sh" <<'EOF'
+#!/usr/bin/env zsh
+for f in $recent_sessions; do echo "$f"; done
+git add -- $FILES
+EOF
+cat > "$TMP/s6_negative.sh" <<'EOF'
+#!/usr/bin/env zsh
+# Command substitution DOES split in zsh — flagging it would be noise, not a finding.
+for f in $(find . -name '*.md'); do echo "$f"; done
+# Arrays split by element in both shells.
+for f in "${FILES[@]}"; do echo "$f"; done
+git add -- "${FILES[@]}"
+# The portable form this probe prescribes.
+printf '%s\n' "$recent_sessions" | while IFS= read -r f; do echo "$f"; done
+EOF
+n=$(bash "$SCAN" "$TMP/s6_positive.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 2 ] && ok "S6 known-positive: 2/2 (\`for x in \$VAR\` and \`-- \$LIST\`)" \
+                || bad "S6 known-positive: expected 2 hits, got $n — the zsh word-split class is invisible"
+
+n=$(bash "$SCAN" "$TMP/s6_negative.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 0 ] && ok "S6 known-negative: \$(cmd), \"\${arr[@]}\" and printf|while stay silent" \
+                || bad "S6 known-negative: $n hit(s) — S6 fires on forms that behave identically in both shells"
+
+# S6c — the PREMISE, measured rather than asserted. If zsh ever word-split a parameter expansion,
+# this probe would be a style rule wearing a defect's clothes, and every finding it produced would
+# be a false positive. Pinning the premise means a future zsh/bash change reddens a lane here
+# instead of silently invalidating the probe.
+if command -v zsh >/dev/null 2>&1; then
+  _b=$(bash -c 'v="a b"; n=0; for x in $v; do n=$((n+1)); done; echo $n')
+  _z=$(zsh  -c 'v="a b"; n=0; for x in $v; do n=$((n+1)); done; echo $n')
+  _zc=$(zsh -c 'n=0; for x in $(echo a b); do n=$((n+1)); done; echo $n')
+  if [ "$_b" = "2" ] && [ "$_z" = "1" ] && [ "$_zc" = "2" ]; then
+    ok "S6c premise holds: bash splits \$VAR (2), zsh does not (1), zsh splits \$(cmd) (2)"
+  else
+    bad "S6c premise BROKEN: bash=\$VAR:$_b zsh=\$VAR:$_z zsh=\$(cmd):$_zc — S6's scope is no longer justified"
+  fi
+else
+  printf '  – S6c premise lane NOT RUN (zsh unavailable) — this is not a pass\n'
+fi
+
+# S6d — APPLICABILITY. Measured 2026-08-12 across 28 hits: 7/7 real inside markdown fences,
+# 21/21 false in `.sh` files with a bash shebang (bash runs those, so splitting is intended there).
+# A 75%-noise probe trains dismissal — this file already paid that at 9/9 FP on S5. Both arms are
+# pinned, because scoping a probe is one edit away from blinding it.
+cat > "$TMP/s6_pinned_bash.sh" <<'EOF'
+#!/usr/bin/env bash
+for f in $recent_sessions; do echo "$f"; done
+git add -- $FILES
+EOF
+n=$(bash "$SCAN" "$TMP/s6_pinned_bash.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 0 ] && ok "S6d bash-shebang file: silent (execution shell is pinned — splitting is intended)" \
+                || bad "S6d bash-shebang file fired $n time(s) — S6 is back to 21/28 noise"
+
+# S6d-2 — a `.sh` with NO shebang is not pinned either, so the probe MUST apply. The first version
+# of the scoping asked "is this a markdown shadow or a zsh script?" and therefore went silent here;
+# the question that decides it is "does a shebang pin a splitting shell?" (cross-family, round 4).
+cat > "$TMP/s6_no_shebang.sh" <<'EOF'
+for f in $recent_sessions; do echo "$f"; done
+git add -- $FILES
+EOF
+n=$(bash "$SCAN" "$TMP/s6_no_shebang.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 2 ] && ok "S6d-2 shebang-less .sh: fires (unknown shell is not a pinned shell)" \
+                || bad "S6d-2 shebang-less .sh produced $n S6 hit(s), expected 2 — the scoping excludes an unpinned surface"
+
+# S6d-3 — /bin/sh pins a splitting shell too, so it must stay silent (the exclusion is about the
+# SHELL, not about the presence of a shebang line).
+cat > "$TMP/s6_posix.sh" <<'EOF'
+#!/bin/sh
+for f in $recent_sessions; do echo "$f"; done
+EOF
+n=$(bash "$SCAN" "$TMP/s6_posix.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 0 ] && ok "S6d-3 /bin/sh shebang: silent (POSIX sh splits — intended semantics)" \
+                || bad "S6d-3 /bin/sh file fired $n time(s) — the pinned-shell test does not recognize sh"
+
+# SYM — a target that is a SYMLINK to a directory must still be traversed. `[ -d ]` follows the
+# link but `find <link> -type f` does not, so the scan enumerated nothing and exited 0 = clean on a
+# directory full of known-positives (cross-family repro, round 4). `-H` follows the argument only.
+SYMREAL="$TMP/symreal"; mkdir -p "$SYMREAL"
+printf '#!/usr/bin/env bash\nscan=$(run) || exit 0\n' > "$SYMREAL/bad.sh"
+ln -sfn "$SYMREAL" "$TMP/symlink"
+n=$(s_hits "$TMP/symlink")
+[ "$n" -ge 1 ] && ok "SYM symlinked directory target is traversed (known-positive inside is found)" \
+                || bad "SYM symlinked directory target produced $n hits — an entire target renders as 'no scannable files, exit 0'"
+
+# ...and the same content in a markdown fence, where no shebang pins the shell, MUST still fire.
+printf '# t\n\n```bash\nfor f in $recent_sessions; do echo "$f"; done\n```\n' > "$MDT/s6.md"
+n=$(bash "$SCAN" "$MDT/s6.md" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 1 ] && ok "S6d markdown fence: still fires (the surface a human pastes into zsh)" \
+                || bad "S6d markdown fence produced $n S6 hit(s), expected 1 — the scoping blinded the real class"
+
+# S6e — a trailing COMMENT must not mask a real hit. Cross-family repro (gpt-5.5, 2026-08-12):
+# `grep -vE '\[[@*]\]'` ran against the raw line, so a real defect whose comment mentioned the safe
+# array form was suppressed entirely. The mirror arm is pinned too: a line matching ONLY inside its
+# comment must stay silent.
+cat > "$TMP/s6_comment.sh" <<'EOF'
+#!/usr/bin/env zsh
+git add -- $FILES # use "${arr[@]}" later
+for x in $VAR; do :; done # "${arr[@]}" would be safe
+echo hi   # for y in $OTHER  <- match lives only in this comment
+EOF
+n=$(bash "$SCAN" "$TMP/s6_comment.sh" 2>&1 | grep -cE '\[S6:')
+# 3, not 2: the comment-only line IS reported. That is the accepted trade after both comment-aware
+# filters were removed — the array exclusion was dead code that suppressed real hits, and the sed
+# that replaced it could not tell a comment from a `#` inside a string. See the scanner's comment.
+[ "$n" -eq 3 ] && ok "S6e trailing comments never mask a real hit (3/3, comment-only match reported by design)" \
+                || bad "S6e expected 3 S6 hits, got $n — 2 means a comment-aware filter is masking a real defect again"
+
+# S6f — a `#` inside a QUOTED STRING must not swallow the real hit that follows it. This is the
+# defect the comment-stripping sed introduced and its removal closes (cross-family repro, round 4).
+cat > "$TMP/s6_quoted_hash.sh" <<'EOF'
+#!/usr/bin/env zsh
+printf "#"; git add -- $FILES
+printf "#"; for f in $recent_sessions; do :; done
+EOF
+n=$(bash "$SCAN" "$TMP/s6_quoted_hash.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 2 ] && ok "S6f a quoted '#' before the defect does not hide it (2/2)" \
+                || bad "S6f expected 2 S6 hits, got $n — comment stripping is back and it cannot see quotes"
+
+# S6g — expansion OPERATORS. `for f in ${FILES:-}` is the same defect one operator away and was a
+# false negative until round 5. The negative arm matters just as much: widening the pattern is what
+# makes `${arr[@]}` reachable, and an array expansion splits by element in zsh too.
+cat > "$TMP/s6_ops.sh" <<'EOF'
+#!/usr/bin/env zsh
+for f in ${FILES:-}; do :; done
+for f in ${FILES:=x}; do :; done
+for f in ${FILES#p}; do :; done
+git add -- ${FILES:-}
+EOF
+n=$(bash "$SCAN" "$TMP/s6_ops.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 4 ] && ok "S6g braced expansions with operators are detected (4/4)" \
+                || bad "S6g expected 4 S6 hits, got $n — \${VAR:-} class is invisible again"
+
+cat > "$TMP/s6_ops_neg.sh" <<'EOF'
+#!/usr/bin/env zsh
+for f in ${FILES[@]}; do :; done
+for f in "${FILES[@]}"; do :; done
+git add -- ${FILES[*]}
+EOF
+n=$(bash "$SCAN" "$TMP/s6_ops_neg.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 0 ] && ok "S6g-neg array expansions stay silent even under the widened pattern" \
+                || bad "S6g-neg fired $n time(s) on array expansions — the widening reintroduced the class it must exclude"
+
+# S6i — the `/` (substitution) and `@` operators. `${FILES//old/new}` splits in bash and not in zsh
+# exactly like a plain `$FILES`, and it was invisible until round 6 because `/` was missing from the
+# operator class. Adding operators one incident at a time is why this lane enumerates them.
+cat > "$TMP/s6_subst.sh" <<'EOF'
+#!/usr/bin/env zsh
+for f in ${FILES//old/new}; do :; done
+for f in ${FILES/#p/q}; do :; done
+git add -- ${FILES//,/ }
+EOF
+n=$(bash "$SCAN" "$TMP/s6_subst.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 3 ] && ok "S6i substitution operators (\${V//a/b}) are detected (3/3)" \
+                || bad "S6i expected 3 S6 hits, got $n — the substitution class is invisible again"
+
+# HYPH — a target FILE whose name starts with `-`. Normalizing only the directory branch left the
+# file branch feeding `-bad.sh` straight into `grep`, which parsed it as an option cluster and
+# reported "no smells in 1 scanned file" (round 6). Both branches now normalize at the loop head.
+HYPHD="$TMP/hyph"; mkdir -p "$HYPHD"
+printf '#!/usr/bin/env bash\nscan=$(run) || exit 0\n' > "$HYPHD/-bad.sh"
+( cd "$HYPHD" && bash "$SCAN" "-bad.sh" >/dev/null 2>&1 ); rc=$?
+[ "$rc" -eq 2 ] && ok "HYPH a file target named -bad.sh is scanned, not swallowed as options (rc=2)" \
+                || bad "HYPH file target starting with '-' returned rc=$rc — a known-positive renders as clean"
+n=$(s_hits "$HYPHD")
+[ "$n" -ge 1 ] && ok "HYPH-dir the same file is found through a directory walk" \
+                || bad "HYPH-dir directory walk missed the hyphen-named file ($n hits)"
+
+# S6h — `#!/usr/bin/env ksh93`: a digit is a word character, so `\bksh\b` could not match it and the
+# file was treated as unpinned. ksh93 splits `$VAR`, so it is pinned and must stay silent.
+cat > "$TMP/s6_ksh93.sh" <<'EOF'
+#!/usr/bin/env ksh93
+for f in $recent_sessions; do :; done
+EOF
+n=$(bash "$SCAN" "$TMP/s6_ksh93.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 0 ] && ok "S6h ksh93 shebang recognized as a pinned splitting shell" \
+                || bad "S6h ksh93 fired $n time(s) — versioned shell names escape the pinned-shell test"
+
+# DISC — a directory that cannot be traversed must not render as "no scannable target files, exit 0".
+# The `find` preflight proves the BINARY exists; it says nothing about THIS traversal. Cross-family
+# repro used a mode-000 directory holding a known-positive.
+DISCD="$TMP/discblind"; mkdir -p "$DISCD"
+printf '#!/usr/bin/env bash\nscan=$(run) || exit 0\n' > "$DISCD/bad.sh"
+chmod 000 "$DISCD" 2>/dev/null
+if find "$DISCD" -type f >/dev/null 2>&1; then
+  printf '  – DISC lane NOT RUN (directory still traversable at mode 000 — running as root?) — not a pass\n'
+else
+  out=$(bash "$SCAN" "$DISCD" 2>&1); rc=$?
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qi 'COULD NOT BE MEASURED'; then
+    ok "DISC unreadable directory reports COULD-NOT-MEASURE and exits non-zero"
+  else
+    bad "DISC unreadable directory exited $rc without a could-not-measure signal — an unenumerated surface renders clean"
+  fi
+fi
+chmod 755 "$DISCD" 2>/dev/null
+
+# CAP — the typed capability entry point must reach the scanner for a markdown-only target, and must
+# not collapse "could not measure" into "found findings". Both were live defects on 2026-08-12.
+CAPSH="$REPO_ROOT/scripts/degrade_probe_capability.sh"
+if [ ! -f "$CAPSH" ]; then
+  printf '  – CAP lanes NOT RUN (degrade_probe_capability.sh absent) — not a pass\n'
+else
+  CAPD="$TMP/capmd"; mkdir -p "$CAPD"
+  printf '# t\n\n```bash\nverify() { run || return 0; }\n```\n' > "$CAPD/SKILL.md"
+  bash "$CAPSH" --target "$CAPD" >/dev/null 2>&1; rc=$?
+  [ "$rc" -eq 2 ] && ok "CAP1 markdown-only target reaches the scanner through the typed path (rc=2)" \
+                  || bad "CAP1 markdown-only target returned rc=$rc — the headline feature is unreachable on the typed path (3 = the pre-fix NO_TARGET)"
+
+  CAPD2="$TMP/capprose"; mkdir -p "$CAPD2"; printf '# prose only\n' > "$CAPD2/doc.md"
+  bash "$CAPSH" --target "$CAPD2" >/dev/null 2>&1; rc=$?
+  [ "$rc" -eq 3 ] && ok "CAP2 fence-less markdown-only target is NO_TARGET, not FINDINGS (rc=3)" \
+                  || bad "CAP2 fence-less markdown returned rc=$rc, expected 3"
+
+  # CAP3 — MIXED: one measurable finding + one unmeasurable file. "Could not measure" must win.
+  CAPD3="$TMP/capmixed"; mkdir -p "$CAPD3"
+  printf '# t\n\n```bash\nverify() { run || return 0; }\n```\n' > "$CAPD3/good.md"
+  printf '# t\n\n```bash\nx=1\n```\n' > "$CAPD3/blind.md"
+  chmod 000 "$CAPD3/blind.md" 2>/dev/null
+  if head -c1 "$CAPD3/blind.md" >/dev/null 2>&1; then
+    printf '  – CAP3 lane NOT RUN (file readable at mode 000 — running as root?) — not a pass\n'
+  else
+    bash "$CAPSH" --target "$CAPD3" >/dev/null 2>&1; rc=$?
+    [ "$rc" -eq 10 ] && ok "CAP3 findings + unmeasurable → HARNESS_ERROR (could-not-measure outranks findings)" \
+                     || bad "CAP3 returned rc=$rc, expected 10 — a partly-unmeasured scan is being reported as a plain FINDINGS verdict"
+  fi
+  chmod 644 "$CAPD3/blind.md" 2>/dev/null
+
+  # CAP4 — instrument absence must not be spelled as target absence. The wrapper's own pre-count
+  # runs `find`; without it the count is 0 and the run reported NO_TARGET, making the HARNESS_ERROR
+  # verdict unreachable for that failure while the scanner itself reports it correctly
+  # (cross-family, round 4, A). The stub PATH is CONTROLLED first, as everywhere else in this file.
+  CAPBIN="$TMP/capbin"; mkdir -p "$CAPBIN"
+  for c in bash sh grep sed awk cut tr mktemp rm cat sort head wc printf cksum python3 dirname basename; do
+    p=$(command -v "$c" 2>/dev/null); case "$p" in /*) ln -sf "$p" "$CAPBIN/$c" ;; esac
+  done
+  if env PATH="$CAPBIN" sh -c 'command -v bash >/dev/null 2>&1' && ! env PATH="$CAPBIN" sh -c 'command -v find >/dev/null 2>&1'; then
+    env PATH="$CAPBIN" bash "$CAPSH" --target "$CAPD" >/dev/null 2>&1; rc=$?
+    [ "$rc" -eq 10 ] && ok "CAP4 find unavailable → HARNESS_ERROR (instrument absence is not target absence)" \
+                     || bad "CAP4 returned rc=$rc, expected 10 — a missing instrument is reported as 'no targets' (3)"
+  else
+    printf '  – CAP4 lane NOT RUN (stub PATH unusable: bash missing or find still resolvable) — not a pass\n'
+  fi
+fi
+
+# ── Python-fence lanes (added 2026-08-12) ─────────────────────────────────────────────────────
+# ```python fences were outside the extractor, so `except: pass` — the exact shape probes A/B exist
+# for — was unmeasured wherever it actually lives in this corpus (SKILL.md, not .py).
+printf '# t\n\n```python\ndef f(x):\n    try:\n        return g(x)\n    except Exception:\n        return True\n```\n' > "$MDT/py.md"
+out=$(bash "$SCAN" "$MDT/py.md" 2>&1)
+if printf '%s' "$out" | grep -q 'python fence'; then
+  ok "PY1 a defect inside a \`\`\`python fence is detected and LABELLED as a python fence"
+else
+  bad "PY1 python fence not scanned (or mislabelled as bash) — the surface where except/pass lives is unmeasured"
+fi
+
+# PY2 — the reason the shadow carries a .py extension instead of reusing .sh. `is_sh` keys on the
+# extension, so a python fence written into a .sh shadow would be probed by the SHELL rules. The
+# fixture below is python whose COMMENT contains a shell shape; a .sh shadow scores it S1.
+printf '# t\n\n```python\n# scan=$(run) || exit 0\ndef f():\n    return None\n```\n' > "$MDT/py_shellish.md"
+n=$(bash "$SCAN" "$MDT/py_shellish.md" 2>&1 | grep -cE '\[S[0-9]:')
+[ "$n" -eq 0 ] && ok "PY2 python fences are NOT probed by the shell rules (language-split shadows hold)" \
+                || bad "PY2 shell probes fired $n time(s) on python source — the shadow extension collapsed back to .sh"
+
+# PY3 — a markdown file carrying BOTH fence languages must yield BOTH, at their own origin lines.
+# NOTE the python half returns True, not `pass`: probe A keys on a permissive RETURN. The first
+# draft of this lane used `pass` and went red against a correct implementation — the fixture was
+# measuring nothing. Verified by running the extractor directly on both languages before editing
+# any code (the shadows were fine; the assertion was not).
+printf '# t\n\n```bash\nverify() { run || return 0; }\n```\n\n```python\ndef f(x):\n    try:\n        return g(x)\n    except Exception:\n        return True\n```\n' > "$MDT/both.md"
+out=$(bash "$SCAN" "$MDT/both.md" 2>&1)
+if printf '%s' "$out" | grep -q 'bash fence' && printf '%s' "$out" | grep -q 'python fence'; then
+  ok "PY3 one markdown file yields both a bash and a python shadow (neither overwrites the other)"
+else
+  bad "PY3 mixed-language markdown lost one language — shadows collide by name or the loop stops at the first hit"
 fi
 
 echo "----"

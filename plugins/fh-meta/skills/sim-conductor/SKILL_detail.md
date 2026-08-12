@@ -337,8 +337,13 @@ cd "$HARNESS_ROOT"
 BRANCH="fix/sim-$(date +%Y%m%d)-m-tier"
 git switch -c "$BRANCH"
 # [process M-tier items] — collect the files this run actually edited
-FILES="path/to/edited1.md path/to/edited2.md"   # explicit list; never a glob, never -A, never .
-git add -- $FILES
+# Explicit list; never a glob, never -A, never `.`. Use an ARRAY, not a space-separated string:
+# `git add -- $FILES` relies on bash word-splitting an unquoted parameter expansion, and zsh does
+# NOT split one (SH_WORD_SPLIT off by default). Under zsh the whole string arrives as ONE pathspec,
+# git errors "did not match any files", and the commit that follows stages nothing — the explicit-
+# path discipline this line exists to enforce silently stops applying in the operator's own shell.
+FILES=(path/to/edited1.md path/to/edited2.md)
+git add -- "${FILES[@]}"
 git diff --cached --name-only    # confirm the staged set IS the intended set before committing
 git commit -m "fix(sim-conductor): resolve M-tier findings from simulation YYYY-MM-DD"
 git push -u origin "$BRANCH"
