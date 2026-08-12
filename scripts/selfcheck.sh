@@ -199,6 +199,22 @@ else
   fail=1
 fi
 
+# The public-surface scanner's SINGLE-FILE and MISUSE paths. Same subject-present/anchor-gone shape:
+# the scanner is a fail-closed gate on an irreversible surface, and its failure mode is a green that
+# was never earned — a misuse, an unloaded pattern set, or dead plumbing all used to render as clean.
+# Wired here on purpose (cross-family round 2): the lane file existed and was syntax-checked only, so
+# `npm test` and `prepublishOnly` never executed it. A checker nobody calls is prose.
+if [ ! -f scripts/psa_scan_lib.sh ]; then
+  echo "SKIP  psa single-file lanes (subject scripts/psa_scan_lib.sh absent)"
+elif [ -f scripts/test_psa_singlefile_lanes.sh ]; then
+  if ! bash scripts/test_psa_singlefile_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  psa single-file lanes: psa_scan_lib.sh present but its anchor is missing"
+  fail=1
+fi
+
 # package-coverage — a shipped doc must not point at a file the tarball omits. Distinct from the
 # ref-path check below: that one asks "does this path exist at all", this one asks "does the
 # CONSUMER get it". Measured 2026-07-28: 35 paths existed, were named by a shipped doc, and were
