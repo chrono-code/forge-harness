@@ -30,6 +30,29 @@ if [ -f scripts/package_coverage_check.sh ]; then
 fi
 _pkg_accepted_absent() { printf '%s\n' "$_PKG_ACCEPTED_ABSENT" | grep -qxF "$1"; }
 
+# Is this path DECLARED shipped by package.json files[]? The companion question to the one above:
+# ACCEPTED_ABSENT answers "is this absence legitimate", this answers "should this be here at all".
+# Together they turn a bare "file missing" into a routed verdict instead of a blanket SKIP.
+# Directory entries in files[] cover everything under them, which is how `templates/.git-hooks`
+# covers `templates/.git-hooks/pre-push` — a prefix test, not equality (getting this wrong is what
+# made a comment claim the hook does not ship while package.json:117 declared its whole directory).
+# NOTE ON WHAT THIS DOES *NOT* PROVE: files[] membership is a DECLARATION, not the tarball. This repo
+# has already measured the two diverging (card §🔱⑮ G/C: repo ✅ / files[] ❌). Here the direction is
+# safe — an over-declaration makes this check stricter, never more lenient — but do not reuse this
+# helper anywhere the answer needs to be "what the consumer actually received"; that needs
+# `npm pack --dry-run --json`.
+_ships_per_files() {
+  python3 - "$1" <<'SHIPPY' 2>/dev/null
+import json, sys
+p = sys.argv[1]
+try:
+    files = json.load(open('package.json'))['files']
+except Exception:
+    sys.exit(2)          # unreadable manifest: UNKNOWN, and the caller must not read that as "no"
+sys.exit(0 if any(p == f or p.startswith(f.rstrip('/') + '/') for f in files) else 1)
+SHIPPY
+}
+
 check() { # check <label> <cmd...>
   local label="$1"; shift
   if "$@" 2>/dev/null; then
@@ -167,12 +190,32 @@ fi
 # above the ref loop drains git's ref list → Destructive-Op gate silently allows a delete/force push).
 # Wired here, not left standalone: an unwired checker is the exact defect this session found in
 # session_close_check.sh — building the test and not running it repeats it one layer up.
-# Package-mode guard: neither the test nor its subject (templates/.git-hooks/pre-push) is in
-# package.json files[] — both are source-tree-only infra. Without this guard the SHIPPED selfcheck
-# fails for every consumer running `npm test` on the installed package. Caught pre-publish 2026-07-20
-# by reproducing package mode; mirrors the ref-path SKIP below.
+# ⚠️ CORRECTED 2026-08-12 (innovator Mode F scan → resolved by measurement). This comment used to
+# read: "neither the test nor its subject (templates/.git-hooks/pre-push) is in package.json files[]
+# — both are source-tree-only infra." **That was false**, and it had been false long enough to be
+# load-bearing. `npm pack --dry-run --json` on this tree returns 262 files including
+# templates/.git-hooks/pre-push, templates/.git-hooks/pre-commit AND
+# scripts/test_prepush_stdin_integrity.sh — subject and anchor both ship (package.json:117 declares
+# the whole `templates/.git-hooks` directory).
+# The consequence is what makes this worth fixing rather than just re-wording: if the subject always
+# ships, then "subject absent" can no longer mean "package mode" — the only way to reach that arm is
+# that **the hook was deleted**, and it was rendering that as a green SKIP. This is the fourth face
+# of the axis the card names three of at §🔱⑮ (미측정→clean · 미측정→findings · 해당없음→FAIL):
+# **삭제→SKIP**. A deleted Destructive-Op gate reporting green on every surface is the worst of the
+# four, because the other three are loud.
+# Kept as a three-valued check rather than a bare FAIL: a consumer's tree can legitimately lack the
+# directory if they installed with --ignore-scripts and pruned, so the *declaration* is what decides,
+# not the environment (same discipline as `_pkg_accepted_absent` above — consult what ships, do not
+# re-derive it from what happens to be on disk).
 if [ ! -f templates/.git-hooks/pre-push ]; then
-  echo "SKIP  pre-push stdin integrity (package mode: templates/.git-hooks absent)"
+  if _ships_per_files "templates/.git-hooks/pre-push"; then
+    echo "FAIL  pre-push stdin integrity: templates/.git-hooks/pre-push is DECLARED SHIPPED but absent"
+    echo "      — that is a deletion or a broken install, not package mode. The Destructive-Op gate"
+    echo "      this anchors is the thing that is missing."
+    fail=1
+  else
+    echo "SKIP  pre-push stdin integrity (not shipped per package.json files[], and absent)"
+  fi
 elif [ -f scripts/test_prepush_stdin_integrity.sh ]; then
   if ! bash scripts/test_prepush_stdin_integrity.sh; then
     fail=1
@@ -255,6 +298,23 @@ elif [ -f scripts/test_package_coverage_lanes.sh ]; then
 else
   echo "FAIL  test_package_coverage_lanes.sh: package_coverage_check.sh present but its anchor is missing"
   fail=1
+fi
+
+# lane-runner — sibling of package-coverage one level up: that one asks "does the CONSUMER get the
+# file a shipped doc names", this one asks "does ANYTHING execute the lane suite we wrote". Measured
+# 2026-08-12 (reship axis, card §🔱⑮ A): 12 of 43 suites under scripts/ had no runner in selfcheck,
+# the git hooks, or CI — including scripts/test_marker_crossfamily_lanes.sh, whose subject is a
+# marker field that hard-blocks commits, and scripts/test_marker_floor_lanes.sh, whose subject is
+# pre-commit's live validate_marker_floor(). Both gates ship; neither calibration had ever run.
+# The card recorded this as three specific repairs needing "one anchor each"; wiring three anchors
+# would have closed those three and stayed blind to the other nine and to the thirteenth. This runs
+# unconditionally when present because its own absence is the defect class it exists to detect —
+# there is no package-mode arm to skip into (a consumer running `npm test` should learn that a
+# shipped suite of theirs is dead code just as much as we should).
+if [ -f scripts/lane_runner_check.sh ]; then
+  if ! bash scripts/lane_runner_check.sh; then
+    fail=1
+  fi
 fi
 
 # embedded --self-test suites (compaction_probe · judgment_circuit_lint · novelty_claim_check).
