@@ -68,6 +68,7 @@
     "scripts/test_selfcheck_state_lanes.sh",
     "scripts/test_version_lockstep_lanes.sh",
     "scripts/package_coverage_check.sh",
+    "scripts/lane_runner_check.sh",
     "scripts/test_package_coverage_lanes.sh",
     "scripts/test_fh_gate_regressions.sh",
     "templates/local_fh_context.md",
