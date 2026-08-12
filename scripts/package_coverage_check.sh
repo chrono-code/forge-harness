@@ -85,6 +85,17 @@ ACCEPTED_ABSENT=(
   "scripts/test_frontier_digest_retry.sh"
   "scripts/residency_closure_scan.py"
   "scripts/test_residency_closure_lanes.sh"
+  # ── The two settings destinations, surfaced 2026-08-13 by fixing this file's own extractor ────
+  # These were invisible until the `js|json` alternation below was corrected: every `.json`
+  # reference in every shipped doc was being truncated to `.js`, a path that exists nowhere, so
+  # `os.path.exists()` dropped it in silence. `.claude/settings.json` alone is named by TWENTY-SIX
+  # shipped documents and had never once been examined by the check that exists to examine exactly
+  # this. Both are INSTALL DESTINATIONS the consumer owns — the whole point of the docs that name
+  # them is "put this in YOUR settings" — so shipping either would overwrite the reader's own
+  # configuration with this harness's. Same reasoning as .claude/rules/local_fh_context.md above:
+  # the template is what ships, the destination is what the user creates.
+  ".claude/settings.json"
+  ".claude/settings.local.json"
   # Its only input is `.claude/regression/probes.md`, itself ACCEPTED_ABSENT above (a consumer's
   # regression run must not compare against this harness's probe set). Shipping the reader without
   # its corpus would put a script in the package that can only ever report "instrument error".
@@ -140,6 +151,17 @@ if [ "${1:-}" = "--list-accepted" ]; then
   exit 0
 fi
 
+# `--vs-tarball` swaps the coverage oracle from package.json files[] (a DECLARATION about the
+# tarball) to `npm pack --dry-run --json` (the tarball). See the two-oracle comment in the python
+# block. Kept as a flag rather than made the default for one reason: the default runs anywhere,
+# offline, in ~1s, while this one shells out to npm and takes seconds — so the strict oracle belongs
+# on the publish path, where the question "what does the consumer actually receive" is the one being
+# asked, and the cheap one stays on every commit.
+if [ "${1:-}" = "--vs-tarball" ]; then
+  export FH_PKG_ORACLE=tarball
+  shift
+fi
+
 # Source-checkout test uses `-e`, not `-d`. In a git WORKTREE `.git` is a FILE (a gitdir pointer),
 # so the old `-d` test read every worktree as "installed package" and skipped the check entirely —
 # silently, with exit 0. Measured 2026-07-31: a worktree created specifically to approximate CI
@@ -162,28 +184,92 @@ if [ ! -f package.json ]; then
   exit 1
 fi
 
-out=$(python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'
-import re, os, json, sys
+out=$(FH_PKG_ORACLE="${FH_PKG_ORACLE:-declaration}" python3 - "${ACCEPTED_ABSENT[@]}" <<'PY'
+import re, os, json, sys, subprocess
 accepted = set(sys.argv[1:])
 files = json.load(open('package.json'))['files']
 
+# ── TWO ORACLES, and the difference between them is the whole reason the second one exists ────
+# `declaration` (default): a path is covered if package.json files[] says so. That is a CLAIM about
+#     the tarball, checkable without npm, and it is what every caller before 2026-08-13 used.
+# `tarball`: a path is covered if it is actually in `npm pack --dry-run --json`. That is the tarball
+#     ITSELF.
+# They come apart, and this repo has measured them coming apart (card §🔱⑮ G/C: repo ✅ / files[] ❌
+# for two paths). A files[] entry can name a file that does not pack — .npmignore precedence, a
+# pattern that no longer matches, a file deleted while its declaration stayed. In every one of those
+# the declaration oracle says PASS and the consumer gets a broken reference, because the consumer
+# receives the tarball and not the manifest. This is the general solution the campaign card has
+# carried as open under "참조 ↔ 실제 출하 파일셋": the earlier repairs (A–D) routed AROUND it by
+# consulting declarations, which was correct for those cases and is not the same thing as building
+# it.
+# FAIL-CLOSED, and deliberately not "fall back to the declaration": npm missing, a non-zero exit, or
+# JSON that does not parse means the tarball is UNKNOWN, and a lenient fallback would silently
+# convert the stricter oracle back into the weaker one — while still printing the stricter one's
+# name. That is the "미측정을 통과로 렌더" class this whole file is an instrument against.
+ORACLE = os.environ.get('FH_PKG_ORACLE', 'declaration')
+packed = None
+if ORACLE == 'tarball':
+    try:
+        r = subprocess.run(['npm', 'pack', '--dry-run', '--json'],
+                           capture_output=True, text=True, timeout=180)
+        if r.returncode != 0:
+            print(f"ORACLE_UNAVAILABLE\tnpm pack exited {r.returncode}")
+            raise SystemExit(2)
+        packed = {f['path'] for f in json.loads(r.stdout)[0]['files']}
+    except FileNotFoundError:
+        print("ORACLE_UNAVAILABLE\tnpm is not on PATH — the tarball cannot be read")
+        raise SystemExit(2)
+    except (json.JSONDecodeError, KeyError, IndexError) as e:
+        print(f"ORACLE_UNAVAILABLE\tnpm pack --json did not parse ({type(e).__name__})")
+        raise SystemExit(2)
+    except subprocess.TimeoutExpired:
+        print("ORACLE_UNAVAILABLE\tnpm pack timed out")
+        raise SystemExit(2)
+    # An empty or absurdly small packed set means the instrument broke, not that the package is
+    # empty — same impossible-zero rule the shipped-doc guard below applies to its own extractor.
+    if not packed or len(packed) < 10:
+        print(f"ORACLE_UNAVAILABLE\tnpm pack reported {len(packed or [])} files — implausible")
+        raise SystemExit(2)
+
 def covered(p):
+    if packed is not None:
+        return p in packed
     return any(p == f or p.startswith(f.rstrip('/') + '/') for f in files)
 
 shipped = []
-for f in files:
-    if os.path.isfile(f):
-        shipped.append(f)
-    elif os.path.isdir(f):
-        for root, _, names in os.walk(f):
-            shipped.extend(os.path.join(root, n) for n in names)
+if packed is not None:
+    # In tarball mode the set of SCANNED documents is the tarball too, not the declaration. Both
+    # halves have to move together: scanning a doc that does not actually ship would report a
+    # phantom no consumer can encounter, and that false positive is what would get the stricter
+    # oracle switched back off.
+    shipped = sorted(packed)
+else:
+    for f in files:
+        if os.path.isfile(f):
+            shipped.append(f)
+        elif os.path.isdir(f):
+            for root, _, names in os.walk(f):
+                shipped.extend(os.path.join(root, n) for n in names)
 
 # Only text surfaces can carry a reference a human or agent would follow.
 shipped = [s for s in shipped if s.endswith(('.md', '.sh', '.js', '.json', '.yaml', '.yml'))]
 
 pat = re.compile(
     r'(?<![\w/.-])((?:scripts|templates|bin|docs|knowledge|plugins|\.claude)'
-    r'/[A-Za-z0-9_./-]+\.(?:sh|py|js|md|yaml|yml|json|defaults))'
+    # LONGEST-FIRST, and the order is the whole fix. Python's `|` is leftmost-first, not
+    # longest-match, so the previous order `sh|py|js|md|yaml|yml|json|defaults` matched `.js`
+    # inside `.json` and truncated every JSON reference: `templates/settings.json` was extracted as
+    # `templates/settings.js`, a path that exists nowhere, so `os.path.exists()` said False and the
+    # reference was dropped in silence. This check has therefore NEVER examined a shipped doc's
+    # JSON references. Same trap in `yml|yaml` (harmless by luck: neither is a prefix of the other)
+    # and it would bite again for any future pair like `md`/`mdx`.
+    # Known-pair, run before the fix: `templates/settings.json` → `templates/settings.js` (broken)
+    # while `scripts/foo.sh` → `scripts/foo.sh` (control, intact). After: both intact.
+    # The `(?![A-Za-z0-9])` tail is the belt to the longest-first braces: it stops a correct
+    # alternative from matching a PREFIX of a longer real extension that nobody listed yet, so the
+    # next person who adds an extension cannot silently reintroduce this by putting it in the wrong
+    # place. Ordering alone is a convention; the lookahead is the mechanism.
+    r'/[A-Za-z0-9_./-]+\.(?:defaults|json|yaml|yml|sh|py|js|md)(?![A-Za-z0-9]))'
 )
 
 phantom = {}
@@ -239,6 +325,19 @@ raise SystemExit(1 if phantom else 0)
 PY
 )
 rc=$?
+
+case "$out" in
+  ORACLE_UNAVAILABLE*)
+    # Only reachable with --vs-tarball. The stricter oracle could not be read, and the ONLY wrong
+    # answer here is to quietly re-run with the weaker one and print a pass — the caller asked
+    # "what does the consumer actually receive", and "I could not look" is not an answer to that.
+    echo "FAIL  package-coverage (--vs-tarball): the tarball oracle is UNAVAILABLE, so coverage"
+    echo "      against the real packed file set is UNMEASURED — not clean."
+    printf '%s\n' "$out" | sed 's/^ORACLE_UNAVAILABLE\t/      reason: /'
+    echo "      Re-run without --vs-tarball to check against package.json files[] instead, but note"
+    echo "      that is a DIFFERENT and weaker question (a declaration, not the tarball)."
+    exit 2 ;;
+esac
 
 if [ "$rc" -eq 2 ] || [ "$out" = "EXTRACTOR_BROKE" ]; then
   echo "FAIL  package-coverage: extractor scanned 0 shipped docs — the check broke, it did not pass"
