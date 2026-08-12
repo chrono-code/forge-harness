@@ -1930,3 +1930,15 @@
   outcome: accepted
   evidence: "S 1건 + A 2건 회수, 전부 실건이고 **자력 적발 0**. S = `validate` 필수체크를 «Axis 1 워크플로»로 오귀속(실제로는 별개 잡 — regression-guard.yml 은 여전히 필수 아니고 paths: 필터로 4축 대상 자산 다수에 돌지도 않는다). A1 = «PR 오픈 시점» 과잉주장(실제 synchronize 마다 재실행). A2 = «both layers» 근거 미인용. 셋 다 수정 후 워크플로 YAML + 라이브 gh api 재대조. PR #354 머지(main f62a5a9)."
   note: "정정이 원 서술보다 더 틀릴 수 있다는 사례 — stale 한 것은 `contexts=[]` 라는 «목록»이었지 «Axis 1 이 필수가 아니다»라는 «귀속»이 아니었는데, 초안이 후자까지 지웠다. 적대검증이 그 구분을 복원했다."
+
+- date: 2026-08-12
+  session: reship-residual-A-A2-night (Sonnet 5 → Opus 5 1M 전환)
+  agents_summary: "3 dispatches: fh-commons:quench-challenger×1 (PR #355 diff 6축 구조공격) · codex gpt-5.5×1 (같은 diff cross-family, Bash 사이드카) · fh-meta:persona-innovator×1 (Mode F 자율주행 — 운영자 지시)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "challenger = A 4건 + B 3건 회수, 그중 최상위(vendored-.git 트리에서 원래 버그 재현)가 첫 수리를 반증해 일반해(선언 조회)로 방향을 바꿨다. codex = 독립으로 같은 B 2건에 수렴(stale SKIP 문구 · 모드 enum 미검증), S/A 0 보고하며 «패딩 대신 없다고 말한다»를 실제로 이행. innovator Mode F = 내부 갭 5 + 외부 프런티어 6(전부 fetch 된 URL) + null result 5, **내 주장 2건 반증**(N≥3 오계상 · 주석 방향). 산출은 PR #355·#356·#357 (main b80ed97) + 카드 §🔱⑳."
+  notes: "★**세 디스패치 중 둘이 내 판정을 뒤집었고 자력 적발은 0이다.** challenger 가 내 첫 수리(`[ -e .git ]`)를 «좁은 문 뒤에서 원래 버그가 재현된다»로 반증했고, innovator 가 내 N≥3 정당화를 **이 레포 자신의 판별자**(첫 발생 직후 고쳤다면 나머지가 막혔겠는가)로 반증했다 — 첫 수리가 두 번째 발견을 *만든* 헬퍼라 한 발견이지 두 재발이 아니고, compaction_probe 수리는 반대 방향이었다. 정직한 값 N=1–2, 임계 미만. **재발 횟수가 아니라 측정된 12건이 이 빌드의 근거**로 헤더를 고쳐 적었다.
+    ★**innovator 가 자기 계수를 스스로 UNCALIBRATED-partial(2/16 손검증)로 라벨**했고, 내 전수 재계상은 18 이었다 — 정직 라벨이 있었기에 그 숫자로 작업 크기를 산정하지 않았다.
+    ★**H1 규율 이행 확인**: innovator 가 벤더 마케팅 출처의 수치 2건(cross-family 검출률 +40~60% · 공유맥락 온보딩 -35~50%)을 SPECULATIVE 로 격리하고 **어느 제안에도 인용하지 않았다**. 대신 «우리 자체 증거가 더 강하다 — 약한 외부 숫자로 강한 내부 실측을 장식하지 마라»를 명시.
+    🟥 **codex 발주 비용 관측**: diff + 산문 프롬프트 1회로 충분했다(오전 축의 7회 352KB 대비). 같은 클래스 결함을 같은 채널로 두 번 보내지 않은 것이 차이다.
+    ⚠️ **goal-quench 미발화** — 사이드카 3회 미달(2회)이라 카드 K 의 트리거 조건(3회 초과)엔 안 걸렸다. 이건 규율 준수이지 갭이 아니다."
