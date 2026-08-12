@@ -497,6 +497,31 @@ n=$(bash "$SCAN" "$TMP/s6_ops_neg.sh" 2>&1 | grep -cE '\[S6:')
 [ "$n" -eq 0 ] && ok "S6g-neg array expansions stay silent even under the widened pattern" \
                 || bad "S6g-neg fired $n time(s) on array expansions — the widening reintroduced the class it must exclude"
 
+# S6i — the `/` (substitution) and `@` operators. `${FILES//old/new}` splits in bash and not in zsh
+# exactly like a plain `$FILES`, and it was invisible until round 6 because `/` was missing from the
+# operator class. Adding operators one incident at a time is why this lane enumerates them.
+cat > "$TMP/s6_subst.sh" <<'EOF'
+#!/usr/bin/env zsh
+for f in ${FILES//old/new}; do :; done
+for f in ${FILES/#p/q}; do :; done
+git add -- ${FILES//,/ }
+EOF
+n=$(bash "$SCAN" "$TMP/s6_subst.sh" 2>&1 | grep -cE '\[S6:')
+[ "$n" -eq 3 ] && ok "S6i substitution operators (\${V//a/b}) are detected (3/3)" \
+                || bad "S6i expected 3 S6 hits, got $n — the substitution class is invisible again"
+
+# HYPH — a target FILE whose name starts with `-`. Normalizing only the directory branch left the
+# file branch feeding `-bad.sh` straight into `grep`, which parsed it as an option cluster and
+# reported "no smells in 1 scanned file" (round 6). Both branches now normalize at the loop head.
+HYPHD="$TMP/hyph"; mkdir -p "$HYPHD"
+printf '#!/usr/bin/env bash\nscan=$(run) || exit 0\n' > "$HYPHD/-bad.sh"
+( cd "$HYPHD" && bash "$SCAN" "-bad.sh" >/dev/null 2>&1 ); rc=$?
+[ "$rc" -eq 2 ] && ok "HYPH a file target named -bad.sh is scanned, not swallowed as options (rc=2)" \
+                || bad "HYPH file target starting with '-' returned rc=$rc — a known-positive renders as clean"
+n=$(s_hits "$HYPHD")
+[ "$n" -ge 1 ] && ok "HYPH-dir the same file is found through a directory walk" \
+                || bad "HYPH-dir directory walk missed the hyphen-named file ($n hits)"
+
 # S6h — `#!/usr/bin/env ksh93`: a digit is a word character, so `\bksh\b` could not match it and the
 # file was treated as unpinned. ksh93 splits `$VAR`, so it is pinned and must stay silent.
 cat > "$TMP/s6_ksh93.sh" <<'EOF'

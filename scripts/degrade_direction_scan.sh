@@ -165,19 +165,22 @@ _md_collect() {
   return 1
 }
 for t in "${TARGETS[@]}"; do
+  # HYPHEN-LEADING TARGETS are normalized ONCE, here, for every branch (2026-08-12, round 6).
+  # The first fix did this inside the directory branch only, so a direct FILE target named
+  # `-bad.sh` was collected verbatim and every later `grep "$f"` parsed it as an option cluster —
+  # producing "no smells in 1 scanned file, exit 0" for a file carrying a known-positive. Fixing
+  # one branch of a two-branch dispatch is the half-fix shape this repo already has a scan for.
+  case "$t" in
+    -*) t="./$t" ;;
+  esac
   if [ -d "$t" ]; then
     # SYMLINKED TARGET (2026-08-12, cross-family gpt-5.5): `[ -d ]` follows a symlink, `find` does
     # not — `find /path/to/symlink -type f` enumerates NOTHING and the run printed "no scannable
     # (py/sh) target files" and exited 0 for a directory full of known-positives. `-H` makes find
     # follow the command-line argument only (not links found during the walk, which is what would
     # invite cycles). Measured: symlink target → 0 files without it, 1 with it.
-    # A target whose name starts with `-` is parsed by BSD find as an option ("illegal option").
-    # Prefix it with `./` so it is unambiguously a path. Only for that case — prefixing every target
-    # would rewrite every reported path to `./…` for no benefit.
-    case "$t" in
-      -*) _T=(-H "./$t") ;;
-      *)  _T=(-H "$t") ;;
-    esac
+    # (`$t` is already `./`-normalized above, so no per-branch hyphen handling is needed here.)
+    _T=(-H "$t")
     # DISCOVERY ERRORS (2026-08-12, cross-family gpt-5.5): the `find` preflight above proves the
     # BINARY exists; it says nothing about whether this particular traversal worked. Every discovery
     # call below redirects stderr and reads its output through a process substitution, which throws
@@ -442,7 +445,11 @@ for f in "${FILES[@]}"; do
     # element in zsh too, so it is not this defect. Encoding it in the pattern rather than as a
     # downstream `grep -v` is deliberate — the line-level filter version of this rule was deleted
     # earlier today precisely because it killed whole lines, including real hits.
-    S6_PAT='(for[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+in|--)[[:space:]]+(\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*([:#%^,!][^}[]*)?\})([[:space:];]|$)'
+    # `/` and `@` joined the operator class 2026-08-12 (round 6): `${FILES//old/new}` is a
+    # substitution whose RESULT still splits in bash and not in zsh — the same defect — and it was
+    # invisible because `/` was missing from the set. Measured on that construct: bash 2 words,
+    # zsh 1. `[` stays excluded so array expansions remain unmatched.
+    S6_PAT='(for[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+in|--)[[:space:]]+(\$[A-Za-z_][A-Za-z0-9_]*|\$\{[A-Za-z_][A-Za-z0-9_]*([:#%^,!/@][^}[]*)?\})([[:space:];]|$)'
     while IFS= read -r m; do
       emit "$f" "${m%%:*}" "S6:wordsplit-shell-dep(sh)" "unquoted parameter expansion in a word-split position (\`for x in \$VAR\` / \`-- \$LIST\`) — bash splits on IFS but zsh does NOT, so under zsh the loop runs once over the whole blob and per-item results silently come back empty; iterate explicitly instead: \`printf '%s\\n' \"\$VAR\" | while IFS= read -r x; do …\` (or use an array). Command substitution \`\$(cmd)\` splits in both shells and is NOT this defect"
       # NO COMMENT STRIPPING, and no array-form exclusion — both were removed 2026-08-12 after two

@@ -97,6 +97,11 @@ if [ -n "$DECLARED" ]; then
       echo "  DANGLING $d (declared in files[], absent on disk)"; dangling=$((dangling+1))
     elif [ -L "$d" ]; then
       echo "  SYMLINK $d (npm pack does not follow symlinks — the tarball would omit it)"; dangling=$((dangling+1))
+    elif [ ! -f "$d" ]; then
+      # A DIRECTORY passes -e, is not a symlink, and `-s` reports non-zero size for it — so the
+      # three tests above all agreed a directory was a fine entry point (round 6). Regular-file-ness
+      # is the property actually being claimed; assert it rather than three proxies for it.
+      echo "  NOT-A-FILE $d (declared as an entry point but is not a regular file)"; dangling=$((dangling+1))
     elif [ ! -s "$d" ]; then
       echo "  EMPTY $d (zero bytes — ships an entry point that cannot run)"; dangling=$((dangling+1))
     fi
