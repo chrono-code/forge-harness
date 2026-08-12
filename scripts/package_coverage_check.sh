@@ -57,6 +57,34 @@ ACCEPTED_ABSENT=(
   # anchor but guards on the subject's presence, so package mode SKIPs rather than falling through.
   "scripts/sync-from-be.sh"
   "scripts/sync_from_be_lanes.sh"
+  # ── The three lane suites selfcheck.sh's DEBT-12 pair-loop names but does not ship ────────────
+  # Added 2026-08-13, and the way they got here is the point: this check CAUGHT them. Before that
+  # loop existed, these names lived in lane_runner_check.sh's DEBT array as bare basenames
+  # ("test_chamber_run_lanes.sh"), which the extractor's `scripts/…\.(sh|py)` pattern does not
+  # match. Writing the same names as full paths in a SHIPPED file (selfcheck.sh) is what turned
+  # them into phantoms — a shipped document pointing at a file the package omits. The source-tree
+  # selfcheck went red on the first full run after the wiring, exactly as an adversarial review had
+  # predicted from static reading alone. Recorded here rather than "fixed" by dropping the prefix,
+  # because the prefix is what makes lane_runner_check.sh's direct-invocation detector see the
+  # wiring at all; removing it would trade a loud failure for a silent blind spot.
+  #
+  # Why each is legitimately unshipped — and one of them is a NAMED RESIDUAL, not a clean answer:
+  #   · test_frontier_digest_retry.sh — its subject, scripts/frontier_digest_daily.sh, is itself
+  #     ACCEPTED_ABSENT (a launchd cadence runner for this operator's machine). Anchor follows
+  #     subject; a consumer has nothing for it to measure.
+  #   · test_residency_closure_lanes.sh — same shape: residency_closure_scan.py does not ship, so
+  #     its calibration has no subject on a consumer machine.
+  #   · test_chamber_run_lanes.sh — 🟥 NOT the same shape. Its subject scripts/chamber_run.sh DOES
+  #     ship. So a consumer receives the chamber runner and no calibration for it: a shipped gate
+  #     whose known-pair cannot execute on the machine that runs the gate. That is the defect class
+  #     this whole campaign is closing, one layer over. It is entered here rather than shipped
+  #     because adding an anchor to files[] is a consumer-facing change that needs its own
+  #     tarball-mode run to prove it does not false-FAIL, and this delta is a WIRING delta. The
+  #     honest state is "declared, and the declaration records a debt" — carried to the card.
+  "scripts/test_chamber_run_lanes.sh"
+  "scripts/test_frontier_digest_retry.sh"
+  "scripts/residency_closure_scan.py"
+  "scripts/test_residency_closure_lanes.sh"
   # Its only input is `.claude/regression/probes.md`, itself ACCEPTED_ABSENT above (a consumer's
   # regression run must not compare against this harness's probe set). Shipping the reader without
   # its corpus would put a script in the package that can only ever report "instrument error".

@@ -40,7 +40,16 @@
 # Usage: bash scripts/test_reviewer_capability_conformance.sh   Exit: 0 = conforms; 1 = drift.
 
 set -uo pipefail
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Script-relative, NOT `git rev-parse --show-toplevel`. Measured 2026-08-13 in a vendored tree
+# (npm install, then `git init` at a level above — a monorepo committing node_modules is the
+# same shape): rev-parse answers with the OUTER repo's root, so this suite looked for the
+# package's own files inside somebody else's checkout, found nothing, and reported
+# HARNESS-ERROR. The consumer sees a red `npm test` caused entirely by where their .git is.
+# The subject of these lanes ships INSIDE this package, so the package root is the only root
+# that can be right. Same form as test_capability_entrypoint_shipping.sh:29.
+# The exposure is new: before these suites were wired into selfcheck.sh they ran nowhere, so
+# the wrong root never cost anything. Wiring a dead lane surfaces every assumption it made.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CORPUS="${CORPUS:-$REPO_ROOT/scripts/reviewer_capability_corpus.tsv}"
 HOOK="$REPO_ROOT/templates/.git-hooks/pre-commit"
 LENIENT="${ALLOW_UNDECIDABLE_AS_INCAPABLE:-0}"

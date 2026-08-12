@@ -367,6 +367,107 @@ else
   echo "SKIP  lane-runner (not in this package's files[] — predates the version that ships it)"
 fi
 
+# ── the twelve suites lane_runner_check.sh measured as having NO runner (2026-08-12) ───────────
+# The check directly above COUNTS them; this block is what makes the count go down. Until now the
+# repo shipped a checker that reported its own todo list every run and nothing that discharged it,
+# which is a decision surface only for as long as someone acts on it.
+#
+# What was actually measured before this wiring existed, because the size of the fact is the reason
+# the block is here: all twelve pass when run by hand (rc=0, ~40s total), and NINE OF THE TWELVE
+# ARE IN THE PUBLISHED TARBALL (`npm pack --dry-run --json`, 263 files). So a consumer running
+# `npm test` was shipping-and-carrying nine test suites that nothing on their machine ever called.
+# The two that hurt most: test_marker_crossfamily_lanes.sh calibrates the `crossfamily:` marker enum
+# that hard-blocks commits, and test_marker_floor_lanes.sh calibrates pre-commit's live
+# validate_marker_floor(). Both gates ship and block; neither calibration had ever executed.
+#
+# ONE loop, not twelve blocks, and that is deliberate: the four-value routing below would otherwise
+# be hand-copied twelve times, and this repo has already measured what that produces — two copies of
+# a normalizer drifting in leniency until one of them silently drops its input
+# ([[feedback_divergent_leniency_duplicate_normalizers]]). The pair table is data; the verdict logic
+# exists once. The existing SessionStart pair-loop below/above uses the same shape.
+#
+# FOUR values, and every arm is reachable on a real machine:
+#   subject absent        → _absent_subject_verdict (deletion vs package mode, decided by files[])
+#   anchor present        → run it. exit 10 is called out separately: several of these suites use it
+#                           for "I could not set myself up" (mktemp failure), which is not a lane
+#                           failure and must not be reported as one — it still sets fail, because a
+#                           harness that could not measure did not pass ([[not_found_is_not_zero]]).
+#   anchor absent+shipped → FAIL. Deletion or broken install, exactly like the block above.
+#   anchor absent+unshipped → SKIP, naming itself. Three anchors genuinely do not ship
+#                           (chamber_run · frontier_digest_retry · residency_closure), so for a
+#                           consumer this arm is the honest answer, not a dodge.
+#
+# Subject choice is the file whose behaviour the suite pins, so that deleting the subject routes to
+# "your install is broken" rather than to a green run of a test about nothing.
+# test_capability_entrypoint_shipping.sh pins two (degrade_probe_capability.sh and
+# psa_probe_capability.sh); degrade is named here as the sentinel — the suite itself checks both and
+# fails if either is gone, so nothing is lost by not listing both in this table.
+_LANE_TO=""; command -v timeout >/dev/null 2>&1 && _LANE_TO="timeout 300"
+for _pair in \
+  "scripts/degrade_probe_capability.sh|scripts/test_capability_entrypoint_shipping.sh" \
+  "scripts/chamber_run.sh|scripts/test_chamber_run_lanes.sh" \
+  "scripts/destructive_pre_gate.sh|scripts/test_destructive_pre_gate_lanes.sh" \
+  "scripts/env_purity_scan.sh|scripts/test_env_purity_lanes.sh" \
+  "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \
+  "scripts/frontier_digest_daily.sh|scripts/test_frontier_digest_retry.sh" \
+  "scripts/knowledge_seam_check.sh|scripts/test_knowledge_seam_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_marker_crossfamily_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_marker_floor_lanes.sh" \
+  "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \
+  "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
+  "scripts/stale_clone_guard.sh|scripts/test_stale_clone_guard_lanes.sh"
+do
+  _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
+  if [ ! -f "$_subj" ]; then
+    _absent_subject_verdict "$_lbl" "$_subj" || fail=1
+  elif [ -f "$_anc" ]; then
+    # `< /dev/null` and the timeout are not decoration: test_frontier_digest_retry.sh deliberately
+    # plants a `sleep 300` stub and asserts a 3s watchdog kills it. If that watchdog ever regresses
+    # — which is the single defect this suite exists to catch — an unguarded call does not go RED,
+    # it HANGS, and CI dies on a job timeout with the cause unattributable. The suite that detects
+    # a broken watchdog must not be able to inherit the hang. Same `command -v timeout` guard as the
+    # --self-test loop below, because `timeout` is GNU coreutils and stock macOS has neither it nor
+    # a substitute; without it `< /dev/null` is the whole defence and a suite that reads stdin ends
+    # immediately instead of waiting forever.
+    $_LANE_TO bash "$_anc" < /dev/null; _rc=$?
+    case "$_rc" in
+      0) ;;
+      # The suite could not MEASURE. Distinguished from "the lane failed" because the two send a
+      # reader to different places, and a bare fail=1 sends them to the wrong one. 10 = the suite's
+      # own setup failed (mktemp, used by several of these); 2 = its subject was missing when it
+      # looked (test_knowledge_seam_lanes.sh:7 FATALs this way); 126/127 = the anchor is not
+      # executable or not found at all, i.e. a broken install that reached this arm anyway.
+      # Every one of them still sets fail — a harness that could not measure did not pass — but it
+      # is LABELLED, so the next reader debugs the instrument instead of the lane.
+      # The first draft of this loop routed only 10 and let everything else fall into an unlabelled
+      # fail=1. That is the same "assumed impossible rather than routed" shape that the sibling
+      # commit in lane_runner_check.sh had just written a paragraph against; adversarial review
+      # caught the inconsistency between the two files.
+      10|2|126|127)
+        echo "HARNESS ERROR  $_lbl: the suite exited $_rc — it could not measure, so its verdicts"
+        echo "      prove nothing about $_subj. Not a lane failure, and not a pass either."
+        fail=1 ;;
+      *) fail=1 ;;
+    esac
+  elif _pkg_accepted_absent "$_anc"; then
+    # DECLARED legitimately unshipped — the single source for that answer, not a guess from the
+    # environment. The first draft printed "this package predates it", which is a WRONG DIAGNOSIS
+    # printed forever on every consumer machine: these anchors do not lag the package, they are
+    # deliberately not in it (their subjects do not ship either). A confident wrong reason in a
+    # verdict line is worse than no reason, because it is the line the next person greps.
+    echo "SKIP  $_lbl (declared legitimately unshipped — package_coverage_check.sh ACCEPTED_ABSENT)"
+  else
+    # Not present, and NOT declared absent — so either it should be here (deletion / broken
+    # install) or the declaration is stale. Routed through the same three-valued helper as the
+    # subject arm above, and for the identical reason: `elif _ships_per_files "$_anc"` was a
+    # BOOLEAN test over a THREE-valued function, so its exit 2 (package.json unreadable = UNKNOWN)
+    # fell through to a green SKIP. That is the lenient branch the helper's own comment forbids
+    # ("THE UNKNOWN ARM IS NOT A SKIP"), rebuilt twelve times in one loop, thirty lines under the
+    # helper that exists to prevent it. Found by adversarial review; I had written both.
+    _absent_subject_verdict "$_lbl (anchor)" "$_anc" || fail=1
+  fi
+done
+
 # embedded --self-test suites (compaction_probe · judgment_circuit_lint · novelty_claim_check).
 # These three carry their lanes INSIDE the script (`--self-test`) rather than in a sibling
 # test_*_lanes.sh, so the name-list wiring above skipped them silently: 48 lanes existed and ran
@@ -390,7 +491,16 @@ for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
     # 난다(실측: homebrew 없는 PATH 에서 3개 subject 전부). 소비자 머신에서 `npm test` 와
     # `prepublishOnly` 를 깨뜨리는 경로다. 정답 폼은 이미 레포에 있다(sync-from-be.sh:134).
     # 없으면 무한대기 방지를 잃는 대신 도는 쪽을 택한다 — `< /dev/null` 이 그 방어의 본체다.
-    local _to=""; command -v timeout >/dev/null 2>&1 && _to="timeout 120"
+    # `local` OUTSIDE A FUNCTION, which this loop is. bash prints
+    #   "selfcheck.sh: line N: local: can only be used in a function"
+    # on stderr, the assignment never happens, and `_to` stays empty — so the timeout this line
+    # exists to install was NEVER INSTALLED. The guard has been decoration since it was written;
+    # the comment above it describing what it protects against was true and unimplemented. Measured
+    # 2026-08-13: the error printed three times (once per subject) in a full run, and had been
+    # printing in every run before that, unread, because stderr scrolls past a 240-second check.
+    # ★ A guard that announces its own failure every single run is still a silent failure if
+    # nothing reads the announcement. Fixed by deleting one word.
+    _to=""; command -v timeout >/dev/null 2>&1 && _to="timeout 120"
     _st_out="$($_to bash "scripts/$_subj.sh" --self-test < /dev/null 2>&1)"; _st_rc=$?
     case "$_st_out" in
       *캘리브레이션*) : ;;
