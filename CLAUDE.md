@@ -254,9 +254,16 @@ into muscle memory and disarm it.
 > `required_pull_request_reviews` present with `enforce_admins: true` — not something
 > `required_status_checks` says anything about.
 > ⚠️ A *different* residual on `main` is still real and must not be folded into the one just
-> retracted: `required_status_checks.contexts` is `[]` — pushes are routed through PRs by the fields
-> just named, but **no check is required to be green** for one to merge (named again in the 4-axis
-> section below).
+> retracted — but the residual's own description was itself stale and needed correction on
+> 2026-08-12 (live re-check, `[[reference_github_protection_two_layers]]`): legacy
+> `required_status_checks.contexts` is **`["validate"]`**, not `[]` — a green `validate` check IS
+> required before a PR can merge, and `GET /rules/branches/main` carries no competing
+> `required_status_checks` rule, so the legacy field is the effective one here. `validate`
+> (`.github/workflows/validate.yml`) is a **separate job from Axis 1** (`regression-guard.yml`) —
+> Axis 1 is still not required, see the 4-axis section below. The gap on `validate` is
+> `strict: false`: that check re-runs on every push to the PR branch, but nothing re-forces it
+> against a **moving** main after it last ran — so a check that passed can still land behind
+> concurrent merges it never saw.
 
 ## Permission-Denial Guidance (When Auto-Mode Blocks an Action)
 
@@ -324,7 +331,7 @@ Every new `SKILL.md` must clear a **6-item bar** (role-duplication via `/asset-p
 
 **FH 자산을 수정하면**(SKILL.md · **SKILL_detail.md** · `.claude/rules/*.md` · `knowledge/shared/rules/*.md` · `templates/` · `CLAUDE.md` · substantive `knowledge/`·`docs/*.md` · `AGENTS.md` · **`scripts/**/*.sh`** · **에이전트 정의**(`plugins/*/agents/**/*.md` · `.claude/agents/**/*.md`)) **4축 검증 체인이 그 세션 첫 커밋 전에 자동 실행된다.** 사용자 요청 불요 — 제안이 아니라 의무 단계다.
 
-**기계층 — 무엇이 실제로 막는지 나눠서 말한다(2026-08-04 실측).** `git commit` 은 `templates/.git-hooks/pre-commit` 이 **하드 차단**한다: 축이 전부 PASS 할 때까지 커밋이 안 되고, 아래 상세가 로드되지 않아도 훅이 막는다 — 이 산문은 훅 위의 살리언스 층이지 유일 floor 가 아니다. 다만 **훅은 클라이언트측이고 `--no-verify` 로 우회된다**(§Integration branch 가 이미 그렇게 말한다 — 두 곳이 어긋나 보이던 것을 여기서 맞춘다). **그리고 서버측이 이걸 받쳐주지 않는다**: `main` 은 `enforce_admins: true` 로 **푸시 경로**(PR 경유)를 강제하지만 `required_status_checks.contexts` 가 **비어 있다** — Axis 1 워크플로가 매 PR 에서 돌긴 해도 **필수 체크가 아니라 빨간 채로도 머지가 된다.** 즉 서버가 강제하는 건 *어디로 들어오는가*지 *내용이 검증됐는가*가 아니다. Axes 2–3(마커)·Axis 4(매니페스트)는 그 파일들이 `tracks/**` 로 gitignored 라 CI 가 **구조적으로 볼 수조차 없다**. 정직한 표현은 "하드 차단"이 아니라 **"가용한 가장 강한 층"**이다. **미해결 잔여**: 필수 체크 0개 — 켜는 건 운영자 결정이다(막 flaky 레인을 하나 기록한 참이라, 과차단이 override 를 습관화시키는 쪽으로 기울 수 있다).
+**기계층 — 무엇이 실제로 막는지 나눠서 말한다(2026-08-04 실측).** `git commit` 은 `templates/.git-hooks/pre-commit` 이 **하드 차단**한다: 축이 전부 PASS 할 때까지 커밋이 안 되고, 아래 상세가 로드되지 않아도 훅이 막는다 — 이 산문은 훅 위의 살리언스 층이지 유일 floor 가 아니다. 다만 **훅은 클라이언트측이고 `--no-verify` 로 우회된다**(§Integration branch 가 이미 그렇게 말한다 — 두 곳이 어긋나 보이던 것을 여기서 맞춘다). **그리고 서버측 검증엔 남은 잔여가 있다(2026-08-12 재확인 — `contexts=[]` 서술은 stale, 정정됨)**: `main` 은 `enforce_admins: true` 로 **푸시 경로**(PR 경유)를 강제하고, legacy `required_status_checks.contexts` 는 **`["validate"]`** — `validate` 잡(`.github/workflows/validate.yml`, 메타데이터·`selfcheck.sh` 배선 레인)이 실제 **필수 체크**다. ⚠️ **`validate` 는 Axis 1 이 아니다** — Axis 1(`regression-guard.yml` → `templates/regression_guard.sh`)은 여전히 필수 체크가 **아니고**, 그 워크플로의 `paths:` 필터가 `SKILL.md`·`.claude/rules/*.md`·`CLAUDE.md`·`templates/*.md` 만 보므로 이 절이 4축 대상으로 나열한 `knowledge/shared/rules/*.md`·`docs/*.md`·`AGENTS.md`·`scripts/**/*.sh`·에이전트 정의·`SKILL_detail.md` 만 바뀐 PR 에는 **Axis 1 자체가 돌지도 않는다**. `validate` 쪽 남은 갭은 `strict: false`: 그 체크는 PR 브랜치에 푸시할 때마다 재실행되지만(오픈 시점 한정이 아니다), 그 뒤 main 이 움직여도 재검증을 강제하지 않으므로 **초록으로 남아 있는 체크가 실제로 병합되는 최신 트리를 본 적이 없을 수 있다.** 즉 서버가 강제하는 건 *체크가 초록인가*지 *그 체크가 지금의 main 을 봤는가*가 아니다. Axes 2–3(마커)·Axis 4(매니페스트)는 그 파일들이 `tracks/**` 로 gitignored 라 CI 가 **구조적으로 볼 수조차 없다**. 정직한 표현은 "하드 차단"이 아니라 **"가용한 가장 강한 층"**이다. **미해결 잔여**: `strict` 를 켜는 것도, Axis 1 을 필수 체크로 걸거나 그 `paths:` 를 넓히는 것도 운영자 결정이다(막 flaky 레인을 하나 기록한 참이라, 과차단이 override 를 습관화시키는 쪽으로 기울 수 있다).
 
 > **상세 정본**: `.claude/rules/fh_4axis_gate.md` — 4축 정의·마커 필수 필드·경량 예외·substantive carve-out·target-tier sim 게이트·Mode D 모델 공지·cross-family 보완. **`paths:` 로 *일부* FH 자산 경로에 스코핑돼 있어 그 파일들을 *읽을 때* 자동 로드된다 — 로드 조건이지 게이트 적용 범위가 아니다** (공식 트리거는 read — `code.claude.com/docs/en/memory.md` §Path-specific rules).
 > (2026-07-20 분리. **파일 char 실측**: 이 절 자체가 76,706자 중 **10,331자(13.5%)**로 단일 최대였다. 그 분리 + 같은 세션의 중복 3건 제거 + New-Skill 게이트 편입까지 **합산**해 파일은 **76,706 → 67,611 (순감 9,095자, 11.9%)** — 합산치이지 이 절 하나의 성과가 아니다 — 이건 파일 크기지 `/context` 상주 실측이 아니다(계기≠대상, [[feedback_resident_memory_measured_fresh_toplevel]]: 상주는 톱레벨 새 세션 `/context` 로만 잰다 — 미측정). 트리거가 *파일*이고 *기계 백스톱*이 있어 1순위 후보였다. 같은 이유로 **비가역 게이트 3종은 이동 불가** — 의도 트리거라 경로 스코핑하면 fail-open 이 된다.)
