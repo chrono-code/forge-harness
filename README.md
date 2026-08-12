@@ -56,6 +56,25 @@
 
 **Prerequisite**: Claude Code CLI — verify with `claude --version`
 
+<details><summary><b>Optional: one gate needs Python + PyYAML</b> — <code>npm test</code> is red without it</summary>
+
+The consent-registry gate parses YAML, and it **fails closed** when it cannot — correctly, since an
+unvalidated consent record must not read as a clean one. But that fail-closed turns the whole of
+`npm test` (and `prepublishOnly`) red on a machine without PyYAML, and until 2026-08-12 the
+requirement was written down **nowhere**:
+
+```bash
+python3 -m pip install --user pyyaml     # verify:  python3 -c 'import yaml; print(yaml.__version__)'
+```
+
+Why this is called out rather than left implicit: a release once shipped green from a session whose
+`python3` happened to resolve to an **unrelated project's virtualenv** that had PyYAML, while the
+machine's own `python3` did not. The gate was never bypassed — it passed, and the pass simply was not
+portable. Every verdict from that gate now prints the interpreter and PyYAML version it used, so a
+green states what produced it instead of leaving the reader to assume.
+
+</details>
+
 ```bash
 # 1. Install the plugin
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
