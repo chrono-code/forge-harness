@@ -140,6 +140,23 @@ engine was precisely that **an identity declaration is not a judgment circuit** 
 net loss; removing it recovered +0.67 on the weak tier). A one-word translation re-fuses exactly what the
 measurement separated.
 
+**Numbering rule — engines are named, never numbered.** Write `context-continuity`, not "engine ④".
+There is no canonical engine order: the table above reads *external-grounding · judgment-circuit ·
+ship-gate · context-continuity*, and the prose further down this same file reads *judgment-circuit ·
+ship-gate · context-continuity · external-grounding*. A number derived from one decodes to a different
+engine under the other — and the two candidates for "④" are **context-continuity and
+external-grounding**, which currently hold different grades, so the ambiguity is not cosmetic.
+The collision is worse than one file's internal disagreement: **the identities are numbered ①–⑤ and the
+engines are not numbered at all**, so a bare ① in any record is undecidable without its sentence. This
+file shows it — a paragraph enumerating engines sits four lines above `③⑤ are 🟢, ①②④ are 🔵 RC`,
+where those numerals mean *identities*.
+
+> **Legacy decode (do not delete — session records already use numbers).** Records written before
+> 2026-08-13 say 엔진 ①~④. They decode by the **engine table order above**:
+> ① external-grounding(물어보기) · ② judgment-circuit(영혼) · ③ ship-gate(품질게이트) ·
+> ④ context-continuity(맥락유지). That is the ordering those records were written under; it is
+> recorded here so they stay readable, **not** to make the numbering canonical. New writing uses names.
+
 **Why engines gate the advertised capabilities**: the harness's most-advertised surfaces — incubating a new
 project, orchestrating a multi-harness cluster — are simultaneously *long, autonomous, novel and shipping*.
 They therefore load all four engines at once, which is why a harness with a mature ship-gate and little
