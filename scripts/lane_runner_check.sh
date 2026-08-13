@@ -169,6 +169,89 @@ if [ -f scripts/selfcheck.sh ] && ! grep -qE '^[[:space:]]*(if !? ?)?bash script
   exit 1
 fi
 
+# ── ORG SEAM — a downstream org declares ITS OWN suites in ITS OWN file ───────────────────────
+# Why this exists (requested 2026-08-13 by a downstream org fork of this harness, with evidence):
+# EXEMPT and DEBT above are hardcoded arrays in a SHARED-LAYER file. A downstream fork carries
+# suites this repo has never heard of (`test_rest_push_lanes.sh`, `test_company_delta_lanes.sh` …),
+# and all three remedies this check offers land in files that fork does not own:
+#     wire into selfcheck.sh   → shared layer   · EXEMPT array → this file, shared layer
+#     DEBT array               → this file, shared layer
+# So the fork's only choices were "violate the sync boundary" or "live at rc=1 forever". Measured:
+# 5 such suites on their first run of this check. That is not a preference — a permanently red
+# check stops being read, and one of those five suites had just caught a real regression when it
+# was run by hand.
+#
+# Shape: OPTIONAL file, absent by default. This repo ships none, so the no-op arm is the arm that
+# runs here — verified by the known-pair in scripts/test_lane_runner_lanes.sh.
+#
+# 🟥 A MALFORMED FILE IS FAIL-CLOSED, a stale entry is advisory. Those are different failures:
+#   · cannot parse   → the instrument did not look. Reporting "no declarations" would render
+#                      UNMEASURED as ZERO, which is the exact family this repo keeps closing.
+#   · names a suite that no longer exists → hygiene, same as a stale DEBT entry above, so it warns
+#                      with the same voice. Making the downstream rule STRICTER than the upstream
+#                      one it mirrors would just train people to delete the file.
+ORG_DECL="company/lane_declarations.yaml"
+ORG_EXEMPT=(); ORG_DEBT=()
+if [ -f "$ORG_DECL" ]; then
+  _org_out=$(python3 - "$ORG_DECL" <<'ORGPY'
+import re, sys
+path = sys.argv[1]
+try:
+    txt = open(path, encoding='utf-8').read()
+except OSError as e:
+    print(f"ERR\tcannot read {path}: {e}"); sys.exit(0)
+sect = None; seen = {}
+for i, ln in enumerate(txt.splitlines(), 1):
+    s = ln.split('#', 1)[0].rstrip()
+    if not s.strip():
+        continue
+    m = re.match(r'^([A-Za-z_]+):\s*$', s)
+    if m:
+        sect = m.group(1)
+        if sect not in ('exempt', 'debt'):
+            print(f"ERR\t{path}:{i}: unknown section '{sect}' (expected 'exempt' or 'debt')")
+            sys.exit(0)
+        continue
+    m = re.match(r'^\s+-\s+(\S+)\s*$', s)
+    if m:
+        if sect is None:
+            print(f"ERR\t{path}:{i}: entry before any section header"); sys.exit(0)
+        name = m.group(1)
+        if name in seen and seen[name] != sect:
+            print(f"ERR\t{path}:{i}: '{name}' declared both exempt and debt — ambiguous")
+            sys.exit(0)
+        seen[name] = sect
+        print(f"{sect}\t{name}")
+        continue
+    print(f"ERR\t{path}:{i}: unparseable line: {s.strip()[:60]}")
+    sys.exit(0)
+ORGPY
+)
+  if printf '%s' "$_org_out" | grep -q '^ERR\t'; then
+    echo "FAIL  lane-runner: $ORG_DECL exists but could not be read as declarations —"
+    printf '%s' "$_org_out" | sed 's/^ERR\t/        /'
+    echo "      An unreadable declaration file is UNMEASURED, not empty. Fix the file or delete it."
+    exit 2
+  fi
+  while IFS=$'\t' read -r _k _v; do
+    [ -z "${_v:-}" ] && continue
+    case "$_k" in
+      exempt) ORG_EXEMPT+=("$_v") ;;
+      debt)   ORG_DEBT+=("$_v") ;;
+    esac
+  done <<< "$_org_out"
+  # Stale-entry warning, same voice as the DEBT hygiene warnings below.
+  for _n in "${ORG_EXEMPT[@]+"${ORG_EXEMPT[@]}"}" "${ORG_DEBT[@]+"${ORG_DEBT[@]}"}"; do
+    [ -f "scripts/$_n" ] || echo "⚠️  lane-runner: $ORG_DECL declares '$_n' but scripts/$_n does not exist (renamed/deleted?)"
+  done
+  # Visibility: an org-declared suite must never be indistinguishable from an upstream one. A
+  # reader who sees "0 debt" has to be able to tell whether that is this repo's zero or a fork's
+  # declaration absorbing its own list.
+  echo "      lane-runner: $ORG_DECL — ${#ORG_EXEMPT[@]} exempt · ${#ORG_DEBT[@]} debt (org-declared)"
+  EXEMPT+=("${ORG_EXEMPT[@]+"${ORG_EXEMPT[@]}"}")
+  DEBT+=("${ORG_DEBT[@]+"${ORG_DEBT[@]}"}")
+fi
+
 # `"${ARR[@]+"${ARR[@]}"}"` and not the plain `"${ARR[@]}"`: on bash 3.2 (stock macOS) `set -u`
 # treats an EMPTY array's expansion as an unbound variable and aborts. DEBT is now empty by design,
 # which is exactly the state the plain form cannot survive — measured here 2026-08-13, and it
