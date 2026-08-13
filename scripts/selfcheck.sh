@@ -1001,6 +1001,23 @@ if [ -f scripts/test_selfcheck_state_lanes.sh ]; then
   fi
 fi
 
+# test_lane_runner_lanes.sh — the checker that finds unrun suites had no suite of its own until
+# 2026-08-13. It guarded its own WIRING (it fails when selfcheck stops calling it) and nothing
+# measured its BEHAVIOUR — the shape it exists to catch, one level up. Wired in the same change
+# that ships it, for the reason the block above states: a suite landed unwired is the defect.
+if [ -f scripts/test_lane_runner_lanes.sh ]; then
+  if _out=$(bash scripts/test_lane_runner_lanes.sh 2>&1); then
+    echo "PASS  test_lane_runner_lanes.sh (org seam: no-op · suppression · fail-closed · controls)"
+  else
+    echo "FAIL  test_lane_runner_lanes.sh: the unrun-suite detector's own verdicts have drifted"
+    _show_failure "$_out"
+    fail=1
+  fi
+elif _ships_per_files "scripts/test_lane_runner_lanes.sh"; then
+  echo "FAIL  test_lane_runner_lanes.sh is DECLARED SHIPPED but absent — deletion or broken install"
+  fail=1
+fi
+
 # sync_from_be_lanes.sh — the RETURN path's anchor. Wired in the same change that ships it: the
 # script had an operator-side caller (a SessionStart hook outside this repo) while its 70 lanes had
 # NO caller anywhere, which is the shape this repo keeps re-finding — a transport that writes into
