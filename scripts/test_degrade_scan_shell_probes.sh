@@ -630,6 +630,37 @@ else
   bad "PY3 mixed-language markdown lost one language — shadows collide by name or the loop stops at the first hit"
 fi
 
+# ── SCOPE: the scanner must HONOR its arguments ────────────────────────────────────────────────
+# This is the contract templates/.git-hooks/pre-commit depends on since 2026-08-13. That hook used
+# to invoke this scanner with NO ARGUMENTS — walking the whole repository — and then discard almost
+# all of it through a `grep -Ff` over the staged load-bearing files it already had in hand.
+# Measured: whole-repo 42s / 260 lines vs one staged file 0s / 2 lines; a sibling harness measured
+# the same call at 2m07s inside a 7m54s–9m40s commit, one of which could not complete at all.
+# The lane exists because the FIX IS SILENTLY REVERSIBLE: if this scanner ever stops honoring its
+# arguments, the hook keeps working and simply becomes slow again — no verdict changes, nothing
+# goes red, and the only symptom is a commit people start bypassing with --no-verify. The same hook
+# carries the Destructive-Op gate, so a trained bypass disarms an irreversible-surface gate too.
+# BEHAVIOURAL, not shape: it asserts the OUTPUT is confined to the named file, which is the property
+# the hook relies on. A grep for "does the hook pass an argument" would pass on a scanner that
+# accepts arguments and ignores them.
+_scope_a="$TMP/scope_a.sh"; _scope_b="$TMP/scope_b.sh"
+printf '#!/usr/bin/env bash\ncheck() { probe || return 0; }\n' > "$_scope_a"
+printf '#!/usr/bin/env bash\nverify() { thing || exit 0; }\n' > "$_scope_b"
+out=$(bash "$SCAN" "$_scope_a" 2>&1)
+if printf '%s' "$out" | grep -q 'scope_a' && ! printf '%s' "$out" | grep -q 'scope_b'; then
+  ok "SCOPE1 a named target is scanned and a sibling file is NOT (the scanner honors argv)"
+else
+  bad "SCOPE1 scanner did not confine itself to the named target — the pre-commit scoping fix is void"
+fi
+# The negative arm: with no argument at all it must NOT confine itself to nothing. Without this,
+# a scanner that returned empty for every input would satisfy SCOPE1 and the lane would be theatre.
+out=$(bash "$SCAN" "$TMP" 2>&1)
+if printf '%s' "$out" | grep -q 'scope_a' && printf '%s' "$out" | grep -q 'scope_b'; then
+  ok "SCOPE2 control: given the containing directory it finds BOTH (it is not simply blind)"
+else
+  bad "SCOPE2 control failed — the scanner found neither file, so SCOPE1 proved nothing"
+fi
+
 echo "----"
 echo "degrade-scan shell probes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

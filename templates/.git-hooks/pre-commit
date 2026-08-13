@@ -1072,7 +1072,28 @@ if [ -n "$LOADBEARING" ]; then
   echo "[Gate] load-bearing change — degrade lint (advisory) + cross-family acknowledgment..."
   DDSCAN="$REPO_ROOT/scripts/degrade_direction_scan.sh"
   if [ -f "$DDSCAN" ]; then
-    _dd=$(bash "$DDSCAN" 2>/dev/null \
+    # SCOPE THE SCAN TO THE STAGED FILES. This used to call `bash "$DDSCAN"` with NO ARGUMENTS,
+    # which makes the scanner walk the WHOLE REPOSITORY recursively — and then the very next pipe
+    # threw almost all of it away, keeping only the lines naming files we already had in hand.
+    # Measured on this repo 2026-08-13: whole-repo 42s / 260 lines · one staged file 0s / 2 lines.
+    # A sibling harness measured the same call under load at 2m07s inside a commit that took
+    # 7m54s–9m40s, one of which hit a 10-minute tool ceiling and could not complete at all.
+    # ★ The structure was inverted: it held the target list, scanned everything, then filtered.
+    # WHY THIS IS WORSE THAN A SLOW CHECK: this lane declares itself ADVISORY (see the doctrine line
+    # above — FP-tolerant, never a solo block). So a lane that cannot block was consuming most of
+    # every load-bearing commit. That trains `--no-verify`, and the SAME hook carries the
+    # Destructive-Op gate — one learned bypass disarms an irreversible-surface gate too. CLAUDE.md
+    # warns repeatedly that over-blocking trains the override; over-DELAYING gets there just as well.
+    # Read into an array rather than relying on word-splitting: $LOADBEARING is newline-separated and
+    # an unquoted expansion would also split on spaces. `while read` and not `mapfile`, because
+    # mapfile does not exist on bash 3.2 (stock macOS), which this hook still has to run on.
+    _dd_targets=()
+    while IFS= read -r _p; do
+      [ -n "$_p" ] && _dd_targets+=("$_p")
+    done <<< "$LOADBEARING"
+    # The grep filter is KEPT even though the scan is now scoped: the scanner emits summary lines
+    # ("degrade-scan: N smell(s) …") that name no file, and those must not read as findings.
+    _dd=$(bash "$DDSCAN" "${_dd_targets[@]}" 2>/dev/null \
           | grep -Ff <(printf '%s\n' "$LOADBEARING") 2>/dev/null | head -5 || true)
     if [ -n "$_dd" ]; then
       echo "  ⚠️  degrade-direction smell(s) in the staged load-bearing files (advisory):"
