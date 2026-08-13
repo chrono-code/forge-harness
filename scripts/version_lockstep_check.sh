@@ -22,7 +22,7 @@ ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 command -v python3 >/dev/null 2>&1 || { echo "LOCKSTEP: HARNESS-ERROR — python3 unavailable"; exit 2; }
 
 python3 - "$ROOT" <<'PY'
-import json, sys, glob, os
+import json, sys, glob, os, re
 root = sys.argv[1]
 pkg_path = os.path.join(root, 'package.json')
 try:
@@ -68,6 +68,39 @@ for p in targets:
         checked += 1
         if got != want:
             drift.append(f"  {rel} :: {label} = {got}  (package.json = {want})")
+
+# ── CHANGELOG is a shipped version surface too, and it was outside this check ─────────────────
+# Measured 2026-08-13, by a peer session, AFTER 1.4.97 was already published: the four JSON
+# manifests all read 1.4.97 and plugins/fh-meta/CHANGELOG.md's newest entry was still [1.4.96].
+# So the tarball a consumer downloads carries a changelog with no entry for the version they just
+# installed — six merged PRs invisible on the record surface. This check reported PASS while that
+# was true, because its target list was "manifests carrying a JSON version field" rather than
+# "surfaces that state which version this is".
+# ★ That is the half-fix propagation boundary in its purest form: the version was updated
+# everywhere the CHECK looked, which is not the same set as everywhere it MATTERS.
+# Non-blocking is deliberate and narrow: a missing entry is a documentation gap, not a broken
+# package, and turning a publish red on prose would train the override this repo has already
+# measured people reaching for. It is LOUD, it names the file, and it is impossible to miss in the
+# publish output — which is what the JSON drift arms could not have been, since those genuinely
+# break installs.
+CHANGELOGS = sorted(glob.glob(os.path.join(root, 'plugins', '*', 'CHANGELOG.md')))
+for p in CHANGELOGS:
+    rel = os.path.relpath(p, root)
+    try:
+        txt = open(p, encoding='utf-8', errors='replace').read()
+    except OSError as e:
+        print(f"LOCKSTEP: HARNESS-ERROR — cannot read {rel}: {e}")
+        sys.exit(2)
+    # The heading form this repo uses: `### [x.y.z] — DATE`. Absence of ANY such heading means the
+    # extractor stopped matching the file's real shape — report that rather than a clean run.
+    heads = re.findall(r'^#+\s*\[(\d+\.\d+\.\d+)\]', txt, re.M)
+    if not heads:
+        print(f"LOCKSTEP: HARNESS-ERROR — {rel} has no `[x.y.z]` heading; the extractor is blind, "
+              f"which is not the same as the changelog being current")
+        sys.exit(2)
+    if want not in heads:
+        print(f"LOCKSTEP: ⚠️  {rel} has no entry for {want} (newest is {heads[0]}) — the published "
+              f"tarball would carry a changelog that does not mention the version it ships")
 
 if drift:
     print(f"LOCKSTEP: DRIFT — {len(drift)} of {checked} shipped version string(s) do not match package.json")
