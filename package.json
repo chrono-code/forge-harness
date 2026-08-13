@@ -66,6 +66,7 @@
     "scripts/selfcheck.sh",
     "scripts/version_lockstep_check.sh",
     "scripts/test_selfcheck_state_lanes.sh",
+    "scripts/test_lane_runner_lanes.sh",
     "scripts/test_version_lockstep_lanes.sh",
     "scripts/package_coverage_check.sh",
     "scripts/lane_runner_check.sh",
