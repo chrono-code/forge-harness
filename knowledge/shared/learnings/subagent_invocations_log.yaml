@@ -1942,3 +1942,37 @@
     ★**H1 규율 이행 확인**: innovator 가 벤더 마케팅 출처의 수치 2건(cross-family 검출률 +40~60% · 공유맥락 온보딩 -35~50%)을 SPECULATIVE 로 격리하고 **어느 제안에도 인용하지 않았다**. 대신 «우리 자체 증거가 더 강하다 — 약한 외부 숫자로 강한 내부 실측을 장식하지 마라»를 명시.
     🟥 **codex 발주 비용 관측**: diff + 산문 프롬프트 1회로 충분했다(오전 축의 7회 352KB 대비). 같은 클래스 결함을 같은 채널로 두 번 보내지 않은 것이 차이다.
     ⚠️ **goal-quench 미발화** — 사이드카 3회 미달(2회)이라 카드 K 의 트리거 조건(3회 초과)엔 안 걸렸다. 이건 규율 준수이지 갭이 아니다."
+
+- date: 2026-08-13
+  session: fh-engine4-compaction-guards + qasp 병렬축 (Opus 5 1M)
+  agents_summary: "4 dispatches: general-purpose×1 (qasp §5 계기 보정 — known-pair 전수, 별 체크아웃 qasp-dev) · fh-commons:quench-challenger×1 (Axis 2, compaction_probe diff) · codex gpt-5.5×1 (같은 diff cross-family, Bash 사이드카) · peer-session SendMessage×2 (재출하 축 파일경계 협상 — 디스패치 아님, 계수 제외)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "qasp 축 = 68%(미보정) 을 known-pair 로 보정해 **라우팅 정확도 2.9%(35 중 1)** 로 갈랐다. 신호어 21낱말 중 18 DEAD·1 LIVE(「누락」 혼자 −12) → **목록 튜닝 기대이득 ≈0** 을 실증해 무한달리기를 차단. 컨트롤 ⓑ(FN 16건) 없이 ⓐ만 했으면 한쪽만 쟀을 것 — FN 56%·팬텀 6건(도메인 무관 하드코딩 템플릿 발화)이 거기서 나왔다. 자기정정 2건 보고(자기 출처추적 프로브가 known-positive 를 놓친 것 포함). challenger = M5/R4, 그중 4건 채택 — **선행 0 타임스탬프가 `set -u` 아래 훅을 통째로 침묵시킨다**(불변식 파괴)와 **`>43200` 가지 무앵커**(가지 삭제해도 39쌍 초록)가 최상위. codex = ⓒ 미래 시각 음수 지목, 채택. 산출 = FH PR #359 + 동반 저장소의 계기-보정 핸드오프 1건(2026-08-13)."
+  notes: "★**신규 결함 3건이 전부 «내가 그 세션에 방금 쓴 코드»에 있었고 자력 적발 0.** 수리가 신규 결함의 주된 출처라는 기록된 패턴의 n+1 이다. 되돌림 프로브를 넣지 않았으면 그중 둘은 레인이 초록인 채 통과했다.
+    ★**되돌림 arm D 가 내 앵커 하나를 장식으로 지목했다** — `_age=0` 초기화는 `10#` 하에서 도달 불가라 지워도 47쌍 초록이었다. 지우는 대신 **레인 없음을 코드 주석에 명시**했다(있는 척하지 않기).
+    ★**두 계열이 겹친 지점은 하나뿐이다**(미래 시각). codex=산술/이식성 · 같은-계열=레인 커버리지/주장 정확도 — 탈상관 축이 실제로 달랐고, 한쪽만 돌렸으면 절반을 놓쳤다.
+    🟥 **challenger 가 내 Added-Scope 판단의 «근거»를 정확히 반증했다**(결론은 유지): 사후 귀속이 «불가능»한 게 아니라 `rm`→`mv` 한 줄이면 살아나고, 내가 든 기계화 임계 논거는 그 종류에 적용되는 게 아니었다. 결론(별건 분리)은 그대로 두고 근거만 정정했다.
+    ⚠️ **qasp 축의 자기신고 경계**: 손판정에 기계 앵커가 없어 「진짜 기획 문의 1건」은 자평이고, 정답키 대조(조건 ①)는 범위 밖이다. 경합 가설 2개(MTM ③ 부재 vs TC 자체 파손)를 안 갈랐다 — 그쪽이 스스로 적었다."
+
+- date: 2026-08-13
+  session: fh-reship-lane-debt-wiring (Opus 5 1M, 재출하 캠페인 축)
+  agents_summary: "2 dispatches: fh-meta:challenger×1 (Axis 2, DEBT-12 배선 델타 — diff + 주장 C1~C6 동봉) · codex gpt-5.5×1 (같은 델타 cross-family, Bash 사이드카). peer-session SendMessage×8 (소유 선언 6 + 통지 2 — 디스패치 아님, 계수 제외)"
+  dispatch_count: 2
+  outcome: accepted
+  evidence: "두 계열이 **상위 3건에서 독립 수렴**했다 — ⓐ 팬텀 4건(shipped selfcheck.sh 가 미출하 경로를 새로 참조 → package_coverage FAIL) ⓑ `--list-debt` 반쪽 픽스(bash 3.2 빈 배열, rc=1 재현) ⓒ anchor arm 이 `_ships_per_files` rc=2(UNKNOWN)를 SKIP 으로 접음. ★ challenger 는 **Bash 툴 없이 정적 추적만으로** ⓐ를 예측했고 실행이 그대로 재현했다(레포 selfcheck rc=1). ★ challenger 단독: S2 vendored git 트리 3스위트 거짓 FAIL(`git rev-parse --show-toplevel` 이 바깥 레포를 잡음) — **실측 재현 rc=1 → 수리 후 재측정** · M3 DEBT=0 의 분모가 이름 규약 한정(규약 밖 `--self-test` 4종 호출부 0, 전부 shipped) · M4 exit 2/126/127 무라벨. ★ codex 단독: 헤더 수치 11/8 vs 12/9 자기모순 · indirect-branch 바이패스를 **predicate 로 직접 재현**. 채택 = S1·S2·S3·M1·M2·M3·M4·M6·R1 (9건 수리) · R4 는 명명된 잔여 + 픽스처 고정(동작 유지)."
+  notes: "★**주장(C1~C6)을 diff 와 함께 보낸 것이 결정적이었다.** 반환된 판정이 「부분 반증 5 · 반증 1」로 주장별로 갈렸고, 그중 C2(「소비자 거짓 FAIL 없다」)는 **두 방향에서 다르게 틀렸다** — 소비자가 아니라 소스트리가 먼저 빨개졌고(S1), 소비자 쪽은 plain tarball 이 아니라 **vendored git 트리**에서 터졌다(S2). diff 만 보냈으면 「주장이 틀렸다」는 축이 구조적으로 비었을 것이다([[feedback_decorrelation_axis_is_what_you_send]] 의 이득 쪽 얼굴).
+    ★**두 계열의 겹침은 3건, 나머지는 안 겹쳤다.** challenger=실행환경/스코프 · codex=자기모순/predicate 재현. 탈상관 축이 실제로 달랐다.
+    🟥 **자력 적발 0.** 아홉 건 전부 남이 잡았다. 그중 M1 은 **같은 커밋이 20줄 아래에서 설명하는 바로 그 버그**를 세 번째 사이트에 남긴 것이고, S3 는 **그 fail-open 을 막으려고 만든 헬퍼 30줄 아래에서** 12번 재생산한 것이다. 둘 다 반쪽-픽스 전파경계.
+    ★**배선이 가정을 표면화한다** — S2 는 «배선 전엔 안 돌았으니 틀린 루트가 비용 0이었다». 죽은 레인을 살리는 것은 그 레인이 품은 모든 환경 가정을 처음으로 실행에 노출시키는 일이다.
+    ⚠️ **codex 와 내 tarball 실측이 갈렸다**: 내 plain-tarball 런은 `SELFCHECK: PASS`(rc=0), codex 의 런은 `test_ollama_panel_lanes.sh` 환경 실패로 FAIL. 이 델타 소관 아님(선재·환경 의존)이나 **편한 쪽을 고르지 않고 양쪽을 적는다** — flaky/환경의존 레인으로 잔여 등재."
+
+- date: 2026-08-13
+  session: fh-engine-four-grade-table (Opus 5 1M) — 같은 세션 후반, 위 엔트리의 후속
+  agents_summary: "3 dispatches: general-purpose×2 (엔진① external-grounding · 엔진② judgment-circuit 의 RC 3다리 실측 — 각각 동결 워크트리에서 격리) · codex gpt-5.5×1 (등급표 절 본문 cross-family)"
+  dispatch_count: 3
+  outcome: accepted
+  evidence: "엔진①② = 등급 판정의 **입력**을 격리로 뽑았다. 둘 다 동결 워크트리(bdb298e, 과녁 지문 대조 후 시작·clean 복원 확인)에서 돌았고, **되돌림 프로브를 각자 수행**했다 — ①: novelty 8/8 앵커 생존 ↔ digest_landing **4 arm 전부 무앵커**(자기참조 필터 제거가 진짜 미착지를 거짓 착지로 뒤집는 낙관 방향) + 호출부 0개 · ②: 15 arm 중 **5 무앵커**(pre-commit 블록 36줄·selfcheck 배선·등록부 파일을 통째로 지워도 7종 검사 rc=0) + **6단계 루프 중 기계 앵커 1/6** 을 정본 인용과 함께 계수. codex = 사다리 정의의 **실제 비일관 1건** 지목(🟢=실발화 n≥1 인데 ①이 실발화를 갖고도 🟡) → 「등급 = 실패한 가장 낮은 다리」 명시 규칙으로 반영 + 경계 2건. 산출 = PR #363."
+  notes: "★**세 디스패치 전부 내 판정을 바꿨다.** ①②는 내가 「self-test 초록이니 RC 급」으로 읽었을 자리에 무앵커 9건을 들이밀었고, codex 는 내가 못 본 정의 모순을 잡았다. 자력 적발 0.
+    ★**격리가 값을 한 지점이 명확하다** — 두 에이전트가 각각 자기 미측정 항목을 명시 라벨했고(①: launchd 실설치는 트리 밖이라 구조적 측정 불가 · ②: selfcheck 완주 미실행, W2 판정은 소스 근거이지 CI 재현 아님), 그 라벨 덕에 내가 그 칸을 «0»으로 렌더하지 않았다.
+    🟥 **계수 불일치를 정직하게 적는다**: `session_close_check` ④-e 훅은 오늘 **8 dispatch** 를 셌고, 내 두 엔트리 합은 **6**(위 3 + 여기 3)이다. 차 2건을 귀속하지 못했다 — 훅은 총계만 tally 하고 어떤 spawn 인지 남기지 않아 사후 대조가 불가능하다. **미상 2건으로 남긴다.** (재시도·백그라운드 Bash 가 세어졌을 가능성이 유력하나 미검증이고, 그 추정으로 숫자를 맞추는 것이 이 로그가 막으려는 형태다.)"

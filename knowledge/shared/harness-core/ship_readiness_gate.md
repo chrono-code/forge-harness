@@ -168,6 +168,101 @@ else appears to fail *at* those surfaces while the cause is underneath them.
 > what is known. (The counterweight matters here: a mapping that looks tidy is the easiest thing to start
 > citing as a finding.)
 
+### Engine status (2026-08-13) — the first *measured* grades
+
+These grade the **engines themselves**, on the same ladder as the identities (🔵 RC = implemented ∧
+known-pair-calibrated ∧ its own self-test green · 🟢 = a real-situation firing artifact, n≥1). They were
+**measured, not composed**: every leg-2 verdict comes from a **revert probe** — disable the mechanism,
+re-run the suite, check that *exactly* the matching lane reddens — because a green suite is not evidence
+that the suite measures the thing. **What a revert probe proves is lane discrimination** — that a
+given branch has a lane which notices its removal. It does **not** prove that the engine's whole
+instrument surface is covered; those are different claims, and ship-gate below is the row where
+they visibly diverge. That method earned its place the same day: **three of the four engines
+had at least one live branch that survived deletion with every lane still green.**
+
+**Grade = the LOWEST leg that fails, never the highest leg reached.** A real-situation firing does
+not lift a row whose leg 1 or leg 2 is broken. external-grounding below is exactly that case — it
+*has* a genuine firing artifact and is still 🟡, because the layer that supervises the firing sits
+under the RC bar. Reading the ladder as "highest leg wins" inverts every row in this table.
+(Named by the cross-family reviewer as the one real inconsistency in the first draft, which stated
+🟢 = firing n≥1 without saying that the lower legs still gate it.)
+
+⚠️ **These are not identity grades, and they do not upgrade the mapping.** The identity↔engine column
+above remains the unverified hypothesis it declares itself to be. An engine grade says what the harness
+*can do*; it says nothing about which identity that unlocks.
+
+| Engine | Grade | Leg 1 — implemented ∧ wired | Leg 2 — known-pair, revert-probed | Leg 3 — self-test | 🟢 real firing |
+|---|---|---|---|---|---|
+| **ship-gate** (품질게이트) | 🟢 **GREEN** | pre-commit + pre-push, `core.hooksPath` verified live | ✅ 37 cross-family fixtures · 30 branch-claim · marker-floor. **2 revert arms, each reddening only its own lane** (neutering the degrade-grounds check surfaced `'client error'` passing on the substring `cli`; restoring the `single-family` free exit surfaced two more) | ✅ 3 suites `rc=0` | ✅ **twice in one session (2026-08-13)** — a commit blocked as `🚫 BLOCKED — resolve failing axes`, and a branch-claim block that stopped a commit from landing on a **peer session's branch** in a shared checkout |
+| **context-continuity** (맥락유지) | 🔵 **RC** | `compaction_probe` (PreCompact + UserPromptSubmit; snippet ships and `install-wizard` merges it by glob, not by name) · `session_close_check` (pre-push) · `digest_landing_check` · `utterance_landing_check` | ✅ 47 pairs after the 2026-08-13 fix, **4 revert arms**; session axis probed separately (deleting the card-last *verdict* — not its message — reddens its lane) | ✅ 47 · 10 · 8 · 8/8, all `rc=0` | ❌ **withheld, and the reason is the interesting part** — see below |
+| **external-grounding** (물어보기) | 🟡 **PARTIAL** | `novelty_claim_check` wired (pre-commit + selfcheck) but **advisory, non-blocking** · `digest_landing_check` has **zero callers** · the daily digest launcher ships a **placeholder path** in its plist | ⚠️ split: novelty **8/8 arms anchored**; landing-check has **4 live branches that survive deletion**, one of which flips a genuine *miss* into a false *landed* | ✅ novelty 13 pairs · landing 10 lanes — but the latter only runs when a human types it | ✅ **exists** — 5 `frontier-auto:` commits (2026-06-22 → 07-28); one hand-verified, it labelled an unreachable source `UNCALIBRATED` instead of asserting through it |
+| **judgment-circuit** (영혼) | 🔴 | ⚠️ the lint + registry exist and are wired, but the engine is a **6-step loop and only step ③ has a mechanical anchor (1/6)** | ⚠️ known-positive/negative both present; **5 arms unanchored**, including deleting the pre-commit block, the selfcheck wiring, and the registry file — none reddens anything | ✅ `rc=0`, 15 pairs | ❌ not found in this repo's tracked history (controls run) |
+
+**Why ④ is held at RC rather than promoted.** Its three RC legs stand. The 🟢 leg is withheld for two
+reasons that point the same way: (a) **the instrument that would evidence it is disproven** — the scoring
+leg greps the transcript, and the transcript preserves history across a compaction, so that scorer reports
+zero loss forever (fail-open); the isolated scorer that could answer *"can the model still answer?"* is
+unbuilt; and (b) the one observed pre-fix real firing **delivered a false ledger** — a 5-day-old seal
+announced as "the compaction just before this one," which misled the session that then fixed it. After the
+fix the same path prints an honest *"cannot tell"*. Honest inability is not preserved continuity. **An
+engine whose own measuring instrument is refuted cannot be promoted by argument.**
+
+**What the four measurements found in common — one root, three engines.** The wiring of an anchor whose
+lanes live *inside* the script (`--self-test`) is **structurally invisible to the repo's wiring checker**,
+whose scope is the filename patterns `scripts/test_*.sh` / `*_lanes.sh`. So a caller line can be deleted
+and nothing reddens: measured on the judgment-circuit lint (removing its pre-commit block, its selfcheck
+entry, or its registry file each left seven checks green) and structurally true of the landing checker,
+which has no caller at all. This is one rung above the debt the checker was built for: it catches *"a lane
+that never runs"*, not *"a lane that runs, whose caller can vanish unnoticed."* Sharper still — the
+selfcheck comment that closed this class on 2026-08-08 did so with a **hardcoded three-name list**, and the
+landing checker was born the next day outside it. **A repair that enumerates instead of deriving reopens
+itself on the next addition.**
+
+**What blocks the next rung, per engine** — cheapest first, and none of it is a rewrite:
+
+```
+② judgment-circuit  ①②(interview · form-forcing) have ZERO mechanism; ④'s mechanism exists and is
+    🔴 → 🟡        simply not wired to this loop; the registry holds ONE entry (this repo's own
+                    CLAUDE.md), so the instrument has no corpus to measure. Note the instrument
+                    measures the PRESENCE of a declared form, never whether a circuit is real —
+                    its own header says a "default to PASS" direction still earns credit.
+① external-grounding  wire the landing checker (zero callers today), and anchor its four surviving
+    🟡 → 🔵         branches — especially the self-reference filter, whose removal turns a real miss
+                    into a false landing (optimistic direction).
+④ context-continuity  build the isolated scorer. Nothing else moves this row: the question
+    🔵 → 🟢         "was the thread preserved?" has no instrument, and a firing without one is an
+                    anecdote either way.
+③ ship-gate         already 🟢. The open work is not promotion but scope: its own axis-1 job is
+    🟢              still not a required server-side check.
+```
+
+**A 🟢 engine can still hold an instrument with a silent hole — say so rather than letting the grade
+cover it.** This measurement's leg-2 probe for ship-gate covered the marker and branch-claim lanes, not
+every instrument the engine owns. A parallel axis measured, the same day, that one of the others — the
+package-coverage checker — was dropping **every `.json` reference** through an alternation-order bug
+(`js` matching before `json` in a leftmost-first alternation, leaving a path that then fails an existence
+test and is discarded in silence). That checker had never seen a JSON reference in the shipped docs;
+repairing it surfaced three immediately — one of them a **consumer-facing defect**: a shipped
+document instructs the user to copy a settings file that was not in the package at all. That is
+the very class this checker exists for, and its own regex kept it invisible. The engine grade is unchanged — it is earned by blocks that
+actually fired — but *grade* and *instrument coverage* are different claims and must not be read off
+one another.
+
+**And one failure mode this measurement did not anticipate, found the same day by a parallel axis.**
+`npm publish` packs the **working tree, not the commit**. In a checkout shared by several concurrent
+sessions, the session that publishes therefore ships every *other* session's uncommitted draft. It was
+caught here by the pre-publish scan, not by anyone's care — an operator-private token sitting in an
+uncommitted line of a shipped file. The shared-checkout hazard is usually stated as *"my git operation
+moves your working surface"*, which is recoverable; this is the same hazard reaching an **irreversible**
+surface. The fix is not "remove the token" but **publish from a clean tree at a committed state**.
+
+**Named residuals of this measurement.** The registry/launcher state of *other* installs was not measured
+(one machine, one tree). The daily launcher's real installation lives outside any git tree, so its liveness
+is **UNMEASURED, not zero**. The judgment-circuit loop's canonical 6-step definition **does not exist in
+this repository's public knowledge layer** (grep: 0 hits, control positive) — it lives in operator-private
+notes, which is itself part of why five of its six steps have nothing here to anchor. And every arm ran
+`reps=1`; the scripts are deterministic, but the convention is `reps≥3`.
+
 ## FH's own status (2026-07-14) — NOT yet all-green
 
 Engine column added 2026-08-08 (mapping is the unverified hypothesis flagged above; Status column is
