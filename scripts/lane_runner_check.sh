@@ -227,9 +227,16 @@ for i, ln in enumerate(txt.splitlines(), 1):
     sys.exit(0)
 ORGPY
 )
-  if printf '%s' "$_org_out" | grep -q '^ERR\t'; then
+  # `grep -q '^ERR'` — NOT `'^ERR\t'`. In a POSIX BRE, GNU grep reads `\t` as a literal `t`
+  # (so the pattern becomes `^ERRt` and matches nothing) while BSD grep on macOS takes it as a tab.
+  # Measured 2026-08-13: this exact line passed all 11 lanes locally and failed L6/L7/L8 in CI —
+  # the fail-closed arm was silently dead on Linux, which is the platform that gates merges.
+  # Same family as the `"$DDSCAN" "` anchor divergence a sibling harness measured the same day:
+  # a regex that means different things on the two greps is an instrument, and an instrument that
+  # answers differently per platform has not measured anything.
+  if printf '%s' "$_org_out" | grep -q '^ERR'; then
     echo "FAIL  lane-runner: $ORG_DECL exists but could not be read as declarations —"
-    printf '%s' "$_org_out" | sed 's/^ERR\t/        /'
+    printf '%s' "$_org_out" | sed 's/^ERR[[:space:]]*/        /'
     echo "      An unreadable declaration file is UNMEASURED, not empty. Fix the file or delete it."
     exit 2
   fi
