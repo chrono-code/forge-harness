@@ -10,6 +10,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [1.4.97] — 2026-08-13
+
+**fix: 죽어 있던 게이트 캘리브레이션 배선 · 참조를 「선언」이 아니라 「실제 tarball」과 대조**
+
+- **아무 데서도 실행되지 않던 레인 스위트를 배선했다** (PR #360). 실측: `scripts/` 의 43개 스위트
+  중 12개가 selfcheck·git 훅·CI 어디서도 안 돌았고, **그중 9개는 이 패키지에 실린다** — 소비자가
+  받아 놓고 아무것도 부르지 않던 테스트 9종이다. 가장 아픈 둘은 **커밋을 하드 차단하는 게이트의
+  캘리브레이션**이었다(`test_marker_crossfamily_lanes.sh` · `test_marker_floor_lanes.sh`).
+  진척 지표 **DEBT 12 → 2**. 남은 2건은 「돌면 진다, 사유는 머신 전제」로 사유가 측정돼 있다.
+- **vendored git 트리에서의 거짓 FAIL 을 닫았다** — 세 스위트가 `git rev-parse --show-toplevel`
+  로 루트를 잡아, 설치 후 `git init` 한 트리나 node_modules 를 커밋하는 모노레포에서 **바깥 레포**
+  를 보고 HARNESS-ERROR 를 냈다. 스크립트 상대경로로 수리.
+- **`package_coverage_check.sh --vs-tarball`** (PR #361) — 참조 대조의 오라클을 `package.json`
+  `files[]`(**선언**)에서 `npm pack --dry-run --json`(**실제 출하 파일셋**)으로 바꾸는 모드.
+  npm 부재·비영 종료·파싱 실패 시 **fail-closed**(rc=2 UNMEASURED, 약한 오라클로 폴백하지 않는다).
+  `prepublishOnly` 에 배선됐다.
+- **참조 추출기가 `.json` 을 못 보고 있었다** — 정규식 교대가 leftmost-first 라 `.js` 가 `.json`
+  안에서 먼저 물렸고, 모든 JSON 참조가 존재하지 않는 경로로 잘려 조용히 버려졌다. 수리 후 즉시
+  드러난 것 하나가 **소비자-대면 결함**이다: `templates/goal-quench-hook-setup.md` 가
+  `cp templates/goal-quench-settings-merged.json .claude/settings.json` 을 지시하는데 **그 JSON 이
+  패키지에 없었다.** 이제 실린다.
+- **`selfcheck.sh` 의 timeout 가드가 한 번도 설치된 적이 없었다** — `local` 이 함수 밖에 있어
+  bash 가 대입을 거부했고, 매 실행 stderr 로 자기 실패를 알렸으나 아무도 읽지 않았다. 수리.
+
 ### [1.4.96] — 2026-08-12
 
 **fix: 전수 재출하 캠페인 — 「돌았다고 보고하는데 안 도는」 계기들 · 선언이 무효였던 에이전트**
