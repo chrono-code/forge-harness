@@ -260,6 +260,18 @@ Distinguish the **unavailable-but-wanted** case (consent given, panel down → `
 **pmh-repo-local and unreadable from an FH session**, so on this side the typed value + ack is the
 enforceable layer) from the **declined** case above (chosen floor, first-class, no degrade framing).
 
+**Step 6.5 — Standpoint axis (2026-08-14, orthogonal to the family ladder above)**: for a
+**shared-body / cross-harness-boundary** change (code this dispatch's own subject touches that a
+*different* harness reads, executes, or depends on), also emit `standpoint:` alongside
+`crossfamily:` in the same marker — recruiting family diversity here does not substitute for it.
+Values: `tier1` (content-only, the default) · `tier2(<harness>)` (peer-simulated — ran the
+target's own repo) · `tier3(<harness>)` (the target harness's own operator ran it) ·
+`not-applicable` (no target-harness standpoint exists — most same-repo dispatches) ·
+`DEGRADED_NO_TARGET_ACCESS` / `DEGRADED_NOT_RUN` / `UNKNOWN` (own literals, not crossfamily's).
+**Prose-only** — no hook or fixture validates this field yet, unlike `crossfamily:`. Full field
+spec, trigger scope, and evidence: `knowledge/shared/harness-core/field_verdict_crossfamily_gate.md
+§7`.
+
 ## Step 7 — Output
 
 Sidecar findings → existing synthesizer / Axes 2-3 marker. **Marker honesty (M-3)**: record

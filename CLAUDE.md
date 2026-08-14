@@ -382,11 +382,27 @@ times and any decorrelation verdict **4** times. **Residency**: sanitize company
 pipeline**, not an afterthought, and a below-floor orchestrator RUNS the review by default
 (run-first, ask-last — `sonnet_floor_doctrine.md`).
 
+**Standpoint axis (2026-08-14, orthogonal to family — §7 of the detail doc)**: family diversity
+raises resolution *within* one standpoint (the author's own repo, the author's own reading of a
+target's rules); it does not decorrelate the review's ground-truth source. For a **shared-body /
+cross-harness-boundary** change (code authored in one harness that another harness reads, executes,
+or depends on for its interaction contract), the marker additionally carries `standpoint:` — a
+closed enum (`tier1` content-only · `tier2(<harness>)` peer-simulated, ran the target's own repo ·
+`tier3(<harness>)` the target harness's own operator ran it · `not-applicable` · degrade triad
+`DEGRADED_NO_TARGET_ACCESS` could-not / `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same
+shape as `crossfamily:`'s triad, **distinct literal values**, do not reuse crossfamily's tokens).
+**Prose-only today** — unlike `crossfamily:`, no pre-commit hook or fixture suite validates this
+field yet; mechanize on the first recorded false value, not before. Four independent instances
+(forge-harness PR #368, pmh-dev mate PR #8 reps=3, qasp-dev PR #161, mate PR #8 known-answer trial)
+crossed this repo's own evidence bar the same day this was formalized — including one caught by
+this session's own qasp PR #161 review, not fed in externally.
+
 > **Detail**: See `knowledge/shared/harness-core/field_verdict_crossfamily_gate.md` — the discretion
 > principle, the four-faces failure signature, why same-family review misses it, the full gate
 > mechanics, the n=7 qasp field evidence incl. the **9 default-toward-PASS holes across 3 harnesses**
-> (2026-07-03), the named under-trigger residuals, and autonomous-loop baking — read when applying
-> or auditing this gate.
+> (2026-07-03), the named under-trigger residuals, autonomous-loop baking, and **§7 the standpoint
+> axis** (field spec, trigger scope, relationship to the core/extended verification axis, evidence
+> table) — read when applying or auditing this gate.
 
 ## Field-Harness Diagnostic — "진단해줘 / 개선해줘" on a mapped project (compose → rank → HITL)
 
