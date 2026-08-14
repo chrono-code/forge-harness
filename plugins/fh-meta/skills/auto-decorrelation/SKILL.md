@@ -260,6 +260,29 @@ Distinguish the **unavailable-but-wanted** case (consent given, panel down → `
 **pmh-repo-local and unreadable from an FH session**, so on this side the typed value + ack is the
 enforceable layer) from the **declined** case above (chosen floor, first-class, no degrade framing).
 
+**Step 6.5 — Standpoint axis (2026-08-14, orthogonal to the family ladder above)**: for a
+**shared-body / cross-harness-boundary** change — scoped by *effect* (alters another harness's
+behavior, gate outcome, or interaction contract), not merely by touching a synced file path — also
+emit `standpoint:` alongside `crossfamily:` in the same marker — recruiting family diversity here
+does not substitute for it. Values: `tier1` (content-only, the default) · `tier2(<harness>)`
+(peer-simulated — ran the target's own repo, content only) · `tier2b(<harness>)` (same operator,
+target's real runtime — local wiring visible, but not an independent reviewer) · `tier3(<harness>)`
+(a *different* operator of the target harness ran it — the only fully independent + local-wiring
+rung) · `not-applicable` (no target-harness standpoint exists — most same-repo dispatches) ·
+`DEGRADED_NO_TARGET_ACCESS` / `DEGRADED_NOT_RUN` / `UNKNOWN` (own literals, not crossfamily's). Note
+the naming collision with this session's own persona/viewpoint sense of "standpoint" (the `beginner`/
+`main-player`/`expert` agent roster) — different axis, same English word; do not conflate.
+**Prose-only** — no hook or fixture validates this field yet, unlike `crossfamily:`, and
+mechanizing it is FH's own job (a syncing sibling harness cannot add the check locally without its
+own sync process rejecting the divergence). Full field spec, trigger scope, and evidence:
+`knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §7`.
+
+**Done When** (Step 6.5): `standpoint:` is emitted whenever the change is a shared-body/
+cross-harness-boundary change by the effect-based trigger above; `not-applicable` carries grounds
+on the same line naming what was checked *[judged — no mechanical anchor today; adversarial
+pairing: a reviewer/challenger may request the grounds be named in the PR capsule and reject a bare
+`not-applicable`]*.
+
 ## Step 7 — Output
 
 Sidecar findings → existing synthesizer / Axes 2-3 marker. **Marker honesty (M-3)**: record
