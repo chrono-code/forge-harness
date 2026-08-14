@@ -36,6 +36,8 @@ cd "$REPO_ROOT" || exit 1
 #        a file of that name to exercise the LOW allowlist — not a pointer to this file at all.)
 #   scripts/sync_guard_check.sh             — anchor for that same operator-private mirror sync;
 #       no shipped hook invokes it.
+#   scripts/sync_to_be_lanes.sh             — forward-path lane suite for sync-to-be.sh, itself
+#       ACCEPTED_ABSENT above; added 2026-08-14, pmh-dev#69.
 ACCEPTED_ABSENT=(
   ".claude/registry/LOCAL_SKILL_REGISTRY.md"
   # An INSTALL DESTINATION the user creates (`cp templates/local_fh_context.md
@@ -57,6 +59,10 @@ ACCEPTED_ABSENT=(
   # anchor but guards on the subject's presence, so package mode SKIPs rather than falling through.
   "scripts/sync-from-be.sh"
   "scripts/sync_from_be_lanes.sh"
+  # Forward path's own lane suite (added 2026-08-14, pmh-dev#69). Same reason as its return-path
+  # sibling directly above: it exercises scripts/sync-to-be.sh, itself ACCEPTED_ABSENT — a lane
+  # suite for a script that never ships has nothing to verify on a consumer's machine either.
+  "scripts/sync_to_be_lanes.sh"
   # ── The three lane suites selfcheck.sh's DEBT-12 pair-loop names but does not ship ────────────
   # Added 2026-08-13, and the way they got here is the point: this check CAUGHT them. Before that
   # loop existed, these names lived in lane_runner_check.sh's DEBT array as bare basenames

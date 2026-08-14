@@ -183,7 +183,14 @@ DIRTY=0   # cp-fallback mode can't count cheaply → mark work done, let git-dif
 # `.fh_node_state` 는 **기계 고유** 상태다(노드 id·마지막 세션 시각·그 노드가 본 HEAD).
 # 컴패니언 스토어로 흘려보내면 노드마다 값이 엇갈려, 역방향 sync 가 생기는 순간 NODE_ID 가
 # 번갈아 뒤집히며 모든 세션에서 재점검 배너가 뜬다(cross-family 리뷰 2026-07-30, 전방 투기적).
-SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/' '.fh_node_state')
+# `.close_stamps_<date>` 도 같은 이유로 여기 합류한다(pmh-dev#69 리뷰가 잡은 A2) — 처음엔
+# merge=union 대상으로 분류했었는데, session_close_check.sh 가 이 파일을 **로컬 카운트**로
+# 읽는다(grep -c . → "오늘 몇 번 닫았나"). union 은 정확히 그 소비 패턴과 충돌한다: 되돌아오는
+# pull_dir 경로가 이 파일을 배제 목록에 안 넣었더니, 두 노드가 같은 날 각자 한 번씩 닫아도
+# 합집합이 내려와 "2번 닫음"으로 잘못 세고, session_close_check.sh 가 불필요한 재작업을
+# 지시한다 — 흔한 케이스가 흔하게 오탐한다는 뜻. 이 파일은 크로스머신 소비자가 아예 없으므로
+# (기계고유 카운터), .fh_node_state 처럼 통째로 sync 대상에서 뺀다 — 머신 스코프조차 불필요.
+SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/' '.fh_node_state' '.close_stamps_*')
 
 NEWER_HITS=""
 
@@ -231,7 +238,7 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
     # array-expanded safely here, so they are duplicated — the one place this file tolerates it.
     # Changing SYNC_EXCLUDES without changing this line reopens the false-abort/false-pass gap;
     # scripts/sync_guard_check.sh asserts the two stay equivalent.
-  done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -name '.fh_node_state' ! -path '*/logs/*' 2>/dev/null)
+  done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -name '.fh_node_state' ! -name '.close_stamps_*' ! -path '*/logs/*' 2>/dev/null)
 }
 
 # ── Mirror banner (salience layer over the guard above) ───────────────────────
@@ -346,7 +353,7 @@ sync_dir() {
   else
     # rsync absent (default Windows git-bash): tar-pipe mirror with the same excludes,
     # no --delete (append-only). Source is canonical, so overwriting be's copy is correct.
-    if ( cd "$src" && tar cf - --exclude='.gitkeep' --exclude='*.marker' --exclude='.fh_node_state' --exclude='logs' . ) \
+    if ( cd "$src" && tar cf - --exclude='.gitkeep' --exclude='*.marker' --exclude='.fh_node_state' --exclude='.close_stamps_*' --exclude='logs' . ) \
          | ( cd "$dst" && tar xf - ); then
       DIRTY=1; log "mirrored (cp mode) → $dst"; stamp_banner "$dst" "$src"
     else
@@ -400,13 +407,18 @@ sync_file() {
 
 # ── Machine-scoped files ──────────────────────────────────────────────────────
 # Most of what we mirror is machine-AGNOSTIC (signals, audits, memory topic files: every
-# machine writes the same content, and append-only rsync merges them harmlessly). Two files
-# are NOT: each hub clone keeps its OWN edit_manifest.yaml and its OWN memory index, because
-# they describe THAT machine's local state. Mirroring them to one shared path makes every
-# machine silently overwrite the others' backup — measured 2026-07-15: three machines synced
-# the same day and fh-be's manifest ended up 135 entries (one machine) while another held 175,
-# with no file actually lost but the backup rendered ambiguous. So these two are keyed by
-# machine. The session CARD is deliberately NOT keyed — it is the shared cross-machine handoff
+# machine writes the same content, and append-only rsync merges them harmlessly). Three files
+# are NOT: each hub clone keeps its OWN edit_manifest.yaml, its OWN memory index, and its OWN
+# `.substrate_versions` (installed tool versions — added 2026-08-14, pmh-dev#69), because they
+# describe THAT machine's local state. Mirroring them to one shared path makes every machine
+# silently overwrite the others' record — measured 2026-07-15 for the manifest (three machines
+# synced the same day and fh-be's manifest ended up 135 entries on one machine, 175 on another,
+# no file actually lost but the backup rendered ambiguous) and separately for `.substrate_versions`
+# on pmh-dev#69 (two nodes, silent auto-merge, one node's record overwritten with the other's — see
+# the copy block below). So these three are keyed by machine. `.close_stamps_<date>` joins
+# `.fh_node_state` in being excluded from this sync ENTIRELY instead (SYNC_EXCLUDES above) — it is
+# also machine-scoped in nature, but has no companion-store consumer at all, so there is nothing to
+# key. The session CARD is deliberately NOT keyed — it is the shared cross-machine handoff
 # ("next session = <machine>"); splitting it would kill the function it exists for.
 #
 # FH_MACHINE_ID: set it in your local env to name the machine. Default = a short digest of the
@@ -422,13 +434,39 @@ machine_id() {
 MID="$(machine_id)"
 [ -n "$MID" ] || MID="unknown"
 
+# One-time migration reap, BEFORE sync_dir runs: a companion store from before this fix may still
+# hold an unscoped `.substrate_versions` from a PEER machine (pmh-dev#69's actual pre-fix state).
+# sync_dir's destination-newer guard (check_dest_newer, above) walks tracks/_meta BEFORE rsync and
+# would see that stale peer copy as differing content newer than this node's own file (rebase-stamp
+# mtime) — and ABORT THE ENTIRE tracks/_meta SYNC, not just this one file, with a "move the edit
+# back to canonical" remedy that is actively wrong for machine-fact content (it would tell you to
+# copy a peer's tool versions into your own record). Reaping it first means the guard never sees it;
+# nothing is lost — every machine's content is already in companion git history. One-shot: after the
+# first post-fix sync on every node, no stale unscoped copy remains to reap (pmh-dev#69 review, A1).
+rm -f "$BE/$TM/.substrate_versions"
 sync_dir  "$FH/tracks/_meta"      "$BE/$TM"
-# ...then re-home the two machine-scoped files out of the shared namespace.
+# ...then re-home the machine-scoped files out of the shared namespace.
 if [ -f "$FH/tracks/_meta/edit_manifest.yaml" ]; then
   mkdir -p "$BE/$TM/manifests"
   cp "$FH/tracks/_meta/edit_manifest.yaml" "$BE/$TM/manifests/$MID.yaml" \
     && log "manifest → $TM/manifests/$MID.yaml (machine-scoped)"
   rm -f "$BE/$TM/edit_manifest.yaml"   # shared copy retired; history keeps every machine's
+fi
+# `.substrate_versions` is machine-fact content (installed tool versions), not shared state — the
+# same reason `.fh_node_state` above is excluded from this sync entirely, except this file legitimately
+# needs a companion-store record (per-machine substrate drift is worth seeing across the hub), so it
+# gets the manifest treatment instead of a bare exclude: mirror once for content, then re-home under a
+# machine-scoped name so a second node's sync can never silently overwrite this node's record with its
+# own (predicted 2026-08-14 from pmh-dev#69's measured add/add on the sibling
+# `.destructive_op_override_log` — two PMH nodes hit that log's conflict directly; PMH's report says
+# `.substrate_versions` auto-merged silently on the same run because one side was empty, which is
+# consistent with this file class corrupting the same way without ever surfacing as a visible
+# conflict — worse than the log-file case, but not independently confirmed as a corrupted value).
+if [ -f "$FH/tracks/_meta/.substrate_versions" ]; then
+  mkdir -p "$BE/$TM/substrate"
+  cp "$FH/tracks/_meta/.substrate_versions" "$BE/$TM/substrate/$MID" \
+    && log "substrate versions → $TM/substrate/$MID (machine-scoped)"
+  rm -f "$BE/$TM/.substrate_versions"   # shared copy retired; history keeps every machine's
 fi
 sync_dir  "$FH/tracks/_audit"     "$BE/$TA"
 sync_dir  "$FH/tracks/_chamber"   "$BE/$TCH"   # incubation chamber runs (INTENT/SIM_NOTES/verdict/INDEX ledger) — local-only (gitignored in public FH), made durable + cross-machine here

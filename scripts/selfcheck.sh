@@ -1063,6 +1063,27 @@ else
   fail=1
 fi
 
+# sync_to_be_lanes.sh — the FORWARD path's anchor (added 2026-08-14, pmh-dev#69). Same shape as the
+# return-path block above and wired in the same change that ships it, for the same reason: a
+# transport with real reported defects (a real add/add conflict, a real hard-abort risk) had no
+# suite exercising it at all before this. Same subject-presence idiom, same run-once-capture
+# discipline (a lane suite discarded to /dev/null on a non-deterministic run already burned two days
+# on this exact file's sibling).
+if [ ! -f scripts/sync-to-be.sh ]; then
+  echo "SKIP  sync_to_be_lanes.sh (subject scripts/sync-to-be.sh absent)"
+elif [ -f scripts/sync_to_be_lanes.sh ]; then
+  if _out=$(bash scripts/sync_to_be_lanes.sh 2>&1); then
+    echo "PASS  sync_to_be_lanes.sh (forward-path lanes)"
+  else
+    echo "FAIL  sync_to_be_lanes.sh: forward-path lanes failed"
+    _show_failure "$_out"
+    fail=1
+  fi
+else
+  echo "FAIL  sync_to_be_lanes.sh: sync-to-be.sh present but its anchor is missing"
+  fail=1
+fi
+
 # Referenced-path existence is a source-tree check. The npm package intentionally
 # ships a narrower runtime surface, so package-mode selfcheck skips this section.
 # ⚠️ The skip predicate used to be `[ -d ".claude/rules" ]`. That broke the moment the tarball

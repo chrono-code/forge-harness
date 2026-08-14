@@ -390,7 +390,9 @@ pull_dir() {   # $1 = companion (source) dir, $2 = hub (destination) dir, $3 = l
   listing="$(mktemp)" || { warn "mktemp failed — cannot enumerate $label"; ERRORS=$((ERRORS+1)); return 0; }
   if ! find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' \
          ! -path '*/logs/*' ! -path '*/manifests/*' ! -path '*/_index/*' \
+         ! -path '*/substrate/*' \
          ! -name '.fh_node_state' ! -name 'MEMORY.md' ! -name 'edit_manifest.yaml' \
+         ! -name '.substrate_versions' \
          ! -name '.sync_from_be_held.marker' ! -name '.sync_overwrite_override_log' \
          -print0 > "$listing" 2>/dev/null; then
     warn "enumeration FAILED for $label — not treating that as 'nothing to pull'"
@@ -491,17 +493,24 @@ pull_dir() {   # $1 = companion (source) dir, $2 = hub (destination) dir, $3 = l
 #                          2026-08-02, this hub briefly carried a peer's hostname as its own.
 #   MEMORY.md            — the live auto-recall INDEX. It is machine-scoped by CONTENT (it lists what
 #   edit_manifest.yaml     THIS machine holds) while living at a SHARED path, so a path-based
-#                          exclusion cannot catch it. The forward script re-homes both into
-#                          manifests/ and _index/ and deletes the shared copy — but only on a machine
-#                          that HAS the local file, so a leftover shared copy is reachable. Excluded
-#                          by NAME. (cross-family M4, 2026-08-02.)
+#   .substrate_versions    exclusion cannot catch it. The forward script re-homes all three into
+#                          manifests/, _index/, and substrate/, and deletes the shared copy — but
+#                          only on a machine that HAS the local file, so a leftover shared copy is
+#                          reachable. Excluded by NAME. (cross-family M4, 2026-08-02 for the first
+#                          two; `.substrate_versions` added 2026-08-14, pmh-dev#69.)
+#   .close_stamps_<date> — machine-scoped in nature (a local close counter) but has no
+#                          companion-store consumer at all, so it is excluded ENTIRELY by the
+#                          forward script (SYNC_EXCLUDES) rather than re-homed — nothing to pull
+#                          back on this side either; listed here for the same reason `.fh_node_state`
+#                          is: a belt-and-suspenders name exclusion in case a stale copy ever lands.
 # ⚠️ scripts/sync_guard_check.sh asserts the forward script's two copies of this list stay
 # equivalent. This is the THIRD copy; it is covered there too — do not edit one without the others.
 
 # ── Machine-scoped return leg (same machine ONLY) ────────────────────────────
-# The forward script re-homes two files out of the shared namespace into a per-machine name:
-#   tracks/_meta/edit_manifest.yaml → tracks-meta/manifests/<MID>.yaml
-#   memory/MEMORY.md                → memory/_index/<MID>.md
+# The forward script re-homes three files out of the shared namespace into a per-machine name:
+#   tracks/_meta/edit_manifest.yaml     → tracks-meta/manifests/<MID>.yaml
+#   memory/MEMORY.md                    → memory/_index/<MID>.md
+#   tracks/_meta/.substrate_versions    → tracks-meta/substrate/<MID>
 # Excluding those trees wholesale (correct, so a PEER's copy never lands here) also made this
 # machine unable to recover ITS OWN — the one case where the companion holds the only copy, e.g. a
 # re-imaged or freshly cloned node. So: pull back only the file whose name IS this machine's id.
@@ -595,6 +604,7 @@ MID="$(machine_id)" || MID=""
 if [ -n "$MID" ]; then
   pull_machine_scoped "$BE/$TM/manifests/$MID.yaml" "$FH/tracks/_meta/edit_manifest.yaml" "edit_manifest.yaml"
   [ -n "$MEM" ] && pull_machine_scoped "$BE/$MMD/_index/$MID.md" "$MEM/MEMORY.md" "MEMORY.md"
+  pull_machine_scoped "$BE/$TM/substrate/$MID" "$FH/tracks/_meta/.substrate_versions" ".substrate_versions"
 fi
 
 # ── Report ───────────────────────────────────────────────────────────────────
