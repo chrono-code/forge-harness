@@ -353,6 +353,99 @@ def runner_dispatches(suite, txt):
 
 wired = {s for s in suites if has_runner(s)}
 
+# ── Embedded --self-test dispatchers — a class the name-pattern `suites` glob cannot see ──────
+# Measured 2026-08-13, the header of this file, §WHAT DEBT:0 DOES NOT MEAN: a lane suite that
+# lives INSIDE its subject as a `--self-test` flag — not a separate `test_*.sh`/`*_lanes.sh` file
+# — is structurally invisible to the glob above. 4 scripts carry one — chamber_witness.sh ·
+# capability_registry_check.sh · digest_landing_check.sh · directional_diff_gate.sh — and none
+# showed up as WIRED or UNWIRED anywhere in this report; the wiring line for the 3 that ARE wired,
+# the `for _subj in ...` loop at scripts/selfcheck.sh:478, could be deleted and nothing here would
+# go red. found→extend, not a new file: same idiom as `suites`/`has_runner` above — discover
+# subjects, detect dispatch, report undeclared — new predicates for the shape this pattern uses.
+#
+# 🟥 A PARENTHESIS TRAP LIVES IN THIS SPECIFIC HEREDOC, READ BEFORE ADDING A LINE HERE.
+# Measured 2026-08-14: a single heredoc-body line whose own paren count was unbalanced — one more
+# close-paren than open-paren, from a regex needing a literal close-paren character — broke bash's
+# parse of every line after it, on THIS file only. The reason is that the heredoc below sits inside
+# a command-substitution wrapper, and that wrapper's own close-paren-matching scan turned out not
+# to be fully heredoc-blind in the bash build this repo has tested. `bash -n` then failed dozens of
+# lines later with an unrelated-looking error, because by then the parser believed the heredoc had
+# already closed. Reproduced in isolation: a bare regex assignment needing a literal close-paren,
+# spliced into this file at this exact position, alone, with nothing else added. The fix is
+# structural, not "be careful" — every line added inside this heredoc must carry a matched
+# open-paren and close-paren count on that same line, and a matched pair spanning two lines is
+# exactly the shape that tripped this the first time. Collapse it back to one line, or spell the
+# literal paren out as an escape sequence instead of a bare character, rather than splitting it
+# across lines.
+# A bare substring match on --self-test would also catch prose that only DISCUSSES the flag
+# (measured: scripts/selfcheck.sh:482 has a comment naming it as an example of what NOT to grep
+# for, which is exactly the false positive this narrower check exists to avoid). Require one of
+# the two real dispatcher shapes instead: `"--self-test"` in a quoted comparison, or `--self-test)`
+# as a bare case-pattern. The close-paren is built via chr — see the paren-trap note above; a
+# literal `)` character on this line, however it is spelled, throws this file's parser off.
+_CP = chr(41)
+SELFTEST_DISPATCH_FORMS = ('"--self-test"', '--self-test' + _CP)
+
+def _read(path):
+    try:
+        return open(path, encoding='utf-8', errors='replace').read()
+    except OSError:
+        return ''
+
+# One line on purpose — see the paren-trap note above the SELFTEST_PAT definition.
+_st_candidates = [f for f in glob.glob('scripts/*.sh') if os.path.basename(f) not in suites and os.path.basename(f) != 'lane_runner_check.sh']
+_st_names = [os.path.basename(f)[:-3] for f in _st_candidates if any(_form in _read(f) for _form in SELFTEST_DISPATCH_FORMS)]
+selftest_subjects = sorted(set(_st_names))
+
+def selftest_dispatched(bare_name, txt):
+    """Two shapes, both real in this repo. Cross-family review (2026-08-14) caught the first draft
+    shipping only the second — it read scripts/selfcheck.sh:478's `_subj` for-loop but missed
+    :898/:933's direct `bash scripts/probe_scope_check.sh --self-test` / `bash scripts/
+    utterance_landing_check.sh --self-test`, so those two subjects were reported UNDECLARED while
+    selfcheck.sh runs them every time. This is the exact failure the header above names by cite —
+    a reader trusting the count over the source would have been told a false thing with confidence.
+
+    Shape 1 (direct): `bash scripts/<name>.sh ... --self-test` on one line — mirrors
+    runner_dispatches' direct branch, structurally simpler than the indirect case below.
+    Shape 2 (indirect): bare_name sits in a `for VAR in ... bare_name ...; do` loop whose body
+    dispatches $VAR with --self-test — mirrors the indirect-branch reasoning of runner_dispatches:
+    the literal name is in a list construct, the invocation runs through the loop variable, so a
+    direct-dispatch grep alone structurally cannot see it (scripts/selfcheck.sh:478)."""
+    if re.search(rf'\bbash\s+scripts/{re.escape(bare_name)}\.sh\b[^\n]*--self-test', txt):
+        return True
+    in_loop = False; loop_var = None; has_name = False
+    for ln in txt.split('\n'):
+        s = ln.strip()
+        m = re.match(r'for\s+(\w+)\s+in\b(.*)', s)
+        if m:
+            loop_var = m.group(1)
+            has_name = bool(re.search(rf'\b{re.escape(bare_name)}\b', m.group(2)))
+            in_loop = True
+            continue
+        if in_loop:
+            if has_name and '--self-test' in ln and re.search(rf'\${{?{re.escape(loop_var)}\b', ln):
+                return True
+            if s == 'done':
+                in_loop = False; loop_var = None; has_name = False
+    return False
+
+def has_selftest_runner(bare_name):
+    return any(selftest_dispatched(bare_name, _read(r)) for r in runners)
+
+selftest_wired = {s for s in selftest_subjects if has_selftest_runner(s)}
+selftest_undeclared = sorted(s for s in selftest_subjects if s not in selftest_wired)
+
+# Minimal known-pair — proportionate to the size of this addition, not the full CTL apparatus
+# below, but a dead predicate must still be caught rather than trusted on read-through alone.
+_ST_POS_FIXTURE = 'for _subj in alpha beta; do\n  bash "scripts/$_subj.sh" --self-test\ndone\n'
+_ST_NEG_FIXTURE = 'for _subj in alpha beta; do\n  bash "scripts/$_subj.sh" --normal-run\ndone\n'
+if not selftest_dispatched('alpha', _ST_POS_FIXTURE):
+    print("CONTROL_FAILED\tself-test known-positive fixture read as undispatched — detector is blind")
+    raise SystemExit(2)
+if selftest_dispatched('alpha', _ST_NEG_FIXTURE):
+    print("CONTROL_FAILED\tself-test known-negative fixture with no --self-test flag read as dispatched")
+    raise SystemExit(2)
+
 # ── CONTROL: the instrument must be able to see a suite known to be wired, and must NOT see one
 # known to be dead. Without both arms a broken detector reports "all clean" or "all broken" and
 # either reads as a verdict. [[feedback_absence_measurement_needs_control]]
@@ -457,6 +550,9 @@ for s in resolved:
     print(f"RESOLVED\t{s}")
 for s in gone:
     print(f"GONE\t{s}")
+print(f"SELFTEST_COUNTS\t{len(selftest_subjects)}\t{len(selftest_wired)}")
+for s in selftest_undeclared:
+    print(f"SELFTEST_UNDECLARED\t{s}")
 PY
 )
 rc=$?
@@ -518,5 +614,24 @@ if [ "$N_DEBT" -gt 0 ]; then
   echo "    only go down; a new one fails the check rather than joining the list silently."
 fi
 
-echo "PASS  lane-runner: ${TOTAL} suites — ${WIRED} wired · ${N_EXEMPT} exempt · ${N_DEBT} declared debt"
+SELFTEST_COUNTS=$(printf '%s\n' "$out" | awk -F'\t' '$1=="SELFTEST_COUNTS"{print $2" "$3}')
+set -- $SELFTEST_COUNTS
+ST_TOTAL="${1:-0}"; ST_WIRED="${2:-0}"
+SELFTEST_UNDECLARED=$(printf '%s\n' "$out" | awk -F'\t' '$1=="SELFTEST_UNDECLARED"{print $2}')
+ST_UNDECLARED_N=0
+if [ -n "$SELFTEST_UNDECLARED" ]; then
+  ST_UNDECLARED_N=$(printf '%s\n' "$SELFTEST_UNDECLARED" | wc -l | tr -d ' ')
+  # Advisory, not blocking — these are pre-existing (measured 2026-08-13, before this check saw
+  # them at all), not something introduced by whatever change is running this check right now.
+  # Same DEBT philosophy as above: loudly counted, never silent, must only go down from here.
+  echo "⚠️  lane-runner: ${ST_UNDECLARED_N} embedded --self-test subject(s) with no --self-test"
+  echo "    dispatcher anywhere (self-test code exists, nothing calls it — see this file's own"
+  echo "    §Embedded --self-test comment for why the suites glob above cannot see this class):"
+  printf '%s\n' "$SELFTEST_UNDECLARED" | sed 's/^/        /'
+  echo "    Fix by wiring \`bash scripts/<name>.sh --self-test\` into scripts/selfcheck.sh's"
+  echo "    _subj for-loop (scripts/selfcheck.sh:478), same shape as the 3 already there."
+fi
+
+echo "PASS  lane-runner: ${TOTAL} suites — ${WIRED} wired · ${N_EXEMPT} exempt · ${N_DEBT} declared debt" \
+     "· self-test: ${ST_WIRED}/${ST_TOTAL} wired"
 exit 0

@@ -147,6 +147,75 @@ else
   bad "L10 a commented, spaced file failed to parse"
 fi
 
+# ── L11/L12 embedded --self-test subjects (found→extend, 2026-08-14) ──────────────────────────
+# A lane suite living INSIDE its subject as a `--self-test` flag has no `test_*.sh`/`*_lanes.sh`
+# filename, so the suites glob above cannot see it at all — measured on this repo's own
+# lane_runner_check.sh header before this feature existed: 4 such subjects had zero callers and
+# nothing here said so. mkfixture without the orphan file, so these lanes isolate the self-test
+# behaviour from L1's own blocking orphan.
+mkfixture_clean() { # $1 = dir
+  local d="$1"
+  mkdir -p "$d/scripts"
+  cp "$CHECK" "$d/scripts/lane_runner_check.sh"
+  # A wired ordinary suite so the `suites` set is non-empty — an empty tree fails EXTRACTOR_BROKE
+  # before the self-test report section runs at all, which would make L11/L12 pass vacuously.
+  printf '#!/usr/bin/env bash\n: wired lane suite\n' > "$d/scripts/test_ok_lanes.sh"
+  printf '#!/usr/bin/env bash\nbash scripts/lane_runner_check.sh\nbash scripts/test_ok_lanes.sh\n' > "$d/scripts/selfcheck.sh"
+}
+
+# L11 known-POSITIVE: an unwired --self-test subject is reported, advisory (rc stays 0).
+D="$T/l11"; mkfixture_clean "$D"
+printf '#!/usr/bin/env bash\n[ "${1:-}" = "--self-test" ] && { echo ok; exit 0; }\n' > "$D/scripts/orphan_probe.sh"
+out=$(run "$D"); rc=$(rcof "$D")
+if [ "$rc" = "0" ] && printf '%s' "$out" | grep -q 'orphan_probe'; then
+  ok "L11 known-positive: unwired --self-test subject named, advisory (rc=0)"
+else
+  bad "L11 known-positive did not fire (rc=$rc) — self-test subject not reported"
+  printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
+# L12 known-NEGATIVE: the SAME subject, wired through selfcheck.sh's _subj for-loop idiom, is
+# NOT reported — the exact shape scripts/selfcheck.sh:478 actually uses.
+D="$T/l12"; mkfixture_clean "$D"
+printf '#!/usr/bin/env bash\n[ "${1:-}" = "--self-test" ] && { echo ok; exit 0; }\n' > "$D/scripts/orphan_probe.sh"
+cat > "$D/scripts/selfcheck.sh" <<'SC'
+#!/usr/bin/env bash
+bash scripts/lane_runner_check.sh
+bash scripts/test_ok_lanes.sh
+for _subj in orphan_probe; do
+  bash "scripts/$_subj.sh" --self-test
+done
+SC
+out=$(run "$D")
+if ! printf '%s' "$out" | grep -q 'orphan_probe'; then
+  ok "L12 known-negative: --self-test subject wired via _subj for-loop is not reported"
+else
+  bad "L12 known-negative: wired subject still reported as unwired"
+  printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
+# L13 known-NEGATIVE: the SAME subject, wired through a DIRECT dispatch line — the shape
+# scripts/selfcheck.sh:898/933 actually use (`bash scripts/<name>.sh ... --self-test`), no
+# for-loop at all. Cross-family review 2026-08-14 caught the first draft shipping only the
+# for-loop branch, which meant probe_scope_check.sh and utterance_landing_check.sh — both wired
+# directly, both real — were reported UNDECLARED. This lane pins that class so it cannot silently
+# come back: without it, L11/L12 alone only ever exercise the for-loop shape.
+D="$T/l13"; mkfixture_clean "$D"
+printf '#!/usr/bin/env bash\n[ "${1:-}" = "--self-test" ] && { echo ok; exit 0; }\n' > "$D/scripts/orphan_probe.sh"
+cat > "$D/scripts/selfcheck.sh" <<'SC'
+#!/usr/bin/env bash
+bash scripts/lane_runner_check.sh
+bash scripts/test_ok_lanes.sh
+bash scripts/orphan_probe.sh --self-test >/dev/null 2>&1
+SC
+out=$(run "$D")
+if ! printf '%s' "$out" | grep -q 'orphan_probe'; then
+  ok "L13 known-negative: --self-test subject wired via direct dispatch is not reported"
+else
+  bad "L13 known-negative: directly-wired subject still reported as unwired"
+  printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
 echo "----"
 echo "lane-runner lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

@@ -74,6 +74,68 @@ T=$(_fixture he4 1.4.89 1.4.89 1.4.89 1.4.89 1.4.89); printf '{"name":"fh-meta"}
 _expect "HE-4 manifest with no version → exit 2, NOT 0" 2 "$T"
 _says   "HE-4 → says which file carries none" "carries no version string" 1
 
+# ── Self-restatement — found→extend into this lens (2026-08-14) ──────────────────────────────
+# RS-KN pins the exact false positive the naive first draft threw against its OWN calibration
+# target (scripts/lane_runner_check.sh): a loose \D{0,12} gap matched across an unrelated
+# exit-code legend entry ("declared DEBT · 1 =") and across a before→after transition narration
+# ("DEBT 2 → 0"). Both shapes are known-negatives — they describe history/enumeration, not a
+# live contradiction — and must stay silent.
+
+T=$(_fixture rs1 1.4.89 1.4.89 1.4.89 1.4.89 1.4.89)
+mkdir -p "$T/scripts"
+cat > "$T/scripts/some_lane.sh" <<'EOF'
+#!/usr/bin/env bash
+# Exit: 0 = every suite is WIRED, EXEMPT, or declared DEBT · 1 = an undeclared suite has no runner
+# THE TWO THAT WERE HERE ARE RE-WIRED (2026-08-14) — DEBT 2 → 0.
+# WHAT `DEBT: 0` DOES NOT MEAN — read before quoting the number anywhere.
+DEBT=()
+EOF
+_expect "RS-KN historical DEBT narration (2→0, exit-code legend) → exit 0" 0 "$T"
+_says   "RS-KN → does not fire on the transition/legend shapes" "self-restatement drift" 0
+
+T=$(_fixture rs2 1.4.89 1.4.89 1.4.89 1.4.89 1.4.89)
+mkdir -p "$T/scripts"
+cat > "$T/scripts/broken_lane.sh" <<'EOF'
+#!/usr/bin/env bash
+# DEBT: 12 unwired suites remain, tracked below.
+# ... (later, uncorrected after a partial fix) ...
+# still DEBT 9 by last count.
+DEBT=()
+EOF
+_expect "RS-KP shell comment restates DEBT with two different numbers → exit 0 (advisory)" 0 "$T"
+_says   "RS-KP → names the file and the disagreeing values" \
+        'broken_lane.sh :: comments state DEBT as \[9, 12\]' 1
+
+T=$(_fixture rs3 1.4.89 1.4.89 1.4.89 1.4.89 1.4.89)
+mkdir -p "$T/plugins/fh-commons/skills/fake-skill"
+cat > "$T/plugins/fh-commons/skills/fake-skill/SKILL.md" <<'EOF'
+---
+name: fake-skill
+description: uses v1.4.95 of the reference build
+---
+# fake-skill
+
+Body text never restates a version number, so there is nothing to cross-check against.
+EOF
+_expect "RS-KN2 SKILL.md frontmatter version, body silent → exit 0, no drift" 0 "$T"
+_says   "RS-KN2 → does not fire when body has zero version mentions" "self-restatement drift" 0
+
+T=$(_fixture rs4 1.4.89 1.4.89 1.4.89 1.4.89 1.4.89)
+mkdir -p "$T/plugins/fh-commons/skills/fake-skill2"
+cat > "$T/plugins/fh-commons/skills/fake-skill2/SKILL.md" <<'EOF'
+---
+name: fake-skill2
+description: ships as part of v1.4.95
+---
+# fake-skill2
+
+Elsewhere in this doc we note the shipped build is v1.4.92, which is the value users should
+actually expect to see when they check their installed version.
+EOF
+_expect "RS-KP2 SKILL.md frontmatter v1.4.95 vs body v1.4.92 → exit 0 (advisory)" 0 "$T"
+_says   "RS-KP2 → names the file and the drifted version" \
+        'fake-skill2/SKILL.md :: frontmatter states v{1.4.95}' 1
+
 echo
 echo "──────────────────────────────────────────────"
 if [ "$FAIL" -gt 0 ]; then
