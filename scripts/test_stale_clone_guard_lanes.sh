@@ -114,11 +114,24 @@ run "slashed remote name still fires"     HIT   "$WORK/D/newfile.py"
 # budget, exit 0, arm the day-throttle — instead of letting the RUNNER's 20s timeout kill it
 # (which skipped the marker write and re-stalled every Write of the day). PATH shim makes `git
 # fetch` hang; budget is set to 0.5s; the real git serves every other subcommand.
+#
+# DEBT fix (2026-08-14): `elapsed -lt 10` was a bare wall-clock assertion on a mandatory path — a
+# loaded CI runner's fork/exec + scheduling overhead can push actual elapsed time past a fixed
+# small constant even when the guard's OWN 0.5s internal budget fired correctly (named and
+# predicted by an adversarial review of the original delta; CI then reproduced it, 2/17 lanes red
+# where local was 17/17). What this lane actually needs to prove is RELATIVE, not absolute: the
+# guard returned because its budget bounded it, not because the wedge itself woke up (30s) or an
+# external timeout killed the process. So: widen the wedge to 60s (cheap — the guard should never
+# come close to waiting it out) and assert elapsed is well under HALF of that, not a small fixed
+# number. This keeps strong discriminating power (a guard that stopped bounding itself would still
+# blow well past 30s) while absorbing CI-runner overhead that has nothing to do with the guard's
+# own logic.
+WEDGE_SLEEP=60
 SHIM="$WORK/shim"; mkdir -p "$SHIM"
 REALGIT=$(command -v git)
 cat > "$SHIM/git" <<EOF
 #!/bin/bash
-for a in "\$@"; do [ "\$a" = "fetch" ] && sleep 30; done
+for a in "\$@"; do [ "\$a" = "fetch" ] && sleep $WEDGE_SLEEP; done
 exec "$REALGIT" "\$@"
 EOF
 chmod +x "$SHIM/git"
@@ -128,11 +141,12 @@ w_out=$(payload "$WORK/B/wedge.py" | PATH="$SHIM:$PATH" FH_STALE_CLONE_FETCH_BUD
         FH_STALE_CLONE_MARKER_DIR="$mdir" bash "$G" 2>&1); w_rc=$?
 t1=$(date +%s)
 elapsed=$((t1 - t0))
+elapsed_cap=$((WEDGE_SLEEP / 2))
 marker_count=$(ls "$mdir" 2>/dev/null | wc -l | tr -d ' ')
-if [ "$w_rc" -eq 0 ] && [ -z "$w_out" ] && [ "$elapsed" -lt 10 ] && [ "$marker_count" -ge 1 ]; then
-  printf '  ✅ %-52s OK (%ss)\n' "wedged fetch: bounded, silent, throttle armed" "$elapsed"; pass=$((pass+1))
+if [ "$w_rc" -eq 0 ] && [ -z "$w_out" ] && [ "$elapsed" -lt "$elapsed_cap" ] && [ "$marker_count" -ge 1 ]; then
+  printf '  ✅ %-52s OK (%ss < %ss)\n' "wedged fetch: bounded, silent, throttle armed" "$elapsed" "$elapsed_cap"; pass=$((pass+1))
 else
-  printf '  ❌ %-52s rc=%s elapsed=%ss markers=%s out=%s\n' "wedged fetch: bounded, silent, throttle armed" "$w_rc" "$elapsed" "$marker_count" "$w_out"; fail=$((fail+1))
+  printf '  ❌ %-52s rc=%s elapsed=%ss(cap %ss) markers=%s out=%s\n' "wedged fetch: bounded, silent, throttle armed" "$w_rc" "$elapsed" "$elapsed_cap" "$marker_count" "$w_out"; fail=$((fail+1))
 fi
 
 # Budget cap (terra round 2): an all-digit literal wider than the shell's integer width made the

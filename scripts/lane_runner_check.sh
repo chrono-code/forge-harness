@@ -121,30 +121,37 @@ EXEMPT=(
 # 11 not 12), and test_marker_floor_lanes.sh calibrates pre-commit's live validate_marker_floor().
 # Both are wired now.
 #
-# 🟥 THE TWO BELOW WERE WIRED, MEASURED RED IN CI, AND DELIBERATELY MOVED BACK. Making them green
-# was available and is the wrong move: their failures are TRUE — the suites really do depend on
-# things a CI runner does not have — so forcing a pass would be routing a real failure to green in
-# the same delta that spent nine repairs closing exactly that. A suite whose preconditions are
-# undeclared belongs in the todo list, not in the mandatory path.
-DEBT=(
-  # PASS 19 · FAIL 0 locally; PASS 12 · FAIL 7 in CI. Reproduced locally by pointing HOME at an
-  # empty directory — 12/7, the same split — so the dependency is exact and not a guess:
-  # field_canon_preload.sh resolves `${HOME}/projects` and seven lanes assume the operator's
-  # mapped-project layout is there. Nothing in the suite declares that precondition, so on a
-  # machine without it the suite reports a REGRESSION rather than "not exercised here".
-  # Fix before re-wiring: the suite must detect the missing layout and exit NOT-EXERCISED (the
-  # shape test_sessionstart_multihook_lanes.sh already uses for its CLI dependency), or build its
-  # own fixture HOME for those seven the way it already does for the no-HOME lane.
-  "test_field_canon_lanes.sh"
-  # 17/17 locally; 2/17 in CI. And this one was PREDICTED: the adversarial review of this very
-  # delta flagged `elapsed < 10` as a wall-clock assertion that would go falsely red on a loaded CI
-  # runner, naming this file and that line. It was filed as a low-severity residual and not acted
-  # on; CI then produced exactly it. ★ The finding named a MECHANISM (a wall-clock assertion is now
-  # on a mandatory path), and a mechanism does not become less true for being labelled R.
-  # Fix before re-wiring: give the timing assertions headroom or gate them behind an explicit
-  # opt-in, so the default run measures logic and not the runner's load.
-  "test_stale_clone_guard_lanes.sh"
-)
+# 🟢 THE TWO THAT WERE HERE ARE RE-WIRED (2026-08-14) — DEBT 2 → 0. Both entries below are
+# HISTORICAL: they record why the suites were pulled out and what the fix had to be, kept because
+# the reasoning (and the exact CI-reproduction numbers) are load-bearing evidence for the next
+# person who touches either suite, not because either is still debt.
+#
+# test_field_canon_lanes.sh — was: PASS 19 · FAIL 0 locally; PASS 12 · FAIL 7 in CI. Reproduced
+# locally by pointing HOME at an empty directory — 12/7, the same split — so the dependency was
+# exact and not a guess: field_canon_preload.sh resolves `${HOME}/projects` and seven lanes assumed
+# the operator's mapped-project layout was there. Nothing in the suite declared that precondition,
+# so on a machine without it the suite reported a REGRESSION rather than "not exercised here". Fix
+# (built the second option this entry named, not the first): the suite now carries its own fixture
+# hub+project-root (mirroring the shape lane ⑭ already used) instead of depending on the operator's
+# real filesystem — `run()`/`runD()` inject `CLAUDE_PROJECT_DIR`/`FIELD_CANON_PROJECT_ROOT` at a
+# fixed fixture path. Verified both directions: PASS 19/19 under an empty HOME (the exact CI
+# reproduction) AND a known-negative check — breaking the `-dev`-suffix repo-resolution fallback in
+# field_canon_preload.sh reproduces the identical PASS 12 / FAIL 7 split, so the fixture measures
+# real behavior, not a vacuously-green rewrite.
+#
+# test_stale_clone_guard_lanes.sh — was: 17/17 locally; 2/17 in CI. Predicted by an adversarial
+# review of the delta that introduced `elapsed < 10` as a wall-clock assertion on a mandatory path;
+# CI then produced exactly it. Fix (the first option this entry named): the wedge sleep widened
+# 30s→60s and the assertion changed from a fixed `elapsed < 10` to a relative `elapsed <
+# (wedge/2)=30s` — proving the guard's internal 0.5s budget bounded it (60x headroom) rather than an
+# absolute constant tuned to one machine's speed. Known-negative check: neutering the budget's kill
+# condition in stale_clone_guard.sh (so it waits out the full wedge instead of self-bounding)
+# correctly fails exactly this one lane, confirming the widened threshold still discriminates.
+#
+# Re-wired into scripts/selfcheck.sh's pair-loop alongside the other ten (found→extend, same shape:
+# "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" and
+# "scripts/stale_clone_guard.sh|scripts/test_stale_clone_guard_lanes.sh").
+DEBT=()
 
 if [ "${1:-}" = "--list-debt" ]; then
   # Same bash-3.2 empty-array guard as the scan call below. This site was MISSED when that one was

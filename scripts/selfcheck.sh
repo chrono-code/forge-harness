@@ -413,7 +413,9 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_crossfamily_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_floor_lanes.sh" \
   "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \
-  "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh"
+  "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
+  "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \
+  "scripts/stale_clone_guard.sh|scripts/test_stale_clone_guard_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then
