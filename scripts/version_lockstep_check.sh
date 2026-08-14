@@ -120,6 +120,17 @@ if drift:
 # found→extend into THIS lens rather than a new scanner: same idiom (extract candidate values,
 # compare, collect drift, report), new target surfaces.
 #
+# 🟥 (a) IS NOT CLOSED BY THIS ARM, AND THAT IS DELIBERATE — cross-family review (2026-08-14)
+# caught an earlier draft of this comment reading as though citing incident (a) meant this scan
+# reaches it. It does not: the memory store lives under the operator's home directory
+# (~/.claude/projects/.../memory/), outside this repo's `root` entirely, so the candidate glob
+# below structurally cannot see it — this script runs at `npm publish` time (package.json
+# prepublishOnly), where only the git-tracked repo exists (CI has no access to a contributor's
+# local home directory, and different operators have different paths). Incident (a) is the
+# MOTIVATING PRECEDENT for the general pattern, not a case this specific scope closes. Closing it
+# for real needs a separate, local-only check over the memory store — a different surface with
+# different constraints, not a widening of this one.
+#
 # Advisory (like the CHANGELOG check above), same reasoning: a stale self-count is a documentation
 # defect, not a broken package, and turning publish red on prose trains the override this repo has
 # already measured people reaching for.
