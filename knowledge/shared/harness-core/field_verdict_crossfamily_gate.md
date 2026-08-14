@@ -195,7 +195,9 @@ across two organizations the same day it was being formalized, and a fourth, ret
 point landed the same day too: a cross-harness standpoint review of *this very section*, run
 against a sibling field harness's own repo, independently surfaced the residency and citation
 defects this revision fixes — a second live demonstration of the same axis, folded into the fix
-rather than tabulated as a fifth row (it reviewed this doctrine, not a code change).
+rather than tabulated as a fifth row (it reviewed this doctrine, not a code change). That same
+review also revealed a *sequencing* defect, not just a content one — see **Sequencing** below;
+one event, cited twice for two different things it showed.
 
 **Formalization decision (operator, 2026-08-14)**: the evidence bar this repo requires before
 mechanizing a judgment call (`[[feedback_evidence_threshold_build_discipline]]`,
@@ -291,6 +293,35 @@ the canonical, reviewer-visible copy belongs in the sanitized PR-body evidence c
 (`.claude/rules/fh_4axis_gate.md` §Reviewer-visible evidence — same discipline, not a new one), and
 a `tier3`/`tier2b` claim should carry a counter-artifact reachable from the target side (a linked
 issue/PR comment, not just an assertion in the author's own repo) whenever one exists.
+
+**Sequencing — runs on the local diff before the first push, one rule, no risk-branch (added
+2026-08-14, self-correction).** §4 above titles the whole gate *"before merge, not after"* — this
+field **tightens** that, it does not merely inherit it: a push to a public remote is itself a
+publication event, so "before merge" is not early enough on its own (a PR can sit open, reviewed,
+un-merged, and still have leaked). The retrospective review recorded above as the *"fourth,
+retrospective data point"* — the cross-harness standpoint review of this very section — is the same
+event this paragraph is about, cited there for its evidentiary weight, cited here for what it
+revealed about *timing*: it ran on **PR #370**, the PR that introduced this field, **after** the PR
+was already open and pushed to a public repo. That review found four S-tier findings; two were
+residency leaks (an internal codename, a re-identifiable colleague anecdote), and by the time they
+were caught, the leaking lines had already sat in a public, pushed commit — precisely the ordering
+the repo's own Pre-Publish Surface Gate exists to prevent (*"scrub before publish, never
+publish-then-scrub"*). Those specific lines were fixed forward in a later commit, not removed via
+history rewrite (which would itself be a Destructive-Op-gated action) — the pushed commit that
+originally carried them is still reachable in git history. Record which path was taken whenever
+this recurs; do not let "fixed" imply the exposure itself was undone. (Findings recorded in PR
+#370's sanitized evidence capsule; the specific leaked strings are in FH's private companion store,
+not here.)
+
+The fix is not a second risk-judgment ("is this specific change risky enough to justify running
+pre-push instead of post-PR") — that would just add another judged branch point with its own cost
+and its own failure mode. The fix is a single unconditional rule: whenever the §7 trigger below says
+`standpoint:` applies at all, the review runs on the **local diff, before the first push to any
+remote** — public or private, no visibility judgment to make. Axis 2/3 (steel-quench/phantom-quench)
+run earlier still, at first commit (`.claude/rules/fh_4axis_gate.md`); run standpoint alongside them
+when convenient, but the binding line for this field is the push, not the commit. Opening the PR is
+the reviewer hand-off, and by that point this review should already be clean; if it is not clean
+yet, the PR does not open yet.
 
 **Trigger — narrower than §4's full gate, deliberately, and defined by effect, not by file-class.**
 A file-class trigger ("touches `scripts/`, `knowledge/shared/`, `templates/`...") overtriggers for
