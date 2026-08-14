@@ -80,10 +80,19 @@ log()  { [ "$QUIET" = "1" ] || echo "[sync-from-be] $*"; }
 say()  { echo "[sync-from-be] $*"; }
 warn() { echo "[sync-from-be] $*" >&2; }
 
-# Hub-identity guard (fail-closed) — same shape as sync-to-be.sh. $FH is context-derived, and this
-# is a WRITE path into the hub; refuse if $FH is not actually the FH hub.
-head -1 "$FH/CLAUDE.md" 2>/dev/null | grep -q "forge-harness — Persistent Knowledge Hub" \
-  || { warn "refuse: \$FH ($FH) is not the FH hub — abort"; exit 10; }
+# Hub-identity guard (fail-closed) — this is a WRITE path into the hub; refuse if $FH is not a
+# recognized hub. Resolution (and the HUB_SUFFIX namespace under $BE — see below) is shared with
+# sync-to-be.sh and fh_session_load.sh via fh_hub_identity.sh: a namespace fix that only lands on
+# the write side and not here is exactly the gap a PR review caught (pmh-dev#68 PR #368) — a
+# sibling hub reading these UNSUFFIXED paths would pull FH's own tracks-meta/ back as if it were
+# its own, and the two machine-scoped legs below (keyed by machine id, not hub id) would round-trip
+# FH's and a sibling's manifest/memory-index through the identical filename on a shared machine.
+_FH_IDLIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fh_hub_identity.sh"
+# shellcheck source=scripts/fh_hub_identity.sh
+. "$_FH_IDLIB"
+if ! fh_resolve_hub_identity; then
+  warn "refuse: \$FH ($FH) is not a recognized hub — abort"; exit 10
+fi
 [ -d "$BE" ] || { log "no companion store at $BE — nothing to pull (no-op)"; exit 0; }
 
 # Companion-state gate (fail-CLOSED). The forward script can leave the store mid-rebase when a
@@ -560,29 +569,32 @@ MEM="$(resolve_mem_dir "$FH")"
 #   edit_manifest.yaml, MEMORY.md  : machine-scoped by content. They DO get a return leg, but a
 #                                    same-machine one only — see pull_machine_scoped() below.
 # Keep the shared pairs in step: an outward pair with no return leg is the gap this script closes.
-pull_dir "$BE/tracks-meta"    "$FH/tracks/_meta"     "tracks/_meta"
-pull_dir "$BE/tracks-audit"   "$FH/tracks/_audit"    "tracks/_audit"
-pull_dir "$BE/tracks-chamber" "$FH/tracks/_chamber"  "tracks/_chamber"
-pull_dir "$BE/tracks/the_bible" "$FH/tracks/the_bible" "tracks/the_bible"
+pull_dir "$BE/$TM"    "$FH/tracks/_meta"     "tracks/_meta"
+pull_dir "$BE/$TA"   "$FH/tracks/_audit"    "tracks/_audit"
+pull_dir "$BE/$TCH" "$FH/tracks/_chamber"  "tracks/_chamber"
+pull_dir "$BE/$TR/the_bible" "$FH/tracks/the_bible" "tracks/the_bible"
 EXTRA_LIST="${FH_BE_TRACKS_FILE:-$FH/.fh-be-tracks.local}"
 if [ -f "$EXTRA_LIST" ]; then
   while IFS= read -r _t || [ -n "$_t" ]; do
     _t="${_t%%#*}"; _t="$(printf '%s' "$_t" | tr -d '[:space:]')"
     [ -n "$_t" ] || continue
     case "$_t" in */*|.|..|..*) continue;; esac
-    pull_dir "$BE/tracks/$_t" "$FH/tracks/$_t" "tracks/$_t"
+    pull_dir "$BE/$TR/$_t" "$FH/tracks/$_t" "tracks/$_t"
   done < "$EXTRA_LIST"
 fi
-[ -n "$MEM" ] && pull_dir "$BE/memory" "$MEM" "memory"
+[ -n "$MEM" ] && pull_dir "$BE/$MMD" "$MEM" "memory"
 
-# Machine-scoped, same-machine only (see pull_machine_scoped above).
+# Machine-scoped, same-machine only (see pull_machine_scoped above). Namespaced under $TM/$MMD too
+# (not just $MID) — $MID alone is machine-scoped, not hub-scoped, so FH and a sibling hub sharing a
+# machine would otherwise round-trip each other's manifest/memory-index through the identical
+# filename (pmh-dev#68 PR #368 review — the sharpest form of the read-side gap this fix closes).
 # NO "unknown" fallback. machine_id() returns non-zero for a malformed FH_MACHINE_ID; substituting a
 # placeholder here re-enabled the exact import the rejection had just announced it was skipping — a
 # warning followed by the forbidden action is worse than either alone. (R3 regression of R2 #8.)
 MID="$(machine_id)" || MID=""
 if [ -n "$MID" ]; then
-  pull_machine_scoped "$BE/tracks-meta/manifests/$MID.yaml" "$FH/tracks/_meta/edit_manifest.yaml" "edit_manifest.yaml"
-  [ -n "$MEM" ] && pull_machine_scoped "$BE/memory/_index/$MID.md" "$MEM/MEMORY.md" "MEMORY.md"
+  pull_machine_scoped "$BE/$TM/manifests/$MID.yaml" "$FH/tracks/_meta/edit_manifest.yaml" "edit_manifest.yaml"
+  [ -n "$MEM" ] && pull_machine_scoped "$BE/$MMD/_index/$MID.md" "$MEM/MEMORY.md" "MEMORY.md"
 fi
 
 # ── Report ───────────────────────────────────────────────────────────────────

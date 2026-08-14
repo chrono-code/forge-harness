@@ -68,49 +68,22 @@ QUIET="${1:-}"
 # tooling depends on them); a recognized sibling hub gets its own "-<tag>" namespace. A hub this
 # script cannot identify refuses rather than guessing a namespace for it.
 #
-# A sibling hub's identifying text (its CLAUDE.md first line) is NOT hardcoded here — this script
-# ships in the PUBLIC forge-harness repo, and a sibling hub's name/header is an operator-private
-# token in that context (confirmed: the confidentiality gate blocked the first draft of this fix,
-# which hardcoded one directly — `git grep` showed zero prior occurrences anywhere in this repo's
-# history, i.e. a genuinely new leak, not an already-accepted one). Sibling identity instead comes
-# from a LOCAL, gitignored (`.git/info/exclude`, same convention as `.fh-be-tracks.local` just below)
-# config file — `key=value` lines, read as DATA (not sourced as shell, to avoid handing arbitrary
-# code execution to a config file): HUB_HEADER_MATCH (a prefix of the sibling's CLAUDE.md first
-# line), HUB_SUFFIX, HUB_NAME. Each operator who runs a sibling hub sets this once, locally; the
-# public script never learns or ships that hub's name.
-HUB1="$(head -1 "$FH/CLAUDE.md" 2>/dev/null)"
-case "$HUB1" in
-  "# forge-harness — Persistent Knowledge Hub"*) HUB_SUFFIX=""; HUB_NAME="forge-harness" ;;
-  *)
-    HUB_IDFILE="${FH_HUB_IDENTITY_FILE:-$FH/.fh-hub-identity.local}"
-    # Always exits 0 — under `set -eo pipefail`, a bare `var="$(fn)"` assignment aborts the whole
-    # script if `fn`'s pipeline exits nonzero, and both "no local identity file" AND "file exists but
-    # key absent" (grep finds 0 matches → pipefail propagates grep's 1) must fall through to the
-    # ordinary refuse-with-exit-10 path below, not crash here with an unrelated exit code (caught in
-    # testing: the no-file case exited 1 before this fix, never reaching the intended message — the
-    # `|| true` on the pipeline itself is required, a trailing `return 0` on its own line is NOT
-    # enough, since `set -e` aborts on the failing pipeline before that line is ever reached).
-    _hub_id_get() {
-      [ -f "$HUB_IDFILE" ] || return 0
-      grep "^$1=" "$HUB_IDFILE" 2>/dev/null | head -1 | cut -d= -f2- || true
-    }
-    HUB_MATCH="$(_hub_id_get HUB_HEADER_MATCH)"
-    if [ -n "$HUB_MATCH" ] && [ "${HUB1#"$HUB_MATCH"}" != "$HUB1" ]; then
-      HUB_SUFFIX="$(_hub_id_get HUB_SUFFIX)"
-      HUB_NAME="$(_hub_id_get HUB_NAME)"
-    fi
-    if [ -z "${HUB_SUFFIX:-}" ] || [ -z "${HUB_NAME:-}" ]; then
-      # 10 means "not my hub" ONLY, here and in sync-from-be.sh's own use of the same code — never
-      # repurpose it for a genuine mid-run failure elsewhere in this script. The Stop hook (below)
-      # stamps its cooldown on 0 OR 10; reusing 10 for a real error would make that hook treat the
-      # failure as a quiet success (Wave-2 review, [B]).
-      echo "[sync-to-be] refuse: \$FH ($FH) is not a recognized hub — abort" >&2
-      exit 10
-    fi
-    ;;
-esac
-TM="tracks-meta$HUB_SUFFIX"; TA="tracks-audit$HUB_SUFFIX"; TCH="tracks-chamber$HUB_SUFFIX"
-TR="tracks$HUB_SUFFIX"; MMD="memory$HUB_SUFFIX"; HO="hub-owner$HUB_SUFFIX"
+# Resolution itself lives in fh_hub_identity.sh, shared with sync-from-be.sh and
+# fh_session_load.sh — see that file's header for why a sibling hub's identifying text is never
+# hardcoded in a script that ships in the PUBLIC repo, and why factoring this out (rather than three
+# hand-copies) is what a PR review caught was missing: a copy that fixes the write side and forgets
+# to fix the two read sides in lockstep is exactly the drift a single sourced source-of-truth closes.
+_FH_IDLIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fh_hub_identity.sh"
+# shellcheck source=scripts/fh_hub_identity.sh
+. "$_FH_IDLIB"
+if ! fh_resolve_hub_identity; then
+  # 10 means "not my hub" ONLY, here and in sync-from-be.sh's own use of the same code — never
+  # repurpose it for a genuine mid-run failure elsewhere in this script. The Stop hook (below)
+  # stamps its cooldown on 0 OR 10; reusing 10 for a real error would make that hook treat the
+  # failure as a quiet success (Wave-2 review, [B]).
+  echo "[sync-to-be] refuse: \$FH ($FH) is not a recognized hub — abort" >&2
+  exit 10
+fi
 
 # Cross-hub mutual exclusion (Wave-1 review, pmh-dev#68 [S]; lock ordering hardened by codex
 # cross-family review [A]). Before HUB_SUFFIX, a non-FH hub always refused above and never reached

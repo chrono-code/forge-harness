@@ -41,6 +41,20 @@ BE="${BE_DIR:-}"   # companion-store path — supplied by the gitignored hook re
                    # Resolved HERE (not at the Mode-D block below) because the frontier-digest check
                    # needs it: on a multi-node setup the digest producer may be a DIFFERENT machine.
 
+# TM = this hub's tracks-meta namespace under $BE (pmh-dev#68 PR #368 review): this reader used to
+# hardcode "tracks-meta" unconditionally, so a sibling hub reading it after sync-to-be.sh's
+# namespace fix would load FH's own session card/freshness data as if it were its own. Resolution
+# is shared with sync-to-be.sh/sync-from-be.sh via fh_hub_identity.sh. This hook's own contract is
+# "never block the first turn" (see header), so an unresolved identity degrades to the historical
+# unsuffixed "tracks-meta" rather than erroring — that is the pre-fix behavior, not a new failure
+# mode, and it only matters for a hub this file cannot even identify in the first place.
+if [ -n "$BE" ]; then
+  _FH_IDLIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fh_hub_identity.sh"
+  # shellcheck source=scripts/fh_hub_identity.sh
+  [ -f "$_FH_IDLIB" ] && . "$_FH_IDLIB" && fh_resolve_hub_identity 2>/dev/null
+fi
+TM="${TM:-tracks-meta}"
+
 # ── node re-entry floor check ────────────────────────────────────────────────
 # 이 검사는 scripts/fh_node_check.sh 로 분리했다. 이유: 이 파일(fh_session_load.sh)은 gitignored
 # settings.local.json 에 등록되므로 새 클론/새 기계에선 애초에 안 돈다 — 검사가 존재 이유가 되는
@@ -112,7 +126,7 @@ _fd_hit() { find "$1" -maxdepth 1 -name "frontier_digest_$(date +%Y_%m_%d)*.md" 
 # (2026-07-30 실측: 프로가 07-24~30 매일 정상 생산 중인데 에어는 7일 연속 FAILED 를 띄웠다.
 # 계기의 스코프가 대상보다 좁았던 케이스 — 대상은 '오늘 digest 가 있나'지 '이 디스크에 있나'가 아니다.)
 # 술어는 로컬과 **동일**(glob + -size +1k) — divergent-leniency 를 만들지 않는다.
-_fd_ready() { _fd_hit "$FH/tracks/_meta" || { [ -n "$BE" ] && _fd_hit "$BE/tracks-meta"; }; }
+_fd_ready() { _fd_hit "$FH/tracks/_meta" || { [ -n "$BE" ] && _fd_hit "$BE/$TM"; }; }
 # THE SECOND HALF OF THE SAME SCOPE BUG (2026-07-31). The comment above got the principle right —
 # "대상은 '오늘 digest 가 있나'지 '이 디스크에 있나'가 아니다" — and then widened the predicate by
 # exactly ONE surface (the companion store), leaving it file-only. There are TWO live producers:
@@ -226,8 +240,11 @@ CARD_EPOCH=0
 # 3) Companion files NEWER than the card, in the surfaces that carry landed results/handoffs.
 #    (paper-signals = completed experiments; handoff = cross-session/cross-machine; tracks-meta
 #    = synced session meta.) These are exactly what a stale card fails to point at.
+# ★ "$TM" (not the literal "tracks-meta") — paper-signals/handoff/digests are FH-exclusive areas
+# sync-to-be.sh never namespaces (it does not write them for any hub), only tracks-meta needs the
+# suffix here (pmh-dev#68 PR #368 review).
 NEWER=""
-for sub in paper-signals handoff tracks-meta digests; do
+for sub in paper-signals handoff "$TM" digests; do
   d="$BE/$sub"
   [ -d "$d" ] || continue
   while IFS= read -r f; do
@@ -271,6 +288,9 @@ EOF
 done
 
 # 4) INDEX.md live pointers (the operator's wiki TOC — read-first per CLAUDE.local.md).
+# Deliberately UNSUFFIXED: this is a single shared companion-store index, not a per-hub write
+# target — sync-to-be.sh never writes a $TM-namespaced copy of it, so there is nothing to namespace
+# here either (unlike tracks-meta above, which pmh-dev#68 PR #368 review flagged for exactly this).
 INDEX_HEAD=""
 if [ -f "$BE/INDEX.md" ]; then
   INDEX_HEAD="$(grep -iE 'live pointer|Live pointers' -A 8 "$BE/INDEX.md" 2>/dev/null | head -10)"
