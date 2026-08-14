@@ -58,7 +58,7 @@ git clone -q "$WORK/origin.git" "$WORK/C" 2>/dev/null
 run "non-origin remote name still fires"  HIT   "$WORK/C/newfile.py"
 
 # Throttle: SAME marker dir, two calls — second must be silent.
-mdir=$(mktemp -d "$WORK/marker.throttle")
+mdir=$(mktemp -d "$WORK/marker.throttle.XXXXXX")
 o1=$(payload "$WORK/B/x.py" | FH_STALE_CLONE_NO_FETCH=1 FH_STALE_CLONE_MARKER_DIR="$mdir" bash "$G" 2>&1)
 o2=$(payload "$WORK/B/y.py" | FH_STALE_CLONE_NO_FETCH=1 FH_STALE_CLONE_MARKER_DIR="$mdir" bash "$G" 2>&1)
 if printf '%s' "$o1" | grep -q STALE-CLONE && [ -z "$o2" ]; then
@@ -68,7 +68,7 @@ else
 fi
 
 # Contract: HIT emits one JSON object with both channels and no permissionDecision.
-mdir=$(mktemp -d "$WORK/marker.json")
+mdir=$(mktemp -d "$WORK/marker.json.XXXXXX")
 jo=$(payload "$WORK/B/z.py" | FH_STALE_CLONE_NO_FETCH=1 FH_STALE_CLONE_MARKER_DIR="$mdir" bash "$G" 2>/dev/null)
 if printf '%s' "$jo" | python3 -c '
 import json,sys
@@ -135,7 +135,7 @@ for a in "\$@"; do [ "\$a" = "fetch" ] && sleep $WEDGE_SLEEP; done
 exec "$REALGIT" "\$@"
 EOF
 chmod +x "$SHIM/git"
-mdir=$(mktemp -d "$WORK/marker.wedge")
+mdir=$(mktemp -d "$WORK/marker.wedge.XXXXXX")
 t0=$(date +%s)
 w_out=$(payload "$WORK/B/wedge.py" | PATH="$SHIM:$PATH" FH_STALE_CLONE_FETCH_BUDGET_TENTHS=5 \
         FH_STALE_CLONE_MARKER_DIR="$mdir" bash "$G" 2>&1); w_rc=$?
