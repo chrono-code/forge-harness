@@ -661,6 +661,50 @@ else
   bad "SCOPE2 control failed — the scanner found neither file, so SCOPE1 proved nothing"
 fi
 
+# ── C2: bare X-in-Y substring boolean, with the ALL-CAPS exclusion (2026-08-14) ────────────────
+# Cross-family review found this exclusion shipped with zero fixtures anywhere in this repo —
+# deleting the exclusion left every existing lane green, which is exactly the "advisory noise
+# reduction with no anchor" class this repo's own 4-axis doctrine requires a mechanical test for.
+# Two arms: the probe's own headline example (paid⊂prepaid style substring check) must still
+# fire, and an ALL-CAPS collection-membership check — the shape the exclusion targets — must not.
+_c2_pos="$TMP/c2_pos.sh"; _c2_neg="$TMP/c2_neg.sh"
+printf 'if tok in text:\n    pass\n' > "$_c2_pos"
+printf 'if name in PLACEHOLDERS:\n    pass\n' > "$_c2_neg"
+out=$(bash "$SCAN" "$_c2_pos" 2>&1)
+if printf '%s' "$out" | grep -q 'C2:substring-boolean'; then
+  ok "C2-KP substring-boolean on a bare string var still fires"
+else
+  bad "C2-KP the probe's own headline shape (tok in text) no longer fires"
+fi
+out=$(bash "$SCAN" "$_c2_neg" 2>&1)
+if ! printf '%s' "$out" | grep -q 'C2:substring-boolean'; then
+  ok "C2-KN ALL-CAPS collection membership (name in PLACEHOLDERS) stays silent"
+else
+  bad "C2-KN the ALL-CAPS exclusion is not wired — a legitimate collection check still fires"
+fi
+# Revert probe, run inline rather than trusted by inspection: replace the exclusion clause's line
+# in a COPY of the scanner with a bare closing paren (deleting the line outright would strand the
+# preceding line's trailing backslash continuation and break the pipe chain) and confirm C2-KN
+# flips to a hit — proves the exclusion is load-bearing for this specific fixture, not just
+# present somewhere in the file.
+_scan_reverted="$TMP/scan_reverted.sh"
+_excl_line=$(grep -n "grep -vE 'in \[A-Z_\]" "$SCAN" | head -1 | cut -d: -f1)
+if [ -z "$_excl_line" ]; then
+  bad "C2-REVERT could not locate the exclusion line by its known text — fixture cannot run"
+else
+  sed "${_excl_line}s/.*/           )/" "$SCAN" > "$_scan_reverted"
+  chmod +x "$_scan_reverted"
+  # Captured, not piped directly — under `set -o pipefail` (this file's own top line) the scanner's
+  # own advisory exit code (non-zero on any finding) would override grep's match result in a direct
+  # pipe, reporting FAIL even when the fixture worked exactly as intended.
+  _revert_out=$(bash "$_scan_reverted" "$_c2_neg" 2>&1)
+  if printf '%s' "$_revert_out" | grep -q 'C2:substring-boolean'; then
+    ok "C2-REVERT removing the exclusion line makes C2-KN fire again (the exclusion is load-bearing)"
+  else
+    bad "C2-REVERT removing the exclusion line did not flip C2-KN — the fixture proves nothing"
+  fi
+fi
+
 echo "----"
 echo "degrade-scan shell probes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

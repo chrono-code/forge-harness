@@ -398,10 +398,21 @@ _st_names = [os.path.basename(f)[:-3] for f in _st_candidates if any(_form in _r
 selftest_subjects = sorted(set(_st_names))
 
 def selftest_dispatched(bare_name, txt):
-    """bare_name (no .sh) sits in a `for VAR in ... bare_name ...; do` loop whose body dispatches
-    $VAR with --self-test — mirrors the indirect-branch reasoning of runner_dispatches: the literal name
-    is in a list construct, the invocation runs through the loop variable, so a direct
-    `bash bare_name.sh --self-test` grep structurally cannot see it (scripts/selfcheck.sh:478)."""
+    """Two shapes, both real in this repo. Cross-family review (2026-08-14) caught the first draft
+    shipping only the second — it read scripts/selfcheck.sh:478's `_subj` for-loop but missed
+    :898/:933's direct `bash scripts/probe_scope_check.sh --self-test` / `bash scripts/
+    utterance_landing_check.sh --self-test`, so those two subjects were reported UNDECLARED while
+    selfcheck.sh runs them every time. This is the exact failure the header above names by cite —
+    a reader trusting the count over the source would have been told a false thing with confidence.
+
+    Shape 1 (direct): `bash scripts/<name>.sh ... --self-test` on one line — mirrors
+    runner_dispatches' direct branch, structurally simpler than the indirect case below.
+    Shape 2 (indirect): bare_name sits in a `for VAR in ... bare_name ...; do` loop whose body
+    dispatches $VAR with --self-test — mirrors the indirect-branch reasoning of runner_dispatches:
+    the literal name is in a list construct, the invocation runs through the loop variable, so a
+    direct-dispatch grep alone structurally cannot see it (scripts/selfcheck.sh:478)."""
+    if re.search(rf'\bbash\s+scripts/{re.escape(bare_name)}\.sh\b[^\n]*--self-test', txt):
+        return True
     in_loop = False; loop_var = None; has_name = False
     for ln in txt.split('\n'):
         s = ln.strip()

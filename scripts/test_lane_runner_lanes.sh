@@ -194,6 +194,28 @@ else
   printf '%s\n' "$out" | sed 's/^/       │ /'
 fi
 
+# L13 known-NEGATIVE: the SAME subject, wired through a DIRECT dispatch line — the shape
+# scripts/selfcheck.sh:898/933 actually use (`bash scripts/<name>.sh ... --self-test`), no
+# for-loop at all. Cross-family review 2026-08-14 caught the first draft shipping only the
+# for-loop branch, which meant probe_scope_check.sh and utterance_landing_check.sh — both wired
+# directly, both real — were reported UNDECLARED. This lane pins that class so it cannot silently
+# come back: without it, L11/L12 alone only ever exercise the for-loop shape.
+D="$T/l13"; mkfixture_clean "$D"
+printf '#!/usr/bin/env bash\n[ "${1:-}" = "--self-test" ] && { echo ok; exit 0; }\n' > "$D/scripts/orphan_probe.sh"
+cat > "$D/scripts/selfcheck.sh" <<'SC'
+#!/usr/bin/env bash
+bash scripts/lane_runner_check.sh
+bash scripts/test_ok_lanes.sh
+bash scripts/orphan_probe.sh --self-test >/dev/null 2>&1
+SC
+out=$(run "$D")
+if ! printf '%s' "$out" | grep -q 'orphan_probe'; then
+  ok "L13 known-negative: --self-test subject wired via direct dispatch is not reported"
+else
+  bad "L13 known-negative: directly-wired subject still reported as unwired"
+  printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
 echo "----"
 echo "lane-runner lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

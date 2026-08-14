@@ -138,7 +138,13 @@ def _self_restate_md():
     hits = []
     candidates = [os.path.join(root, 'CLAUDE.md'), os.path.join(root, 'AGENTS.md')]
     candidates += sorted(glob.glob(os.path.join(root, 'plugins', '*', 'skills', '*', 'SKILL.md')))
-    VERPAT = re.compile(r'\bv(\d+\.\d+\.\d+)\b')
+    # v-prefix optional — cross-family review found the real incident that motivated this arm
+    # (a memory file's frontmatter `latest v1.4.97` vs body `latest **1.4.97**`) does not carry the
+    # prefix on the body side, so the mandatory-v form never fires on the actual shape it exists
+    # to catch. Bare N.N.N is noisier (could match an unrelated dependency version), but the
+    # candidate list above is narrow enough (CLAUDE.md/AGENTS.md/SKILL.md only) that this stays
+    # advisory-tolerable rather than explosive.
+    VERPAT = re.compile(r'\bv?(\d+\.\d+\.\d+)\b')
     for p in candidates:
         if not os.path.exists(p):
             continue
