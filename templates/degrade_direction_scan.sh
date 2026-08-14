@@ -500,11 +500,20 @@ for f in "${FILES[@]}"; do
   #   `tok in text` (paid⊂prepaid) when the variables aren't named verdict/state (M#4, steel-quench).
   #   C2 closes that: simple var-in-var (not a collection literal / range / for) = a likely
   #   containment check that should be exact/word-boundary if it grounds a verdict. Higher noise; advisory.
+  # 2026-08-14: pinned an ALL-CAPS-constant exclusion here that Probe C already carries a few lines
+  # up (`in [A-Z_]+\b`) — C2 had drifted out of sync with it. Measured on this repo's own scripts/:
+  # 6 raw C2 hits, all `if VAR in {seen,by_name,accepted,packed,PLACEHOLDERS}:` — genuine collection
+  # membership, not the substring-containment smell this probe exists to catch. Do NOT also add
+  # lowercase collection-name heuristics (`seen`/`by_name`/...) here — that class still needs a
+  # human to read the assignment and confirm it is a set/dict/list, and a naming guess would just
+  # move the false-negative risk instead of removing it. This narrows one already-established class,
+  # it does not invent a new one.
   while IFS= read -r m; do
     emit "$f" "${m%%:*}" "C2:substring-boolean" "bare 'X in Y' in if/return/assert — if this grounds a presence/verdict check, use exact/word-boundary match, not containment"
   done < <(grep -nE '^[[:space:]]*(if|elif|return|assert|while)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+in[[:space:]]+[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*[:)]?[[:space:]]*$' "$f" 2>/dev/null \
            | grep -vE '\bfor\b|in range|in enumerate|not in' \
-           | grep -vE '\b(verdict|present|ground|state|match|expected)\w*\b')
+           | grep -vE '\b(verdict|present|ground|state|match|expected)\w*\b' \
+           | grep -vE 'in [A-Z_]+[[:space:]]*[:)]?[[:space:]]*$')
 
   # Probe E — negated-falsy guard returning permissive (dominance-benchmark round-2 f2 class): an error
   # SENTINEL (None / {} / "" / []) is falsy, so `if not X: return <PASS>` treats "the check errored / never

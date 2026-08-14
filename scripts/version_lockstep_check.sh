@@ -109,5 +109,97 @@ if drift:
     print("so a stale entry ships as 'already installed' on the runtime that cannot report it.")
     sys.exit(1)
 
+# ── Self-restatement — a file that states its own count/version twice can drift from itself ──
+# Measured 2026-08-13 (peer session, reship axis): N=2 on two DIFFERENT surfaces, both real —
+#   (a) a memory file's YAML frontmatter `description:` stated an npm version differently from
+#       its own body (1.4.95 vs 1.4.92 — a lockstep drift, just in prose instead of JSON)
+#   (b) lane_runner_check.sh's own header comment stated "11/8" while a later comment said the
+#       DEBT count was 12 — caught by cross-family review, not by re-reading (see that file's own
+#       header for the incident write-up; it has since self-corrected into a historical note).
+# «타표면 재발 = 기계화 의무» (recurrence on a second, different surface obligates mechanizing) —
+# found→extend into THIS lens rather than a new scanner: same idiom (extract candidate values,
+# compare, collect drift, report), new target surfaces.
+#
+# Advisory (like the CHANGELOG check above), same reasoning: a stale self-count is a documentation
+# defect, not a broken package, and turning publish red on prose trains the override this repo has
+# already measured people reaching for.
+#
+# Scope, deliberately narrow — the two false-positive traps that would have made this noise instead
+# of signal, both avoided on purpose:
+#   1. tracks/**/*.md and this repo's session cards are EXCLUDED. Those are running logs that
+#      legitimately cite dozens of historical version numbers across dated sessions — scanning them
+#      for "two differing v-numbers in one file" would fire on nearly every one. The mission here is
+#      "does a single-snapshot doc contradict itself", not "every version ever mentioned".
+#   2. The DEBT counter only fires on 2+ DISTINCT values for the SAME literal label ("DEBT") within
+#      comment lines of one file — not on any two numbers that happen to appear near each other. A
+#      one-off historical narration ("this said 11/8 until it was fixed") does not by itself carry
+#      two live DEBT-labeled claims, so it does not false-positive as an active contradiction.
+def _self_restate_md():
+    hits = []
+    candidates = [os.path.join(root, 'CLAUDE.md'), os.path.join(root, 'AGENTS.md')]
+    candidates += sorted(glob.glob(os.path.join(root, 'plugins', '*', 'skills', '*', 'SKILL.md')))
+    VERPAT = re.compile(r'\bv(\d+\.\d+\.\d+)\b')
+    for p in candidates:
+        if not os.path.exists(p):
+            continue
+        try:
+            txt = open(p, encoding='utf-8', errors='replace').read()
+        except OSError:
+            continue
+        m = re.match(r'^---\n(.*?)\n---\n(.*)$', txt, re.S)
+        if not m:
+            continue
+        fm, body = m.group(1), m.group(2)
+        fm_vers = set(VERPAT.findall(fm))
+        body_vers = set(VERPAT.findall(body))
+        drifted = fm_vers - body_vers
+        if fm_vers and body_vers and drifted:
+            rel = os.path.relpath(p, root)
+            hits.append(f"  {rel} :: frontmatter states v{{{','.join(sorted(drifted))}}} not "
+                        f"found anywhere in body (body has v{{{','.join(sorted(body_vers))}}})")
+    return hits
+
+def _self_restate_sh():
+    hits = []
+    # Tight: DEBT immediately followed by (optional :/=, whitespace) a number — not "any digit
+    # within 12 chars" (that matched an unrelated exit-code legend entry across a bullet, «DEBT ·
+    # 1»). A number immediately followed by an arrow (→ / ->) is a before→after transition
+    # narration ("DEBT 2 → 0"), not a live claim about the current count — excluded on purpose,
+    # calibrated against this repo's own lane_runner_check.sh (known-negative: 3 raw matches with
+    # the loose form, 1 real match with this form — verified by hand, 2026-08-14).
+    DEBTPAT = re.compile(r'\bDEBT\b\s*[:=]?\s*(\d+)\b(?!\s*(?:→|->))')
+    # test_*.sh / *_lanes.sh are excluded — measured 2026-08-14 on this check's own test file:
+    # a known-pair fixture legitimately embeds two differing DEBT numbers as heredoc TEST DATA
+    # (proving the detector can tell them apart), and that heredoc text is also literal source in
+    # the test file itself. Those are fixtures, not a claim about the test file's own state — same
+    # distinction the `suites` glob elsewhere in this repo already draws between subject scripts
+    # and the test scripts that exercise them.
+    for p in (sorted(f for f in glob.glob(os.path.join(root, 'scripts', '*.sh'))
+                      if not re.match(r'^(test_.*|.*_lanes)\.sh$', os.path.basename(f)))
+              + sorted(f for f in glob.glob(os.path.join(root, 'templates', '*.sh'))
+                        if not re.match(r'^(test_.*|.*_lanes)\.sh$', os.path.basename(f)))):
+        try:
+            txt = open(p, encoding='utf-8', errors='replace').read()
+        except OSError:
+            continue
+        # Comment lines only — a live `DEBT=()` array literal is code computing the fact, not a
+        # restated claim about it, and must not be treated as a second (possibly stale) copy.
+        vals = set()
+        for ln in txt.splitlines():
+            if not re.match(r'^\s*#', ln):
+                continue
+            vals |= {int(m) for m in DEBTPAT.findall(ln)}
+        if len(vals) > 1:
+            rel = os.path.relpath(p, root)
+            hits.append(f"  {rel} :: comments state DEBT as {sorted(vals)} — pick one number, "
+                        f"or point the stale comment at the live count instead of a literal")
+    return hits
+
+restate_hits = _self_restate_md() + _self_restate_sh()
+if restate_hits:
+    print(f"LOCKSTEP: ⚠️  self-restatement drift — {len(restate_hits)} file(s) state their own "
+          f"version/count more than once and the copies disagree:")
+    print("\n".join(restate_hits))
+
 print(f"LOCKSTEP: PASS — {checked} shipped version string(s) all at {want}")
 PY
