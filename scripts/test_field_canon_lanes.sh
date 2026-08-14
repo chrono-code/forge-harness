@@ -12,10 +12,32 @@ trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
 ok(){ PASS=$((PASS+1)); printf '  ✅ %s\n' "$1"; }
 no(){ FAIL=$((FAIL+1)); printf '  ❌ %s — %s\n' "$1" "$2"; }
+
+# ── DEBT fix (2026-08-14) — several lanes below depended on the OPERATOR'S REAL
+# `${HOME}/projects/qasp-dev` mapping to resolve a repo and emit anything at all. On a
+# machine/CI runner without that exact local layout, `repo` resolution in field_canon_preload.sh
+# silently fails (`continue`), `emitted` stays 0, and EVERY assertion that checks "is output
+# non-empty" trivially reads as the WRONG kind of empty — reproduced locally: PASS 12 / FAIL 7 with
+# HOME pointed at an empty dir, exactly the CI split. The fix reuses the fixture shape lane ⑭
+# already demonstrates below (a throwaway hub + a throwaway project root with a real `.git` and
+# README.md) instead of depending on the operator's real filesystem — `found→extend`, not a new
+# mechanism. This also turns ⑧'s prior "PASS" honest: before this fix it passed because repo
+# resolution ALWAYS failed (output always empty regardless of dedup), not because dedup worked
+# ([[feedback_anchor_can_be_decorative]]) — with a real resolvable repo, ⑧ now exercises the actual
+# same-session dedup path.
+FHUB="$TMP/fhub"; mkdir -p "$FHUB/tracks/qasp"
+FPROJ="$TMP/fproj"; mkdir -p "$FPROJ/qasp-dev/.git" "$FPROJ/qasp-dev/docs/governance"
+printf '# qasp fixture\n' > "$FPROJ/qasp-dev/README.md"
+printf 'x\n' > "$FPROJ/qasp-dev/docs/governance/g1.md"
+
 # ★`${3:+VAR=v}` 는 파라미터 확장이라 bash 가 **환경 할당으로 안 읽는다** — env 로 넘긴다.
 #   (이 파일 초판이 그렇게 써서 「레포 부재」 레인이 거짓 적색을 냈다. 계기 결함이었다.)
-run(){ local extra=""; [ -n "${3:-}" ] && extra="FIELD_CANON_PROJECT_ROOT=$3"
-  printf '%s' "$1" | env FIELD_CANON_SENTINEL_DIR="$2" $extra bash "$H" 2>&1; }
+# $3, when given, overrides FIELD_CANON_PROJECT_ROOT (the "레포 부재" control at line ~35 uses this
+# to deliberately point at /nonexistent — CLAUDE_PROJECT_DIR still resolves via the fixture so that
+# control lane is testing "repo absent", not accidentally "mapped name absent" too).
+run(){ local root="$FPROJ"; [ -n "${3:-}" ] && root="$3"
+  printf '%s' "$1" | env CLAUDE_PROJECT_DIR="$FHUB" FIELD_CANON_PROJECT_ROOT="$root" \
+    FIELD_CANON_SENTINEL_DIR="$2" bash "$H" 2>&1; }
 
 echo "== field-canon preload 레인 =="
 
@@ -47,12 +69,14 @@ printf '' | FIELD_CANON_SENTINEL_DIR="$TMP/6" bash "$H" >/dev/null 2>&1
 #    (`[[feedback_anchor_can_be_decorative]]` — 레인이 결함 지점을 비켜 가면 초록은 정보가 아니다.)
 # ⚠️ macOS 는 bash **3.2** 다. `set -u` 아래서 빈 배열 `"${a[@]}"` 는 unbound variable 로 죽는다
 #    — 초판 레인이 정확히 그렇게 죽어 ⑦⑨⑩ 이 **거짓 적색**을 냈다(대상이 아니라 계기의 사망).
-#    배열 없이 분기한다.
+#    배열 없이 분기한다. (FHUB/FPROJ fixture — see the DEBT-fix comment near the top of this file.)
 runD(){ # $1=payload  $2=TMPDIR  [$3=CLAUDE_SESSION_ID 를 환경에 심을지]
   if [ -n "${3:-}" ]; then
-    printf '%s' "$1" | env TMPDIR="$2" CLAUDE_SESSION_ID="$3" bash "$H" 2>&1
+    printf '%s' "$1" | env TMPDIR="$2" CLAUDE_PROJECT_DIR="$FHUB" FIELD_CANON_PROJECT_ROOT="$FPROJ" \
+      CLAUDE_SESSION_ID="$3" bash "$H" 2>&1
   else
-    printf '%s' "$1" | env TMPDIR="$2" bash "$H" 2>&1
+    printf '%s' "$1" | env TMPDIR="$2" CLAUDE_PROJECT_DIR="$FHUB" FIELD_CANON_PROJECT_ROOT="$FPROJ" \
+      bash "$H" 2>&1
   fi; }
 T7="$TMP/def"; mkdir -p "$T7"
 
