@@ -6,6 +6,10 @@
 #   tracks/the_bible → <companion>/tracks/the_bible (mapped project — nested; projects nest, only hub-meta _meta/_audit flatten)
 #   memory/         → <companion>/memory        (durable CC memory — else lost on machine reclaim)
 #   CLAUDE.local.md → <companion>/hub-owner     (operator-specific wiring)
+# This script is shared verbatim with recognized sibling hubs (e.g. PMH) that mirror to the SAME
+# companion store. A non-FH hub's destination dirs get a "-<tag>" suffix (tracks-meta-pmh/, etc.)
+# so two hubs never collide on one shared path — see the HUB_SUFFIX guard below. A hub not on that
+# list refuses (non-zero exit) rather than writing anywhere.
 # Runs from a CC Stop hook (throttled) or manually.
 # Override paths via env: HUB_DIR, BE_DIR.
 # Usage: bash scripts/sync-to-be.sh [--quiet]
@@ -42,11 +46,122 @@ BE="${BE_DIR:-$FH/../fh-be}"          # companion = documented sibling of the hu
 QUIET="${1:-}"
 
 # Hub-identity guard (fail-closed): $FH is context-derived (CLAUDE_PROJECT_DIR), and this is the
-# WRITE/push path. Refuse to mirror if $FH is not actually the FH hub — e.g. the Stop hook is
+# WRITE/push path. Refuse to mirror if $FH is not a recognized hub — e.g. the Stop hook is
 # registered globally, or CLAUDE_PROJECT_DIR points at a field project — else a wrong project's
 # memory / CLAUDE.local.md would be pushed into the companion store. (Axis-2 challenger 2026-07-05 [B].)
-head -1 "$FH/CLAUDE.md" 2>/dev/null | grep -q "forge-harness — Persistent Knowledge Hub" \
-  || { echo "[sync-to-be] refuse: \$FH ($FH) is not the FH hub — abort" >&2; exit 0; }
+# A refusal exits NON-ZERO — the earlier `exit 0` made a refusal indistinguishable from success to
+# every caller (Stop hook, close-chain gate), so a rejected sync silently never ran (pmh-dev#68 ①).
+# The code is 10, not 1: this branch now only fires for a hub that is genuinely neither FH nor PMH
+# (both of THOSE proceed normally below), so it is the same "not applicable here" case
+# sync-from-be.sh already gives its own dedicated code — reserving 1 for a recognized hub that
+# errors mid-run (via this script's `set -e`). The distinction matters to the Stop hook specifically:
+# it gates its cooldown stamp on this script's exit status (`sync-to-be.sh --quiet && echo $NOW >
+# $FLAG`, .claude/settings.json), so an UNDIFFERENTIATED non-zero here — in any project that happens
+# to carry this exact hook line but is neither hub — would never stamp the cooldown and re-run this
+# guard on every single Stop, forever (Wave-1 review, pmh-dev#68). The hook is updated to treat 10
+# the same as 0 for stamping purposes; a real failure (1, or any `set -e` exit) still doesn't stamp.
+#
+# HUB_SUFFIX namespaces this hub's destination paths under $BE. Two hubs sharing one companion
+# store (FH + a sibling, siblings on the same machine, BE derived the same way from each) would
+# otherwise both write "tracks-meta/" — the sibling's card would silently overwrite FH's card in the
+# exact same file (pmh-dev#68 ②). FH keeps the unsuffixed legacy paths (canonical, oldest, most
+# tooling depends on them); a recognized sibling hub gets its own "-<tag>" namespace. A hub this
+# script cannot identify refuses rather than guessing a namespace for it.
+#
+# A sibling hub's identifying text (its CLAUDE.md first line) is NOT hardcoded here — this script
+# ships in the PUBLIC forge-harness repo, and a sibling hub's name/header is an operator-private
+# token in that context (confirmed: the confidentiality gate blocked the first draft of this fix,
+# which hardcoded one directly — `git grep` showed zero prior occurrences anywhere in this repo's
+# history, i.e. a genuinely new leak, not an already-accepted one). Sibling identity instead comes
+# from a LOCAL, gitignored (`.git/info/exclude`, same convention as `.fh-be-tracks.local` just below)
+# config file — `key=value` lines, read as DATA (not sourced as shell, to avoid handing arbitrary
+# code execution to a config file): HUB_HEADER_MATCH (a prefix of the sibling's CLAUDE.md first
+# line), HUB_SUFFIX, HUB_NAME. Each operator who runs a sibling hub sets this once, locally; the
+# public script never learns or ships that hub's name.
+HUB1="$(head -1 "$FH/CLAUDE.md" 2>/dev/null)"
+case "$HUB1" in
+  "# forge-harness — Persistent Knowledge Hub"*) HUB_SUFFIX=""; HUB_NAME="forge-harness" ;;
+  *)
+    HUB_IDFILE="${FH_HUB_IDENTITY_FILE:-$FH/.fh-hub-identity.local}"
+    # Always exits 0 — under `set -eo pipefail`, a bare `var="$(fn)"` assignment aborts the whole
+    # script if `fn`'s pipeline exits nonzero, and both "no local identity file" AND "file exists but
+    # key absent" (grep finds 0 matches → pipefail propagates grep's 1) must fall through to the
+    # ordinary refuse-with-exit-10 path below, not crash here with an unrelated exit code (caught in
+    # testing: the no-file case exited 1 before this fix, never reaching the intended message — the
+    # `|| true` on the pipeline itself is required, a trailing `return 0` on its own line is NOT
+    # enough, since `set -e` aborts on the failing pipeline before that line is ever reached).
+    _hub_id_get() {
+      [ -f "$HUB_IDFILE" ] || return 0
+      grep "^$1=" "$HUB_IDFILE" 2>/dev/null | head -1 | cut -d= -f2- || true
+    }
+    HUB_MATCH="$(_hub_id_get HUB_HEADER_MATCH)"
+    if [ -n "$HUB_MATCH" ] && [ "${HUB1#"$HUB_MATCH"}" != "$HUB1" ]; then
+      HUB_SUFFIX="$(_hub_id_get HUB_SUFFIX)"
+      HUB_NAME="$(_hub_id_get HUB_NAME)"
+    fi
+    if [ -z "${HUB_SUFFIX:-}" ] || [ -z "${HUB_NAME:-}" ]; then
+      # 10 means "not my hub" ONLY, here and in sync-from-be.sh's own use of the same code — never
+      # repurpose it for a genuine mid-run failure elsewhere in this script. The Stop hook (below)
+      # stamps its cooldown on 0 OR 10; reusing 10 for a real error would make that hook treat the
+      # failure as a quiet success (Wave-2 review, [B]).
+      echo "[sync-to-be] refuse: \$FH ($FH) is not a recognized hub — abort" >&2
+      exit 10
+    fi
+    ;;
+esac
+TM="tracks-meta$HUB_SUFFIX"; TA="tracks-audit$HUB_SUFFIX"; TCH="tracks-chamber$HUB_SUFFIX"
+TR="tracks$HUB_SUFFIX"; MMD="memory$HUB_SUFFIX"; HO="hub-owner$HUB_SUFFIX"
+
+# Cross-hub mutual exclusion (Wave-1 review, pmh-dev#68 [S]; lock ordering hardened by codex
+# cross-family review [A]). Before HUB_SUFFIX, a non-FH hub always refused above and never reached
+# any of this, so $BE only ever had ONE writer (this hub's own Stop hook, throttled to one run per
+# 300s). Now FH and PMH can both be inside it at once — un-serialized, that lets one hub's `git
+# rebase --abort` (in maybe_push, below) tear down the OTHER hub's live `git pull --rebase`, or let
+# one hub's add/commit land mid-write of the other's. The lock is acquired HERE — before the mirror
+# phase below ever touches $BE — not later next to the git operations: git add/commit only stage
+# what THIS run explicitly adds, so a same-namespace collision there was already narrow, but the
+# mirror phase (`sync_dir`/`sync_file`, all rsync/tar/cp) writes files on disk with no such
+# scoping, and codex's review is right that letting it run lock-free just moves the race earlier
+# instead of closing it — a busy-lock timeout used to return 0 *after* dirtying the shared tree.
+# `flock` would be the obvious tool but ships on neither stock macOS (this operator's platform) nor
+# BSD — `mkdir` is atomic on every POSIX filesystem and needs no external binary. Shared (unsuffixed)
+# lock path: both hubs must serialize against EACH OTHER, not just themselves.
+mkdir -p "$BE"
+LOCKDIR="$BE/.sync.lock.d"
+LOCK_WAIT=0
+while ! mkdir "$LOCKDIR" 2>/dev/null; do
+  # A lock older than 120s did not come from a live run of this script (it finishes in seconds under
+  # normal conditions) — it is a killed process's leftover. Reclaim rather than wait forever.
+  if [ -d "$LOCKDIR" ]; then
+    # `date -r` failing (non-BSD date, or the dir vanishing between the -d test and this call) must
+    # NOT read as "epoch 0" — that would make age ~55 years and every lock look stale, disarming the
+    # lock entirely on the very run this staleness check exists to protect (Wave-2 review, [A], and
+    # independently corroborated by codex's cross-family review: "not found ≠ 0"). Unreadable mtime
+    # → assume NOW (freshest possible reading; worst case is one extra wait cycle, never a false steal).
+    lock_age=$(( $(date +%s) - $(date -r "$LOCKDIR" +%s 2>/dev/null || date +%s) ))
+    if [ "$lock_age" -gt 120 ]; then
+      # `rmdir` here (plain, unconditional) is the exact bug this line replaces: two processes can
+      # BOTH read the same lock as stale and BOTH `rmdir` + loop back to `mkdir` — the second one to
+      # arrive removes the FIRST one's brand-new, live lock, and mutual exclusion is broken by the
+      # code that exists to protect it (Wave-2 review, [S]). `mv` on a shared source is atomic: only
+      # one racer's rename can succeed (the source is gone for everyone else the instant it wins), so
+      # exactly one process reclaims and the rest fall through to a normal (now-fresh) staleness read.
+      if mv "$LOCKDIR" "$LOCKDIR.stale.$$" 2>/dev/null; then
+        rmdir "$LOCKDIR.stale.$$" 2>/dev/null || true
+        log "reclaimed a stale sync lock (${lock_age}s old — a prior run's leftover)"
+      fi
+      continue
+    fi
+  fi
+  LOCK_WAIT=$((LOCK_WAIT + 1))
+  [ "$LOCK_WAIT" -le 15 ] || { log "companion store busy (another hub is syncing) — next run will retry"; exit 0; }
+  sleep 1
+done
+# EXIT alone does not fire on an uncaught SIGTERM/HUP (bash kills the process outright) — and this
+# script IS killed mid-run by its own Stop-hook throttle window on occasion (see maybe_push's rebase
+# cleanup below, which exists for exactly that). Catch the common terminating signals too so a killed
+# run's lock still gets released instead of waiting out the 120s reclaim (Wave-2 review, [B]).
+trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT INT TERM HUP
 
 # CC stores per-project memory under ~/.claude/projects/<encoded-abs-path>/memory.
 # The encoding maps path separators (/ \ :) → '-', so it differs per OS, and git-bash's
@@ -156,17 +271,31 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
 # mtime, which would make the destination newer than its source — and the guard above would then
 # abort on this script's OWN output, every run after the first. So the mtime is restored from the
 # source after injection. A guard and a decorator that fight each other are worse than neither.
-BANNER='<!-- MIRROR COPY — synced from the forge-harness hub. Do NOT edit here; the next sync overwrites it. Edit the canonical file under the hub instead. -->'
+BANNER="<!-- MIRROR COPY — synced from the $HUB_NAME hub. Do NOT edit here; the next sync overwrites it. Edit the canonical file under the hub instead. -->"
 stamp_banner() {   # $1 = dst dir, $2 = src dir (for mtime restore)
-  local dst="$1" src="$2" f rel s
+  local dst="$1" src="$2" f rel s tmp skipped=0
   [ -d "$dst" ] || return 0
   while IFS= read -r f; do
     [ -n "$f" ] || continue
+    # $f can vanish between the find snapshot above and here — e.g. a machine-scoped file this
+    # same run retires right after mirroring it (memory/MEMORY.md, tracks-meta/edit_manifest.yaml),
+    # or a second concurrent run of this script. Skip rather than let `cat` fail into a tmp file
+    # nothing ever cleans up (pmh-dev#68 ③ — 4 such orphans found committed in the companion store).
+    [ -f "$f" ] || { skipped=$((skipped + 1)); continue; }
     head -1 "$f" 2>/dev/null | grep -q 'MIRROR COPY' && continue
     rel="${f#$dst/}"; s="$src/$rel"
-    { printf '%s\n' "$BANNER"; cat "$f"; } > "$f.tmp$$" && mv "$f.tmp$$" "$f"
-    [ -f "$s" ] && touch -r "$s" "$f"   # keep the guard from firing on our own banner
+    tmp="$f.tmp$$"
+    if { printf '%s\n' "$BANNER"; cat "$f"; } > "$tmp" 2>/dev/null && mv "$tmp" "$f" 2>/dev/null; then
+      [ -f "$s" ] && touch -r "$s" "$f"   # keep the guard from firing on our own banner
+    else
+      rm -f "$tmp"   # never leave a partial banner-stamp behind for `git add` to pick up
+      skipped=$((skipped + 1))
+    fi
   done < <(find "$dst" -type f -name '*.md' ! -path '*/logs/*' 2>/dev/null)
+  # A silent skip hides a real failure (permission, ENOSPC) behind the benign TOCTOU case above —
+  # both look identical from outside. Not fatal (banner stamping is best-effort by design, see
+  # below), but must be visible rather than absorbed. (pmh-dev#68 Wave-1 review)
+  [ "$skipped" -eq 0 ] || log "banner: $skipped file(s) unstamped in $dst (vanished mid-run or write failed)"
   # A `while` loop returns the status of the LAST command run in its body. The line above is a
   # bare test, so a final iteration whose source file no longer exists in the hub (a mirror file
   # with no hub counterpart — normal, not an error) made this function return 1. That leaked all
@@ -187,10 +316,15 @@ strip_banner() {   # $1 = dst dir
   [ -d "$dst" ] || return 0
   while IFS= read -r f; do
     [ -n "$f" ] || continue
+    [ -f "$f" ] || continue   # vanished since the find snapshot — see stamp_banner's note above
     head -1 "$f" 2>/dev/null | grep -q 'MIRROR COPY' || continue
     # mtime must survive the strip: rsync's quick-check is size+mtime, so a strip that bumps
     # mtime to NOW makes every file look changed and the churn returns by another door.
-    tail -n +2 "$f" > "$f.tmp$$" && touch -r "$f" "$f.tmp$$" && mv "$f.tmp$$" "$f"
+    if tail -n +2 "$f" > "$f.tmp$$" 2>/dev/null && touch -r "$f" "$f.tmp$$"; then
+      mv "$f.tmp$$" "$f"
+    else
+      rm -f "$f.tmp$$"
+    fi
   done < <(find "$dst" -type f -name '*.md' ! -path '*/logs/*' 2>/dev/null)
   return 0   # same status-leak shape as stamp_banner above — best-effort, never the script's verdict
 }
@@ -209,7 +343,7 @@ sync_dir() {
       log "⚠️  destination-newer OVERRIDE (SYNC_OVERWRITE_OK=1) — overwriting:"
       printf '%s' "$NEWER_HITS" >&2
       printf '%s\tSYNC_OVERWRITE_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$dst" \
-        >> "$BE/tracks-meta/.sync_overwrite_override_log" 2>/dev/null || true
+        >> "$BE/$TM/.sync_overwrite_override_log" 2>/dev/null || true
     else
       echo "" >&2
       echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
@@ -265,7 +399,7 @@ sync_file() {
     if [ "${SYNC_OVERWRITE_OK:-0}" = "1" ]; then
       log "⚠️  destination-newer OVERRIDE (SYNC_OVERWRITE_OK=1) — overwriting $dstf"
       printf '%s\tSYNC_OVERWRITE_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$dstf" \
-        >> "$BE/tracks-meta/.sync_overwrite_override_log" 2>/dev/null || true
+        >> "$BE/$TM/.sync_overwrite_override_log" 2>/dev/null || true
     else
       echo "" >&2
       echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
@@ -315,17 +449,17 @@ machine_id() {
 MID="$(machine_id)"
 [ -n "$MID" ] || MID="unknown"
 
-sync_dir  "$FH/tracks/_meta"      "$BE/tracks-meta"
+sync_dir  "$FH/tracks/_meta"      "$BE/$TM"
 # ...then re-home the two machine-scoped files out of the shared namespace.
 if [ -f "$FH/tracks/_meta/edit_manifest.yaml" ]; then
-  mkdir -p "$BE/tracks-meta/manifests"
-  cp "$FH/tracks/_meta/edit_manifest.yaml" "$BE/tracks-meta/manifests/$MID.yaml" \
-    && log "manifest → tracks-meta/manifests/$MID.yaml (machine-scoped)"
-  rm -f "$BE/tracks-meta/edit_manifest.yaml"   # shared copy retired; history keeps every machine's
+  mkdir -p "$BE/$TM/manifests"
+  cp "$FH/tracks/_meta/edit_manifest.yaml" "$BE/$TM/manifests/$MID.yaml" \
+    && log "manifest → $TM/manifests/$MID.yaml (machine-scoped)"
+  rm -f "$BE/$TM/edit_manifest.yaml"   # shared copy retired; history keeps every machine's
 fi
-sync_dir  "$FH/tracks/_audit"     "$BE/tracks-audit"
-sync_dir  "$FH/tracks/_chamber"   "$BE/tracks-chamber"   # incubation chamber runs (INTENT/SIM_NOTES/verdict/INDEX ledger) — local-only (gitignored in public FH), made durable + cross-machine here
-sync_dir  "$FH/tracks/the_bible"  "$BE/tracks/the_bible"    # mapped project — NESTED under tracks/ (like livedeck; projects nest, only hub-meta _meta/_audit flatten): local-only (untracked in public FH), watched in companion
+sync_dir  "$FH/tracks/_audit"     "$BE/$TA"
+sync_dir  "$FH/tracks/_chamber"   "$BE/$TCH"   # incubation chamber runs (INTENT/SIM_NOTES/verdict/INDEX ledger) — local-only (gitignored in public FH), made durable + cross-machine here
+sync_dir  "$FH/tracks/the_bible"  "$BE/$TR/the_bible"    # mapped project — NESTED under tracks/ (like livedeck; projects nest, only hub-meta _meta/_audit flatten): local-only (untracked in public FH), watched in companion
 
 # Extra local-only project tracks to mirror are listed in a LOCAL, gitignored file
 # ($FH/.fh-be-tracks.local — one track dir-name per line, # comments allowed). This keeps
@@ -338,21 +472,23 @@ if [ -f "$EXTRA_LIST" ]; then
     _t="$(printf '%s' "$_t" | tr -d '[:space:]')"    # trim all whitespace
     [ -n "$_t" ] || continue
     case "$_t" in */*|.|..|..*) log "skip (unsafe track name): $_t"; continue;; esac
-    sync_dir "$FH/tracks/$_t" "$BE/tracks/$_t"
+    sync_dir "$FH/tracks/$_t" "$BE/$TR/$_t"
   done < "$EXTRA_LIST"
 fi
 
-sync_dir  "$MEM"               "$BE/memory"
+sync_dir  "$MEM"               "$BE/$MMD"
 # memory TOPIC files are machine-agnostic and merge fine (203/203 identical across machines,
 # measured 2026-07-15). The INDEX is not: it lists only what THIS machine's memory dir holds,
 # so a shared MEMORY.md is whichever machine synced last and can never cover the union.
+# (This retirement is deliberate design, not a bug — pmh-dev#68 ④ raised it as an unexplained
+# deletion; it is not one. Added 2026-07-15, commit 2ecc45d2.)
 if [ -f "$MEM/MEMORY.md" ]; then
-  mkdir -p "$BE/memory/_index"
-  cp "$MEM/MEMORY.md" "$BE/memory/_index/$MID.md" \
-    && log "memory index → memory/_index/$MID.md (machine-scoped)"
-  rm -f "$BE/memory/MEMORY.md"                 # shared copy retired; history keeps every machine's
+  mkdir -p "$BE/$MMD/_index"
+  cp "$MEM/MEMORY.md" "$BE/$MMD/_index/$MID.md" \
+    && log "memory index → $MMD/_index/$MID.md (machine-scoped)"
+  rm -f "$BE/$MMD/MEMORY.md"                 # shared copy retired; history keeps every machine's
 fi
-sync_file "$FH/CLAUDE.local.md" "$BE/hub-owner"
+sync_file "$FH/CLAUDE.local.md" "$BE/$HO"
 
 cd "$BE"
 
@@ -436,7 +572,26 @@ if [ "$TOTAL" -eq 0 ] && [ "$DIRTY" -eq 0 ]; then
 fi
 
 # Commit in the companion store
-git add tracks-meta/ tracks-audit/ tracks/ memory/ hub-owner/ 2>/dev/null || git add -A
+# mkdir -p every namespace dir first: sync_dir() only creates $dst once its $src exists (line ~200
+# above), so a dir this hub never populated (PMH's first run typically has no tracks/_chamber or
+# tracks/the_bible) is simply absent here. `git add` on a pathspec that matches nothing at all is a
+# hard error under `set -e` — the OLD `|| git add -A` fallback existed to survive exactly that, but
+# now that two hubs can share this worktree (the lock above), `git add -A` staging EVERYTHING
+# includes the OTHER hub's mid-sync files (Wave-1 review, pmh-dev#68 [A]). mkdir -p removes the actual
+# cause instead: `git add` on an existing-but-empty dir is a normal no-op, so the fallback is dropped.
+mkdir -p "$TM" "$TA" "$TCH" "$TR" "$MMD" "$HO"
+# Sweep any *.md.tmp<pid> banner-stamp leftovers before staging — belt-and-suspenders for the TOCTOU
+# case above (already made non-orphaning) AND for a hard kill mid-write (SIGKILL between the write
+# and the mv, which no in-process guard can catch). `git add dir/` stages everything under dir/
+# regardless of extension, which is exactly how the 4 orphans pmh-dev#68 found got committed.
+# The glob is anchored to `*.md.tmp[0-9]*`, NOT the broader `*.tmp[0-9]*` — $TR mirrors arbitrary
+# mapped-project content (the_bible, anything in .fh-be-tracks.local), and a project file that
+# genuinely happens to be named e.g. `notes.tmp2_draft.md` would match the broader glob and get
+# silently deleted every single sync, forever, with no trace (Wave-2 review, [A]). stamp_banner and
+# strip_banner only ever create `<file>.md.tmp$$` (both operate on `find … -name '*.md'` results), so
+# the narrower anchor still catches every real orphan and nothing else.
+find "$TM" "$TA" "$TCH" "$TR" "$MMD" "$HO" -name '*.md.tmp[0-9]*' -delete 2>/dev/null || true
+git add "$TM/" "$TA/" "$TCH/" "$TR/" "$MMD/" "$HO/"
 if git diff --cached --quiet; then
   log "nothing new to commit in companion store"
   maybe_push
@@ -444,7 +599,7 @@ if git diff --cached --quiet; then
 fi
 
 DATE=$(date +"%Y-%m-%d %H:%M")
-MSG="sync: hub private half → companion store ($DATE)"
+MSG="sync: $HUB_NAME private half → companion store ($DATE)"
 git commit -m "$MSG" --no-gpg-sign 2>/dev/null || git commit -m "$MSG"
 
 log "companion store committed"
