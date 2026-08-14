@@ -274,14 +274,21 @@ the naming collision with this session's own persona/viewpoint sense of "standpo
 `main-player`/`expert` agent roster) — different axis, same English word; do not conflate.
 **Prose-only** — no hook or fixture validates this field yet, unlike `crossfamily:`, and
 mechanizing it is FH's own job (a syncing sibling harness cannot add the check locally without its
-own sync process rejecting the divergence). Full field spec, trigger scope, and evidence:
+own sync process rejecting the divergence). **Timing — same moment as Axis 2/3
+(steel-quench/phantom-quench), not a follow-up**: run on the local diff before the first push to
+any remote (public or private — no visibility judgment to make), one unconditional rule regardless
+of perceived risk — see `field_verdict_crossfamily_gate.md §7 Sequencing` for why (a real PR pushed
+this exact field to a public repo with two residency leaks in view, caught only after the PR was
+already open). Full field spec, trigger scope, and evidence:
 `knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §7`.
 
 **Done When** (Step 6.5): `standpoint:` is emitted whenever the change is a shared-body/
 cross-harness-boundary change by the effect-based trigger above; `not-applicable` carries grounds
-on the same line naming what was checked *[judged — no mechanical anchor today; adversarial
-pairing: a reviewer/challenger may request the grounds be named in the PR capsule and reject a bare
-`not-applicable`]*.
+on the same line naming what was checked; **the review ran on the local diff before the first push**
+— a `standpoint:` value first recorded after the PR is already open does not satisfy this condition,
+even if the value itself is correct *[judged — no mechanical anchor today; adversarial pairing: a
+reviewer/challenger may request both the grounds and the pre-push timing be shown in the PR capsule,
+and reject a bare `not-applicable` or a post-hoc value]*.
 
 ## Step 7 — Output
 
