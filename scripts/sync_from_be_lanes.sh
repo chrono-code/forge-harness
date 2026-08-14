@@ -76,28 +76,40 @@ new_env l5
 mkdir -p "$BEX/memory"
 printf 'peer index\n'    > "$BEX/memory/MEMORY.md"
 printf 'peer manifest\n' > "$BEX/tracks-meta/edit_manifest.yaml"
+printf 'peer substrate\n' > "$BEX/tracks-meta/.substrate_versions"
 printf 'ordinary\n'      > "$BEX/tracks-meta/normal.md"
 printf 'mem ordinary\n'  > "$BEX/memory/plain_fact.md"
 # Fixture controls: an absence assertion is only evidence if the thing could have appeared.
-[ -f "$BEX/memory/MEMORY.md" ] && [ -f "$BEX/tracks-meta/edit_manifest.yaml" ]; chk $? "CONTROL: both fixtures exist upstream"
+[ -f "$BEX/memory/MEMORY.md" ] && [ -f "$BEX/tracks-meta/edit_manifest.yaml" ] && [ -f "$BEX/tracks-meta/.substrate_versions" ]; chk $? "CONTROL: all three fixtures exist upstream"
 run --include-new >/dev/null 2>&1
 [ -f "$HUB/tracks/_meta/normal.md" ]; chk $? "CONTROL: tracks area ran (ordinary file landed)"
 [ -f "$MEMD/plain_fact.md" ]; chk $? "CONTROL: memory area ran too (ordinary memory file landed)"
 [ ! -f "$HUB/tracks/_meta/edit_manifest.yaml" ]; chk $? "peer edit_manifest.yaml not pulled"
 [ ! -f "$MEMD/MEMORY.md" ]; chk $? "peer MEMORY.md not pulled"
+[ ! -f "$HUB/tracks/_meta/.substrate_versions" ]; chk $? "peer .substrate_versions not pulled (pmh-dev#69)"
 
-echo "── L6 same-machine return leg DOES restore this machine's own two ──"
+echo "── L6 same-machine return leg DOES restore this machine's own three ──"
 new_env l6
-mkdir -p "$BEX/tracks-meta/manifests" "$BEX/memory/_index"
+mkdir -p "$BEX/tracks-meta/manifests" "$BEX/memory/_index" "$BEX/tracks-meta/substrate"
 MID="$(FH_MACHINE_ID=lanetest bash -c 'printf "%s" "$FH_MACHINE_ID"')"
 printf 'my manifest\n' > "$BEX/tracks-meta/manifests/$MID.yaml"
 printf 'my index\n'    > "$BEX/memory/_index/$MID.md"
+printf 'my substrate\n' > "$BEX/tracks-meta/substrate/$MID"
 HOME="$FAKEHOME" HUB_DIR="$HUB" BE_DIR="$BEX" FH_MACHINE_ID=lanetest bash "$SCRIPT" --no-git >/dev/null 2>&1
 [ "$(cat "$HUB/tracks/_meta/edit_manifest.yaml" 2>/dev/null)" = "my manifest" ]; chk $? "own manifest restored by machine-id match"
 [ "$(cat "$MEMD/MEMORY.md" 2>/dev/null)" = "my index" ]; chk $? "own MEMORY.md index restored"
+[ "$(cat "$HUB/tracks/_meta/.substrate_versions" 2>/dev/null)" = "my substrate" ]; chk $? "own .substrate_versions restored by machine-id match (pmh-dev#69)"
 printf 'other manifest\n' > "$BEX/tracks-meta/manifests/someoneelse.yaml"
+printf 'other substrate\n' > "$BEX/tracks-meta/substrate/someoneelse"
 HOME="$FAKEHOME" HUB_DIR="$HUB" BE_DIR="$BEX" FH_MACHINE_ID=lanetest bash "$SCRIPT" --no-git >/dev/null 2>&1
 [ "$(cat "$HUB/tracks/_meta/edit_manifest.yaml")" = "my manifest" ]; chk $? "a PEER's manifest never lands (control: mine did, above)"
+[ "$(cat "$HUB/tracks/_meta/.substrate_versions")" = "my substrate" ]; chk $? "a PEER's substrate record never lands at my own path either (pmh-dev#69)"
+# The two assertions above cannot fail even without the substrate/ path exclusion — pull_machine_scoped
+# only ever writes to $MID's own path, so a peer's file was never a candidate for landing there. The
+# real exclusion the fix added is on the GENERIC bulk-pull (--include-new), which would otherwise
+# create a peer's file under its own literal name — test that directly (pmh-dev#69, B1).
+HOME="$FAKEHOME" HUB_DIR="$HUB" BE_DIR="$BEX" FH_MACHINE_ID=lanetest bash "$SCRIPT" --no-git --include-new >/dev/null 2>&1
+[ ! -f "$HUB/tracks/_meta/substrate/someoneelse" ]; chk $? "a PEER's raw substrate file not bulk-pulled under its own name (pmh-dev#69, real exclusion test)"
 
 echo "── L7 a --quiet run that WRITES must still speak ──"
 new_env l7
