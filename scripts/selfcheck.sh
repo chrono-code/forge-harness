@@ -485,7 +485,11 @@ done
 # or trim of that one test name would flip a real PASS into "dispatcher missing?" here (cross-family
 # review caught this, 2026-08-15). chamber_witness/digest_landing_check both print a genuine
 # terminal "캘리브레이션 통과/실패" line, so they stay.
-for _subj in compaction_probe judgment_circuit_lint novelty_claim_check chamber_witness digest_landing_check; do
+# publish_freshness_check joined 2026-08-16. It qualifies for the same reason chamber_witness does
+# and capability_registry_check does not: its terminal line is a genuine VERDICT
+# ("publish_freshness 캘리브레이션 통과/실패"), not a Korean test-case title, so a future rename of
+# any single lane cannot flip a real PASS into a false "dispatcher missing?" here.
+for _subj in compaction_probe judgment_circuit_lint novelty_claim_check chamber_witness digest_landing_check publish_freshness_check; do
   if [ ! -f "scripts/$_subj.sh" ]; then
     _absent_subject_verdict "$_subj --self-test" "scripts/$_subj.sh" || fail=1
   else

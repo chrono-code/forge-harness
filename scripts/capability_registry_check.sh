@@ -235,7 +235,22 @@ _check_one() {
     #   것은 그 자체가 위험 노출이다. M4 가 이미 같은 가드를 갖고 있었고 M6 만 없었다.
     printf '  ⏭  M6 — 앞선 축이 실패해 실행 생략(SKIPPED, PASS 아님)\n'
   else
-    local _probe="${0%/*}/capability_effect_probe.sh"
+    # SYMLINK-RESOLVED, not `${0%/*}` (fixed 2026-08-16, reproduced on both sides).
+    # `${0%/*}` yields the directory of the NAME USED TO INVOKE, so a symlink to this script made
+    # the probe lookup land next to the LINK — where nothing lives — and M6 then fail-closed with
+    # "probe 부재" about a probe that exists. A gate that blames a missing file for its own path bug
+    # is worse than one that simply fails: it sends the reader to the wrong repair.
+    # `BASH_SOURCE[0]` is the real file even when invoked through a link; the loop then walks any
+    # remaining links in the path. `readlink -f` is deliberately not used — it is GNU-only and this
+    # ships to macOS (BSD `readlink` has no `-f`).
+    local _src="${BASH_SOURCE[0]:-$0}" _dir
+    while [ -L "$_src" ]; do
+      _dir=$(cd -P "$(dirname "$_src")" >/dev/null 2>&1 && pwd) || break
+      _src=$(readlink "$_src")
+      case "$_src" in /*) ;; *) _src="$_dir/$_src" ;; esac
+    done
+    _dir=$(cd -P "$(dirname "$_src")" >/dev/null 2>&1 && pwd) || _dir="${0%/*}"
+    local _probe="$_dir/capability_effect_probe.sh"
     if [ ! -r "$_probe" ]; then
       # 🟥 **fail-CLOSED.** 등록은 «이후 자동 호출» 로 이어지는 비가역 표면이다
       #   (CLAUDE.md §Irreversibility Surface-Class Degrade Invariant).

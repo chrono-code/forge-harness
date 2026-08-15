@@ -1,6 +1,6 @@
 {
   "name": "@chrono-meta/fh-gate",
-  "version": "1.4.99",
+  "version": "2.0.0",
   "description": "FH runtime adapters — run FH governance, skills, and agents via Claude or Codex with machine-parseable gates.",
   "license": "MIT",
   "keywords": [
@@ -27,7 +27,7 @@
     "prepare": "chmod +x bin/fh-gate.js bin/fh-run.js bin/fh-goal.js bin/fh-codex-doctor.js scripts/fh-gate.sh scripts/fh-run.sh scripts/fh-goal.sh",
     "postinstall": "node scripts/postinstall_notice.js",
     "test": "bash scripts/selfcheck.sh",
-    "prepublishOnly": "bash scripts/version_lockstep_check.sh && bash scripts/selfcheck.sh && bash scripts/package_coverage_check.sh --vs-tarball && bash scripts/public_surface_scan_files.sh",
+    "prepublishOnly": "bash scripts/publish_freshness_check.sh && bash scripts/version_lockstep_check.sh && bash scripts/selfcheck.sh && bash scripts/package_coverage_check.sh --vs-tarball && bash scripts/public_surface_scan_files.sh",
     "release": "bash scripts/public_surface_scan_files.sh && npm publish"
   },
   "engines": {
@@ -72,6 +72,7 @@
     "scripts/test_lane_runner_lanes.sh",
     "scripts/test_version_lockstep_lanes.sh",
     "scripts/package_coverage_check.sh",
+    "scripts/publish_freshness_check.sh",
     "scripts/lane_runner_check.sh",
     "scripts/test_package_coverage_lanes.sh",
     "scripts/test_fh_gate_regressions.sh",
@@ -92,6 +93,7 @@
     "templates/.claude/rules/session.md",
     "scripts/below_floor_scan.sh",
     "scripts/capability_registry_check.sh",
+    "scripts/capability_effect_probe.sh",
     "scripts/chamber_run.sh",
     "scripts/fh_env_delta_scan.sh",
     "scripts/substrate_jump_detector.sh",
