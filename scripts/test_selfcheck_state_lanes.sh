@@ -357,6 +357,67 @@ CTLPY
 [ "$_BARE_CTL" = FIRED ]
 chk $? "CONTROL: that detector fires on a planted declared-shipped subject (got $_BARE_CTL)"
 
+echo ""
+echo "── directional_diff_gate verdict arm: exit 0 is not a pass ──"
+# WHY THIS LANE EXISTS (2026-08-15): the block wiring directional_diff_gate.sh --self-test gates on
+# the subject's terminal verdict, not on rc=0 alone, and both halves of that were put there by a
+# cross-family round rather than by the author. Its first draft gated on rc=0 plus a SUBSTRING of
+# the verdict, and two reachable inputs satisfied it while nothing ran:
+#   · `✅ calibration passed (0 pairs)` — the subject's own verdict line is
+#     `[ "$f" -eq 0 ] && echo "✅ calibration passed ($n pairs)"`, so deleting every lane prints a
+#     PASS with n=0. Deletion read as a pass is the quietest face of the not-found-is-not-zero class.
+#   · `usage: calibration passed (28 pairs)` — a prose/usage line carrying the words.
+# Without this lane both repairs are reversible to green, which is anchor-is-decorative.
+# LIFTED from selfcheck.sh, not re-spelled — a lane that restates the condition stops seeing edits
+# to it, which is the failure the two lanes above were written to avoid.
+DD_ARM=$(sed -n '/^      _dd_verdict=\$(printf/,/^      fi ;;$/p' "$SELFCHECK" | sed 's/ ;;$//')
+if [ -z "$DD_ARM" ]; then
+  echo "FAIL  the directional_diff_gate verdict arm is no longer where this lane lifts it from."
+  echo "      If the block was moved or renamed, update the lane WITH the subject."
+  exit 1
+fi
+# An empty lift is not the only bad lift. If the END anchor stops matching — re-indent the arm, or
+# move it out of the `case` — the START anchor still matches and the range runs to EOF, which is
+# non-empty and therefore passes the guard above. What saves it today is luck, not design: the
+# `;;`-stripping applies to every line in the range, so downstream case arms lose their terminators
+# and `eval` dies of a syntax error. A downstream span that happened to be self-contained would
+# instead `eval` several hundred lines of selfcheck.sh, once per fixture, at the repo root. Bound
+# the lift by size so the failure is a lane message rather than an accident. Cross-family, 2026-08-15.
+if [ "$(printf '%s\n' "$DD_ARM" | wc -l)" -gt 15 ]; then
+  echo "FAIL  the lifted verdict arm is $(printf '%s\n' "$DD_ARM" | wc -l) lines — the sed END anchor"
+  echo "      stopped matching and the range ran past the block. Fix the anchor, do not widen this bound."
+  exit 1
+fi
+dd_arm_says() { # $1 = the subject's stdout; echoes PASS or FAIL
+  ( _out="$1"; fail=0; _show_failure() { :; }
+    eval "$DD_ARM" ) | grep -oE '^(PASS|FAIL)' | head -1
+}
+
+[ "$(dd_arm_says '✅ calibration passed (28 pairs)')" = PASS ]
+chk $? "a real verdict with a non-zero pair count passes"
+
+[ "$(dd_arm_says '✅ calibration passed (0 pairs)')" = FAIL ]
+chk $? "every lane deleted (0 pairs, exit 0) is caught, not certified"
+
+[ "$(dd_arm_says 'usage: calibration passed (28 pairs)')" = FAIL ]
+chk $? "a usage/prose line carrying the words does not satisfy the gate"
+
+# CONTROL — the pre-repair form (bare substring, no pair-count floor) must ACCEPT both bad
+# fixtures. Without it these lanes could pass because the fixtures are wrong rather than because
+# the repair works.
+_pre() { printf '%s\n' "$1" | grep -oE 'calibration passed \([0-9]+ pairs\)' | tail -1; }
+[ -n "$(_pre '✅ calibration passed (0 pairs)')" ] && [ -n "$(_pre 'usage: calibration passed (28 pairs)')" ]
+chk $? "CONTROL: the pre-repair substring form accepts both — the fixtures discriminate"
+
+# SCOPE of these four lanes, stated because the inherited §SCOPE block below is about a different
+# anchor and does not cover them. The lift is the `0)` arm's BODY only, so these lanes see a change
+# to the verdict predicate and are blind to the routing around it: widening `case ... in 0)` to
+# `0|1)`, dropping `< /dev/null`, dropping the `$_LANE_TO` wrapper, or deleting the rc=124
+# HARNESS-ERROR arm all leave every lane here green. Those are guarded by review, not by this file.
+# The `_pre` control is also a RE-SPELLING of the pre-repair form rather than a lift of it — it has
+# to be, since that form no longer exists in the subject to lift, but it means the control asserts
+# what the old code did from memory. Both limits found by cross-family review, 2026-08-15.
+
 # ── SCOPE OF THIS ANCHOR — stated so it is not over-trusted ───────────────────
 # These lanes catch REVERSION (the run-twice form coming back, the helper being gutted, the
 # call-site redirect returning). They do NOT catch deliberate EVASION: a cross-family round
