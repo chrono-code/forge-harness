@@ -216,6 +216,80 @@ else
   printf '%s\n' "$out" | sed 's/^/       │ /'
 fi
 
+# ── L14/L15 the SUBJECT'S OWN documentation is not a caller (2026-08-15) ──────────────────────
+# Measured on this repo: `self-test: 10/10 wired` while directional_diff_gate.sh had ZERO callers
+# (`grep -rn directional_diff_gate scripts/*.sh templates/.git-hooks/* .github/workflows/*.yml`,
+# excluding the checker and the subject itself → nothing). The subject's own usage comment
+# (`#   bash scripts/directional_diff_gate.sh --self-test`) matched the direct-dispatch regex, so
+# the checker read the file's documentation of itself as evidence that something ran it.
+#
+# This is the SAME class the checker already closes one level up and, until now, only there:
+# `runners` drops lane_runner_check.sh so the tool cannot certify its own DEBT list as done, and
+# has_runner() skips a suite's own file, and runner_dispatches() skips comment lines. None of the
+# three guards reached the --self-test branch — has_selftest_runner() scanned every runner
+# including the subject, over raw text including comments. A guard that exists in one predicate
+# and not in its sibling is not a guard, it is a coincidence.
+#
+# Two lanes because the two halves fail independently: self-exclusion alone still lets a COMMENT
+# in a third file certify a subject, and comment-skipping alone still lets a subject's own
+# non-comment self-reference do it.
+
+# L14 known-POSITIVE: the subject's OWN usage comment must not count as a caller.
+D="$T/l14"; mkfixture_clean "$D"
+cat > "$D/scripts/orphan_probe.sh" <<'SUBJ'
+#!/usr/bin/env bash
+# Usage:
+#   bash scripts/orphan_probe.sh --self-test        # known-pair calibration
+[ "${1:-}" = "--self-test" ] && { echo ok; exit 0; }
+SUBJ
+out=$(run "$D"); rc=$(rcof "$D")
+if [ "$rc" = "0" ] && printf '%s' "$out" | grep -q 'orphan_probe'; then
+  ok "L14 known-positive: subject's own usage comment is not a caller — still reported unwired"
+else
+  bad "L14 known-positive did not fire (rc=$rc) — self-referential comment read as a dispatcher"
+  printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
+# L15 known-POSITIVE: a comment in a DIFFERENT file must not count either. Same discipline
+# runner_dispatches() already applies to ordinary suites ("a mention is not an invocation").
+D="$T/l15"; mkfixture_clean "$D"
+printf '#!/usr/bin/env bash\n[ "${1:-}" = "--self-test" ] && { echo ok; exit 0; }\n' > "$D/scripts/orphan_probe.sh"
+cat > "$D/scripts/selfcheck.sh" <<'SC'
+#!/usr/bin/env bash
+bash scripts/lane_runner_check.sh
+bash scripts/test_ok_lanes.sh
+# historical note: we used to run `bash scripts/orphan_probe.sh --self-test` here, removed 2026-01-01
+SC
+out=$(run "$D"); rc=$(rcof "$D")
+if [ "$rc" = "0" ] && printf '%s' "$out" | grep -q 'orphan_probe'; then
+  ok "L15 known-positive: a commented-out dispatch in another file is not a caller"
+else
+  bad "L15 known-positive did not fire (rc=$rc) — a comment read as a live dispatcher"
+  printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
+# L16 known-POSITIVE: a subject that names its own dispatch on a NON-comment line. This is the only
+# lane that actually pins the self-exclusion guard, and it exists because a cross-family round
+# (2026-08-15) showed L14/L15 do not: both of their fixtures put the self-reference in a `#` line,
+# so comment-stripping alone already satisfies them and the guard could be deleted with all lanes
+# still green — a repair with no control, which is the exact failure this file was written to name.
+# The shape is a usage helper, because that is how a real subject names its own flag in live code
+# rather than in a header comment.
+D="$T/l16"; mkfixture_clean "$D"
+cat > "$D/scripts/orphan_probe.sh" <<'SUBJ'
+#!/usr/bin/env bash
+usage() { echo "run: bash scripts/orphan_probe.sh --self-test"; }
+[ "${1:-}" = "--self-test" ] && { echo ok; exit 0; }
+usage
+SUBJ
+out=$(run "$D"); rc=$(rcof "$D")
+if [ "$rc" = "0" ] && printf '%s' "$out" | grep -q 'orphan_probe'; then
+  ok "L16 known-positive: a subject's own NON-comment self-reference is not a caller"
+else
+  bad "L16 known-positive did not fire (rc=$rc) — self-exclusion guard is unanchored"
+  printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
 echo "----"
 echo "lane-runner lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

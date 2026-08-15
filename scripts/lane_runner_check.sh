@@ -356,10 +356,16 @@ wired = {s for s in suites if has_runner(s)}
 # ── Embedded --self-test dispatchers — a class the name-pattern `suites` glob cannot see ──────
 # Measured 2026-08-13, the header of this file, §WHAT DEBT:0 DOES NOT MEAN: a lane suite that
 # lives INSIDE its subject as a `--self-test` flag — not a separate `test_*.sh`/`*_lanes.sh` file
-# — is structurally invisible to the glob above. 4 scripts carry one — chamber_witness.sh ·
-# capability_registry_check.sh · digest_landing_check.sh · directional_diff_gate.sh — and none
-# showed up as WIRED or UNWIRED anywhere in this report; the wiring line for the 3 that ARE wired,
-# the `for _subj in ...` loop at scripts/selfcheck.sh:478, could be deleted and nothing here would
+# — is structurally invisible to the glob above. When this block was written, 4 such scripts were
+# known and none showed up as WIRED or UNWIRED anywhere in this report.
+# ⚠️ Do not read that 4 as a current figure, and do not re-list the names here. The set is
+# DISCOVERED at run time by `_st_candidates` below and the live figure is printed in this file's
+# own SELFTEST_COUNTS line, so a hand-maintained example list beside a self-discovering scan is a
+# second source of truth that goes stale in silence. That is not hypothetical: the previous
+# version of this comment named a 4th example the code no longer agreed with, and the session that
+# noticed had to trace the discrepancy to ground by hand.
+# The wiring line for the subjects that ARE wired,
+# the `for _subj in ...` loop in scripts/selfcheck.sh, could be deleted and nothing here would
 # go red. found→extend, not a new file: same idiom as `suites`/`has_runner` above — discover
 # subjects, detect dispatch, report undeclared — new predicates for the shape this pattern uses.
 #
@@ -378,7 +384,7 @@ wired = {s for s in suites if has_runner(s)}
 # literal paren out as an escape sequence instead of a bare character, rather than splitting it
 # across lines.
 # A bare substring match on --self-test would also catch prose that only DISCUSSES the flag
-# (measured: scripts/selfcheck.sh:482 has a comment naming it as an example of what NOT to grep
+# (measured: scripts/selfcheck.sh's `_subj` loop carries a comment naming it as what NOT to grep
 # for, which is exactly the false positive this narrower check exists to avoid). Require one of
 # the two real dispatcher shapes instead: `"--self-test"` in a quoted comparison, or `--self-test)`
 # as a bare case-pattern. The close-paren is built via chr — see the paren-trap note above; a
@@ -392,6 +398,21 @@ def _read(path):
     except OSError:
         return ''
 
+# 🟥 NAMED RESIDUALS in the self-test branch — two asymmetries the 2026-08-15 repair did NOT close,
+# written here because this file names its other residuals and silence would read as coverage.
+#   1. Comment-stripping is LINE-PREFIX only. A dispatch line living inside a heredoc body or
+#      inside an echoed string is not a comment and still counts as a live caller. Symmetric with
+#      runner_dispatches, which has the same limit — so "symmetry restored" is true, and the shared
+#      blind spot survives in both. In-tree example of the shape: the heredoc fixtures in
+#      scripts/test_lane_runner_lanes.sh. Harmless today only because those name a fixture subject.
+#   2. Subject DISCOVERY below still reads comments. `_st_names` matches the raw dispatcher forms
+#      anywhere in the file, so a comment that merely mentions the flag can enrol a script as a
+#      self-test subject. Real case: chamber_witness.sh carries the flag inside a usage comment.
+#      Harmless today because that file also has a real dispatcher — but it means "a mention is not
+#      a declaration" is enforced on the RUNNER side and not on the SUBJECT side.
+# Neither is mechanized: closing them means parsing shell rather than scanning lines, which is the
+# Grep-Collision Treadmill this repo has already logged. Fix on the first case that actually bites.
+#
 # One line on purpose — see the paren-trap note above the SELFTEST_PAT definition.
 _st_candidates = [f for f in glob.glob('scripts/*.sh') if os.path.basename(f) not in suites and os.path.basename(f) != 'lane_runner_check.sh']
 _st_names = [os.path.basename(f)[:-3] for f in _st_candidates if any(_form in _read(f) for _form in SELFTEST_DISPATCH_FORMS)]
@@ -399,8 +420,8 @@ selftest_subjects = sorted(set(_st_names))
 
 def selftest_dispatched(bare_name, txt):
     """Two shapes, both real in this repo. Cross-family review (2026-08-14) caught the first draft
-    shipping only the second — it read scripts/selfcheck.sh:478's `_subj` for-loop but missed
-    :898/:933's direct `bash scripts/probe_scope_check.sh --self-test` / `bash scripts/
+    shipping only the second — it read scripts/selfcheck.sh's `_subj` for-loop but missed that
+    file's direct `bash scripts/probe_scope_check.sh --self-test` / `bash scripts/
     utterance_landing_check.sh --self-test`, so those two subjects were reported UNDECLARED while
     selfcheck.sh runs them every time. This is the exact failure the header above names by cite —
     a reader trusting the count over the source would have been told a false thing with confidence.
@@ -410,11 +431,17 @@ def selftest_dispatched(bare_name, txt):
     Shape 2 (indirect): bare_name sits in a `for VAR in ... bare_name ...; do` loop whose body
     dispatches $VAR with --self-test — mirrors the indirect-branch reasoning of runner_dispatches:
     the literal name is in a list construct, the invocation runs through the loop variable, so a
-    direct-dispatch grep alone structurally cannot see it (scripts/selfcheck.sh:478)."""
-    if re.search(rf'\bbash\s+scripts/{re.escape(bare_name)}\.sh\b[^\n]*--self-test', txt):
+    direct-dispatch grep alone structurally cannot see it (selfcheck.sh's `for _subj in ...` loop).
+
+    Comment lines are dropped first, exactly as runner_dispatches does for ordinary suites: "a
+    mention is not an invocation" applies identically here, and until 2026-08-15 it was enforced in
+    only one of the two predicates. Measured: a `#   bash scripts/x.sh --self-test` usage line
+    matched the direct regex and certified a subject nothing ran."""
+    _body = '\n'.join(_l for _l in txt.split('\n') if not _l.strip().startswith('#'))
+    if re.search(rf'\bbash\s+scripts/{re.escape(bare_name)}\.sh\b[^\n]*--self-test', _body):
         return True
     in_loop = False; loop_var = None; has_name = False
-    for ln in txt.split('\n'):
+    for ln in _body.split('\n'):
         s = ln.strip()
         m = re.match(r'for\s+(\w+)\s+in\b(.*)', s)
         if m:
@@ -430,7 +457,20 @@ def selftest_dispatched(bare_name, txt):
     return False
 
 def has_selftest_runner(bare_name):
-    return any(selftest_dispatched(bare_name, _read(r)) for r in runners)
+    # A subject does not wire itself. has_runner() has skipped a suite's own file since this file
+    # was written; this branch did not, and the asymmetry was invisible because nothing exercised
+    # it — the only in-file control drove selftest_dispatched with synthetic text, never the
+    # runner set.
+    # ⚠️ Attribution, kept precise because a cross-family round caught it being loose: the 2026-08-15
+    # incident — directional_diff_gate.sh dispatched by nothing while the report said 10/10 — was
+    # caused by the COMMENT half, and comment-stripping alone closes it. Every self-reference in
+    # this tree at that date was a `#` line; a non-comment one existed nowhere. So this guard is
+    # SYMMETRY, not a repair of an observed case: it covers the shape where a subject names its own
+    # dispatch in live code, such as a usage helper. That shape is pinned by lane L16, which was
+    # added at the same time and for the same reason — without it this line is a repair no control
+    # drives, which is the failure mode this file exists to name.
+    _own = bare_name + '.sh'
+    return any(selftest_dispatched(bare_name, _read(r)) for r in runners if os.path.basename(r) != _own)
 
 selftest_wired = {s for s in selftest_subjects if has_selftest_runner(s)}
 selftest_undeclared = sorted(s for s in selftest_subjects if s not in selftest_wired)
@@ -445,12 +485,18 @@ if not selftest_dispatched('alpha', _ST_POS_FIXTURE):
 if selftest_dispatched('alpha', _ST_NEG_FIXTURE):
     print("CONTROL_FAILED\tself-test known-negative fixture with no --self-test flag read as dispatched")
     raise SystemExit(2)
+# Second known-negative, added 2026-08-15 with the comment-skip repair. Without it the repair is a
+# line of code no control drives — the failure mode this whole file exists to name.
+_ST_CMT_FIXTURE = '#   bash scripts/alpha.sh --self-test   # usage example, not a caller\n'
+if selftest_dispatched('alpha', _ST_CMT_FIXTURE):
+    print("CONTROL_FAILED\tself-test commented usage line read as a live dispatcher")
+    raise SystemExit(2)
 
 # ── CONTROL: the instrument must be able to see a suite known to be wired, and must NOT see one
 # known to be dead. Without both arms a broken detector reports "all clean" or "all broken" and
 # either reads as a verdict. [[feedback_absence_measurement_needs_control]]
 CTL_POS  = 'test_selfcheck_state_lanes.sh'    # selfcheck.sh invokes this DIRECTLY
-CTL_POS2 = 'test_session_close_lanes.sh'      # selfcheck.sh:613 for-list + `bash "$_anchor"` — the
+CTL_POS2 = 'test_session_close_lanes.sh'      # selfcheck.sh's `_anchor` for-list + `bash "$_anchor"` — the
                                               # INDIRECT arm. Pins the second detection branch: the
                                               # strict detector called this UNWIRED and a hand-check
                                               # showed it runs. Without this control that branch
@@ -628,8 +674,18 @@ if [ -n "$SELFTEST_UNDECLARED" ]; then
   echo "    dispatcher anywhere (self-test code exists, nothing calls it — see this file's own"
   echo "    §Embedded --self-test comment for why the suites glob above cannot see this class):"
   printf '%s\n' "$SELFTEST_UNDECLARED" | sed 's/^/        /'
-  echo "    Fix by wiring \`bash scripts/<name>.sh --self-test\` into scripts/selfcheck.sh's"
-  echo "    _subj for-loop (scripts/selfcheck.sh:478), same shape as the 3 already there."
+  echo "    Fix by wiring \`bash scripts/<name>.sh --self-test\` into scripts/selfcheck.sh, by"
+  echo "    ONE of its two shapes — and the choice is decided by the subject's own output, not"
+  echo "    by which is shorter. The \`for _subj in ...\` loop gates on the substring 캘리브레이션;"
+  echo "    a subject whose terminal verdict is worded any other way goes red there for a reason"
+  echo "    that has nothing to do with its lanes — capability_registry_check was added to that"
+  echo "    loop and reverted for exactly this. Such a subject takes the second shape: its own"
+  echo "    direct-dispatch block, as capability_registry_check.sh and relay_channel.sh do there."
+  echo "    🟥 In that second shape do NOT gate on the exit code alone. Measured 2026-08-15 on"
+  echo "    directional_diff_gate: a suite whose lanes were all deleted still printed a PASS"
+  echo "    verdict and exited 0, and a usage banner carrying the same words satisfied a"
+  echo "    substring match. Require the terminal verdict AS A WHOLE LINE, with a non-zero count"
+  echo "    in it, or exit 0 will certify a suite that ran nothing."
 fi
 
 echo "PASS  lane-runner: ${TOTAL} suites — ${WIRED} wired · ${N_EXEMPT} exempt · ${N_DEBT} declared debt" \

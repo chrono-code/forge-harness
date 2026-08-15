@@ -582,6 +582,78 @@ else
   fail=1
 fi
 
+# directional_diff_gate — the LAST embedded --self-test subject with no caller, and it stayed
+# invisible for a reason worth keeping written down: lane_runner_check.sh reported it WIRED off the
+# subject's OWN usage comment (`#   bash scripts/directional_diff_gate.sh --self-test`), so the
+# report read `self-test: 10/10 wired` while `grep -rn directional_diff_gate` across every runner
+# surface returned zero real callers. The detector was repaired in the same delta as this wiring
+# (has_selftest_runner now skips the subject's own file, selftest_dispatched now drops comment
+# lines — the two guards has_runner/runner_dispatches always had), which is why the two halves ship
+# together: fixing the detector alone would have left a real debt item newly VISIBLE and still
+# unrun, and wiring alone would have left the detector able to certify the next such subject.
+# ⚠️ The cost of shipping both halves at once, named rather than left for the next reader to
+# discover: the report reads `10/10` before the change and `10/10` after it, so the detector repair
+# is NOT observable from this repo's own run — reverting the repair alone leaves the count
+# unchanged, because the wiring that now exists is real. Its only evidence is the fixture lanes
+# L14–L16 in scripts/test_lane_runner_lanes.sh, which is why L16 in particular is load-bearing:
+# delete it and the self-exclusion guard has nothing anywhere that would go red.
+#
+# NOT in the `for _subj in ...` loop above, and that is the same call made for
+# capability_registry_check: that loop gates on the substring 캘리브레이션, and this subject's
+# terminal verdict is English ("✅ calibration passed (N pairs)"). Adding it there would produce
+# "dispatcher missing?" — a confident and wrong cause — for a suite that passes. Gate on exit code
+# instead, same shape as the two blocks above. It carries genuine HARNESS-ERROR paths (`exit 10` on
+# mktemp failure, `return 10` on unreadable input), so a setup failure must not read as a lane
+# failure. Ships via package.json files[] with no ACCEPTED_ABSENT declaration, so absence is
+# deletion, not package mode. `< /dev/null` for the same stdin-wait reason the loop above documents.
+if [ ! -f scripts/directional_diff_gate.sh ]; then
+  echo "FAIL  directional_diff_gate.sh: missing — it ships via package.json files[], so absence is deletion, not package mode"
+  fail=1
+else
+  _out=$($_LANE_TO bash scripts/directional_diff_gate.sh --self-test < /dev/null 2>&1); _dd_rc=$?
+  case "$_dd_rc" in
+    10|2|124|126|127)
+      # 124 is `timeout`'s own kill code, so it belongs in this arm rather than the generic FAIL
+      # one below: a suite that was killed did not measure, and calling that "the lane failed"
+      # sends the reader to the wrong file. Reachable only because this dispatch is wrapped in
+      # `$_LANE_TO` — which is REUSED from the pair-suite loop above, not installed here, so do
+      # not delete it from this line believing the timeout is local to this block.
+      echo "HARNESS ERROR  directional_diff_gate.sh --self-test: exited $_dd_rc — it could not measure,"
+      echo "      so its verdicts prove nothing. Not a lane failure, and not a pass either."
+      fail=1 ;;
+    0)
+      # rc=0 is NOT sufficient, and this is not a hypothetical: the `for _subj in ...` loop above
+      # records the measured case where a subject fell into an unrecognized mode, printed its usage
+      # banner and exited 0, and the checker read that as a pass while 25 lanes had vanished. This
+      # subject happens to exit 10 from that path TODAY — a revert probe (2026-08-15: dispatcher
+      # line deleted) confirmed the HARNESS ERROR arm fires — but that is incidental to how its
+      # usage function is written, not a property this block should depend on. Require the
+      # terminal verdict itself, so a future subject that exits 0 without running anything goes red
+      # here rather than certifying an empty run.
+      # Whole-LINE match, not a substring, and the pair count must be non-zero. Both halves were
+      # named by cross-family review (2026-08-15) and both are reachable in the real subject, not
+      # hypothetical: directional_diff_gate.sh's verdict line is
+      # `[ "$f" -eq 0 ] && echo "✅ calibration passed ($n pairs)"` — delete every `t` lane and it
+      # prints `calibration passed (0 pairs)` and exits 0, i.e. a suite with nothing left in it
+      # certifies itself. That is the quietest face of [[feedback_not_found_is_not_zero_family]]
+      # (deletion read as a pass), and a substring match would also let a usage banner or a prose
+      # line carrying the same words satisfy the gate.
+      _dd_verdict=$(printf '%s\n' "$_out" | grep -oE '^✅ calibration passed \([0-9]+ pairs\)$' | tail -1)
+      _dd_pairs=$(printf '%s' "$_dd_verdict" | grep -oE '[0-9]+' | tail -1)
+      if [ -n "$_dd_verdict" ] && [ "${_dd_pairs:-0}" -gt 0 ]; then
+        echo "PASS  directional_diff_gate.sh --self-test ($_dd_verdict)"
+      else
+        echo "FAIL  directional_diff_gate.sh: --self-test exited 0 without a non-zero calibration verdict (dispatcher missing, or every lane deleted?)"
+        _show_failure "$_out"
+        fail=1
+      fi ;;
+    *)
+      echo "FAIL  directional_diff_gate.sh: --self-test failed (exit $_dd_rc)"
+      _show_failure "$_out"
+      fail=1 ;;
+  esac
+fi
+
 # memory-link-check — the memory store is a GRAPH (memory_intent_recall.md: nodes=files,
 # edges=[[links]], recall walks one hop). Measured 2026-07-28: 50 of 872 edges pointed at a note
 # that existed under a different separator and 22 at nothing — a dead edge returns nothing and is
