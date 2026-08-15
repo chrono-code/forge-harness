@@ -7,10 +7,17 @@
     <key>Label</key>
     <string>com.forge-harness.frontier-digest</string>
 
+    <!-- Points at the autopilot WRAPPER (not frontier_digest_daily.sh directly). The wrapper runs
+         the unchanged digest job first (Stage 1), then — only if the digest succeeded, the working
+         tree is clean, and no other autopilot PR is already open — an unattended Stage 2 that may
+         open a PR (never merge) via harvest-loop's own 4-axis gate. If you want digest-only with no
+         Stage 2 autonomy, point this at scripts/frontier_digest_daily.sh instead.
+         Existing installs: re-run `launchctl unload/load` after editing the deployed plist under
+         ~/Library/LaunchAgents to pick this up — this tracked copy is the template, not the live one. -->
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/path/to/forge-harness/scripts/frontier_digest_daily.sh</string>
+        <string>/path/to/forge-harness/scripts/frontier_digest_autopilot.sh</string>
     </array>
 
     <!-- Daily at 09:00 — change Hour to adjust -->
