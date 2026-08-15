@@ -92,38 +92,67 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # A gate whose ON switch can be silently OFF is worse than no gate, so all three now fail closed.
 FH_REQUIRE_CLASS=""
 FH_REQUIRE_CLASS_SET=""
-_pos=""
+_pos=()
+# `_norm_class` TRIMS the ends. It does NOT delete interior whitespace, and the difference is the
+# whole point: a third round measured `--require-class 'repo-freshness-auto pull'` being squeezed to
+# `repo-freshness-autopull` and returning 0 — i.e. asking about one class and being told about a
+# DIFFERENT one. A name that still contains whitespace after trimming is refused rather than
+# repaired, because silently repairing an identity is how the wrong class gets authorized.
+_norm_class() {
+  local v="$1"
+  v="${v#"${v%%[![:space:]]*}"}"   # strip leading
+  v="${v%"${v##*[![:space:]]}"}"   # strip trailing
+  printf '%s' "$v"
+}
+_set_require_class() {
+  FH_REQUIRE_CLASS_SET=1
+  FH_REQUIRE_CLASS="$(_norm_class "$1")"
+  if [ -z "$FH_REQUIRE_CLASS" ]; then
+    echo "consent-registry: FAIL — --require-class given with an empty or whitespace-only class name; fail-closed" >&2
+    exit 1
+  fi
+  case "$FH_REQUIRE_CLASS" in
+    *[[:space:]]*)
+      echo "consent-registry: FAIL — class name '$FH_REQUIRE_CLASS' contains whitespace; a class identity is not normalised for you (fail-closed)" >&2
+      exit 1 ;;
+  esac
+  # 🟥 NAMED RESIDUAL — invisible and normalisation-confusable identities are still ACCEPTED.
+  # Round 4 measured it: a class whose name carries a zero-width joiner is admitted as an identity,
+  # and `unicodedata` is applied to the effect vocabulary but never to class names or grant keys.
+  # Why it is carried rather than closed here, stated so the next reader does not have to re-derive
+  # it: the same round's controls showed the failure direction is SAFE — `ok` vs `o<ZWJ>k` returns 3,
+  # and an NFC/NFD mismatch returns 3, so no confusable name FALSELY joins a real grant; the residue
+  # is that a weird name can be its own consistent identity. Exploiting that requires write access to
+  # BOTH the registry and the UAP, which are the consent source of truth — anyone holding those has
+  # already granted themselves whatever they wanted, so this is hygiene, not escalation.
+  # The right fix is NFC-normalising both sides and refusing Unicode format/control characters, NOT
+  # a blanket non-ASCII refusal: this harness is language-agnostic and a Korean class name is
+  # legitimate. That is a design decision with its own known-pair, not a line to add during a release.
+}
+# Positionals go into a bash ARRAY. The first draft accumulated them into a newline-delimited string
+# and rebuilt "$@" with `read` — measured not to be argv-preserving: a path containing a newline
+# split into two, and an empty positional was dropped, which silently promoted the UAP path into the
+# registry slot. This file is `#!/usr/bin/env bash`, so an array is available and exact.
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --require-class)
-      FH_REQUIRE_CLASS_SET=1
-      FH_REQUIRE_CLASS="$(printf '%s' "${2:-}" | tr -d '[:space:]')"
-      if [ -z "$FH_REQUIRE_CLASS" ]; then
-        echo "consent-registry: FAIL — --require-class given with an empty or whitespace-only class name; fail-closed" >&2
+      if [ "$#" -lt 2 ]; then
+        echo "consent-registry: FAIL — --require-class given with no class name; fail-closed" >&2
         exit 1
       fi
-      shift 2 || shift ;;
+      _set_require_class "$2"; shift 2 ;;
     --require-class=*)
-      FH_REQUIRE_CLASS_SET=1
-      FH_REQUIRE_CLASS="$(printf '%s' "${1#--require-class=}" | tr -d '[:space:]')"
-      if [ -z "$FH_REQUIRE_CLASS" ]; then
-        echo "consent-registry: FAIL — --require-class= given with an empty class name; fail-closed" >&2
-        exit 1
-      fi
-      shift ;;
+      _set_require_class "${1#--require-class=}"; shift ;;
+    --)
+      shift; while [ "$#" -gt 0 ]; do _pos+=("$1"); shift; done ;;
     --*)
       echo "consent-registry: FAIL — unknown option '$1'; fail-closed rather than treating it as a path" >&2
       exit 1 ;;
     *)
-      _pos="$_pos$1
-"
-      shift ;;
+      _pos+=("$1"); shift ;;
   esac
 done
-set --
-while IFS= read -r _a; do [ -n "$_a" ] && set -- "$@" "$_a"; done <<POSEOF
-$_pos
-POSEOF
+set -- ${_pos[@]+"${_pos[@]}"}
 export FH_REQUIRE_CLASS FH_REQUIRE_CLASS_SET
 REG="${1:-$ROOT/tracks/_meta/consent_classes.yaml}"
 UAP="${2:-$ROOT/tracks/_meta/user_adaptation_profile.md}"

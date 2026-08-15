@@ -843,6 +843,31 @@ fi
 # i) no flag → behaviour unchanged. Backward compatibility is a claim, so it gets a lane.
 lane_args "RC-i no flag → file-wide verdict unchanged (0)" 0 "$TD/r.yaml" "$TD/u.md"
 
+# j) IDENTITY IS NOT NORMALISED FOR THE CALLER. A third adversarial round measured the first repair
+#    squeezing ALL whitespace out of the name, so `--require-class 'o k'` was answered with the
+#    verdict for class `ok` — a different question, silently answered. Asking about a name that is
+#    not a name is refused, never repaired.
+mkreg "$TWOCLASS"
+mkuap 'standing_consent:
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane_args "RC-j interior whitespace in the class name → 1, never folded onto a real class" 1 --require-class "o k" "$TD/r.yaml" "$TD/u.md"
+lane_args "RC-k surrounding whitespace IS trimmed → 0 (trim, not squeeze)" 0 --require-class "  ok  " "$TD/r.yaml" "$TD/u.md"
+
+# l) argv preservation. The first repair rebuilt "$@" through a newline-delimited string, which split
+#    a path containing a newline and DROPPED an empty positional — the drop promoted the UAP path
+#    into the registry slot, i.e. the tool silently measured a different pair of files than it was
+#    handed. Both are exotic inputs; both are silent, which is why they are lanes.
+_nlreg="$TD/reg
+two.yaml"
+cp "$TD/r.yaml" "$_nlreg" 2>/dev/null && lane_args "RC-l a registry path containing a newline is one argument" 0 --require-class ok "$_nlreg" "$TD/u.md" \
+  || ok "RC-l SKIPPED — this filesystem rejected a newline in a filename (not a defect)"
+bash "$CHK" "" "$TD/u.md" >"$TD/o" 2>&1
+if grep -q "R1/R2" "$TD/o"; then
+  ok "RC-m an empty first positional does not promote the UAP into the registry slot"
+else
+  bad "RC-m empty positional shifted the argument list"; sed 's/^/     /' "$TD/o"
+fi
+
 echo "----"
 echo "consent-registry anchor: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
