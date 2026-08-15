@@ -187,10 +187,26 @@ do_check() {
     #   git 추적 파일 → **커밋 시각**(`git log --since=@epoch`). mtime 은 브랜치 전환·체크아웃으로
     #                   갱신되므로 tracked 에서는 신뢰할 수 없다 — 실측으로 확인된 오탐 원인.
     #   gitignored    → mtime 밖에 없다(`tracks/**`). 남는 취약면이고 아래에 명명한다.
-    local _dts; _dts="$(stat -f %m "$d" 2>/dev/null || stat -c %Y "$d" 2>/dev/null)"
-    if [ -z "${_dts:-}" ]; then
-      echo "❌ digest mtime 을 못 읽었다 — 선후 판정 불가" >&2; return 10
-    fi
+    # ⚠️ **GNU-first, and then VALIDATE — 순서만으로는 부족하다.** 초판은 `stat -f %m || stat -c %Y`
+    # (BSD-first)였고 **리눅스에서 조용히 fail-open 했다**: GNU 의 `-f` 는 `--file-system` 이라
+    # 일반 파일에 대해 **exit 0** 으로 파일시스템 리포트(`File: … Blocks: …`)를 뱉는다. 즉 `||`
+    # 폴백이 영영 안 돌고 `_dts` 에 epoch 대신 여러 줄 blob 이 들어간다 → `git log --since="@<blob>"`
+    # 이 파싱 실패 → tracked 대상 **0개** → 「착지 0건」으로 렌더된다. 이 계기가 막으려고 존재하는
+    # 바로 그 미측정-을-0으로 렌더가 계기 자신에게서 났다([[feedback_not_found_is_not_zero_family]]).
+    # 아래 `[ -z ]` 가드는 blob 이 **비어 있지 않아서** 못 잡았다 — 존재검사는 진위를 못 본다.
+    # 실측 2026-08-15: macOS 10/10 PASS · ubuntu:24.04 컨테이너 및 CI(ubuntu-latest) 1/10 FAIL
+    # (positive arm `★N-git b` 만 죽는다 = negative 만 통과하는 하네스). 이 레인이 selfcheck 에
+    # 배선되기 전에는 아무도 안 돌려서 비용이 0이었다 — 배선이 가정을 표면화한 판본
+    # ([[feedback_wiring_surfaces_hidden_failures]], 같은 `stat -f` 원인의 재발).
+    # 정수 검증까지 두는 이유: 순서는 플랫폼이 하나 더 늘면 다시 깨지지만, "정수가 아니면 에러"는
+    # 안 깨진다. sync-from-be.sh:116 · fh_session_load.sh:105 가 같은 함정을 이미 주석으로 남겼다.
+    local _dts; _dts="$(stat -c %Y "$d" 2>/dev/null || true)"
+    case "${_dts:-}" in ''|*[!0-9]*) _dts="$(stat -f %m "$d" 2>/dev/null || true)" ;; esac
+    case "${_dts:-}" in
+      ''|*[!0-9]*)
+        echo "❌ digest mtime 을 못 읽었다(stat 출력이 epoch 정수가 아니다) — 선후 판정 불가" >&2
+        return 10 ;;
+    esac
     while IFS= read -r f; do
       [ -n "$f" ] || continue
       case "$f" in *.md) ;; *) continue ;; esac
