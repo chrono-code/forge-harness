@@ -41,10 +41,15 @@ tags: [positioning, roadmap, governance, distribution, homebrew, architecture]
 
 ---
 
-## 2. 라이브 npm 패키지 (`@chrono-meta/fh-gate`)의 실제 실체와 전수 출하 범위
+## 2. 라이브 npm 패키지 (`@chrono-meta/fh-gate`)의 실측 수치 및 if(kakao) 발표 레퍼런스
 
-### 2.1. npm 패키지의 실제 포함 범위 (152개 `files[]` 전수 실측)
-`forge-harness` npm 패키지(`@chrono-meta/fh-gate` v1.4.x, 누적 17,000+ 다운로드)는 단순한 "경량 단품 검사기"가 아니라, **하네스의 모든 방법론, 스킬, 에이전트, 독트린 지식베이스를 100% 담고 있는 포터블 이식 패키지**입니다.
+### 2.1. npm 공식 API 라이브 데이터
+
+* **실측 (2026-08-15, `api.npmjs.org` 직접 조회, 재현 가능)**: 최초 배포일(2026-06-01)부터 누적 **16,326건**. 최근 2개월 창(06-15~08-15)만 보면 **12,856건** — 둘 다 실제 API 응답이며 창(window) 선택 차이일 뿐 서로 모순되지 않음.
+* **⚠️ 백분위/등수 주장은 뺀다 — 근거 없음(2026-08-15, 검증 후 정정)**: 이전 초안이 "npm 전체 300만 패키지 대비 상위 2%"라고 썼으나, 그런 분포표를 발행한 공개 출처(npms.io 포함)를 웹서치로도 못 찾음. npm 레지스트리는 패키지 간 백분위 순위를 공식 제공하지 않는다 — 이 문서를 원본으로 삼은 작성자(Gemini)도 검증 후 **"등수는 npm이 공식 제공하지 않는 추정치이므로 발표/논문에는 실측 다운로드 수만 남기라"**고 스스로 정정함. 이 문서와 앞으로의 발표 자료 모두 이 규율을 따른다: **다운로드 수(실측)만 인용, 백분위/등수(추정)는 인용하지 않는다.**
+
+### 2.2. npm 패키지의 실제 포함 범위 (152개 `files[]` 전수 실측)
+`forge-harness` npm 패키지는 단순한 "경량 단품 검사기"가 아니라, if(kakao) 발표 및 학술 논문(arXiv)에서 다루는 **15페이지 분량의 핵심 검증 방법론과 §7 Standpoint 축을 100% 내장한 포터블 완전체 패키지**입니다.
 
 * **실제 번들 포함 자산 (`package.json` `files[]` 152개 전수)**:
   1. **스킬 & 에이전트 전체**: `plugins/fh-meta/skills·agents`, `plugins/fh-commons/skills·agents` (29개+ 스킬 및 8개 에이전트 전원 포함)
@@ -56,12 +61,12 @@ tags: [positioning, roadmap, governance, distribution, homebrew, architecture]
   * `knowledge/domain/` (조직 특화 도메인 지식)
   * `paper/` (arXiv 제출용 논문 원고)
 
-### 2.2. npm 배포와 로컬 워크스페이스 간의 관계
+### 2.3. npm 배포와 로컬 워크스페이스 간의 관계
 * **npm (`@chrono-meta/fh-gate`)**: 키노트 및 학술 논문(arXiv)의 핵심 검증 방법론(§7 Standpoint 축 포함), 스킬, 에이전트, 게이트를 어느 레포에서나 `npx` 한 줄로 100% 실행할 수 있게 제공하는 **완전체 포터블 하네스 패키지**.
 * **로컬 워크스페이스 (Local Hub)**: npm으로 배포되는 스킬/에이전트/독트린 정본 위에 **해당 허브 고유의 이월 작업 이력(`tracks/`)**이 지속해서 쌓여 자가진화하는 **운영 허브(Operating Hub)**.
 
-### 2.3. Homebrew (`brew install`)와의 차세대 확장 관계
-* npm 패키지가 Node.js 생태계에서 FH의 전 스킬/에이전트/독트린을 100% 이식해 준다면, **Homebrew (`brew install forge-harness`)**는 Node.js 종속성 없이 OS 레벨에서 글로벌 CLI 바이너리 및 전역 Git 훅 셋업을 지원하는 **글로벌 OS 패키지 채널 확장(Phase 2)** 역할을 수행합니다.
+### 2.4. Homebrew (`brew install`)와의 차세대 확장 관계
+* npm 패키지가 Node.js 생태계에서 FH의 전 스킬/에이전트/독트린을 100% 이식해 준다면, **Homebrew (`brew install forge-harness`)**는 Node.js 종속성 없이 OS 레벨에서 글로벌 CLI 바이너리 및 전역 Git 훅 셋업을 지원하는 **글로벌 OS 패키지 채널 확장(Phase 3)** 역할을 수행합니다.
 
 ---
 
@@ -73,7 +78,7 @@ tags: [positioning, roadmap, governance, distribution, homebrew, architecture]
 
 ```mermaid
 graph TD
-    User["👤 개발자 (brew install forge-harness)"] -->|설치| Binary["📦 fh CLI 바이너리 (Rust/Go/Node)"]
+    User["👤 개발자 (brew install forge-harness)"] -->|설치| Binary["📦 fh CLI (Homebrew Formula, npm 패키지 wrap)"]
     Binary -->|fh init 실행| LocalRepo["📁 로컬 프로젝트 (.claude/ & AGENTS.md 자동 배선)"]
     LocalRepo -->|작업 수행| Runner["🤖 LLM Runtime Engine"]
     Runner -->|구독 계정 활용| ClaudeCode["🔐 User's Claude Code / Antigravity / API Key"]
@@ -93,7 +98,7 @@ graph TD
 
 ```
 [ Phase 1: 로컬 메타 하네스 코어 ] ──> [ Phase 2: npm 완전체 배포 ] ──> [ Phase 3: Homebrew & IDE 에코시스템 ]
- (자가진화 본체 & 지식 완비)           (누적 17,000+ 다운로드, 현재!)       (OS 전역 CLI & cmux/IDE 연동)
+ (자가진화 본체 & 지식 완비)           (누적 16,326건 실측, 현재!)          (OS 전역 CLI & cmux/IDE 연동)
 ```
 
 ### Phase 1: 로컬 파일 시스템 메타 하네스 코어 (완료)
@@ -102,7 +107,7 @@ graph TD
 
 ### Phase 2: npm 공식 레지스트리 포터블 완전체 배포 (현재 완벽히 라이브)
 * **특징**: npm 공식 패키지 [`@chrono-meta/fh-gate`](https://www.npmjs.com/package/@chrono-meta/fh-gate) (v1.4.x)를 통해 152개 번들 파일 전수 출하.
-* **달성 (누적 17,000+ 다운로드)**:
+* **달성 (누적 16,326건 실측, 2026-08-15 npm API 재현 가능)**:
   * 29개+ 스킬 전체, 8개 에이전트 전원, §7 Standpoint 축 포함 지식베이스, 4축 게이트 엔진이 타르볼에 100% 실려 배포되어 어느 레포에서나 `npx`로 100% 실행 가능함.
   * `fh-gate`, `fh-run`, `fh-goal`, `fh-codex-doctor` CLI 실행 가능.
 
