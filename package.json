@@ -60,6 +60,7 @@
     "docs/codex-compat.md",
     "docs/pillars.svg",
     "scripts/fh-gate.sh",
+    "scripts/frontier_digest_autopilot.sh",
     "scripts/fh-run.sh",
     "scripts/fh-goal.sh",
     "scripts/count_check.sh",
