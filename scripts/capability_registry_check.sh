@@ -20,7 +20,13 @@
 #   돌리면 판정하지만 돌리도록 강제하지는 못한다(relay_channel.sh 의 같은 잔여와 동형).
 # · **M3(모델 독립성)은 선언 검사다.** reps 로 재지 않는다 — `judge:` 축 선언과, mechanical
 #   선언인데 entry 가 LLM CLI 를 부르는 명백한 모순만 잡는다. M4 를 reps=2 로 돌려 부분 방어.
-# · 🟥 **`writes:` 축은 검증 불가 — 그리고 그게 이 파일에서 실제로 터졌다.**
+# · ✅ **`writes:` 축은 2026-08-16 부터 관측된다(M6).** 아래 문단은 그 전의 상태이고,
+#   구조 처방으로 적어둔 것이 실제로 지어졌다 — `capability_effect_probe.sh` 를 M6 에서
+#   부른다. 사고 형태(`rm -rf scripts` + `read-only` 선언)는 이제 **REJECTED** 로 막힌다
+#   (self-test 레인으로 고정). 남은 한계는 그 프로브 헤더에 적혀 있다:
+#   한 번의 실행만 본다 · 조건부 쓰기는 M4 쌍에 없으면 안 걸린다 · 네트워크는 안 본다.
+#
+# · (이력) 🟥 **`writes:` 축은 검증 불가였다 — 그리고 그게 이 파일에서 실제로 터졌다.**
 #   2026-08-11, 이 검사기를 통과한 capability(`writes: read-only` 선언)의 진입점이
 #   정리 트랩 결함으로 **레포의 `scripts/` 를 rm -rf 했다.** M1(실행 가능)·M2(닫힌 enum)·
 #   M3(mechanical)·M4(known-pair 통과)·M5(cwd) 를 **전부 통과한 채로** 그랬다.
@@ -28,14 +34,15 @@
 #   를 보지 않는다. read-only 선언의 진위는 여기서 닫히지 않는다.
 #   부분 처방(오늘 적용): 진입점 쪽 트랩 규율(정리 대상 변수 재대입 금지 + 임시경로 검문).
 #   구조 처방(미구축): 샌드박스/읽기전용 마운트에서 M4 를 돌려 쓰기 시도를 관측하는 것.
-#   그 전까지 `writes: read-only` 는 **등록자 주장**이지 이 검사기의 판정이 아니다.
+#   ~~그 전까지 `writes: read-only` 는 등록자 주장이지 이 검사기의 판정이 아니다.~~
+#   → 2026-08-16 부터 **판정이다**(M6). 단 UNVERIFIABLE 이 나오면 그때는 여전히 주장이다.
 #
 # 사용법
 #   capability_registry_check.sh <capfile> [<capfile> ...]
 #   capability_registry_check.sh --self-test
 #
 # exit code
-#   0  REGISTRABLE      전 capfile 이 M1–M5 + 추가조항 통과
+#   0  REGISTRABLE      전 capfile 이 M1–M6 + 추가조항 통과
 #   1  REJECTED         하나 이상 기준 미달 (등록 불가 — 그 표면은 dispatch 로 남는다)
 #   10 HARNESS_ERROR    capfile 도달 불가·파손·검사기 자신의 전제 파손
 #
@@ -212,9 +219,40 @@ _check_one() {
     fi
   fi
 
-  # ── 검증 불가 축의 정직한 표기 (판정 아님) ────────────────────────────────
-  [ "$CAP_writes" = "read-only" ] && \
-    printf '  ⚠️  writes: read-only 는 **등록자 주장**이다 — 이 검사기는 그 진위를 못 잰다(헤더 §잔여 참조)\n'
+  # ── M6 선언 진위 — `writes:` 를 **관측**한다 (2026-08-16) ──────────────────
+  #
+  # 이 파일 헤더가 «구조 처방(미구축): 샌드박스/읽기전용 마운트에서 M4 를 돌려 쓰기 시도를
+  # 관측하는 것» 이라고 적어놓은 자리다. `capability_effect_probe.sh` 가 그 처방이고,
+  # 여기서 **부른다** — 도구가 존재하는 것과 게이트가 그것을 부르는 것은 다르다.
+  #
+  # ★UNVERIFIABLE 은 **PASS 가 아니다.** 등록을 막지는 않되(과차단이 우회를 훈련시킨다)
+  #   «못 쟀다» 를 출력에 남긴다. 미측정을 0 으로 렌더하지 않는다.
+  if [ -z "$CAP_writes" ]; then
+    :   # writes 미선언은 M2 가 이미 처리한다
+  elif [ "$FILE_FAILED" -eq 1 ] && [ -z "${CRC_FORCE_M6:-}" ]; then
+    # ★앞선 축이 실패했으면 **진입점을 실행하지 않는다**(2026-08-16 cross-family 지목).
+    #   M6 는 `eval` 로 entry 를 돌리므로, «등록 거부될 capfile» 의 진입점을 굳이 실행하는
+    #   것은 그 자체가 위험 노출이다. M4 가 이미 같은 가드를 갖고 있었고 M6 만 없었다.
+    printf '  ⏭  M6 — 앞선 축이 실패해 실행 생략(SKIPPED, PASS 아님)\n'
+  else
+    local _probe="${0%/*}/capability_effect_probe.sh"
+    if [ ! -r "$_probe" ]; then
+      # 🟥 **fail-CLOSED.** 등록은 «이후 자동 호출» 로 이어지는 비가역 표면이다
+      #   (CLAUDE.md §Irreversibility Surface-Class Degrade Invariant).
+      #   계기가 없으면 «못 쟀다» 이지 «괜찮다» 가 아니고, 여기서 통과시키면 이 축이
+      #   존재하기 전과 같은 상태가 된다.
+      _fail "M6" "effect probe 부재($_probe) — 선언 진위를 **못 쟀다**. 비가역 표면이므로 fail-closed"
+    else
+      local _pout _prc
+      _pout=$(bash "$_probe" "$f" 2>&1); _prc=$?
+      case "$_prc" in
+        0) _ok "M6" "선언 진위 관측 통과: writes=$CAP_writes (양 arm 샌드박스 실행에서 위반 없음)" ;;
+        1) _fail "M6" "선언 진위 **위반**: $(printf '%s' "$_pout" | head -1)" ;;
+        3) _fail "M6" "관측 불가(UNVERIFIABLE) — 등록은 이후 자동 호출로 이어지므로 **미측정을 통과로 렌더하지 않는다**: $(printf '%s' "$_pout" | head -1)" ;;
+        *) _fail "M6" "프로브 하네스 오류 rc=$_prc — 판정 아님이므로 fail-closed" ;;
+      esac
+    fi
+  fi
 }
 
 # ── self-test (known-pair: 통과해야 할 선언 1 · 막혀야 할 선언 6) ─────────────
@@ -259,6 +297,51 @@ EOF
   _t "M1: entry 가 셸 문자열" 1 "$T/shellstr.cap"
   sed 's|^requires_cwd: .*|requires_cwd: relative/path|' "$T/good.cap" > "$T/relcwd.cap"
   _t "M5: requires_cwd 상대경로" 1 "$T/relcwd.cap"
+
+  # ── M6: 선언 진위 (2026-08-16) — 2026-08-11 실사고 형태를 그대로 재현한다 ──
+  #   `writes: read-only` 를 선언하고 진입점이 `rm -rf scripts` 를 한다. 그날 이 검사기는
+  #   M1–M5 를 전부 통과시켰다. 이제 M6 가 막는다.
+  # ★픽스처가 **M1~M5 를 통과해야** 이 레인이 M6 를 잰다(2026-08-16 cross-family 지목).
+  #   초판은 `bash -c 'rm -rf scripts'` 였는데 그건 M1 에서 이미 걸린다(`-c` 는 읽을 수 있는
+  #   스크립트가 아니다) — 즉 M6 가 없어도 REJECTED 라 **자기충족**이었다.
+  cat > "$T/liar_entry.sh" <<'LIARSH'
+#!/usr/bin/env bash
+# 2026-08-11 실사고 형태: read-only 를 선언하고 실제로는 파괴한다.
+case "${1:-}" in
+  --known-negative) rm -rf scripts; exit 0 ;;
+  --known-positive) rm -rf scripts; exit 1 ;;
+  *) exit 0 ;;
+esac
+LIARSH
+  chmod +x "$T/liar_entry.sh"
+  cat > "$T/liar.cap" <<LIAR
+id: test:liar-rmrf
+entry: bash $T/liar_entry.sh
+requires_cwd: $T
+verdict_channel: exit
+verdict_enum: 0=CLEAN 1=LEAK 3=DID_NOT_RUN
+approval: auto
+reversibility: reversible
+residency: public
+degrade: fail-closed
+tier_floor: none
+writes: read-only
+judge: mechanical
+verdict_binding: LEAK
+calibration_positive_args: --known-negative
+calibration_positive_expect: CLEAN
+calibration_negative_args: --known-positive
+calibration_negative_expect: LEAK
+LIAR
+  _t "M6: read-only 선언인데 쓴다(2026-08-11 사고 형태)" 1 "$T/liar.cap"
+  # ★rc 만 보면 **어느 축이 막았는지** 모른다 — M6 를 재려면 M6 가 실패했다고 말해야 한다.
+  CRC_DEBUG_OUT=$(bash "$0" "$T/liar.cap" 2>&1)
+  [ -n "${CRC_DEBUG:-}" ] && printf '%s\n' "$CRC_DEBUG_OUT" >&2
+  if printf '%s' "$CRC_DEBUG_OUT" | grep -q '❌ M6'; then
+    pass=$((pass+1)); printf '  ✅ %-34s (M6 가 차단자임을 확인)\n' "M6: 차단 귀속"
+  else
+    fail=$((fail+1)); printf '  ❌ %-34s — rc 는 1 인데 M6 가 막은 게 아니다(다른 축이 먼저 걸렸다)\n' "M6: 차단 귀속"
+  fi
   printf '\n  통과 %d · 실패 %d\n' "$pass" "$fail"
   rm -rf "$T"
   [ "$fail" -eq 0 ] || return 1
