@@ -67,7 +67,9 @@
 The consent-registry gate parses YAML, and it **fails closed** when it cannot — correctly, since an
 unvalidated consent record must not read as a clean one. But that fail-closed turns the whole of
 `npm test` (and `prepublishOnly`) red on a machine without PyYAML, and until 2026-08-12 the
-requirement was written down **nowhere**:
+requirement was written down **nowhere**. It is written here now — and, as of this edit, *only*
+here: it is still absent from `package.json`, the cheatsheet and every other doc, so this block is
+the single place a new machine can learn it. That is an improvement over nowhere, not a fix:
 
 ```bash
 python3 -m pip install --user pyyaml     # verify:  python3 -c 'import yaml; print(yaml.__version__)'
@@ -183,30 +185,113 @@ them evolve together instead of scattering.
 This galaxy is more than a container. FH can run a field harness **in simulation inside its own
 sandbox** — expensive per run, cheaper in total, because the trial-and-error pools in one place and
 compounds — and when the simulation holds, it **emits** the project as an independent, specialized
-harness. That is the goal it is built toward. In practice it works in four ways:
+harness. That is the goal it is built toward.
 
-**① Assemble** — FH runs a *cluster* of harnesses at optimized token cost and hands you the right one for
-the project. You don't wire up skills one by one; you get a **harness** — its plugins, skills, and agents
-included — assembled to fit.
+### What you actually get — the five identities
 
-**② Forge** *(the quality gate)* — every change earns its way through adversarial · phantom · regression
-gates. This is not "check more." It is a **responsibility router**: as automation rises, human sign-offs
-get fewer but heavier, so the gate spends your attention only where a change is *irreversible*. Quality is
-the lever; the speed is the result.
+These are not five modules. They are the **shapes the skills clump into** — the name of something that
+was already there, spread across the skills and agents rather than layered on top of them.
 
-**③ Sidecar** — capability itself stays on the frontier. FH dispatches across multiple LLMs (Claude,
-Codex, Gemini, local) so raw power is never tied to one model or one generation. The point is *not*
-patching each model's weak spots — that scaffolding dies as models improve. It is **riding the frontier's
-evolution**: shed what the substrate now does natively, absorb what it ships next. Decorrelation is
-today's trust lever (a cross-family panel beats a single model's ceiling); co-evolution is the structure.
+| | Identity | What a person gets |
+|---|---|---|
+| **①** | **Multi-harness cluster** | One task rides several harnesses, and governance is computed *between* them |
+| **②** | **Project incubator** | A new harness comes out **walking where it was born**, not as an empty scaffold |
+| **③** | **Governance gate** | What must not ship is blocked **mechanically**, not by remembering to check |
+| **④** | **Frontier → org propagation** | What arrives from outside lands all the way *inside* the organization |
+| **⑤** | **Amplifier** | A short intent gets forged all the way to the finished artifact |
 
-**④ Self-evolving loop** — the harness gets better without being rebuilt, in two directions: **outward**,
-where each session's lessons compound into the hub so the next project starts faster, and **inward**,
-where it catches and repairs *its own* defects (the 4-axis gate, bidirectional verify, per-user
-adaptation).
+Maturity is tracked per identity on a four-step scale — `ideal → partial → RC (stood up in the lab) →
+REALIZED (walked outside)` — and the grades live in exactly one place on purpose:
+[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md). They are deliberately
+**not** copied here; a grade kept in two files goes stale in one of them, which this repo has measured on
+itself more than once.
+
+Two properties cut across all five, and neither is a feature you switch on:
+
+- **It rides the frontier instead of patching it.** FH dispatches across families (Claude, Codex, Gemini,
+  local) — but the point is *not* papering over each model's weak spots, because that scaffolding dies as
+  models improve. It is co-evolution: shed what the substrate now does natively, absorb what it ships
+  next. Decorrelation is today's trust lever; a cross-family panel beats a single model's ceiling.
+- **It evolves in two directions.** *Outward*, each session's lessons compound into the hub so the next
+  project starts further along. *Inward*, it catches and repairs **its own** defects — the same gates,
+  turned on the harness itself.
 
 The whole thing is a division of labor: **raw capability is the model's; assembly, trust, and evolution
 are the harness's.**
+
+---
+
+## How it is built — process → engines → identity
+
+The five identities above are the surface. Two layers sit under them, and naming all three is what keeps
+"what FH does" from collapsing into one undifferentiated pile:
+
+```
+five identities   what a person can actually use          (surface — what you get)
+      ↑ backed by
+four engines      the capability that makes it possible   (capability — what it can do)
+      ↑ produced by
+three-stage       the ORDER those engines are forged in   (process — how it gets made)
+  process
+```
+
+**The four engines.** Each one is what some identity above is standing on. The gate table already carried
+these four mechanically; naming them was recognition, not invention.
+
+| Engine | What it is | Identities it backs |
+|---|---|---|
+| `judgment-circuit` | what counts as success, which way to lean under uncertainty, what is out of scope, what never happens | ⑤ Amplifier · ② Incubator |
+| `ship-gate` | mechanical blocking before an irreversible surface — commit, publish, delete, rewrite | ③ Governance gate |
+| `context-continuity` | not losing the thread across compaction, sub-agents, machines, sessions | ① Cluster · ② Incubator |
+| `external-grounding` | reaching outside the repo *before* asserting novelty or settling a design | ④ Frontier → org |
+
+They are written by name, never by number — the table order here and the prose order elsewhere differ, so
+"engine ④" decodes to two different engines depending on which you read.
+
+`judgment-circuit` is the one that gets misread most, so state it flatly: it is **not an identity
+declaration**. Do not shorten it to "the harness's soul" in English either — that word reads as *persona*,
+and the single largest finding of the 105-run measurement behind this engine was precisely that a persona
+declaration is **not** a judgment circuit: "you are a ~" measured as a *net loss* on the weak tier, and
+removing it recovered **+0.67**. A one-word rename re-fuses exactly what the measurement separated. Nor is
+a judgment circuit built in one sitting — FH hands a new harness a **seed draft**, and it fills in as that
+harness is actually used.
+
+**The three-stage process** — this is an *order of investment*, not a menu:
+
+```
+① Circuit before design   the judgment circuit goes in FIRST — success · leaning · out-of-scope ·
+                          never-do — not written up afterwards as a record of what you did
+
+② Decorrelate in the      pick the axes and hit them at once. CHOOSE axes, don't multiply them —
+   middle, to accelerate  parallelism has no direction of its own; the judgment circuit gives it one
+
+③ Burn it down at the     the four axes below. Adversarial review is ONE of them, not all of them
+   end, on four axes
+```
+
+**The four verification axes**, which is where "we reviewed it" usually turns out to mean only the first:
+
+| Axis | What is wrong when this axis fires | Typical instrument |
+|---|---|---|
+| **ⓐ Different family** | the **implementation** is wrong | cross-family adversarial review (`auto-decorrelation`) |
+| **ⓑ First real use** | the **way you are measuring** is wrong | run it once against a real target |
+| **ⓒ Record grounding** | the **claim** is wrong | an isolated audit re-measures the doc's numbers and citations |
+| **ⓓ Revert and observe** | the **anchor** is wrong | delete the wiring and check that the matching lane actually goes red |
+
+A fifth axis — **standpoint** — applies when a change crosses into another harness: run the diff from the
+*target's* repo and rules, not your own reading of them
+([`field_verdict_crossfamily_gate.md §7`](knowledge/shared/harness-core/field_verdict_crossfamily_gate.md)).
+
+You do not run all four every time; you pick the axes that match the failure mode you are actually
+exposed to. The cost boundary is deliberate — a one-line fix earns none of them, a verdict/gate change
+earns ⓐ, and an irreversible surface earns more.
+
+> **Honest note — this is not a clean stack, and that is the point.** Stage ① and stage ③ are made of the
+> same material as the engines, so the lower layer uses the upper one. The contradiction resolves on
+> *subject*: the **engines** are what FH applies to your work, while the **process** is the order FH uses
+> when forging its own engines. If the method had been borrowed from outside it would be unrelated to the
+> engines; the overlap is the fingerprint of dogfooding. Full canon, including the sample limits behind
+> each claim: [`fh_three_layer_canon.md`](knowledge/shared/harness-core/fh_three_layer_canon.md).
 
 > **Self-healing here isn't a claim — it's in the commit log.** This very README's voice rules were fixed
 > mid-session by FH catching its own drift: a tone miss → diagnosis → a cross-family challenger that
@@ -345,13 +430,21 @@ two more signatures keep it running: `harvest-loop` (each session's lessons beco
 | `mcp-circuit-breaker` *(fh-commons)* | MCP tool failure pattern detection | "MCP keeps failing" |
 | `ko-tech-writer` *(fh-commons)* | Korean technical-writing pipeline (register calibration, translationese removal, honesty layering, perceptual QA) | "기술문서 써줘", "번역투 고쳐줘" |
 | `quench-challenger` *(fh-commons)* | Adversarial pressure-test agent | "Challenge this with a devil" |
-| *(+ additional assets)* | marketplace-gate · contention-layer · edit-manifest · fact-checker · goal-quench · hub-persona-auditor · install-doctor · memory-hygiene · persona-innovator · prompt-regression · public-surface-audit · salience-splitter | |
+| `auto-decorrelation` | Recruits a different-model-family reviewer for load-bearing changes | "Decorrelate this verification" |
+| `video-ingest` | Video → agent context, routed by capability and length | "What does this video show?" |
+| `fh` | Renders the hub map on demand, without a greeting | "fh" |
+| *(+ remaining skills)* | marketplace-gate · contention-layer · deliberation · edit-manifest · goal-quench · install-doctor · memory-hygiene · prompt-regression · public-surface-audit · return-path-gate · salience-splitter | |
+| **8 agents** | `challenger` · `quench-challenger` (adversarial) · `beginner` · `main-player` · `expert` (the user-mastery spectrum — cold read, daily use, domain authority) · `fact-checker` · `hub-persona-auditor` · `persona-innovator` | dispatched by the skills above, or by name |
 
 | Active count | Diagnosis |
 |:---:|---|
-| **28+** | Advanced — chain agent-composer + sim-conductor + steel-quench + pipeline-conductor |
-| **10–27** | Activation stage — gradually enable unchecked assets |
-| **0–9** | Early stage — start with `install-wizard` |
+| **~half the surface or more** | Advanced — chain agent-composer + sim-conductor + steel-quench + pipeline-conductor |
+| **a handful up to that** | Activation stage — gradually enable unchecked assets |
+| **almost none** | Early stage — start with `install-wizard` |
+
+> These bands are a rough self-check, not a measurement — no artifact defines the thresholds, and the
+> earlier fixed numbers were calibrated against a smaller roster, so they quietly drifted as the roster
+> grew. Using more skills is also not the goal; using the ones your work actually needs is.
 
 **Find a skill by what you're trying to do:**
 
@@ -408,8 +501,13 @@ dispatch's own `model` parameter; the session model/plan-mode does **not** propa
 > does not. Sub-agent token costs are CC-visible in the session jsonl under `message.model`.
 
 **Measured, not asserted** (worked examples): on a blind rule-application battery, *operating* FH is
-near model-flat — **every Claude tier measured scores 94–100%** (Fable, Opus 4.8, Sonnet 4.6 and 5,
-Haiku 4.5); the few lost points are format discipline, never a trap or gate-class miss. The tiers
+near model-flat — on a 30-point blind battery (2026-06-10) the four tiers run scored **94–100%**
+(top-tier anchor / Opus 4.8 / Sonnet 4.6 / Haiku 4.5 = 100 / 100 / 97 / 94), and a 2026-07-03
+replication re-anchored Opus 4.8, **Sonnet 5** and Haiku 4.5 at 16/16 each. Two honesty notes rather
+than one round number: the source artifact deliberately leaves the top tier unnamed, so this page does
+not name it either; and the **current** top tier has not been run on this battery — the doctrine below
+is what carries forward, not the scores. The few lost points are format discipline, never a trap or
+gate-class miss. The tiers
 separate only on above-rubric *design* increments (developing the harness, not running it) — which is
 why the default is Sonnet with **tier-floored dispatch** covering the depth-sensitive turns, and a
 pinned stronger model is recommended only for harness-editing sessions.
@@ -471,7 +569,7 @@ Claude-side token cost does not increase when the extra reviewer is an external 
 
 > **FH papers** — the methodology below is documented, not just asserted:
 > - **v1.0 — methodology** · [Zenodo](https://zenodo.org/records/20397566) (DOI 10.5281/zenodo.20397566). 2-layer design, 6-axis framework, 4-agent orchestration, and the compounding loop, with empirical evidence.
-> - **cs.SE companion — governance-gate methodology** · **published** [Zenodo](https://zenodo.org/records/20680081) (DOI 10.5281/zenodo.20680081 · latest v1.1 10.5281/zenodo.20740038 · CC-BY-4.0) · arXiv submitted (cs.SE, in moderation).
+> - **cs.SE companion — governance-gate methodology** · **published** [Zenodo](https://zenodo.org/records/20680081) (DOI 10.5281/zenodo.20680081 · latest v1.1 10.5281/zenodo.20740038 · CC-BY-4.0) · arXiv submitted (cs.SE); the moderation outcome is not tracked in this repo, so treat "submitted" as the last state this page can vouch for, not as current.
 > - **cs.AI companion — "Governance Dividend"** · in preparation.
 
 External convergence:

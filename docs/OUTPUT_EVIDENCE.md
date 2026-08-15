@@ -8,10 +8,10 @@
 
 | What | Count | Notes |
 |---|---:|---|
-| Active skills | **33** | 29 in `fh-meta` + 4 in `fh-commons`; 3 deprecated redirect stubs not counted |
+| Active skills | **40** | 35 in `fh-meta` + 5 in `fh-commons`; **0** deprecated redirect stubs currently exist, so that exclusion is a no-op today |
 | Agent definitions | **8** | `challenger`, `quench-challenger`, `fact-checker`, `hub-persona-auditor`, `persona-innovator`, `beginner`, `main-player`, `expert` |
-| Operating rules | **6** | `.claude/rules/*.md` — mapping, modes, sync, sister-asset, operations |
-| Knowledge docs | **23** | `knowledge/` — 6-axis framework, compounding loop, runtime flow, dialogue playbook |
+| Operating rules | **1** | `.claude/rules/*.md` — `fh_4axis_gate.md`. The drop from 6 is **not** deletion: the others were relocated to `knowledge/shared/rules/` so they stop loading on every session, and this path now holds only the path-scoped gate |
+| Knowledge docs | **57** | `knowledge/` — 6-axis framework, compounding loop, runtime flow, dialogue playbook, and the harness-core canon |
 | Plugins | **2** | `fh-meta` (meta-harness) + `fh-commons` (project-agnostic) |
 | Self-gate | **1** | 4-axis pre-commit hook (backward / adversarial / forward / record) |
 
@@ -19,12 +19,17 @@
 
 | Metric | Value |
 |---|---|
-| First commit → latest | **2026-05-26 → 2026-06-06** (12 days) |
-| Commits | **224** |
-| Merged PRs | **66** |
+| First commit → latest | **2026-05-26 → 2026-08-15** (81 days) |
+| Commits | **768** |
+| Merged PRs | **372** |
 
-> Read honestly: this is *velocity*, not *maturity*. A 12-day-old project is early. The point is that the
-> compounding loop and self-gate were exercised on the harness's own development, not just described.
+> ⚠️ **Counted 2026-08-15; a pace table is stale the day after it is written.** The previous version of
+> this block sat at "12 days / 224 commits / 66 PRs" for two months and read as current, because nothing
+> in it said when it was measured. Re-run the commands below rather than trusting the numbers above —
+> and if you update them, update this date in the same edit.
+
+> Read honestly: this is *velocity*, not *maturity*. The point is that the compounding loop and self-gate
+> were exercised on the harness's own development, not just described.
 
 ## External artifacts (verifiable links)
 
@@ -106,10 +111,14 @@ rather than only synthetic ones.
 <sub>Reproduce the counts:</sub>
 
 ```bash
-# active skills (excludes deprecated redirect stubs)
-for d in plugins/*/skills/*/; do grep -qi "DEPRECATED — merged\|redirect stub\|moved to" "$d/SKILL.md" || echo "$d"; done | wc -l
-# agents
-ls .claude/agents/*.md plugins/*/agents/*.md | wc -l
+# active skills. NOTE: the old recipe here grepped each SKILL.md for "redirect stub"/"deprecated"
+# and returned 38, because phantom-quench and hub-cc-pr-reviewer — both live — merely MENTION those
+# words in their prose. A body-text grep cannot tell "I am a stub" from "I detect stubs". There are
+# currently zero stubs, so count the files and re-introduce an exclusion only when one exists, in
+# frontmatter where it can be matched on a field rather than on a phrase.
+find plugins -name SKILL.md | wc -l
+# agents  (there is no .claude/agents/ in this repo — that path is for field projects)
+find plugins -path '*/agents/*.md' | wc -l
 # knowledge docs
 find knowledge -name '*.md' | wc -l
 # pace
