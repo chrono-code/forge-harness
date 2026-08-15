@@ -57,7 +57,11 @@ FILES_JSON=$(node -e 'process.stdout.write(JSON.stringify(require("./package.jso
 # 컨테이너가 흔하다)에서 공용 `/tmp` + PID 기반 **예측 가능한 이름**이라, 미리 심어둔 심링크를
 # `>` 리다이렉트가 따라가 대상 파일을 덮어쓴다(CWE-377, 보안 패스 [B]). 이 파일은 selfcheck 에
 # 배선돼 **소비자 머신에서 `npm test` 로 돈다**.
-_CAP_TMP=$(mktemp -t cap_entry) || { echo "  INSTRUMENT ERROR: mktemp 실패"; exit 1; }
+# ⚠️ `mktemp -t <prefix>` 는 **BSD 전용**이다 — GNU 는 템플릿에 X 를 요구하고
+# `mktemp: too few X's in template` 로 죽는다(2026-08-16 CI 실측: 로컬 macOS 초록 · ubuntu 적색).
+# 이 레포가 이미 기록한 `stat -f` BSD-first 와 같은 얼굴이다. 양쪽에서 도는 형태는
+# **명시 템플릿 + X 다수**뿐이다. (계기가 fail-closed 로 막아 준 덕에 조용히 안 지나갔다.)
+_CAP_TMP=$(mktemp "${TMPDIR:-/tmp}/cap_entry.XXXXXXXX") || { echo "  INSTRUMENT ERROR: mktemp 실패"; exit 1; }
 trap 'rm -f "$_CAP_TMP"' EXIT INT TERM
 printf '%s\n' "$ENTRIES" | while IFS= read -r e; do
   [ -n "$e" ] || continue
