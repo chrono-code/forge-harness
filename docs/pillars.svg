@@ -20,8 +20,8 @@
   <!-- ═══ HARNESS (x=8, cx=88) ═══ -->
   <rect x="8" y="10" width="160" height="84" rx="5" fill="url(#cd)" stroke="#c46820" stroke-width="0.8"/>
   <!-- Chain link icon (harness = link) — opposite tilts so the two loops actually interlock -->
-  <ellipse cx="82" cy="33" rx="9" ry="13" fill="none" stroke="#e07d2a" stroke-width="2" transform="rotate(-30 82 33)"/>
-  <ellipse cx="94" cy="45" rx="9" ry="13" fill="none" stroke="#e07d2a" stroke-width="2" transform="rotate(30 94 45)"/>
+  <ellipse cx="83" cy="24" rx="6" ry="8.5" fill="none" stroke="#e07d2a" stroke-width="1.8" transform="rotate(-30 83 24)"/>
+  <ellipse cx="93" cy="32" rx="6" ry="8.5" fill="none" stroke="#e07d2a" stroke-width="1.8" transform="rotate(30 93 32)"/>
   <text x="88" y="63" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="13" font-weight="bold" fill="#f5943a" letter-spacing="2">HARNESS</text>
   <text x="88" y="76" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="9.5" fill="#9e7040">Harness-ify a project</text>
   <text x="88" y="88" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="9.5" fill="#9e7040">— raise its floor</text>
