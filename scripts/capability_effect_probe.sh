@@ -64,8 +64,22 @@ _key() {  # $1=capfile $2=key
     | sed 's/[[:space:]]*$//'
 }
 
+# `GIT_META_WATCH` = 격리 클론 안에서 **추가로** 해싱할 경로들(코드실행으로 이어지는 git
+# 메타데이터 표면). 비어 있으면 종전과 동일하게 트리만 잰다.
+GIT_META_WATCH=""
+
 _snapshot() {  # $1=dir → "path<TAB>sha" 목록 (정렬)
-  find "$1" -type f 2>/dev/null | LC_ALL=C sort | while IFS= read -r f; do
+  {
+    # `.git` 은 통째로 제외한다 — `git status` 류가 `.git/index` 를 정당하게 갱신하므로
+    # 전체를 재면 읽기 전용 capability 가 거짓 VIOLATION 을 받는다. 대신 아래에서
+    # **실행으로 이어지는 표면만** 골라 넣는다.
+    find "$1" -type f -not -path '*/.git/*' 2>/dev/null
+    local w
+    for w in $GIT_META_WATCH; do
+      [ -e "$w" ] || continue
+      find "$w" -type f 2>/dev/null
+    done
+  } | LC_ALL=C sort -u | while IFS= read -r f; do
     printf '%s\t%s\n' "$f" "$(shasum -a 256 "$f" 2>/dev/null | cut -d' ' -f1)"
   done
 }
@@ -106,6 +120,19 @@ probe_one() {  # $1=capfile → rc
   #    (2026-08-16 병렬 세션 실측: 같은 순서 문제로 한 레인이 두 번 장식이 됐다).
   local req_cwd wt=""
   req_cwd=$(_key "$cap" requires_cwd)
+  # ★`SELF` 를 여기서도 푼다. 초판은 `capability_registry_check.sh` 에만 넣고 이쪽에 안 넣어서,
+  #   프로브가 `-d "SELF/.git"` 을 보고 «git 레포 아님» 으로 판정 → 빈 mktemp 샌드박스 →
+  #   진입점 rc=127 → **UNVERIFIABLE** 이 났다. 등록 검사기는 통과시키는데 프로브만 막는
+  #   형태라 원인이 안 보인다. **반쪽-픽스 전파 경계**의 세 번째 재현이고
+  #   ([[feedback_half_fix_propagation_boundary]]), 계기가 잡았다.
+  #   해석은 검사기와 **같은 규칙**이어야 한다 — 다르면 두 축이 서로 다른 트리를 잰다.
+  if [ "$req_cwd" = "SELF" ]; then
+    req_cwd="$(git -C "$(dirname "$cap")" rev-parse --show-toplevel 2>/dev/null)"
+    if [ -z "$req_cwd" ]; then
+      printf '⚠️  UNVERIFIABLE %s — requires_cwd: SELF 인데 선언이 git 레포 안에 없다\n' "$cap" >&2
+      return "$RC_UNVERIFIABLE"
+    fi
+  fi
 
   local sandbox outside wt_parent=""
   if [ -n "$req_cwd" ] && [ -d "$req_cwd/.git" ]; then
@@ -120,23 +147,39 @@ probe_one() {  # $1=capfile → rc
     # 이건 헤더의 명명된 잔여(«절대경로로 다른 데를 쓰면 놓친다»)와 **다르다**: 그건 capability 가
     # 고른 경로이고, 이건 **프로브가 스스로 열어 준 통로**다.
     #
-    # 처방: `git archive` 로 **`.git` 이 없는 순수 파일 사본**을 만든다. 진입점은 여전히 전제
-    # (레포의 파일 배치)를 찾고, 공유 메타데이터 채널은 존재하지 않는다.
-    # ⚠️ 대가를 명시한다: 사본에 `.git` 이 없으므로 **git 명령을 실제로 쓰는 capability 는
-    #    여기서 못 돈다** → UNVERIFIABLE 로 떨어진다. 미측정을 통과로 렌더하는 것보다 낫다.
+    # 처방(2026-08-16 2차) — **격리된 로컬 클론**. 초판은 `git archive` 로 `.git` 없는 사본을
+    # 만들었는데, 그러면 안전하지만 **git 을 쓰는 capability 전부가 영구히 등록 불가**가 된다
+    # (실측: `qasp-dev:new-code-anchor-scan` 이 rc=127 → UNVERIFIABLE → REJECTED).
+    # 엣지가 아니라 **한 부류 통째의 배제**이고, 이 레포 자신의 규율이 그걸 금한다 —
+    # *"만족할 수 없는 게이트는 엄격한 게이트가 아니라 우회 훈련기다."*
+    #
+    # `git clone --local --no-hardlinks` 는 **자기 `.git` 을 가진 독립 레포**를 만든다:
+    #   · 진입점의 git 명령이 실제로 돈다(측정 가능해진다)
+    #   · 쓰기는 **클론 안**에 갇힌다 — 실물 레포의 `.git` 은 공유되지 않는다
+    #   · `--no-hardlinks` 로 오브젝트를 복사한다(하드링크는 같은 inode 를 공유한다)
+    # 🟥 그리고 **`origin` 을 지운다** — 클론의 origin 은 소스 경로를 가리키므로
+    #    `git push origin` 이 **실물 레포로 되돌아가는 통로**가 된다. 우발 경로를 닫는다
+    #    (절대경로를 직접 쓰는 공격은 헤더의 기존 명명 잔여이지 이 통로가 아니다).
     wt_parent=$(mktemp -d) || return "$RC_HARNESS"
-    _PROBE_WT_PARENT="$wt_parent"      # ★등록을 mktemp **직후**에 한다 — 아래 실패 경로에서
-    wt="$wt_parent/copy"; mkdir -p "$wt"   #   return 하면 트랩이 이걸 못 지우던 누수가 있었다
-    if ! ( cd "$req_cwd" && git archive --format=tar HEAD ) 2>/dev/null | ( cd "$wt" && tar xf - ) 2>/dev/null; then
-      printf '⚠️  UNVERIFIABLE %s — `.git` 없는 사본을 못 만들었다(%s)\n' "$cap" "$req_cwd" >&2
+    _PROBE_WT_PARENT="$wt_parent"      # ★등록을 mktemp **직후**에 (누수 수리)
+    wt="$wt_parent/clone"
+    if ! git clone --local --no-hardlinks -q "$req_cwd" "$wt" >/dev/null 2>&1; then
+      printf '⚠️  UNVERIFIABLE %s — 격리 클론을 못 만들었다(%s)\n' "$cap" "$req_cwd" >&2
       return "$RC_UNVERIFIABLE"
     fi
-    if [ -e "$wt/.git" ]; then
-      printf '❌ %s: 사본에 .git 이 있다 — 격리 전제 파손. 판정하지 않는다\n' "$cap" >&2
+    git -C "$wt" remote remove origin >/dev/null 2>&1 || true
+    # 격리 전제를 **단언한다** — 클론에 .git 이 없거나 origin 이 남아 있으면 판정하지 않는다.
+    if [ ! -d "$wt/.git" ] || [ -n "$(git -C "$wt" remote 2>/dev/null)" ]; then
+      printf '❌ %s: 격리 전제 파손(.git 부재 또는 origin 잔존). 판정하지 않는다\n' "$cap" >&2
       return "$RC_HARNESS"
     fi
     sandbox="$wt"
     _PROBE_SANDBOX="$wt"
+    # 🟥 **코드실행으로 이어지는 git 메타데이터 표면**을 스냅샷 대상에 넣는다.
+    #    `.git` 전체를 넣지 않는 이유: `git status` 류가 `.git/index` 를 정당하게 갱신하므로
+    #    전체를 재면 **읽기 전용 capability 가 거짓 VIOLATION** 을 받는다. 그래서 «나중에
+    #    명령을 실행시킬 수 있는» 표면만 고른다 — config(core.pager·alias) · hooks · refs.
+    GIT_META_WATCH="$wt/.git/config $wt/.git/hooks $wt/.git/packed-refs $wt/.git/refs"
   else
     sandbox=$(mktemp -d) || return "$RC_HARNESS"
     _PROBE_SANDBOX="$sandbox"
@@ -354,12 +397,17 @@ writes: read-only
 EOF
     probe_one "$d/meta.cap" >/dev/null 2>&1; rc=$?
     local _planted; _planted=$(git -C "$_tgt" config --local --get core.pager 2>/dev/null)
-    # 판정의 본체는 rc 가 아니라 **실물 레포가 안 변했다**는 것이다. rc=0(VERIFIED)이면
-    # 「안 썼다」를 거짓 주장한 것이고, _planted 가 있으면 격리 자체가 뚫린 것이다.
-    if [ "$rc" = "3" ] && [ -z "$_planted" ]; then
-      pass=$((pass+1)); echo "✅ L9 git 메타데이터 채널 차단 (UNVERIFIABLE · 실물 무변경)"
+    # ★기대값이 2026-08-16 2차에 **3 → 1 로 올라갔다.** 초판(`.git` 없는 사본)에서는 git 이
+    #   아예 안 돌아 «못 쟀다»(UNVERIFIABLE) 였다. 격리 클론으로 바꾸면서 진입점이 실제로
+    #   돌고, `.git/config` 쓰기가 **관측되어 VIOLATION** 이 된다 — 「못 쟀다」보다 강하다.
+    #   두 명제를 **각각** 단언한다:
+    #     ① rc=1  → 탐지했다        (rc=0 이면 「안 썼다」를 거짓 주장한 것)
+    #     ② 실물 무변경 → 격리했다   (planted 가 있으면 격리 자체가 뚫린 것)
+    #   둘은 독립이다. 하나만 보면 «막았는데 실물이 오염» 되거나 «깨끗한데 못 봤다» 를 놓친다.
+    if [ "$rc" = "1" ] && [ -z "$_planted" ]; then
+      pass=$((pass+1)); echo "✅ L9 git 메타데이터 채널: **탐지**(VIOLATION) + 실물 무변경(격리)"
     else
-      fails=$((fails+1)); echo "❌ L9 rc=$rc (3 기대) · 실물 core.pager=[$_planted]"
+      fails=$((fails+1)); echo "❌ L9 rc=$rc (1 기대) · 실물 core.pager=[$_planted]"
     fi
   fi
 

@@ -93,6 +93,7 @@
     "templates/.claude/rules/session.md",
     "scripts/below_floor_scan.sh",
     "scripts/capability_registry_check.sh",
+    "scripts/cluster_capability_scan.sh",
     "scripts/capability_effect_probe.sh",
     "scripts/chamber_run.sh",
     "scripts/fh_env_delta_scan.sh",
@@ -199,6 +200,7 @@
     "scripts/test_knowledge_seam_lanes.sh",
     "tests/seam_absence_probes.md",
     "scripts/gate_anchor_check.sh",
-    "scripts/rtk_gross_ablation.sh"
+    "scripts/rtk_gross_ablation.sh",
+    ".claude/capabilities"
   ]
 }
