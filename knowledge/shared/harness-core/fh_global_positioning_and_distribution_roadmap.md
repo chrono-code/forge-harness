@@ -11,6 +11,8 @@ tags: [positioning, roadmap, governance, distribution, homebrew, architecture]
 
 본 보고서는 **`forge-harness` (FH)의 글로벌 에이전트 프레임워크 생태계 내 포지셔닝**을 객관적으로 정의하고, **유료 구독 모델(Claude Code / Antigravity 등) 기반 환경에서 독립 바이너리/패키지 매니저(`brew install`) 배포 모델로의 확장 가능성 및 로드맵**을 제시합니다.
 
+**Cross-ref**: `fh_ecosystem_positioning.md`(2026-05-31)가 같은 "FH vs 다른 코딩 에이전트" 포지셔닝 질문을 3모델(Claude+Gemini+Codex) 적대적 감사로 더 정식으로 다룬다. 이 문서는 배포(npm/Homebrew) 메커니즘에 특화 — 중복 아니라 상호보완으로 같이 읽을 것.
+
 * **글로벌 포지셔닝**: FH는 코드를 직접 빠르게 뱉어내는 '실행 에이전트'가 아닌, 실행 결과의 환각·보안·근거를 적대적으로 검증하고 자가 진화하는 **품질 거버넌스 계층(Governance Brain)**입니다. (외부 벤치마크나 경쟁사 대비 정량 비교는 아직 없음 — 이 문서의 비교표는 포지셔닝 프레임이지 검증된 성능 우위 주장이 아님.)
 * **배포 모델 결론**: **구독 모델 기반 LLM(Claude Code, Antigravity)과 `brew install` / 독립 바이너리 배포는 대립하지 않으며 완벽히 호환됩니다.** CLI 설치 프로그램(`fh-cli`)이 환경 감지, 플러그인 동기화, 사이드카 라우팅, Git 훅 배선을 자율 수행하고 실제 에이전트 추론은 사용자의 기존 구독/API 계정을 활용합니다.
 
