@@ -113,7 +113,9 @@ graph TD
   * `fh setup`: 명령 한 줄로 신규 레포지토리에 하네스 구조(`.claude/`·`plugins/`·rules·Git 훅)를 스캐폴딩
   * OpenCode, Hermes, VS Code, JetBrains, `cmux` 플러그인과 직접 Event-bus 연동.
 * **⚠️ 스캐폴딩 ≠ 복리(compounding)** — `meta-harness-thin-vs-full-distribution.md`(2026-06-08, 이미 결론난 축)의 핵심: FH의 진짜 값어치는 스킬/명령 자체가 아니라 **클론 상태에 쌓이는 `tracks/`·메모리·규칙 이력(오케스트레이션)**에 있음. `fh setup`이 구조를 1초 만에 깔아줘도, 그 프로젝트가 실제 FH급 시너지를 가지려면 이후 세션이 쌓이며 `tracks/`가 축적돼야 함 — 초기화 시점의 "완전 배포"와 축적된 자가진화 상태는 다른 것. 로드맵을 실행할 때는 이 구분을 각주가 아니라 Phase 3의 성공 기준에 포함시킬 것.
-* **⚠️ 신규 바이너리 필요성 미검토** — 위 mermaid 다이어그램은 `fh CLI 바이너리 (Rust/Go/Node)`로 언어를 미정으로 남겨두고 있음. 이미 라이브인 Node 기반 npm CLI(`bin/fh-gate.js` 등)를 감싸는 Homebrew formula(`brew install node && npm i -g @chrono-meta/fh-gate`를 formula가 대행)로 같은 목표를 훨씬 싸게 달성할 수 있는지부터 검토 후, 그걸로 부족한 이유가 명확할 때만 신규 언어/바이너리 재작성으로 넘어갈 것 (Added-Scope Gate: "이거 없이 안 되는 게 뭔가?"에 먼저 답하기).
+* **✅ 신규 바이너리 불필요 — 운영자 결정(2026-08-15)으로 해소**: 위 mermaid 다이어그램이 남겨뒀던 `fh CLI 바이너리 (Rust/Go/Node)` 언어 미정 상태는 검토 결과 닫혔다. Homebrew는 npm 패키지를 그대로 감싸는 표준 패턴(`nodejs_module`/`resource` 블록으로 npm 레지스트리에서 직접 받아 `libexec`에 설치)을 지원하므로, `brew install forge-harness`는 **신규 바이너리를 재작성하지 않고 이미 라이브인 `@chrono-meta/fh-gate` npm 패키지를 그대로 얹는 Formula 하나**로 구현한다. `brew upgrade`도 npm 쪽 새 버전을 그대로 따라가므로 별도 릴리스 파이프라인이 필요 없다. 엔지니어링 비용이 사실상 0에 가까움 — Added-Scope Gate의 "이거 없이 안 되는 게 뭔가?"에 답이 없으므로 재작성 경로는 폐기.
+* **✅ Homebrew는 "npm 대신 옵션"이 아니라 100% 동등 배포 — 커버리지 저하 없음**: brew formula가 npm 패키지를 그대로 감싸므로, §2.1에서 실측한 152개 파일(스킬 29개+·에이전트 8개·독트린 지식베이스·4축 게이트 기계층 전부)이 설치 방식만 바뀌어 그대로 전달된다. "brew는 가벼운 대안" 프레임은 틀렸다 — 내용은 동일하고 설치/업데이트 UX만 개선된다.
+* **포지셔닝 (운영자 확정, 2026-08-15)**: **FH 레포(git clone) = 개발·기여·전체 맥락 참고 목적 전용.** `tracks/`가 쌓이는 복리(orchestration) 본체는 여기서만 생기고, npm이든 brew든 이 부분은 처음부터 못 주며 줄 필요도 없다(운영 이력은 그 프로젝트 고유 데이터라 원리적으로 배포 불가능한 자산). **그 외 모든 순수 사용 목적 = brew(또는 npm)**, git pull 반복의 피로도 없이 스킬+게이트+독트린을 100% 받아 즉시 사용. 개발/기여자가 아니면 git clone을 권할 이유가 없다.
 
 ---
 
@@ -121,6 +123,7 @@ graph TD
 
 1. **글로벌 입지**: `forge-harness`는 단순 코드 생성을 넘어선 **품질 거버넌스 및 자가진화 계층**입니다 (외부 벤치마크 비교는 미실시 — §1 캡션 참조).
 2. **배포 메커니즘**: 구독 모델(Claude Code 등)을 사용하더라도 `brew install`을 통해 **로컬 하네스 인프라 구축, 자동 업데이트, 환경 통합을 수행하는 CLI 라운처** 형태로 확장할 수 있습니다 — 단, 그 라운처가 주는 것은 초기 스캐폴딩이며 FH의 복리(compounding) 자체는 아님(§4 Phase 3 각주).
+3. **배포 채널 3분할 (운영자 확정, 2026-08-15)**: git clone = 개발/기여/전체 맥락 참고 전용(복리가 여기서만 축적). npm/`brew install` = 순수 사용 목적 전원 대상, 152개 파일 100% 동등 배포(내용 저하 없음, 설치 UX만 다름). Homebrew는 npm을 그대로 감싸는 Formula로 구현하며 신규 바이너리 재작성은 하지 않음(§4 Phase 3 참조) — Phase 3은 "npm의 대안"이 아니라 "npm과 동일 내용의 더 편한 설치 경로" 추가로 재정의.
 
 ---
 *Documented by Antigravity in forge-harness Knowledge Core (`knowledge/shared/harness-core/fh_global_positioning_and_distribution_roadmap.md`). Reviewed and source-grounded 2026-08-15.*
