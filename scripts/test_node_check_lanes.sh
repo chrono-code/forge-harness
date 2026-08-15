@@ -185,7 +185,11 @@ done
 _ap_root="$(mktemp -d)"
 (
   cd "$_ap_root" || exit 1
-  git init -q up && cd up
+  # Pin the branch name: `git init` uses init.defaultBranch, which is main on this
+  # operator's machine and master on a stock Ubuntu (CI). Hardcoding "main" in the
+  # assertions below made lane10-b pass VACUOUSLY there (`rev-parse "$_DEF"` returned
+  # empty, and empty==empty compared true) while CONTROL's reset silently no-op'd.
+  git -c init.defaultBranch=main init -q up && cd up
   git config user.email t@t; git config user.name t; git config commit.gpgsign false
   mkdir -p scripts tracks/_meta
   cp "$FH_REPO/scripts/fh_node_check.sh" "$FH_REPO/scripts/consent_registry_check.sh" scripts/
@@ -233,6 +237,13 @@ if [ ! -d "$_dn/.git" ] || [ ! -f "$_dn/tracks/_meta/consent_classes.yaml" ]; th
   bad "lane10 fixture: could not build the consent fixture (registry/UAP absent — lanes not run)" "$_ap_root"
 else
   git -C "$_dn" config user.email t@t >/dev/null 2>&1; git -C "$_dn" config user.name t >/dev/null 2>&1
+  # Derive rather than assume — belt-and-braces over the pin above, so a future git
+  # whose init behaviour changes again cannot make these lanes vacuous a second time.
+  _DEF="$(git -C "$_dn" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
+  [ -n "$_DEF" ] || _DEF=main
+  if ! git -C "$_dn" show-ref --verify --quiet "refs/heads/$_DEF"; then
+    bad "lane10 fixture: default branch '$_DEF' has no local ref — assertions below would be vacuous" "$(git -C "$_dn" branch -a)"
+  fi
   git -C "$_dn" fetch -q origin >/dev/null 2>&1
   _h0="$(git -C "$_dn" rev-parse HEAD)"
   run "$_dn" "$_ap_root/s_a" >/dev/null 2>&1
@@ -246,7 +257,7 @@ else
   (cd "$_ap_root/up" && echo newer2 > f.txt && git commit -qam ahead2) >/dev/null 2>&1
   git -C "$_dn" fetch -q origin >/dev/null 2>&1
   git -C "$_dn" switch -c feat-x -q >/dev/null 2>&1
-  _m0="$(git -C "$_dn" rev-parse main)"
+  _m0="$(git -C "$_dn" rev-parse "$_DEF")"
   # ⚠️ CHECKING main AND THE BRANCH NAME IS NOT ENOUGH — measured by a revert probe 2026-08-15.
   # With the envelope deliberately broken, `merge --ff-only origin/main` fast-forwards THE BRANCH
   # YOU ARE ON, so feat-x moved while `main` sat still and the branch name never changed. The first
@@ -254,14 +265,14 @@ else
   # decorative. The tip that must not move is the CURRENT branch's own.
   _f0="$(git -C "$_dn" rev-parse feat-x)"
   run "$_dn" "$_ap_root/s_b" >/dev/null 2>&1
-  if [ "$(git -C "$_dn" rev-parse main)" = "$_m0" ] \
+  if [ "$(git -C "$_dn" rev-parse "$_DEF")" = "$_m0" ] \
      && [ "$(git -C "$_dn" rev-parse feat-x)" = "$_f0" ] \
      && [ "$(git -C "$_dn" branch --show-current)" = "feat-x" ]; then
     ok "lane10-b ENVELOPE: off default branch → no apply on EITHER branch, no switch"
   else
-    bad "lane10-b ENVELOPE: a branch tip moved off the default branch — the shared-checkout hazard" "main=$_m0->$(git -C "$_dn" rev-parse main) feat-x=$_f0->$(git -C "$_dn" rev-parse feat-x) branch=$(git -C "$_dn" branch --show-current)"
+    bad "lane10-b ENVELOPE: a branch tip moved off the default branch — the shared-checkout hazard" "main=$_m0->$(git -C "$_dn" rev-parse "$_DEF") feat-x=$_f0->$(git -C "$_dn" rev-parse feat-x) branch=$(git -C "$_dn" branch --show-current)"
   fi
-  git -C "$_dn" switch -q main >/dev/null 2>&1
+  git -C "$_dn" switch -q "$_DEF" >/dev/null 2>&1
 
   # c — no grant. absent ≠ granted.
   cp "$_dn/tracks/_meta/user_adaptation_profile.md" "$_ap_root/uap.bak"
@@ -298,7 +309,7 @@ PYX
 
   # CONTROL — after all the refuse arms, prove the apply arm still fires. Without this, a lane
   # suite where the feature has gone inert reports 4 clean refusals and looks perfect.
-  git -C "$_dn" reset -q --hard origin/main >/dev/null 2>&1   # noqa: destructive-op (throwaway fixture)
+  git -C "$_dn" reset -q --hard "origin/$_DEF" >/dev/null 2>&1   # noqa: destructive-op (throwaway fixture)
   (cd "$_ap_root/up" && echo newer3 > f.txt && git commit -qam ahead3) >/dev/null 2>&1
   git -C "$_dn" fetch -q origin >/dev/null 2>&1
   _h4="$(git -C "$_dn" rev-parse HEAD)"
