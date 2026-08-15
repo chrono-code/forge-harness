@@ -2007,3 +2007,14 @@
   notes: "★**Self-caught 0 of 7 A-grade.** Two different reviewer engines produced DISJOINT A-grade sets — codex found the verdict-predicate family, the challenger found the unanchored-guard family — which is the concrete argument for two legs over one leg twice, on the same diff, same day.
     ★**The challenger had no Bash** and said so plainly rather than implying execution ('아래는 전부 정적 추적이고, 실행 확인은 0건'). Its decisive finding was still correct, and the governor executed the revert to confirm it — sidecar finding as evidence candidate, verdict closed by a mechanical anchor.
     🟥 **Self-inflicted, self-caught**: the Explore sweep was dispatched and README.md was then edited while it ran — `[[feedback_audit_target_must_be_frozen]]` reproduced. The agent itself flagged the file changing under it (494 → 572 lines). Its verdicts on the edited region were discarded; only the counts/links/translation-drift findings were used, and the translation port was deferred until the English file is committed and frozen."
+
+- date: 2026-08-16
+  session: fh-parallel-59b59c27 (Opus 5 1M, bg — v1.4.99 재출하 축, 08-15 밤에서 날짜 넘김)
+  agents_summary: "6 dispatches: general-purpose×1 (Pre-Publish 코드 보안 패스, 출하 델타의 실행 표면) · codex gpt-5.5×3 (cross-family R2/R3/R4 — 각각 직전 수리를 과녁으로, R4 는 앞 라운드가 닫은 것을 명시해 재보고를 막음) · fh-meta:persona-innovator×1 (운영자 지시 자율주행, Mode F) · fh-meta:beginner×1 (README 새 절 콜드리드, 08-15 분)."
+  dispatch_count: 6
+  outcome: accepted
+  evidence: "보안 패스가 **BLOCK** 을 냈고 그게 옳았다 — `fh_node_check.sh` 의 consent 게이트가 파일 전체 verdict + raw grep 을 클래스 조인 대신 써서, `revoked` 로 적힌 클래스가 소비자 머신에서 자동 fast-forward 를 통과했다(거버너가 컨트롤 동반 재현 후 수리). R2 는 그 수리에서 4건을 냈고 **전부 새 게이트의 ON 스위치가 조용히 꺼지는 형태**(공백만 이름·argv[1] 한정 파싱·미지 옵션이 경로로·요약이 판정과 모순). R3 는 2건, 그중 A급은 `tr -d` 가 트림이 아니라 squeeze 라 **다른 이름이 실제 클래스의 판정을 받는** 신원 붕괴 — 게이트가 막으려던 그 일을 게이트가 하고 있었다. R4 는 **새 S/A 0**(수렴), 남은 B 1건은 근거와 함께 소스에 명시 잔여. innovator 는 7건이 **하나의 관계**(proxy 가 target 보다 약함)임을 짚고 **그 이름이 사흘 전 메모리에 이미 있다**(`feedback_instrument_vs_target_and_budget`)는 것, 그리고 외부에서 가져올 것은 도구가 아니라 `partially rotten` 이라는 **상태값**이라는 것을 냈다."
+  notes: "★**자력 적발 0 / 7건.** 검출기가 호출부 0을 10/10으로 셈 · 새 가드에 앵커 없음 · consent 게이트가 클래스를 안 봄 · 그 레인이 두 번 장식 · ON 스위치 4건 · 「바운드」가 아무것도 안 묶음 · 프로브가 실행조차 안 됐는데 초록. 리뷰어·컨트롤·되돌림·CI 가 잡았다.
+    ★**라운드를 거듭할수록 과녁을 직전 수리로 옮긴 것이 값을 냈다** — R2·R3 의 A급은 원래 결함이 아니라 **그 결함을 고치려고 내가 쓴 코드**에 있었다. R4 에 「앞 라운드가 닫은 것」을 명시해 준 것도 효과가 있었다(재보고 0, 새 축에서만 1건).
+    ⚠️ **innovator 는 자기 근거의 한계를 스스로 붙였고 그걸 지우지 않았다** — 7건을 재검증하지 못했고(편집 금지+Bash 없음) task card 진술을 그대로 받았다고 명시. 제안 1의 수율은 미측정이라고 못박았고, 손검증 불가한 EMSE 수치는 **인용을 거부**했다. 사이드카가 자기 표본 한계를 먼저 선언한 사례로 남긴다.
+    🟥 **거버너 쪽 실책 2건**: ⓐ staleness 감사기를 띄워 놓고 그 사이 대상 파일을 편집(`feedback_audit_target_must_be_frozen` 재생산, 자력 적발) ⓑ 되돌림 프로브의 적용확인 단언이 인용부호에서 깨져 **프로브가 실행되지 않았는데 스위트는 초록**이었다 — 단언이 없었으면 「되돌려도 초록」을 「앵커 살아있음」으로 오독했을 것이다."
