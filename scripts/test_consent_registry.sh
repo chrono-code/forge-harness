@@ -861,11 +861,24 @@ _nlreg="$TD/reg
 two.yaml"
 cp "$TD/r.yaml" "$_nlreg" 2>/dev/null && lane_args "RC-l a registry path containing a newline is one argument" 0 --require-class ok "$_nlreg" "$TD/u.md" \
   || ok "RC-l SKIPPED — this filesystem rejected a newline in a filename (not a defect)"
-bash "$CHK" "" "$TD/u.md" >"$TD/o" 2>&1
-if grep -q "R1/R2" "$TD/o"; then
-  ok "RC-m an empty first positional does not promote the UAP into the registry slot"
+# RC-m asserts on WHICH registry path the tool reports, not on a success marker. The first version
+# grepped for `R1/R2`, which only appears when the DEFAULT registry parses — and that default is
+# `tracks/_meta/consent_classes.yaml`, which is **gitignored**, so it exists on the author's machine
+# and not in CI. It passed locally and went red on the first CI run: a lane that measured the
+# author's filesystem rather than the behaviour. This form works in both.
+# Calibrated: the control proves the reported path tracks argv[1] at all, so the assertion below is
+# a discrimination result and not a grep that could never match.
+bash "$CHK" "/nonexistent-registry-probe.yaml" "$TD/u.md" >"$TD/oc" 2>&1
+if grep -q "nonexistent-registry-probe.yaml" "$TD/oc"; then
+  ok "RC-m CONTROL: the reported registry path tracks argv[1]"
 else
-  bad "RC-m empty positional shifted the argument list"; sed 's/^/     /' "$TD/o"
+  bad "RC-m CONTROL dead: the tool did not name the registry it was given — the assertion below proves nothing"; sed 's/^/     /' "$TD/oc"
+fi
+bash "$CHK" "" "$TD/u.md" >"$TD/o" 2>&1
+if grep -qE "registry (at|unparseable).*$(basename "$TD")/u\.md" "$TD/o"; then
+  bad "RC-m empty positional shifted the argument list — the UAP was read as the registry"; sed 's/^/     /' "$TD/o"
+else
+  ok "RC-m an empty first positional does not promote the UAP into the registry slot"
 fi
 
 echo "----"
