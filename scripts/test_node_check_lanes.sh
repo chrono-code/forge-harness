@@ -307,6 +307,77 @@ PYX
     bad "lane10-e DIVERGED: local history was moved or lost" "$_h3 -> $(git -C "$_dn" rev-parse HEAD)"
   fi
 
+  # f — WRONG CLASS. The refusal that the other three arms structurally cannot produce.
+  # Arms c/d/e all refuse by breaking the FILE-WIDE verdict (grant block deleted → exit 3; lease
+  # past-dated → exit 1; divergence → git itself refuses). None of them touches the question "is
+  # THIS class granted", so a caller keyed on the file-wide 0 passed them all — measured 2026-08-15
+  # by a pre-publish security pass, with a live control: one unrelated class validly granted plus
+  # the target class named only in prose, and the merge ran while the banner claimed a standing
+  # consent that never existed. The revoke path was the broken one.
+  # The second assertion below is the load-bearing half: this arm must refuse WHILE the bare
+  # file-wide check still returns 0. Without it the lane would pass for the same reason lane10-c
+  # does, and the axis would go unexercised again.
+  # ORDER MATTERS, and getting it wrong is silent: the UAP is a TRACKED file in this fixture, so
+  # `git reset --hard` reverts any edit made to it. The first draft transformed the UAP and then
+  # reset — restoring the original grant, so the apply fired legitimately and the lane failed for a
+  # reason that looked like the defect. Reset and advance origin FIRST, edit the UAP AFTER.
+  git -C "$_dn" reset -q --hard "origin/$_DEF" >/dev/null 2>&1   # noqa: destructive-op (throwaway fixture)
+  (cd "$_ap_root/up" && echo newer-f > f.txt && git commit -qam ahead-f) >/dev/null 2>&1
+  git -C "$_dn" fetch -q origin >/dev/null 2>&1
+  cp "$_ap_root/uap.bak" "$_dn/tracks/_meta/user_adaptation_profile.md"
+  python3 - "$_dn/tracks/_meta/user_adaptation_profile.md" <<'PYX'
+import sys, re as _re
+p = sys.argv[1]; s = open(p, encoding='utf-8').read()
+old = "  repo-freshness-autopull:"
+assert old in s, "lane10-f fixture: grant key not found"
+# Reuse the lease dates the fixture already computed, so this arm cannot fail for a date reason and
+# be mistaken for a class-join refusal. (First draft omitted them: R5 fired, the file-wide verdict
+# went to 1, and the arm's own vacuity guard caught it — which is what that guard is for.)
+_g = _re.search(r"granted: (\S+)", s).group(1)
+_e = _re.search(r"expires: (\S+)", s).group(1)
+# A VALID grant for a different registered, promotion_eligible class, scope-matched to its
+# registration so R6/R7 pass — the point is a file that is entirely well-formed.
+other = ("  dispatch-readonly-sim-local-artifact:\n"
+         f"    granted: {_g}\n"
+         f"    expires: {_e}\n"
+         "    owner: fh-meta:sim-conductor\n"
+         "    mode: blind-target-tier-sim\n"
+         "    target: a single local file under the current repo\n"
+         "    effects: [read, dispatch]\n"
+         "    sinks: []\n")
+s = s.replace(old, "  __TARGET_GRANT__:", 1)
+head, sep, tail = s.partition("standing_consent:\n")
+s = head + sep + other + tail
+# the target class survives ONLY as prose — the shape the old raw grep could not tell from a grant
+s = s.replace("lane fixture — not a real profile",
+              "lane fixture — not a real profile\n\n  repo-freshness-autopull: 철회함 (revoked)")
+import re
+s = re.sub(r"  __TARGET_GRANT__:\n(?:    .*\n)*", "", s, count=1)
+open(p, 'w', encoding='utf-8').write(s)
+PYX
+  # PRECONDITION, asserted rather than assumed. lane10-e leaves the clone DIVERGED, and a diverged
+  # clone refuses the fast-forward for a reason that has nothing to do with consent — so without the
+  # reset above the arm passes whether the class join works or not. Measured: a revert probe against
+  # the repaired fh_node_check.sh left this lane green, i.e. it was decorative. Same shape as the
+  # self-exclusion lane earlier the same day; the probe is what separates the two cases.
+  _h5="$(git -C "$_dn" rev-parse HEAD)"
+  if [ "$_h5" = "$(git -C "$_dn" rev-parse "origin/$_DEF")" ]; then
+    bad "lane10-f VACUOUS: clone is not behind origin, so 'no apply' proves nothing" "$_h5"
+  fi
+  run "$_dn" "$_ap_root/s_f" >/dev/null 2>&1
+  _filewide=0
+  bash "$FH_REPO/scripts/consent_registry_check.sh" \
+       "$_dn/tracks/_meta/consent_classes.yaml" \
+       "$_dn/tracks/_meta/user_adaptation_profile.md" >/dev/null 2>&1 || _filewide=$?
+  if [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h5" ] && [ "$_filewide" = "0" ]; then
+    ok "lane10-f WRONG-CLASS: another class granted, this one only in prose → no apply (file-wide check still 0)"
+  elif [ "$_filewide" != "0" ]; then
+    bad "lane10-f VACUOUS: the fixture broke the file-wide verdict (rc=$_filewide), so it re-tests lane10-c's axis, not the class join" "rebuild the fixture so the bare check returns 0"
+  else
+    bad "lane10-f WRONG-CLASS: applied on a class that was never granted" "$_h5 -> $(git -C "$_dn" rev-parse HEAD)"
+  fi
+  cp "$_ap_root/uap.bak" "$_dn/tracks/_meta/user_adaptation_profile.md"
+
   # CONTROL — after all the refuse arms, prove the apply arm still fires. Without this, a lane
   # suite where the feature has gone inert reports 4 clean refusals and looks perfect.
   git -C "$_dn" reset -q --hard "origin/$_DEF" >/dev/null 2>&1   # noqa: destructive-op (throwaway fixture)

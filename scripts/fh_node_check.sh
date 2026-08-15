@@ -219,14 +219,43 @@ if git -C "$FH" rev-parse --git-dir >/dev/null 2>&1 && git -C "$FH" remote get-u
           # UAP frontmatter. scripts/consent_registry_check.sh is the single decider (exit 0 = a
           # real grant was joined; 3 = nothing granted; 1 = broken). Absent, expired, unreadable, or
           # unknown all take the same branch as "no": surface, do not apply. absent ≠ granted.
+          # 🟥 The two conditions this replaced did NOT ask whether THIS class was granted, and a
+          # security pass before the 1.4.99 publish caught it with a live control (2026-08-15).
+          #   · a bare run of consent_registry_check.sh returns 0 for a FILE-WIDE property — "the
+          #     registry and the grants are well-formed and the floor join holds". One validly
+          #     granted UNRELATED class produces that 0.
+          #   · the second condition was `grep -q '^\s*repo-freshness-autopull:'` over the WHOLE UAP,
+          #     which does not distinguish `granted` from `revoked` and does not care whether the
+          #     hit is inside the machine-read frontmatter or in a prose paragraph.
+          # Reproduced: one unrelated class granted + the line `  repo-freshness-autopull: 안 쓰기로
+          # 했다` in prose → both conditions passed, the merge ran, and the banner told the operator
+          # it was acting on a standing consent that had never existed. The revoke path was the one
+          # that broke, which is the exact floor `absent ≠ granted` exists to hold.
+          # `--require-class` joins the ONE class: 0 only if it is an active, registered, unexpired
+          # grant; 3 otherwise. Same known pair now separates 0 from 3.
           _AUTOPULL=""
           if [ -x "$FH/scripts/consent_registry_check.sh" ] \
-             && bash "$FH/scripts/consent_registry_check.sh" >/dev/null 2>&1 \
-             && grep -q '^\s*repo-freshness-autopull:' "$FH/tracks/_meta/user_adaptation_profile.md" 2>/dev/null; then
+             && bash "$FH/scripts/consent_registry_check.sh" --require-class repo-freshness-autopull >/dev/null 2>&1; then
             _AUTOPULL=1
           fi
           _ON_DEFAULT=""
           [ "$(git -C "$FH" symbolic-ref --short -q HEAD 2>/dev/null)" = "$_DEFAULT_BRANCH" ] && _ON_DEFAULT=1
+          # 🟥 NO DEADLINE HERE, AND THAT IS A DECISION — read before adding one back.
+          # A deadline was added here and then REMOVED the same session, because a cross-family
+          # review measured that the watchdog does not do what its name says: wrapping
+          # `git merge --ff-only` in `perl -e 'alarm N; exec @ARGV'` with N=2, against an upstream
+          # adding 20 files behind a slow smudge filter, took ~7.9s and returned 0. The alarm did
+          # not bound git. Shipping it would have added the appearance of a bound with none of the
+          # behaviour — the same false-green shape this release exists to fix.
+          # ⚠️ The consequence reaches further than this line: `_fh_gitcheck_deadline` guards the
+          # FETCH above too, and that guard predates this change. Whether it actually bounds a
+          # stalled fetch is now UNVERIFIED rather than assumed — a network stall may differ from a
+          # CPU-bound checkout, and neither was measured. Recorded as a residual instead of being
+          # quietly relied on.
+          # The exposure that motivated the attempt is real but unmeasured: the fetch may spend its
+          # full 8s inside a SessionStart hook budgeted at 10s, leaving ~2s for a merge whose true
+          # duration nobody has timed. Fixing it properly means measuring that duration and then
+          # bounding with something that actually bounds — not re-adding this line.
           if [ -n "$_AUTOPULL" ] && [ -n "$_ON_DEFAULT" ] \
              && git -C "$FH" merge --ff-only "refs/remotes/origin/$_DEFAULT_BRANCH" >/dev/null 2>&1; then
             # Announce every unprompted run — §Operational Adaptation Loop requires it of a standing
