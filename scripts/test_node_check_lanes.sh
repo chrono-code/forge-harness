@@ -189,7 +189,42 @@ _ap_root="$(mktemp -d)"
   git config user.email t@t; git config user.name t; git config commit.gpgsign false
   mkdir -p scripts tracks/_meta
   cp "$FH_REPO/scripts/fh_node_check.sh" "$FH_REPO/scripts/consent_registry_check.sh" scripts/
-  cp "$FH_REPO/tracks/_meta/consent_classes.yaml" "$FH_REPO/tracks/_meta/user_adaptation_profile.md" tracks/_meta/ 2>/dev/null
+  # Build the consent fixture from the SHIPPED TEMPLATE, never from the operator's local
+  # tracks/_meta/ — those are gitignored, so on CI (and on any fresh clone) they do not exist and
+  # the lanes would report a red FAIL for a file whose absence is correct by design. Measured on
+  # CI 2026-08-15: exactly that, "registry/UAP absent — lanes not run". Sourcing the template
+  # instead is strictly better than degrading to SKIP: the lanes then actually run everywhere, and
+  # they validate the very block a consumer is told to copy.
+  cp "$FH_REPO/templates/consent_classes.yaml.example" tracks/_meta/consent_classes.yaml
+  # The grant side has no shipped template (a UAP is per-operator by nature), so synthesize the
+  # minimum the registry check requires: the full R6 fingerprint, far-future expiry so the fixture
+  # never rots into a false refusal, joined to the template's own class name.
+  # Dates are computed at fixture-build time, not hardcoded, for two reasons that pull opposite
+  # ways: a fixed past date rots into a false REFUSE, and a far-future one is refused outright —
+  # R5 caps a lease at 365 days ("an unbounded expiry is a transfer, not a lease"), and the first
+  # version of this fixture used 2099-01-01 and was correctly rejected by the very floor the
+  # feature depends on. GNU-first with validation, same discipline as every _mtime helper here:
+  # `date -d` is GNU, `date -v` is BSD, and neither failing silently is acceptable.
+  _g="$(date +%Y-%m-%d)"
+  _e="$(date -d '+300 days' +%Y-%m-%d 2>/dev/null || date -v+300d +%Y-%m-%d 2>/dev/null || echo '')"
+  case "$_e" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) : ;;
+    *) bad "lane10 fixture: could not compute a lease expiry (neither GNU nor BSD date worked)" "$_e"; _e="$_g" ;;
+  esac
+  cat > tracks/_meta/user_adaptation_profile.md <<UAPEOF
+---
+standing_consent:
+  repo-freshness-autopull:
+    granted: $_g
+    expires: $_e
+    owner: scripts/fh_node_check.sh
+    mode: ff-only-merge-on-default-branch
+    target: this repo's own default branch, in the local clone, when it is already checked out
+    effects: [network, repo-mutation]
+    sinks: []
+---
+lane fixture — not a real profile
+UAPEOF
   echo base > f.txt; git add -A >/dev/null; git commit -qm base
   cd ..; git clone -q up dn; cd up; echo newer > f.txt; git commit -qam ahead
 ) >/dev/null 2>&1
