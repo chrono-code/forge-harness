@@ -44,6 +44,36 @@
 #   Re-point the class's `owner` or `mode` after the grant and the join fails: that is the point.
 
 classes:
+  # ---- REAL, ADOPTABLE class (not illustrative) -------------------------------------
+  # Ships with fh_node_check.sh's consent-gated auto-pull. Copy this block verbatim into your
+  # own tracks/_meta/consent_classes.yaml, then grant it in your UAP frontmatter to enable the
+  # apply arm. Without both, the check surfaces "N commits behind" and never touches the repo —
+  # absent is not granted.
+  #
+  # Read the reason before adopting: this class takes a DIFFERENT verdict from the `local-commit`
+  # example further down, on a deliberately narrow ground. If your integration branch is not
+  # PR-only/protected, that ground does not hold for you and you should not adopt it.
+  - name: repo-freshness-autopull
+    owner: scripts/fh_node_check.sh
+    mode: ff-only-merge-on-default-branch
+    target: this repo's own default branch, in the local clone, when it is already checked out
+    capabilities: [network, repo-mutation]
+    sinks: []
+    feeds: []
+    promotion_eligible: true
+    lease_days: 92
+    reason: >
+      A fast-forward pull introduces nothing new: every commit it brings down is already on the
+      integration branch, which is PR-only and server-side protected, so all of it has passed the
+      gates. `local-commit` below is classified feeds:[go-public] because it CREATES ungated
+      content that publish can then ship; this makes the tree MATCH canon instead. Publish packs
+      the working tree, so a tree matching origin is strictly safer to publish from than a stale
+      one. Blast radius also excludes personal state by construction — a pull touches tracked
+      files only, and session/memory/companion state is gitignored or outside the repo.
+      Envelope (enforced in code, not prose): applies ONLY when the default branch is already
+      checked out, never switches branches, and --ff-only refuses a divergence rather than
+      absorbing it. Lanes: scripts/test_node_check_lanes.sh lane10-a..e + CONTROL.
+
   # ---- promotion-eligible example -------------------------------------------------
   - name: dispatch-readonly-sim-local-artifact
     owner: fh-meta:sim-conductor          # the gate/skill that does the asking

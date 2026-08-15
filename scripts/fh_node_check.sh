@@ -199,7 +199,46 @@ if git -C "$FH" rev-parse --git-dir >/dev/null 2>&1 && git -C "$FH" remote get-u
       case "$_BEHIND" in
         ''|*[!0-9]*) : ;;   # not measurable — silent, not a claim
         0) : ;;
-        *) GIT_BEHIND_NOTE="local $_DEFAULT_BRANCH is ${_BEHIND} commit(s) behind origin/$_DEFAULT_BRANCH — run: git checkout $_DEFAULT_BRANCH && git pull --ff-only (or: git merge --ff-only origin/$_DEFAULT_BRANCH)" ;;
+        *)
+          # ── auto-apply, consent-gated, inside a deliberately narrow envelope ───────────────
+          # Operator request 2026-08-15, verbatim: "사람이 일일이 수동으로 깃풀해서 최신화해야하는지를
+          # 판단하지않고 … 세션 시작 시 레포체크를 클로드가 알아서 하고 최신화 제안하는 기능이 있으면
+          # 좋을것같아. 그리고 앞으로도 자동으로 이렇게 동기화할지 물어보는 것도."
+          #
+          # 🟥 IT NEVER SWITCHES BRANCHES, and that is the whole safety envelope — not a nicety.
+          # The recommendation this line used to print told the reader to `git checkout
+          # $_DEFAULT_BRANCH && git pull`. In a SHARED CHECKOUT a checkout yanks the ground out from
+          # under a peer session: measured on this repo 2026-08-09 (two sessions, one worktree, one
+          # committed onto the other's branch), which is why scripts/branch_claim.sh exists at all.
+          # As prose advice a human weighed that; automated, nobody would. So the apply arm fires
+          # ONLY when the default branch is ALREADY checked out, and `--ff-only` means it can
+          # neither rewrite history nor absorb a divergence — it refuses instead.
+          #
+          # Consent is a LEASE, joined mechanically, never inferred: the class must be registered
+          # promotion_eligible in tracks/_meta/consent_classes.yaml AND granted unexpired in the
+          # UAP frontmatter. scripts/consent_registry_check.sh is the single decider (exit 0 = a
+          # real grant was joined; 3 = nothing granted; 1 = broken). Absent, expired, unreadable, or
+          # unknown all take the same branch as "no": surface, do not apply. absent ≠ granted.
+          _AUTOPULL=""
+          if [ -x "$FH/scripts/consent_registry_check.sh" ] \
+             && bash "$FH/scripts/consent_registry_check.sh" >/dev/null 2>&1 \
+             && grep -q '^\s*repo-freshness-autopull:' "$FH/tracks/_meta/user_adaptation_profile.md" 2>/dev/null; then
+            _AUTOPULL=1
+          fi
+          _ON_DEFAULT=""
+          [ "$(git -C "$FH" symbolic-ref --short -q HEAD 2>/dev/null)" = "$_DEFAULT_BRANCH" ] && _ON_DEFAULT=1
+          if [ -n "$_AUTOPULL" ] && [ -n "$_ON_DEFAULT" ] \
+             && git -C "$FH" merge --ff-only "refs/remotes/origin/$_DEFAULT_BRANCH" >/dev/null 2>&1; then
+            # Announce every unprompted run — §Operational Adaptation Loop requires it of a standing
+            # grant, and a sync the reader never saw is indistinguishable from one that never ran.
+            GIT_BEHIND_NOTE="local $_DEFAULT_BRANCH was ${_BEHIND} commit(s) behind — fast-forwarded automatically (standing consent: repo-freshness-autopull). Nothing else was touched; your gitignored state is out of git's reach by construction."
+          else
+            # Every not-applied path lands here and says the same thing: what to run. It does NOT
+            # say why it did not apply, on purpose — "no grant" and "wrong branch" and "ff refused"
+            # would each need their own true sentence, and a wrong reason printed confidently is
+            # worse than none (this file's own §absent-subject rule).
+            GIT_BEHIND_NOTE="local $_DEFAULT_BRANCH is ${_BEHIND} commit(s) behind origin/$_DEFAULT_BRANCH — while ON that branch run: git merge --ff-only origin/$_DEFAULT_BRANCH"
+          fi ;;
       esac
     fi
     # no local branch named $_DEFAULT_BRANCH at all (e.g. a fork never checked it out) → silent,
