@@ -10,6 +10,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [1.4.98] — 2026-08-15
+
+**fix: 1.4.97 이후 쌓인 출하면 36파일을 실제로 배포한다 — 특히 «있는데 실행에 도달 못 하던» 검증 축 하나**
+
+- 🔴 **이 릴리스의 존재 이유 자체가 결함 하나다.** `auto-decorrelation` 에 **Step 6.5 — Standpoint
+  axis**(2026-08-14 신설, `crossfamily` 와 직교하는 두 번째 탈상관 축)를 커밋했는데 **버전을 안
+  올렸다.** 플러그인 캐시는 `plugin.json` 버전으로 키잉되므로(`~/.claude/plugins/cache/<mk>/<plugin>/<version>/`),
+  버전이 그대로면 캐시가 무효화되지 않는다 — 즉 **레포에는 있고 어떤 런타임에도 없는 규칙**이 하루
+  넘게 존재했다. 실측(2026-08-15): 설치본 `auto-decorrelation/SKILL.md` 에 `standpoint` **0회** ·
+  `Step 6.5` **0회**, 레포본에는 263~291행에 전문. 나머지 34개 스킬은 드리프트 0 — 정확히 이 한
+  파일만 도달 실패했고, 하필 그게 그날 실제로 안 걸린 기능이었다.
+  **일반형: 스킬을 고치고 버전을 안 올리면 저자 머신을 포함한 모든 런타임에서 그 수정은 존재하지
+  않는다.** `built_but_not_wired` 의 배포채널 판본이고, 게이트가 «행위자가 읽는 곳»에 있어야 한다는
+  gate-locality 원칙이 *배포 지연*이라는 다른 메커니즘으로 재발한 것이다.
+  **기존 검사기는 정상 작동했다** — `session_close_check.sh` ④-b 가 「마지막 태그 이후 출하자산
+  변경 → 재출하 제안」을 정확히 발화하고 있었다. 놓친 지점은 검사기가 아니라 **그 출력을 표시필터로
+  잘라 읽은 것**(`| tail -15`)이었다. 새 기계장치를 짓지 않고 기존 절차를 실행하는 것이 이 릴리스다.
+
+- **Standpoint 축 신설** (PR #370 · #371 · #378) — 계열(family) 다양성은 *리뷰어의 오류분포*를
+  탈상관시키지만 *리뷰가 대조되는 ground truth* 는 탈상관시키지 않는다. 공유 본체(shared-body)
+  변경에서 «누구의 레포를 기준으로 검증했는가」를 폐쇄 enum 으로 기록한다
+  (`tier1` · `tier2(<대상>)` · `tier2b(<대상>)` · `tier3(<대상>)` · `not-applicable` +
+  could-not/did-not/did-not-look 3분 degrade). 실행 시점은 **첫 push 이전, 위험판정 분기 없이**.
+  정본 = `knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §7`.
+  ⚠️ 정직한 현 상태: 이 필드는 **산문 전용**이다 — pre-commit 훅에 `standpoint` 매치 0건,
+  픽스처 스위트 없음(`crossfamily` 는 21건 + 픽스처로 하드 차단). 첫 거짓값이 기록되면 기계화한다.
+
+- **컴패니언 스토어 노드↔노드 스코핑** (PR #368 · #372) — 같은 머신에서 두 하네스가 컴패니언
+  스토어를 공유할 때 서로의 manifest/memory-index 를 되읽던 결함. `fh_hub_identity.sh` 신설로
+  세 호출부의 네임스페이스 판단을 단일 소스로 통일.
+- **레인 배선** (PR #369 · #374) — `test_field_canon` · `test_stale_clone_guard` 재배선(DEBT 2→0),
+  자기-재진술 렌즈 + 임베디드 `--self-test` 디스패처 탐지 신설.
+- **SessionStart 노드 플로어에 origin-behind 탐지** (PR #376) · **frontier-digest 무인
+  파이프라인** (PR #377) · **positioning roadmap 문서** (PR #379).
+- **Homebrew tap 출하** (PR #380 · #383) — `brew install forge-harness`(npm 패키지와 100% parity).
+  Homebrew Core 제출은 채택 기준(star 75 / fork 30 / watcher 30, 자기제출 ×3) 미달로 **보류**,
+  재개조건 ~50+ star 로 명시 기록.
+- **ko-tech-writer 수리** (PR #373) — render-artifact 스코프 · 전칭단정 스캔 · 한글 `\b` 정규식 트랩.
+
+---
+
 ### [1.4.97] — 2026-08-13
 
 **fix: 죽어 있던 게이트 캘리브레이션 배선 · 참조를 「선언」이 아니라 「실제 tarball」과 대조**
