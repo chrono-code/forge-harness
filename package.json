@@ -116,7 +116,6 @@
     "scripts/branch_claim.sh",
     "scripts/test_branch_claim_lanes.sh",
     "scripts/hook_source_lib.sh",
-    "scripts/fh_hub_identity.sh",
     "scripts/test_hook_source_gate_lanes.sh",
     "templates/.claude/rules/mcp_tool_gating.md",
     ".claude/rules/fh_4axis_gate.md",
