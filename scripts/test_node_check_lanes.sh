@@ -174,6 +174,152 @@ for h in "$FH_REPO"/templates/.git-hooks/pre-commit "$FH_REPO"/templates/.git-ho
   else bad "lane9 sentinel does NOT match shipped $(basename "$h") — every FH machine would report 'not FH gate'" "$(head -3 "$h")"; fi
 done
 
+# ── lane10 — consent-gated auto-pull: the APPLY arm and every REFUSE arm ─────────────────────
+# Added 2026-08-15 with the feature. These lanes exist because the feature's whole safety claim is
+# about what it does NOT do, and "does not" is exactly what a green run cannot demonstrate by
+# itself — every refuse arm below is paired against an apply arm in the same fixture, so a lane
+# that goes silently inert fails the CONTROL rather than passing everything.
+# 🟥 The load-bearing one is lane10-b: in a shared checkout a branch switch yanks the ground out
+# from under a peer session (measured 2026-08-09, two sessions/one worktree). If this feature ever
+# switches branches, that lane is what says so.
+_ap_root="$(mktemp -d)"
+(
+  cd "$_ap_root" || exit 1
+  # Pin the branch name: `git init` uses init.defaultBranch, which is main on this
+  # operator's machine and master on a stock Ubuntu (CI). Hardcoding "main" in the
+  # assertions below made lane10-b pass VACUOUSLY there (`rev-parse "$_DEF"` returned
+  # empty, and empty==empty compared true) while CONTROL's reset silently no-op'd.
+  git -c init.defaultBranch=main init -q up && cd up
+  git config user.email t@t; git config user.name t; git config commit.gpgsign false
+  mkdir -p scripts tracks/_meta
+  cp "$FH_REPO/scripts/fh_node_check.sh" "$FH_REPO/scripts/consent_registry_check.sh" scripts/
+  # Build the consent fixture from the SHIPPED TEMPLATE, never from the operator's local
+  # tracks/_meta/ — those are gitignored, so on CI (and on any fresh clone) they do not exist and
+  # the lanes would report a red FAIL for a file whose absence is correct by design. Measured on
+  # CI 2026-08-15: exactly that, "registry/UAP absent — lanes not run". Sourcing the template
+  # instead is strictly better than degrading to SKIP: the lanes then actually run everywhere, and
+  # they validate the very block a consumer is told to copy.
+  cp "$FH_REPO/templates/consent_classes.yaml.example" tracks/_meta/consent_classes.yaml
+  # The grant side has no shipped template (a UAP is per-operator by nature), so synthesize the
+  # minimum the registry check requires: the full R6 fingerprint, far-future expiry so the fixture
+  # never rots into a false refusal, joined to the template's own class name.
+  # Dates are computed at fixture-build time, not hardcoded, for two reasons that pull opposite
+  # ways: a fixed past date rots into a false REFUSE, and a far-future one is refused outright —
+  # R5 caps a lease at 365 days ("an unbounded expiry is a transfer, not a lease"), and the first
+  # version of this fixture used 2099-01-01 and was correctly rejected by the very floor the
+  # feature depends on. GNU-first with validation, same discipline as every _mtime helper here:
+  # `date -d` is GNU, `date -v` is BSD, and neither failing silently is acceptable.
+  _g="$(date +%Y-%m-%d)"
+  _e="$(date -d '+300 days' +%Y-%m-%d 2>/dev/null || date -v+300d +%Y-%m-%d 2>/dev/null || echo '')"
+  case "$_e" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) : ;;
+    *) bad "lane10 fixture: could not compute a lease expiry (neither GNU nor BSD date worked)" "$_e"; _e="$_g" ;;
+  esac
+  cat > tracks/_meta/user_adaptation_profile.md <<UAPEOF
+---
+standing_consent:
+  repo-freshness-autopull:
+    granted: $_g
+    expires: $_e
+    owner: scripts/fh_node_check.sh
+    mode: ff-only-merge-on-default-branch
+    target: this repo's own default branch, in the local clone, when it is already checked out
+    effects: [network, repo-mutation]
+    sinks: []
+---
+lane fixture — not a real profile
+UAPEOF
+  echo base > f.txt; git add -A >/dev/null; git commit -qm base
+  cd ..; git clone -q up dn; cd up; echo newer > f.txt; git commit -qam ahead
+) >/dev/null 2>&1
+_dn="$_ap_root/dn"
+if [ ! -d "$_dn/.git" ] || [ ! -f "$_dn/tracks/_meta/consent_classes.yaml" ]; then
+  bad "lane10 fixture: could not build the consent fixture (registry/UAP absent — lanes not run)" "$_ap_root"
+else
+  git -C "$_dn" config user.email t@t >/dev/null 2>&1; git -C "$_dn" config user.name t >/dev/null 2>&1
+  # Derive rather than assume — belt-and-braces over the pin above, so a future git
+  # whose init behaviour changes again cannot make these lanes vacuous a second time.
+  _DEF="$(git -C "$_dn" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
+  [ -n "$_DEF" ] || _DEF=main
+  if ! git -C "$_dn" show-ref --verify --quiet "refs/heads/$_DEF"; then
+    bad "lane10 fixture: default branch '$_DEF' has no local ref — assertions below would be vacuous" "$(git -C "$_dn" branch -a)"
+  fi
+  git -C "$_dn" fetch -q origin >/dev/null 2>&1
+  _h0="$(git -C "$_dn" rev-parse HEAD)"
+  run "$_dn" "$_ap_root/s_a" >/dev/null 2>&1
+  if [ "$(git -C "$_dn" rev-parse HEAD)" != "$_h0" ]; then
+    ok "lane10-a APPLY: consented + on default branch → fast-forwarded"
+  else
+    bad "lane10-a APPLY: consented + on default branch did NOT fast-forward (feature inert — every refuse lane below is then vacuous)" "$_h0"
+  fi
+
+  # b — the envelope. Never applies off the default branch, and NEVER switches branches.
+  (cd "$_ap_root/up" && echo newer2 > f.txt && git commit -qam ahead2) >/dev/null 2>&1
+  git -C "$_dn" fetch -q origin >/dev/null 2>&1
+  git -C "$_dn" switch -c feat-x -q >/dev/null 2>&1
+  _m0="$(git -C "$_dn" rev-parse "$_DEF")"
+  # ⚠️ CHECKING main AND THE BRANCH NAME IS NOT ENOUGH — measured by a revert probe 2026-08-15.
+  # With the envelope deliberately broken, `merge --ff-only origin/main` fast-forwards THE BRANCH
+  # YOU ARE ON, so feat-x moved while `main` sat still and the branch name never changed. The first
+  # version of this lane asserted only those two and stayed green against a defeated envelope —
+  # decorative. The tip that must not move is the CURRENT branch's own.
+  _f0="$(git -C "$_dn" rev-parse feat-x)"
+  run "$_dn" "$_ap_root/s_b" >/dev/null 2>&1
+  if [ "$(git -C "$_dn" rev-parse "$_DEF")" = "$_m0" ] \
+     && [ "$(git -C "$_dn" rev-parse feat-x)" = "$_f0" ] \
+     && [ "$(git -C "$_dn" branch --show-current)" = "feat-x" ]; then
+    ok "lane10-b ENVELOPE: off default branch → no apply on EITHER branch, no switch"
+  else
+    bad "lane10-b ENVELOPE: a branch tip moved off the default branch — the shared-checkout hazard" "main=$_m0->$(git -C "$_dn" rev-parse "$_DEF") feat-x=$_f0->$(git -C "$_dn" rev-parse feat-x) branch=$(git -C "$_dn" branch --show-current)"
+  fi
+  git -C "$_dn" switch -q "$_DEF" >/dev/null 2>&1
+
+  # c — no grant. absent ≠ granted.
+  cp "$_dn/tracks/_meta/user_adaptation_profile.md" "$_ap_root/uap.bak"
+  python3 - "$_dn/tracks/_meta/user_adaptation_profile.md" <<'PYX'
+import re,sys
+p=sys.argv[1]; s=open(p,encoding='utf-8').read()
+open(p,'w',encoding='utf-8').write(re.sub(r'\nstanding_consent:\n(?:  .*\n|    .*\n)*', '\n', s, count=1))
+PYX
+  _h1="$(git -C "$_dn" rev-parse HEAD)"
+  run "$_dn" "$_ap_root/s_c" >/dev/null 2>&1
+  [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h1" ] \
+    && ok "lane10-c NO-GRANT: absent standing_consent → no apply" \
+    || bad "lane10-c NO-GRANT: applied without a grant" "$_h1"
+
+  # d — expired lease. A lease nobody enforces is not a lease.
+  cp "$_ap_root/uap.bak" "$_dn/tracks/_meta/user_adaptation_profile.md"
+  sed -i.bak2 's/expires: [0-9-]*/expires: 2020-01-01/' "$_dn/tracks/_meta/user_adaptation_profile.md"
+  _h2="$(git -C "$_dn" rev-parse HEAD)"
+  run "$_dn" "$_ap_root/s_d" >/dev/null 2>&1
+  [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h2" ] \
+    && ok "lane10-d EXPIRED: past-dated lease → no apply" \
+    || bad "lane10-d EXPIRED: applied under an expired lease" "$_h2"
+  cp "$_ap_root/uap.bak" "$_dn/tracks/_meta/user_adaptation_profile.md"
+
+  # e — divergence. --ff-only must refuse rather than absorb, and local work must survive.
+  (cd "$_dn" && echo local-only > mine.txt && git add -A && git commit -qm diverge) >/dev/null 2>&1
+  _h3="$(git -C "$_dn" rev-parse HEAD)"
+  run "$_dn" "$_ap_root/s_e" >/dev/null 2>&1
+  if [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h3" ] && [ -f "$_dn/mine.txt" ]; then
+    ok "lane10-e DIVERGED: ff refused, local commit survives"
+  else
+    bad "lane10-e DIVERGED: local history was moved or lost" "$_h3 -> $(git -C "$_dn" rev-parse HEAD)"
+  fi
+
+  # CONTROL — after all the refuse arms, prove the apply arm still fires. Without this, a lane
+  # suite where the feature has gone inert reports 4 clean refusals and looks perfect.
+  git -C "$_dn" reset -q --hard "origin/$_DEF" >/dev/null 2>&1   # noqa: destructive-op (throwaway fixture)
+  (cd "$_ap_root/up" && echo newer3 > f.txt && git commit -qam ahead3) >/dev/null 2>&1
+  git -C "$_dn" fetch -q origin >/dev/null 2>&1
+  _h4="$(git -C "$_dn" rev-parse HEAD)"
+  run "$_dn" "$_ap_root/s_f" >/dev/null 2>&1
+  [ "$(git -C "$_dn" rev-parse HEAD)" != "$_h4" ] \
+    && ok "lane10-CONTROL: apply arm still fires after the refuse arms (instrument alive)" \
+    || bad "lane10-CONTROL: apply arm went inert — the refuse lanes above prove nothing" "$_h4"
+fi
+rm -rf "$_ap_root"
+
 printf '\nnode-check lanes: %d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
 exit 0
