@@ -16,6 +16,8 @@ tags: [ecosystem, positioning, synergy, opencode, opencode, hermes, openhuman, r
 
 Target: FH full structure vs Hermes-type agent frameworks, OpenCode-style coding agents, OpenHuman-style human-in-loop systems.
 
+**Cross-ref**: `fh_global_positioning_and_distribution_roadmap.md` (2026-08-15) covers adjacent ground — same "FH vs bare execution coders" positioning question, but scoped to npm/Homebrew distribution mechanics rather than this doc's 3-model ecosystem-structure audit. Read together, not as duplicates.
+
 ---
 
 ## Gap Analysis — Where FH Falls Short
