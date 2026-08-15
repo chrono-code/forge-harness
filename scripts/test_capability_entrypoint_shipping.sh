@@ -53,6 +53,12 @@ fi
 FILES_JSON=$(node -e 'process.stdout.write(JSON.stringify(require("./package.json").files||[]))' 2>/dev/null) || {
   echo "  INSTRUMENT ERROR: could not read package.json files[]"; exit 1; }
 
+# ★`mktemp` — 초판은 `${TMPDIR:-/tmp}/cap_entry_$$.txt` 였다. TMPDIR 없는 환경(리눅스 CI·
+# 컨테이너가 흔하다)에서 공용 `/tmp` + PID 기반 **예측 가능한 이름**이라, 미리 심어둔 심링크를
+# `>` 리다이렉트가 따라가 대상 파일을 덮어쓴다(CWE-377, 보안 패스 [B]). 이 파일은 selfcheck 에
+# 배선돼 **소비자 머신에서 `npm test` 로 돈다**.
+_CAP_TMP=$(mktemp -t cap_entry) || { echo "  INSTRUMENT ERROR: mktemp 실패"; exit 1; }
+trap 'rm -f "$_CAP_TMP"' EXIT INT TERM
 printf '%s\n' "$ENTRIES" | while IFS= read -r e; do
   [ -n "$e" ] || continue
   if node -e 'const f=JSON.parse(process.argv[1]);process.exit(f.includes(process.argv[2])?0:1)' "$FILES_JSON" "$e"; then
@@ -60,14 +66,14 @@ printf '%s\n' "$ENTRIES" | while IFS= read -r e; do
   else
     echo "  MISSING $e"
   fi
-done > "${TMPDIR:-/tmp}/cap_entry_$$.txt"
+done > "$_CAP_TMP"
 
-missing=$(grep -c '^  MISSING ' "${TMPDIR:-/tmp}/cap_entry_$$.txt" || true)
+missing=$(grep -c '^  MISSING ' "$_CAP_TMP" || true)
 missing=$(( ${missing:-0} + 0 ))
-shipped=$(grep -c '^  ok ' "${TMPDIR:-/tmp}/cap_entry_$$.txt" || true)
+shipped=$(grep -c '^  ok ' "$_CAP_TMP" || true)
 shipped=$(( ${shipped:-0} + 0 ))
-cat "${TMPDIR:-/tmp}/cap_entry_$$.txt"
-rm -f "${TMPDIR:-/tmp}/cap_entry_$$.txt"
+cat "$_CAP_TMP"
+rm -f "$_CAP_TMP"
 
 if [ "$missing" -eq 0 ]; then
   ok "all $shipped capability entry point(s) are in package.json files[]"
