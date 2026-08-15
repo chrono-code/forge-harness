@@ -151,6 +151,64 @@ IDENTITY=""
 if [ -z "$PREV_ID" ]; then IDENTITY="first session for this clone"
 elif [ "$PREV_ID" != "$NODE_ID" ]; then IDENTITY="machine changed ($PREV_ID → $NODE_ID)"; fi
 
+# ── git-remote freshness (origin) — distinct axis from the infra-delta check above ─
+# INFRA (above) compares against PREV_HEAD, the commit THIS CLONE last saw — it cannot detect
+# "origin has commits I never pulled" because it never talks to the remote. Measured 2026-08-15:
+# a machine idle for two weeks sat 145 commits behind origin/main with zero signal from this hook
+# (companion-store sync covers only the gitignored half; the FH repo itself is a separate git
+# transport with no freshness check of its own). Condition, not event — reported every session
+# while true, same as MISS above.
+#
+# WHY THE TARGET REF IS THE LOCAL main BRANCH, NOT `git symbolic-ref --short HEAD`: an earlier
+# revision compared `HEAD..origin/<current-branch>`. Two bugs, one catch (fh-meta:challenger
+# 2026-08-15 [HIGH]): (a) on a detached HEAD, `symbolic-ref` fails and silently fell back to the
+# literal string "main" — not empty — so the "not measurable, stay silent" case never triggered
+# and it happily compared against the wrong ref; (b) on a feature branch — this repo's own normal
+# workflow (CLAUDE.md §PR Direction: never commit main directly) — it compared against
+# origin/<feature-branch>, never origin/main, so the exact incident this check exists to catch
+# (idle main sitting behind) would NOT have been caught while checked out on a feature branch.
+# Fix: always measure the LOCAL main branch REF directly (refs/heads/<default>), independent of
+# what is currently checked out. Default branch name is read from origin/HEAD, falling back to
+# "main" only if that symref is absent (e.g. never fetched before).
+GIT_BEHIND_NOTE=""
+if git -C "$FH" rev-parse --git-dir >/dev/null 2>&1 && git -C "$FH" remote get-url origin >/dev/null 2>&1; then
+  export GIT_TERMINAL_PROMPT=0
+  # GIT_SSH_COMMAND: fh_session_load.sh's companion-store fetch sets this (BatchMode + accept-new
+  # host keys) so an SSH remote with an unrecognized host key fails fast instead of hanging on an
+  # interactive prompt that GIT_TERMINAL_PROMPT=0 alone does not suppress (ssh, not git, owns that
+  # prompt). This block had copied the timeout half of that pattern but not the SSH half — same
+  # challenger round caught the drift live, not hypothetically.
+  export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new}"
+  # Same bounded-fetch pattern as fh_session_load.sh's companion-store pull: a SessionStart hook
+  # must never hang the first turn on a slow/stalled network step. perl-alarm is the portable
+  # watchdog; no perl → run unbounded rather than silently never fetch (same tradeoff as there).
+  # Deliberately a DISTINCT env var from that script's FH_FETCH_DEADLINE (this fetch targets a
+  # different remote — the FH repo's own origin, not the companion store's) — sharing the name
+  # would let tuning one fetch's timeout silently retune the other (challenger 2026-08-15).
+  if command -v perl >/dev/null 2>&1; then
+    _fh_gitcheck_deadline() { perl -e 'alarm shift @ARGV; exec @ARGV' "$@"; }
+  else
+    _fh_gitcheck_deadline() { shift; "$@"; }
+  fi
+  if _fh_gitcheck_deadline "${FH_NODE_GIT_FETCH_DEADLINE:-8}" git -C "$FH" fetch --quiet origin >/dev/null 2>&1; then
+    _DEFAULT_BRANCH="$(git -C "$FH" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
+    [ -n "$_DEFAULT_BRANCH" ] || _DEFAULT_BRANCH=main
+    if git -C "$FH" show-ref --verify --quiet "refs/heads/$_DEFAULT_BRANCH" \
+       && git -C "$FH" show-ref --verify --quiet "refs/remotes/origin/$_DEFAULT_BRANCH"; then
+      _BEHIND="$(git -C "$FH" rev-list --count "refs/heads/$_DEFAULT_BRANCH..refs/remotes/origin/$_DEFAULT_BRANCH" 2>/dev/null || echo "")"
+      case "$_BEHIND" in
+        ''|*[!0-9]*) : ;;   # not measurable — silent, not a claim
+        0) : ;;
+        *) GIT_BEHIND_NOTE="local $_DEFAULT_BRANCH is ${_BEHIND} commit(s) behind origin/$_DEFAULT_BRANCH — run: git checkout $_DEFAULT_BRANCH && git pull --ff-only (or: git merge --ff-only origin/$_DEFAULT_BRANCH)" ;;
+      esac
+    fi
+    # no local branch named $_DEFAULT_BRANCH at all (e.g. a fork never checked it out) → silent,
+    # not measurable by this method.
+  fi
+  # fetch failure (offline / deadline hit) → silent. Detector-not-gate: absence of signal here
+  # must never be misread as "up to date" by a caller, so it prints nothing rather than a claim.
+fi
+
 # ── state write — unconditional, and a failure is reported, never swallowed ────
 # Writing only when the check speaks would make the recorded timestamp mean "last time it spoke",
 # and a write failure would make this banner repeat forever with no explanation.
@@ -161,7 +219,7 @@ if ! { mkdir -p "$(dirname "$STATE")" 2>/dev/null \
 fi
 
 # ── emit: condition (every session) OR event (once) ───────────────────────────
-[ -n "$MISS$COMPANION_NOTE$INFRA$INFRA_NOTE$IDENTITY$STATE_WARN" ] || exit 0
+[ -n "$MISS$COMPANION_NOTE$INFRA$INFRA_NOTE$IDENTITY$STATE_WARN$GIT_BEHIND_NOTE" ] || exit 0
 
 if [ -n "$MISS" ]; then
   echo "🖥️  [node] Missing mechanical floor on this machine (node: $NODE_ID): ${MISS% · }"
@@ -171,6 +229,7 @@ elif [ -n "$IDENTITY" ]; then
   echo "🖥️  [node] $IDENTITY (node: $NODE_ID) — floors present."
 fi
 [ -n "$STATE_WARN" ] && echo "    ⚠️  $STATE_WARN"
+[ -n "$GIT_BEHIND_NOTE" ] && echo "🔽 [git] $GIT_BEHIND_NOTE"
 [ -n "$COMPANION_NOTE" ] && echo "    ℹ️  $COMPANION_NOTE"
 if [ -n "$INFRA_NOTE" ]; then
   echo "    ⚠️  $INFRA_NOTE"
