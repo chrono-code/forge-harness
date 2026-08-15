@@ -66,9 +66,65 @@
 #
 #   "N/A" is printed as N/A, never as PASS — an unmeasured surface is not a clean one.
 #
-# Usage: bash scripts/consent_registry_check.sh [registry.yaml] [uap.md-or-yaml]
+# Usage: bash scripts/consent_registry_check.sh [--require-class NAME] [registry.yaml] [uap.md-or-yaml]
+#
+# `--require-class NAME` narrows the verdict from FILE-WIDE to ONE CLASS, and a caller acting on
+# behalf of a single class MUST use it. Without it, exit 0 means "the registry and the grants are
+# well-formed and the floor join holds" — a property of the FILE. A caller that reads that 0 as
+# "my class is granted" is wrong whenever any OTHER class is validly granted.
+#
+# That is not hypothetical. Measured 2026-08-15 with a live control: fh_node_check.sh gated its
+# auto-fast-forward on this script's file-wide 0 AND a raw `grep` for the class name anywhere in the
+# UAP. With one unrelated class validly granted and `repo-freshness-autopull` appearing only as a
+# prose line saying it had been REVOKED, both conditions passed and the merge ran — while the banner
+# told the operator it was acting on a standing consent that did not exist. The control (a real
+# grant for the class) also returned 0, so the two states were indistinguishable through that channel.
+# With `--require-class` the same pair separates: 0 for the real grant, 3 for the revoked one.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Flag parsing, hardened by a cross-family round on the first draft. Three defects it found, all
+# reproduced, all fail-OPEN — the flag would appear to be in force while the verdict stayed file-wide:
+#   · `--require-class '   '` passed the `-z` test (non-empty), then Python's `.strip()` reduced it
+#     to "" and the require-class branch silently switched off.
+#   · the flag was read only at argv position 1, so `... reg.yaml uap.md --require-class NAME` was
+#     ignored without a word and returned the old 0.
+#   · an unknown flag was consumed as a path.
+# A gate whose ON switch can be silently OFF is worse than no gate, so all three now fail closed.
+FH_REQUIRE_CLASS=""
+FH_REQUIRE_CLASS_SET=""
+_pos=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --require-class)
+      FH_REQUIRE_CLASS_SET=1
+      FH_REQUIRE_CLASS="$(printf '%s' "${2:-}" | tr -d '[:space:]')"
+      if [ -z "$FH_REQUIRE_CLASS" ]; then
+        echo "consent-registry: FAIL — --require-class given with an empty or whitespace-only class name; fail-closed" >&2
+        exit 1
+      fi
+      shift 2 || shift ;;
+    --require-class=*)
+      FH_REQUIRE_CLASS_SET=1
+      FH_REQUIRE_CLASS="$(printf '%s' "${1#--require-class=}" | tr -d '[:space:]')"
+      if [ -z "$FH_REQUIRE_CLASS" ]; then
+        echo "consent-registry: FAIL — --require-class= given with an empty class name; fail-closed" >&2
+        exit 1
+      fi
+      shift ;;
+    --*)
+      echo "consent-registry: FAIL — unknown option '$1'; fail-closed rather than treating it as a path" >&2
+      exit 1 ;;
+    *)
+      _pos="$_pos$1
+"
+      shift ;;
+  esac
+done
+set --
+while IFS= read -r _a; do [ -n "$_a" ] && set -- "$@" "$_a"; done <<POSEOF
+$_pos
+POSEOF
+export FH_REQUIRE_CLASS FH_REQUIRE_CLASS_SET
 REG="${1:-$ROOT/tracks/_meta/consent_classes.yaml}"
 UAP="${2:-$ROOT/tracks/_meta/user_adaptation_profile.md}"
 
@@ -474,6 +530,16 @@ else:
                 fails += 1; grants = None
 
 no_active_grant = False
+# Names that survived EVERY per-grant check. `--require-class` joins against this set, never against
+# `validated` (a count that includes names which then failed) and never against the file-wide verdict.
+clean_grants = set()
+REQUIRE_CLASS = os.environ.get("FH_REQUIRE_CLASS", "").strip()
+# "was the flag given" is tracked separately from "is the name non-empty". Collapsing them is how
+# the first draft turned a whitespace-only name into a silent fall-back to the file-wide verdict.
+REQUIRE_SET = os.environ.get("FH_REQUIRE_CLASS_SET", "") == "1"
+if REQUIRE_SET and not REQUIRE_CLASS:
+    print("consent-registry: FAIL — --require-class resolved to an empty class name; fail-closed")
+    sys.exit(1)
 if grants is None:
     pass
 elif not grants:
@@ -522,6 +588,12 @@ else:
             if st.strip().lower() in NON_GRANT:
                 continue
         validated += 1
+        # Failure count at the START of this grant's checks. A name joins `clean_grants` at the end
+        # of the body only if nothing was recorded against it in between — `validated` cannot serve
+        # that purpose, because it is incremented HERE and every failing branch below still counted.
+        # Each of those branches also `continue`s after `fails += 1`, so a failing name never reaches
+        # the add; this counter covers the non-continuing ones.
+        _f0 = fails
         c = by_name.get(name)
         if c is None:
             out("❌", f"R3 `{name}` granted but NOT in the registry (unregistered == unknown)"); fails += 1; continue
@@ -669,6 +741,8 @@ else:
                 out("❌", f"R7 `{name}` grant target {tgt!r} does not match the registered target "
                           f"{c['target']!r} — scope drift between grant and class")
                 fails += 1
+        if fails == _f0:
+            clean_grants.add(name)
     skipped = len(grants) - validated
     if validated == 0:
         # Same state as the empty-grants branch above, reached differently: every key present was
@@ -682,6 +756,11 @@ else:
         out("✅", f"R3-R6 all {validated} active grant(s) registered, eligible, unexpired, "
                   f"scope-recorded{note}")
 
+# The class-scoped verdict is decided BEFORE the summary, so the summary can agree with it. The
+# first draft printed it after, which produced `consent-registry: PASS` on a run that then exited 3
+# for the requested class — the exact contradiction this file's own comment below calls a false
+# green with extra steps (cross-family, 2026-08-16).
+_class_missing = bool(REQUIRE_CLASS) and not fails and REQUIRE_CLASS not in clean_grants
 print("----")
 # The human-facing summary must agree with the typed exit. It previously printed PASS on a run whose
 # own line above said "nothing granted, keep asking (not a PASS)" and whose exit code was 3 — so an
@@ -690,8 +769,15 @@ print("----")
 # false green with extra steps. (Caught by hand 2026-08-02 while verifying the exit-3 fix.)
 if fails:
     print(f"consent-registry: {fails} violation(s)")
+elif _class_missing:
+    seen = "none" if not clean_grants else ", ".join(sorted(clean_grants))
+    print(f"consent-registry: UNMEASURED for class `{REQUIRE_CLASS}` — nothing granted for it, "
+          f"keep asking (exit 3). Active grants that DID join: {seen}. A grant for another class, "
+          f"or the name merely appearing in the file, is not consent for this one.")
 elif no_active_grant:
     print("consent-registry: UNMEASURED — nothing granted, keep asking (exit 3)")
+elif REQUIRE_CLASS:
+    print(f"consent-registry: PASS for class `{REQUIRE_CLASS}` (active, registered, unexpired)")
 else:
     print("consent-registry: PASS")
 # BROKEN outranks UNMEASURED: a violation is a decided negative, "nothing granted" is merely nothing
@@ -703,5 +789,13 @@ if ZERO_CLASSES and not fails:
         print("consent-registry: FAIL — a standing grant exists but the registry declares zero "
               "classes; every such grant is UNREGISTERED (R3), which is BROKEN, not unmeasured")
         sys.exit(1)
+# ── --require-class: narrow the verdict to ONE class ───────────────────────────────────────────
+# Ordering is deliberate and matches the existing precedence: BROKEN (1) outranks everything, so a
+# violation anywhere still exits 1 even when the required class itself looks fine — an unparseable
+# neighbour means the file could not be decided, and "cannot decide == not allowed" is this script's
+# own rule. Below that, a required class that did not join is UNMEASURED (3), the same code as
+# "nothing granted", because to the caller they are the same instruction: KEEP ASKING.
+if _class_missing:
+    sys.exit(3)
 sys.exit(1 if fails else (3 if no_active_grant else 0))
 PY

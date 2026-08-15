@@ -782,6 +782,67 @@ else
   echo "  ✅ PROV-2 line tracks the resolution when it changes (shadowed → different value)"; pass=$((pass+1))
 fi
 
+# ---- RC: --require-class — narrowing the verdict from the FILE to ONE CLASS ---------
+# Added 2026-08-16 after a pre-publish security pass found the caller side broken: fh_node_check.sh
+# gated a consumer-machine `git merge --ff-only` on this script's FILE-WIDE 0 plus a raw grep for
+# the class name anywhere in the UAP. One unrelated validly-granted class, plus the target class
+# appearing only in a prose line saying it was REVOKED, satisfied both — the merge ran and the
+# banner reported a standing consent that did not exist.
+# Every lane below is a REFUSAL that leaves the file-wide verdict at 0. That property is asserted,
+# not assumed: without it these lanes would pass for the same reason the existing "nothing granted"
+# lanes do, and the class-join axis would go unexercised a second time.
+lane_args() {  # desc want_rc [args...] — same as lane() but the flag order is the point
+  local desc="$1" want_rc="$2"; shift 2
+  bash "$CHK" "$@" >"$TD/o" 2>&1
+  local rc=$?
+  if [ "$rc" -ne "$want_rc" ]; then
+    bad "$desc — exit $rc, expected $want_rc"; sed 's/^/     /' "$TD/o"; return
+  fi
+  ok "$desc"
+}
+
+TWOCLASS="$OKCLASS
+  - {name: other, owner: o2, mode: m2, target: t2, capabilities: [read], sinks: [], feeds: [], promotion_eligible: true}"
+
+# a) the class IS granted → 0
+mkreg "$TWOCLASS"
+mkuap 'standing_consent:
+  ok: {owner: o, mode: m, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t}'
+lane_args "RC-a --require-class on a class that IS granted → 0" 0 --require-class ok "$TD/r.yaml" "$TD/u.md"
+
+# b) a DIFFERENT class is granted, the target appears only as prose → 3, file-wide still 0
+mkreg "$TWOCLASS"
+printf -- '---\nstanding_consent:\n  other: {owner: o2, mode: m2, sinks: [], granted: 2026-07-29, expires: 2026-12-31, effects: [read], target: t2}\n---\n\n# UAP (fixture)\n\n  ok: 안 쓰기로 했다 (revoked)\n' > "$TD/u.md"
+bash "$CHK" "$TD/r.yaml" "$TD/u.md" >/dev/null 2>&1; _fw=$?
+lane_args "RC-b another class granted, target only in prose → 3" 3 --require-class ok "$TD/r.yaml" "$TD/u.md"
+[ "$_fw" -eq 0 ] \
+  && ok "RC-b DISCRIMINATION: the file-wide verdict is still 0, so RC-b refused on the class join" \
+  || bad "RC-b VACUOUS: file-wide verdict was $_fw — this lane re-tests an existing axis, not the class join"
+
+# c) the ON switch must not be silently OFF. A whitespace-only name passed a `-z` test in the first
+#    draft and then strip()ed to empty, disabling the narrowing and returning the file-wide 0.
+lane_args "RC-c whitespace-only class name → 1 (fail-closed, never a silent fall-back)" 1 --require-class "   " "$TD/r.yaml" "$TD/u.md"
+lane_args "RC-d --require-class= empty form → 1" 1 --require-class= "$TD/r.yaml" "$TD/u.md"
+
+# e) flag position. The first draft read argv[1] only, so a caller appending the flag got the old
+#    file-wide 0 with no warning — the failure mode is silence, which is why this is a lane.
+lane_args "RC-e flag AFTER the paths is still honoured → 3" 3 "$TD/r.yaml" "$TD/u.md" --require-class ok
+lane_args "RC-f --require-class=NAME form is honoured → 3" 3 --require-class=ok "$TD/r.yaml" "$TD/u.md"
+
+# g) an unknown option must not be swallowed as a path
+lane_args "RC-g unknown option → 1, not consumed as a path" 1 --bogus "$TD/r.yaml" "$TD/u.md"
+
+# h) the human summary must agree with the typed exit — this file's own rule, applied to the new path
+bash "$CHK" --require-class ok "$TD/r.yaml" "$TD/u.md" >"$TD/o" 2>&1
+if grep -qE '^consent-registry: UNMEASURED for class `ok`' "$TD/o" && ! grep -qE '^consent-registry: PASS$' "$TD/o"; then
+  ok "RC-h summary agrees with the typed exit (no bare PASS above an exit-3 verdict)"
+else
+  bad "RC-h summary contradicts the verdict"; sed 's/^/     /' "$TD/o"
+fi
+
+# i) no flag → behaviour unchanged. Backward compatibility is a claim, so it gets a lane.
+lane_args "RC-i no flag → file-wide verdict unchanged (0)" 0 "$TD/r.yaml" "$TD/u.md"
+
 echo "----"
 echo "consent-registry anchor: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
