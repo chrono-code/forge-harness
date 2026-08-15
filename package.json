@@ -25,6 +25,7 @@
   },
   "scripts": {
     "prepare": "chmod +x bin/fh-gate.js bin/fh-run.js bin/fh-goal.js bin/fh-codex-doctor.js scripts/fh-gate.sh scripts/fh-run.sh scripts/fh-goal.sh",
+    "postinstall": "node scripts/postinstall_notice.js",
     "test": "bash scripts/selfcheck.sh",
     "prepublishOnly": "bash scripts/version_lockstep_check.sh && bash scripts/selfcheck.sh && bash scripts/package_coverage_check.sh --vs-tarball && bash scripts/public_surface_scan_files.sh",
     "release": "bash scripts/public_surface_scan_files.sh && npm publish"
@@ -61,6 +62,7 @@
     "docs/pillars.svg",
     "scripts/fh-gate.sh",
     "scripts/frontier_digest_autopilot.sh",
+    "scripts/postinstall_notice.js",
     "scripts/fh-run.sh",
     "scripts/fh-goal.sh",
     "scripts/count_check.sh",
