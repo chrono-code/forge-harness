@@ -354,3 +354,39 @@ the retrospective standpoint review of this section itself) is enough to mechani
 not enough to claim the standpoint axis's uplift is calibrated in the same statistical sense family
 diversity is. Record accordingly: `standpoint:` entries accumulate toward that bar, they do not
 presuppose it already cleared.
+
+---
+
+### §7-b Standpoint **acquisition** — where the third party comes from (operator decision, 2026-08-15)
+
+§7 above says *whose ground truth the check ran against*. It never said **where that standpoint
+comes from when you don't have one**. In practice the roster was whatever repos happened to be on
+disk, which silently caps the axis at "harnesses we already cloned".
+
+**Operator decision (2026-08-15)**: when a change is judged **large-and-irreversible**, propose
+cluster mode (skip the prompt for an operator who already granted standing consent) → use a local
+repo if one fits → **if none does, search (GitHub etc.), clone, and run the standpoint review
+against the clone** → produce the result. The clone step is covered by the same standing setup
+consent as dispatch; it is not a separate ask.
+
+**Selection criterion — not any repo is a standpoint.** The 2026-08-15 run measured this: the
+third-party review that paid was against a repo carrying its **own written discipline**
+(`CLAUDE.md` + `ETHOS.md` with explicit anti-patterns and a "search before building" rule). A repo
+with code but no articulated discipline yields a code dump, not a standpoint — there is nothing to
+judge *from*. Require an articulated canon (rules/ethos/contributing with normative statements)
+before spending a clone on it.
+
+🟥 **Read, never execute.** A standpoint review **reads** the target's canon and code. Cloning an
+unfamiliar repo and *running* it is a different risk class and is not part of this protocol —
+the 2026-08-15 runs (mate, gstack) were read-only, and that is the shape that generalizes.
+Residency applies unchanged: nothing from a company-origin surface is sent outward to obtain a
+standpoint.
+
+**What the acquisition step does NOT settle** (named, not deferred):
+- **Uplift is unmeasured for acquired standpoints.** The 2026-08-15 evidence used repos already on
+  disk. Whether a *newly cloned* repo yields comparable findings is **untested** — the selection
+  criterion above is reasoned from one case, not calibrated.
+- **Cost is real and the yield is thin.** Blind external classification of that run put the
+  third-party axis's *exclusive* yield at **2 of 15** findings. Both were boundary-crossing
+  (a rule the other project had already abandoned; another repo importing the changed file) —
+  which is why it earns its place on large-and-irreversible surfaces and nowhere else.
