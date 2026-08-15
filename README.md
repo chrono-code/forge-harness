@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
   <a href="https://github.com/chrono-meta/forge-harness/issues/72"><img src="https://img.shields.io/badge/Codex-beta_·_help_validate-f59e0b.svg" alt="Codex-compatible beta — help validate (issue #72)"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
+  <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
 </p>
 
 <p align="center">
@@ -128,6 +129,7 @@ cd ~/projects/{your-project} && claude
 | Solo dev, one project, just trying it | [`templates/starter_profile.md`](templates/starter_profile.md) — one command, curated first-five skills |
 | Multiple projects, want the compounding hub | Clone the hub (quickstart above) |
 | CI / non-Claude runtime, gates only | `npx @chrono-meta/fh-gate` (zero-install governance gate) |
+| Prefer `brew` over `npx`/`npm` | `brew tap chrono-meta/forge-harness && brew install forge-harness` — same 100%-parity content, different install UX (community tap; not yet in Homebrew Core, so `brew search` won't find it without the tap first) |
 
 ---
 
@@ -230,6 +232,10 @@ npx --package @chrono-meta/fh-gate fh-gate                    # default: Claude 
 FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-gate   # Codex backend
 FH_BACKEND=auto npx --package @chrono-meta/fh-gate fh-gate "src/foo.ts" full
 # → FH_GATE_VERDICT: PASS | PENDING | BLOCKED | ESCALATE
+
+# or, via Homebrew (same content, no npx prefix needed after install):
+brew tap chrono-meta/forge-harness && brew install forge-harness
+fh-gate
 ```
 
 `fh-gate` uses the same FH governance prompt for both runtimes. `FH_BACKEND=claude` runs `claude --print`; `FH_BACKEND=codex` runs `codex exec`; `FH_BACKEND=auto` prefers Codex when both CLIs are present — note that `auto` is fallback *selection*: it runs ONE leg. `FH_BACKEND=cross` runs BOTH families and unions their findings (a finding only one family saw is still a finding, so it unions rather than votes); the verdict is the most severe across legs. It costs ~2x, so it is for load-bearing verdict/gate/irreversible-surface changes, not a default. The output always declares which legs actually ran (`FH_GATE_LEGS:`, `FH_GATE_DECORRELATED:`) — on a machine with only one family, `cross` degrades to that single leg and says so, because a single-family result that reads as cross-checked is worse than an honest one.

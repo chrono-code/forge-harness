@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
   <a href="https://github.com/chrono-meta/forge-harness/issues/72"><img src="https://img.shields.io/badge/Codex-beta_·_help_validate-f59e0b.svg" alt="Codex-compatible beta — help validate (issue #72)"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
+  <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
 </p>
 
 <p align="center">
@@ -195,6 +196,10 @@ npx --package @chrono-meta/fh-gate fh-gate                    # 기본: Claude �
 FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-gate   # Codex 백엔드
 FH_BACKEND=auto npx --package @chrono-meta/fh-gate fh-gate "src/foo.ts" full
 # → FH_GATE_VERDICT: PASS | PENDING | BLOCKED | ESCALATE
+
+# 또는 Homebrew로 (같은 내용, 설치 후엔 npx 접두어 불필요):
+brew tap chrono-meta/forge-harness && brew install forge-harness
+fh-gate
 ```
 
 `fh-gate`는 두 런타임에 동일한 FH 거버넌스 프롬프트를 씁니다. `FH_BACKEND=claude`는 `claude --print`를, `FH_BACKEND=codex`는 `codex exec`를 실행하며, `FH_BACKEND=auto`는 두 CLI가 모두 있으면 Codex를 우선합니다 — 다만 `auto`는 폴백 *선택*이라 레그를 하나만 돌립니다. `FH_BACKEND=cross`는 두 패밀리를 모두 돌려 findings를 union 합니다(한쪽만 본 지적도 지적이므로 투표가 아니라 union). 판정은 레그 중 가장 무거운 것입니다. 비용이 약 2배라 기본값이 아니며, 판정·게이트·비가역 표면 변경에 씁니다. 출력은 실제로 돈 레그를 항상 밝힙니다(`FH_GATE_LEGS:`, `FH_GATE_DECORRELATED:`) — 한 패밀리만 설치된 머신에서는 단일 레그로 내려가되 그 사실을 명시합니다. 단일 패밀리 결과가 교차검증된 것처럼 읽히는 편이 더 나쁘기 때문입니다.
