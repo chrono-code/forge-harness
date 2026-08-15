@@ -557,6 +557,30 @@ else
   fail=1
 fi
 
+# capability_effect_probe — wired 2026-08-16. `lane_runner_check.sh` had been flagging it as an
+# embedded --self-test subject with ZERO dispatchers, and that warning was load-bearing: the same
+# day, two SECURITY regression anchors were added to this suite (L8 args injection · L9 the git
+# metadata channel that let a `read-only` declaration plant a persistent `core.pager` hook in the
+# real repo while the probe printed VERIFIED). Unwired, those anchors would never have run anywhere
+# but on the author's machine — the exact "built but not wired" shape this repo keeps reproducing.
+# Not in the `_subj` loop above: its terminal line is `N PASS / M FAIL`, never 캘리브레이션, so that
+# loop's substring gate would go red for a reason unrelated to its lanes (capability_registry_check
+# was added there and reverted for precisely this). Direct dispatch instead.
+# 🟥 Exit code ALONE is not enough — a suite whose lanes were all deleted still exits 0 (measured
+# 2026-08-15 on directional_diff_gate). Require the terminal verdict AS A WHOLE LINE with a
+# non-zero PASS count, so an emptied suite cannot certify itself.
+if [ ! -f scripts/capability_effect_probe.sh ]; then
+  echo "FAIL  capability_effect_probe.sh: missing — it ships via package.json files[], so absence is deletion, not package mode"
+  fail=1
+elif _out=$(bash scripts/capability_effect_probe.sh --self-test < /dev/null 2>&1) \
+     && printf '%s\n' "$_out" | grep -qE '^── capability_effect_probe lanes: [1-9][0-9]* PASS / 0 FAIL ──$'; then
+  echo "PASS  capability_effect_probe.sh --self-test ($(printf '%s\n' "$_out" | grep -oE '[0-9]+ PASS / [0-9]+ FAIL' | tail -1))"
+else
+  echo "FAIL  capability_effect_probe.sh: --self-test failed or produced no terminal verdict line"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # relay_channel — the other embedded --self-test subject kept out of the loop above: its
 # `--self-test` just `exec`s the sibling scripts/test_relay_channel_lanes.sh, whose own exit code
 # is already disciplined (`[ "$fail" -eq 0 ] || exit 1`), so gating on exit code — same shape as

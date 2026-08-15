@@ -23,9 +23,16 @@
 #   ⟹ 그래서 **카나리아를 샌드박스 밖에도 심는다**(아래 OUTSIDE_CANARY). 그게 지워지면
 #      «샌드박스 밖 쓰기» 로 잡힌다 — 완전하진 않지만 조용하진 않다.
 # · **네트워크·프로세스 부작용은 안 본다.** 파일시스템 축 전용이다.
-# · 🟥 **worktree 는 `HEAD` 기준이다.** 후보 파일이 워킹트리에만 있고 커밋 전이면, 프로브가
-#   재는 트리는 **후보 상태가 아니다.** 등록 시점에 커밋된 상태를 재는 것이 정상 경로이나,
-#   개발 중 호출하면 이 어긋남이 조용히 생긴다 — 그래서 여기 적는다.
+# · 🟥 **사본은 `HEAD` 기준이다**(`git archive HEAD`). 후보 파일이 워킹트리에만 있고 커밋 전이면,
+#   프로브가 재는 트리는 **후보 상태가 아니다.** 등록 시점에 커밋된 상태를 재는 것이 정상
+#   경로이나, 개발 중 호출하면 이 어긋남이 조용히 생긴다 — 그래서 여기 적는다.
+# · 🟥 **사본에 `.git` 이 없다 — 이건 의도이고 대가가 있다.** 2026-08-16 이전에는 `git worktree`
+#   를 썼는데, 워크트리는 실물 레포의 `.git` 을 **공유**하므로 `read-only` 를 선언한 진입점이
+#   `git config --local core.pager` 로 **그 레포에 영속 코드실행을 심고도 VERIFIED** 를 받았다
+#   (보안 패스 [S], 손으로 재현). 지금은 `.git` 이 아예 없다. 대가: **git 을 실제로 쓰는
+#   capability 는 여기서 못 돈다 → UNVERIFIABLE.** 미측정을 통과로 렌더하는 것보다 낫다.
+# · 🟥 **`.git` 외의 메타데이터 채널은 여전히 안 본다.** 이 수리는 «프로브가 스스로 열어 준
+#   통로» 하나를 닫은 것이지 «부작용 채널 전부» 를 닫은 게 아니다.
 # · 🟥 **절대경로 감시는 «홈 엔트리 목록» 수준이다.** 홈 **하위 디렉토리 내부**의 변경
 #   (예: `$HOME/Documents/x`)이나 `/tmp` 의 남의 파일 수정은 여전히 못 본다.
 #   전수 스냅샷은 비용이 크고 홈이 늘 시끄러워 오탐이 난다 — 그래서 **엔트리 목록**만 본다.
@@ -63,18 +70,16 @@ _snapshot() {  # $1=dir → "path<TAB>sha" 목록 (정렬)
   done
 }
 
-# ★정리 트랩 — 신호/중단에도 worktree metadata 와 temp 가 안 남게 한다(cross-family 지목).
-#   worktree 는 **공유 레포의 .git 에 기록**되므로, 남기면 남의 세션이 그 잔재를 본다.
-_PROBE_WT=""; _PROBE_WT_PARENT=""; _PROBE_REQ_CWD=""; _PROBE_SANDBOX=""
+# ★정리 트랩 — 신호/중단에도 temp 가 안 남게 한다(cross-family 지목).
+#   2026-08-16 이전에는 여기에 `git worktree remove` + `worktree prune` 분기가 있었다.
+#   샌드박스가 워크트리가 아니게 되면서(§격리) **둘 다 지웠다**. `prune` 은 특히 지워야 했다 —
+#   그건 **그 레포의 모든** stale 워크트리 등록을 청소하므로, 병렬 세션이 워크트리 규율을 쓰는
+#   레포에서 **남의 등록을 건드릴 수 있었다**(보안 패스 [B]).
+_PROBE_WT_PARENT=""; _PROBE_SANDBOX=""
 _cleanup_probe() {
-  if [ -n "$_PROBE_WT" ] && [ -n "$_PROBE_REQ_CWD" ]; then
-    git -C "$_PROBE_REQ_CWD" worktree remove --force "$_PROBE_WT" >/dev/null 2>&1 || rm -rf "$_PROBE_WT"
-    git -C "$_PROBE_REQ_CWD" worktree prune >/dev/null 2>&1
-  elif [ -n "$_PROBE_SANDBOX" ]; then
-    rm -rf "$_PROBE_SANDBOX"
-  fi
+  [ -n "$_PROBE_SANDBOX" ] && rm -rf "$_PROBE_SANDBOX"
   [ -n "$_PROBE_WT_PARENT" ] && rm -rf "$_PROBE_WT_PARENT"
-  _PROBE_WT=""; _PROBE_WT_PARENT=""; _PROBE_REQ_CWD=""; _PROBE_SANDBOX=""
+  _PROBE_WT_PARENT=""; _PROBE_SANDBOX=""
 }
 trap _cleanup_probe EXIT INT TERM
 
@@ -92,25 +97,46 @@ probe_one() {  # $1=capfile → rc
   [ "$(_idx "$declared")" -ge 0 ] || { printf '❌ %s: writes 값이 enum 밖: %s\n' "$cap" "$declared" >&2; return "$RC_HARNESS"; }
   [ -n "$entry" ] || { printf '❌ %s: entry 없음\n' "$cap" >&2; return "$RC_HARNESS"; }
 
-  # `requires_cwd` 가 있으면 그 레포의 **worktree 사본**을 샌드박스로 쓴다.
+  # `requires_cwd` 가 있으면 그 레포의 **`.git` 없는 파일 사본**을 샌드박스로 쓴다.
   # 실물 트리에서 돌리면 «파괴를 관측하려다 파괴하는» 꼴이고, 빈 임시디렉토리에서
   # 돌리면 진입점이 전제를 못 찾아 UNVERIFIABLE 로만 끝난다(실측: 실물 capfile 10 중 4).
   #
-  # 🟥 **리셋 먼저, 편집 나중.** worktree 를 만든 뒤에 픽스처를 얹는다. 순서를 뒤집으면
-  #    `git reset --hard`/worktree 생성이 tracked 편집을 되돌려 프로브가 조용히 공허해진다
+  # 🟥 **리셋 먼저, 편집 나중.** 사본을 만든 뒤에 픽스처를 얹는다. 순서를 뒤집으면
+  #    사본 생성이 tracked 편집을 되돌려 프로브가 조용히 공허해진다
   #    (2026-08-16 병렬 세션 실측: 같은 순서 문제로 한 레인이 두 번 장식이 됐다).
   local req_cwd wt=""
   req_cwd=$(_key "$cap" requires_cwd)
 
   local sandbox outside wt_parent=""
   if [ -n "$req_cwd" ] && [ -d "$req_cwd/.git" ]; then
-    wt_parent=$(mktemp -d); wt="$wt_parent/wt"
-    if ! git -C "$req_cwd" worktree add --detach -q "$wt" HEAD 2>/dev/null; then
-      printf '⚠️  UNVERIFIABLE %s — worktree 사본을 못 만들었다(%s)\n' "$cap" "$req_cwd" >&2
+    # 🟥 **`git worktree` 를 쓰지 않는다 — 워크트리는 정의상 실물 레포의 `.git` 을 공유한다.**
+    # 2026-08-16 보안 패스가 지목하고 거버너가 손으로 재현했다: `writes: read-only` 를 선언한
+    # 진입점이 워크트리 안에서 `git config --local core.pager "sh -c <cmd>"` 를 심으면
+    #   · 그 config 는 **실물 레포**에 쓰인다(공유 `.git`)
+    #   · `_snapshot` 은 샌드박스 **디렉토리 트리**만 해싱하므로 `.git/` 은 구조적으로 안 보인다
+    #   · `$outside` 카나리아도 `$HOME` 감시도 이 채널을 못 본다
+    # → 프로브는 `✅ VERIFIED … 관측=no-write` 를 찍고, 그 레포의 다음 `git log` 가 공격자
+    #   명령을 실행한다. **M6 가 «위반 없음» 이라고 적는 바로 그 실행이 위반을 저지른다.**
+    # 이건 헤더의 명명된 잔여(«절대경로로 다른 데를 쓰면 놓친다»)와 **다르다**: 그건 capability 가
+    # 고른 경로이고, 이건 **프로브가 스스로 열어 준 통로**다.
+    #
+    # 처방: `git archive` 로 **`.git` 이 없는 순수 파일 사본**을 만든다. 진입점은 여전히 전제
+    # (레포의 파일 배치)를 찾고, 공유 메타데이터 채널은 존재하지 않는다.
+    # ⚠️ 대가를 명시한다: 사본에 `.git` 이 없으므로 **git 명령을 실제로 쓰는 capability 는
+    #    여기서 못 돈다** → UNVERIFIABLE 로 떨어진다. 미측정을 통과로 렌더하는 것보다 낫다.
+    wt_parent=$(mktemp -d) || return "$RC_HARNESS"
+    _PROBE_WT_PARENT="$wt_parent"      # ★등록을 mktemp **직후**에 한다 — 아래 실패 경로에서
+    wt="$wt_parent/copy"; mkdir -p "$wt"   #   return 하면 트랩이 이걸 못 지우던 누수가 있었다
+    if ! ( cd "$req_cwd" && git archive --format=tar HEAD ) 2>/dev/null | ( cd "$wt" && tar xf - ) 2>/dev/null; then
+      printf '⚠️  UNVERIFIABLE %s — `.git` 없는 사본을 못 만들었다(%s)\n' "$cap" "$req_cwd" >&2
       return "$RC_UNVERIFIABLE"
     fi
+    if [ -e "$wt/.git" ]; then
+      printf '❌ %s: 사본에 .git 이 있다 — 격리 전제 파손. 판정하지 않는다\n' "$cap" >&2
+      return "$RC_HARNESS"
+    fi
     sandbox="$wt"
-    _PROBE_WT="$wt"; _PROBE_WT_PARENT="$wt_parent"; _PROBE_REQ_CWD="$req_cwd"
+    _PROBE_SANDBOX="$wt"
   else
     sandbox=$(mktemp -d) || return "$RC_HARNESS"
     _PROBE_SANDBOX="$sandbox"
@@ -135,6 +161,34 @@ probe_one() {  # $1=capfile → rc
   # 초판은 positive 만 돌렸는데, 등록 검사기 주석은 «M4 를 관측한다» 고 말했다 —
   # 구현과 주장이 어긋났고, **negative arm 에서만 쓰는 capability 가 통과**했다.
   # 실패는 VIOLATION 이 아니다 — 못 잰 것이다.
+  #
+  # 🟥 **args 를 검문한다** (2026-08-16 보안 패스 [A], 거버너 재현). `eval "$entry $pos_args"`
+  # 는 `entry` 가 M1 을 통과하는 순수 argv 여도 **args 하나로 탈출한다**:
+  # `calibration_positive_args: x; touch /tmp/PWNED` 가
+  # 샌드박스 밖 `/tmp` 에 쓰고도 `✅ VERIFIED · 관측=no-write` 를 받았다.
+  # 등록기(`capability_registry_check.sh`)에는 `_validate_arm_args` 가 이미 있었고
+  # **프로브에만 없었다** — 그런데 헤더 usage 가 standalone 호출을 광고하고 files[] 로 단독
+  # 출하되므로, 등록기 경유 M4 검문에 의존할 수 없다. 형제가 가진 가드를 이쪽에도 세운다.
+  _reject_arm_args() {   # $1=args $2=arm 이름 → 0=통과 1=거부
+    case "$1" in
+      *'|'*|*';'*|*'&'*|*'>'*|*'<'*|*'`'*|*'$('*|*$'\n'*)
+        printf '🟥 VIOLATION %s — %s arm args 에 셸 메타문자(인젝션 표면): %s\n' "$cap" "$2" "$1"; return 1 ;;
+      *'../'*)
+        printf '🟥 VIOLATION %s — %s arm args 가 상위 경로로 탈출한다: %s\n' "$cap" "$2" "$1"; return 1 ;;
+    esac
+    return 0
+  }
+  _reject_arm_args "$pos_args" positive || return "$RC_VIOLATION"
+  _reject_arm_args "$neg_args" negative || return "$RC_VIOLATION"
+
+  # ⚠️ `eval` 은 **남긴다**, 그리고 그 이유가 측정으로 갈렸다. 처음엔 지적의 처방대로
+  # `set -- $entry $args; "$@"` 로 바꿨는데, 그러면 **셸 형태 진입점의 의미가 깨진다**:
+  # `bash -c 'git tag X; …'` 가 따옴표를 잃고 조각나 bash 가 `unexpected EOF` 로 rc=2 를 내고,
+  # 아무것도 안 바뀌었으니 프로브가 **`✅ VERIFIED`** 를 찍었다(실측). 즉 처방을 그대로
+  # 적용하면 [A] 를 닫으면서 «실행 실패를 무위반으로 렌더» 하는 더 조용한 결함이 생긴다.
+  # 이 프로브의 자기 self-test 조차 `entry: bash -c '…'` 를 쓴다.
+  # **닫아야 할 것은 args 였다** — 위 `_reject_arm_args` 가 그걸 닫는다. entry 자체는 이
+  # 도구가 «실행해서 관측하겠다» 고 선언한 대상이라 실행이 목적이지 결함이 아니다.
   local out2 rc2
   out=$(cd "$sandbox" && eval "$entry $pos_args" 2>&1); rc=$?
   out2=""; rc2=0
@@ -176,7 +230,12 @@ $out2"
 
   # 못 돌았으면 «안 썼다» 가 아니다. rc 가 10(하네스 오류)이거나 실행 자체가 실패하고
   # 아무 변화도 없으면 판정 불가로 낸다 — 이게 이 프로브의 fail-closed 방향이다.
-  if [ "$rc" -ge 10 ] || printf '%s' "$out" | grep -qiE 'command not found|no such file'; then
+  # ★`not a git repository` 가 이 목록에 있는 이유는 **내가 만든 미측정이기 때문**이다.
+  # 위에서 격리를 위해 사본에서 `.git` 을 뺐으므로, git 을 실제로 쓰는 진입점은 여기서
+  # 조용히 실패한다. 그 실패를 「안 썼다」로 렌더하면 [S] 를 고치면서 같은 얼굴의 결함을
+  # 새로 만드는 것이다 — 실측: `core.pager` 를 심으려던 capability 가 수리 직후
+  # **VERIFIED** 를 받았다(실물 레포는 깨끗해졌지만 판정이 거짓). 미측정은 미측정으로 낸다.
+  if [ "$rc" -ge 10 ] || printf '%s' "$out" | grep -qiE 'command not found|no such file|not a git repository'; then
     printf '⚠️  UNVERIFIABLE %s — 진입점이 이 샌드박스에서 못 돌았다(rc=%s). 미측정이지 통과 아님\n' "$cap" "$rc"
     return "$RC_UNVERIFIABLE"
   fi
@@ -257,6 +316,52 @@ entry: bash -c 'true'
 EOF
   probe_one "$d/nowrites.cap" >/dev/null 2>&1; rc=$?
   if [ "$rc" = "10" ]; then pass=$((pass+1)); echo "✅ L6 writes 선언 부재는 HARNESS_ERROR"; else fails=$((fails+1)); echo "❌ L6 rc=$rc (10 기대)"; fi
+
+  # ── L8: args 를 통한 셸 인젝션 (2026-08-16 보안 패스 [A], 손으로 재현) ──────
+  # entry 는 M1 을 통과하는 순수 argv 인데 args 하나로 탈출한다. 초판은 이걸
+  # `✅ VERIFIED · 관측=no-write` 로 통과시켰고 샌드박스 **밖** `/tmp` 에 파일이 생겼다.
+  local _canary="$d/L8_INJECTION_CANARY"
+  cat > "$d/inj.cap" <<EOF
+id: test:inject
+entry: /bin/echo hi
+writes: read-only
+calibration_positive_args: x; touch $_canary
+EOF
+  probe_one "$d/inj.cap" >/dev/null 2>&1; rc=$?
+  # ★rc 만 보지 않는다 — **카나리아가 안 생겼는지**까지 본다. 「막혔다」와 「막혔고
+  #   그 사이 아무것도 실행되지 않았다」는 다른 명제이고, 이 레인이 재려는 건 후자다.
+  if [ "$rc" = "1" ] && [ ! -e "$_canary" ]; then
+    pass=$((pass+1)); echo "✅ L8 args 셸 인젝션은 VIOLATION (카나리아 미생성)"
+  else
+    fails=$((fails+1)); echo "❌ L8 rc=$rc (1 기대) · 카나리아 존재=$([ -e "$_canary" ] && echo YES || echo no)"
+  fi
+
+  # ── L9: git 메타데이터 채널 — 샌드박스가 실물 레포의 `.git` 을 공유하면 안 된다 ──
+  # (2026-08-16 보안 패스 [S], 손으로 재현) `writes: read-only` 를 선언한 진입점이
+  # `git config --local core.pager` 로 **실물 레포에 영속 코드실행**을 심고도 VERIFIED 를 받았다.
+  # 지금은 `.git` 없는 사본이라 git 이 아예 안 돌아 UNVERIFIABLE(3) 이고, 실물은 안 변한다.
+  local _tgt="$d/l9target"
+  mkdir -p "$_tgt" && ( cd "$_tgt" && git init -q . && git config user.email t@t \
+    && git config user.name t && echo x > f.txt && git add f.txt && git commit -qm init ) >/dev/null 2>&1
+  if ! git -C "$_tgt" rev-parse --verify -q HEAD >/dev/null; then
+    fails=$((fails+1)); echo "❌ L9 SETUP 실패 — 대상 레포가 안 섰다(레인 무의미)"
+  else
+    cat > "$d/meta.cap" <<EOF
+id: test:gitmeta
+entry: bash -c 'git config --local core.pager "sh -c pwned"'
+requires_cwd: $_tgt
+writes: read-only
+EOF
+    probe_one "$d/meta.cap" >/dev/null 2>&1; rc=$?
+    local _planted; _planted=$(git -C "$_tgt" config --local --get core.pager 2>/dev/null)
+    # 판정의 본체는 rc 가 아니라 **실물 레포가 안 변했다**는 것이다. rc=0(VERIFIED)이면
+    # 「안 썼다」를 거짓 주장한 것이고, _planted 가 있으면 격리 자체가 뚫린 것이다.
+    if [ "$rc" = "3" ] && [ -z "$_planted" ]; then
+      pass=$((pass+1)); echo "✅ L9 git 메타데이터 채널 차단 (UNVERIFIABLE · 실물 무변경)"
+    else
+      fails=$((fails+1)); echo "❌ L9 rc=$rc (3 기대) · 실물 core.pager=[$_planted]"
+    fi
+  fi
 
   rm -rf "$d"
   echo "── capability_effect_probe lanes: $pass PASS / $fails FAIL ──"

@@ -243,8 +243,19 @@ _check_one() {
     # `BASH_SOURCE[0]` is the real file even when invoked through a link; the loop then walks any
     # remaining links in the path. `readlink -f` is deliberately not used — it is GNU-only and this
     # ships to macOS (BSD `readlink` has no `-f`).
-    local _src="${BASH_SOURCE[0]:-$0}" _dir
+    # ★반복 상한. 보안 패스 [B] 가 «순환 심링크에서 영원히 돈다» 로 지목했고, 캡을 넣은 뒤
+    #   **실제 순환 쌍으로 재보니 그 시나리오는 도달 불가였다**: `a.sh → b.sh → a.sh` 는 OS 가
+    #   ELOOP 로 먼저 막아 bash 가 rc=126 으로 죽는다 — 이 루프는 시작조차 안 한다.
+    #   지적은 **루프 본문을 격리해서** 돌린 결과였다(부품 테스트지 도달성 테스트가 아니다).
+    #   그래도 캡은 남긴다: 값이 싸고, `$0` 가 파일이 아닌 경로로 들어오는 미래 호출 형태까지
+    #   내가 열거하지 못하기 때문이다. **다만 «무한루프를 고쳤다» 고 주장하지 않는다.**
+    local _src="${BASH_SOURCE[0]:-$0}" _dir _hops=0
     while [ -L "$_src" ]; do
+      _hops=$((_hops+1))
+      if [ "$_hops" -gt 40 ]; then
+        _fail "M6" "심링크가 40회를 넘어간다 — 순환으로 본다. 프로브 경로를 못 정한다"
+        return 0   # _fail 이 이미 기록했다. 판정 불가를 통과로 렌더하지 않는다
+      fi
       _dir=$(cd -P "$(dirname "$_src")" >/dev/null 2>&1 && pwd) || break
       _src=$(readlink "$_src")
       case "$_src" in /*) ;; *) _src="$_dir/$_src" ;; esac
