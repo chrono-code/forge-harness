@@ -114,11 +114,25 @@ self_test() {
   # 상태인가» 에 따라 결과가 바뀌어 레인이 계기가 아니라 날씨가 된다.
   local UP="$T/upstream" WK="$T/work"
   git init -q --bare "$UP"
+  # HEAD 를 명시적으로 main 에 건다. `-b main` 은 git>=2.28 전용이라 안 쓰고 symbolic-ref 로 건다.
+  # 🟥 이 두 줄이 없으면 CI 에서만 깨진다(실측 2026-08-16): 이 머신은 전역
+  # `init.defaultBranch=main` 이라 bare 의 HEAD 가 main 이지만, 러너는 보통 설정이 없어
+  # HEAD 가 `master` 를 가리킨다. 그러면 아래 `git clone` 이 **존재하지 않는 브랜치를 가리키는
+  # HEAD** 를 만나 체크아웃 없이 끝나고, 이어지는 커밋·푸시가 전부 실패하며, origin 이 전진하지
+  # 않아 「뒤처짐」 arm 이 **rc=0 으로 조용히 통과**한다. 계기가 환경에 따라 다른 걸 재고 있었다.
+  git -C "$UP" symbolic-ref HEAD refs/heads/main
   git init -q "$WK"
   ( cd "$WK"
     git config user.email t@t; git config user.name t
     echo one > a.txt; git add a.txt; git commit -qm one
     git branch -M main; git remote add origin "$UP"; git push -q -u origin main ) >/dev/null 2>&1
+  # 셋업이 실제로 섰는지 **단언한다.** 위 블록은 출력을 버리므로 실패해도 조용하고, 그러면
+  # 뒤따르는 모든 arm 이 «검사기가 통과시켰다» 가 아니라 «검사할 게 없었다» 로 초록이 된다
+  # ([[feedback_absence_measurement_needs_control]] — 부재 측정엔 컨트롤을 동반한다).
+  if ! git -C "$UP" rev-parse --verify -q refs/heads/main >/dev/null; then
+    sf=$((sf+1)); echo "  ❌ SETUP 실패 — upstream 에 main 이 서지 않았다. 아래 레인들은 무의미하다"
+    rm -rf "$T"; echo "── publish_freshness 캘리브레이션 실패: $sp PASS / $sf FAIL ──"; return 1
+  fi
 
   # ── known-negative: 깨끗 · main · origin 과 동일 → 통과해야 한다 ──────────
   o=$( cd "$WK" && bash "$SELF" 2>&1 ); rc=$?
@@ -137,7 +151,14 @@ self_test() {
   # 다른 클론에서 커밋을 올려 origin 을 전진시킨 뒤, 원래 워킹트리에서 검사한다.
   ( cd "$T" && git clone -q "$UP" other && cd other
     git config user.email t@t; git config user.name t
+    git checkout -q -B main origin/main
     echo two > c.txt; git add c.txt; git commit -qm two; git push -q origin main ) >/dev/null 2>&1
+  # 같은 이유로 **전진했는지 단언한다**. 이 arm 은 이 파일이 존재하는 이유(08-16 사고 형태)라
+  # 조용히 통과하면 정확히 그 사고를 못 잡는 상태로 돌아간다.
+  if [ "$(git -C "$UP" rev-list --count refs/heads/main)" -lt 2 ]; then
+    sf=$((sf+1)); echo "  ❌ SETUP 실패 — origin 이 전진하지 않았다. 「뒤처짐」 arm 을 실행할 수 없다"
+    rm -rf "$T"; echo "── publish_freshness 캘리브레이션 실패: $sp PASS / $sf FAIL ──"; return 1
+  fi
   o=$( cd "$WK" && git switch -q main && bash "$SELF" 2>&1 ); rc=$?
   _lane "origin 보다 뒤처지면 막는다(08-16 사고형)" 1 "$rc" "behind" "$o"
 
