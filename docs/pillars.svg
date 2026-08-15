@@ -17,10 +17,6 @@
   <!-- Background -->
   <rect width="680" height="100" fill="url(#bg)"/>
 
-  <!-- Top hot-metal accent -->
-  <rect width="680" height="3" fill="#e07d2a" filter="url(#glow)"/>
-  <rect y="3" width="680" height="5" fill="#e07d2a" fill-opacity="0.10"/>
-
   <!-- ═══ HARNESS (x=8, cx=88) ═══ -->
   <rect x="8" y="10" width="160" height="84" rx="5" fill="url(#cd)" stroke="#c46820" stroke-width="0.8"/>
   <!-- Chain link icon (harness = link) -->

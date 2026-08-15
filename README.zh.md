@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
   <a href="https://github.com/chrono-meta/forge-harness/issues/72"><img src="https://img.shields.io/badge/Codex-beta_·_help_validate-f59e0b.svg" alt="Codex-compatible beta — help validate (issue #72)"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
+  <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
 </p>
 
 <p align="center">
@@ -185,6 +186,10 @@ npx --package @chrono-meta/fh-gate fh-gate                    # 默认：Claude 
 FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-gate   # Codex 后端
 FH_BACKEND=auto npx --package @chrono-meta/fh-gate fh-gate "src/foo.ts" full
 # → FH_GATE_VERDICT: PASS | PENDING | BLOCKED | ESCALATE
+
+# 或通过 Homebrew（内容相同，安装后无需 npx 前缀）：
+brew tap chrono-meta/forge-harness && brew install forge-harness
+fh-gate
 ```
 
 `fh-gate` 对两种运行时使用同一套 FH 治理提示。`FH_BACKEND=claude` 运行 `claude --print`；`FH_BACKEND=codex` 运行 `codex exec`；`FH_BACKEND=auto` 在两个 CLI 都存在时优先选择 Codex —— 但 `auto` 是回退式*选择*，只运行一条腿。`FH_BACKEND=cross` 会运行两个模型家族并对 findings 取并集(只有一方发现的问题仍然是问题，因此是并集而非投票)，判定取各腿中最严重者。成本约为 2 倍，因此并非默认值，适用于判定/门禁/不可逆面的变更。输出始终声明实际运行了哪些腿(`FH_GATE_LEGS:`、`FH_GATE_DECORRELATED:`) —— 在只装了一个家族的机器上，`cross` 会降级为单腿并明确说明，因为让单家族结果读起来像交叉验证过更糟。

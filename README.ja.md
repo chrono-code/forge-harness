@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
   <a href="https://github.com/chrono-meta/forge-harness/issues/72"><img src="https://img.shields.io/badge/Codex-beta_·_help_validate-f59e0b.svg" alt="Codex-compatible beta — help validate (issue #72)"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
+  <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
 </p>
 
 <p align="center">
@@ -196,6 +197,10 @@ npx --package @chrono-meta/fh-gate fh-gate                    # 既定: Claude �
 FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-gate   # Codex バックエンド
 FH_BACKEND=auto npx --package @chrono-meta/fh-gate fh-gate "src/foo.ts" full
 # → FH_GATE_VERDICT: PASS | PENDING | BLOCKED | ESCALATE
+
+# または Homebrew 経由（内容は同じ、インストール後は npx 接頭辞不要）:
+brew tap chrono-meta/forge-harness && brew install forge-harness
+fh-gate
 ```
 
 `fh-gate` は両ランタイムに同じ FH ガバナンスプロンプトを使います。`FH_BACKEND=claude` は `claude --print` を、`FH_BACKEND=codex` は `codex exec` を実行し、`FH_BACKEND=auto` は両 CLI が揃っていれば Codex を優先します — ただし `auto` はフォールバック*選択*であり、レグは 1 つだけ走ります。`FH_BACKEND=cross` は両ファミリーを走らせて findings を union します(一方だけが見つけた指摘も指摘なので、投票ではなく union)。判定はレグ中で最も重いものです。コストは約 2 倍なので既定ではなく、判定・ゲート・不可逆な面の変更に使います。出力は実際に走ったレグを常に明示します(`FH_GATE_LEGS:`、`FH_GATE_DECORRELATED:`) — 片方のファミリーしかない環境では単一レグに縮退し、その事実を明記します。
