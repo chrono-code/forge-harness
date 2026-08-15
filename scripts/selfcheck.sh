@@ -468,14 +468,24 @@ do
   fi
 done
 
-# embedded --self-test suites (compaction_probe · judgment_circuit_lint · novelty_claim_check).
-# These three carry their lanes INSIDE the script (`--self-test`) rather than in a sibling
-# test_*_lanes.sh, so the name-list wiring above skipped them silently: 48 lanes existed and ran
+# embedded --self-test suites (compaction_probe · judgment_circuit_lint · novelty_claim_check ·
+# chamber_witness · digest_landing_check).
+# These carry their lanes INSIDE the script (`--self-test`) rather than in a sibling
+# test_*_lanes.sh, so the name-list wiring above skipped them silently: lanes existed and ran
 # only when a human typed the command. That is built-but-not-wired applied to the anchors themselves
 # — a later edit that breaks a lane stays green everywhere the project actually checks
 # (high re-review 2026-08-08). Same shape as the block above: subject absent → SKIP, subject present
 # but self-test missing → FAIL, never a silent pass.
-for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
+# chamber_witness/digest_landing_check joined 2026-08-15 (DEBT closed — lane_runner_check.sh
+# flagged 4 undeclared self-test subjects; capability_registry_check and relay_channel are the
+# other two and do NOT join this loop, each for its own reason, see their own blocks below).
+# capability_registry_check was tried here first and reverted: its passing-run output never
+# contains 캘리브레이션 as a VERDICT — the only occurrence is inside a Korean *test-case title*
+# ("M4: 캘리브레이션 쌍 미선언", capability_registry_check.sh's own self-test), so a future rename
+# or trim of that one test name would flip a real PASS into "dispatcher missing?" here (cross-family
+# review caught this, 2026-08-15). chamber_witness/digest_landing_check both print a genuine
+# terminal "캘리브레이션 통과/실패" line, so they stay.
+for _subj in compaction_probe judgment_circuit_lint novelty_claim_check chamber_witness digest_landing_check; do
   if [ ! -f "scripts/$_subj.sh" ]; then
     _absent_subject_verdict "$_subj --self-test" "scripts/$_subj.sh" || fail=1
   else
@@ -502,6 +512,18 @@ for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
     # nothing reads the announcement. Fixed by deleting one word.
     _to=""; command -v timeout >/dev/null 2>&1 && _to="timeout 120"
     _st_out="$($_to bash "scripts/$_subj.sh" --self-test < /dev/null 2>&1)"; _st_rc=$?
+    # rc=10 (or the sibling harness-error codes) means the subject could not even set up its own
+    # known-pair fixture (e.g. mktemp failed) — it never got to run a lane, so it never printed
+    # 캘리브레이션 either way. Falling through to the *)  arm below would report the confident but
+    # WRONG cause "dispatcher missing?" for an instrument that was never reached. chamber_witness.sh
+    # and digest_landing_check.sh both have real mktemp-failure → return 10 paths (cross-family
+    # review 2026-08-15); the two original loop members never did, so this arm is a no-op for them.
+    case "$_st_rc" in
+      10|2|126|127)
+        echo "HARNESS ERROR  $_subj --self-test: the suite exited $_st_rc — it could not measure,"
+        echo "      so its verdicts prove nothing about $_subj. Not a lane failure, not a pass either."
+        fail=1; continue ;;
+    esac
     case "$_st_out" in
       *캘리브레이션*) : ;;
       *) echo "FAIL  $_subj: --self-test produced no calibration verdict (dispatcher missing?)"
@@ -515,6 +537,50 @@ for _subj in compaction_probe judgment_circuit_lint novelty_claim_check; do
     fi
   fi
 done
+
+# capability_registry_check — one of the 4 embedded --self-test subjects lane_runner_check.sh
+# flagged (2026-08-15), kept out of the loop above (see that loop's comment) because its own
+# terminal line is `통과 N · 실패 N`, never 캘리브레이션 — gate on exit code instead, same shape
+# as utterance_landing_check.sh below. Ships via package.json files[], so absence is FAIL, not SKIP.
+if [ ! -f scripts/capability_registry_check.sh ]; then
+  echo "FAIL  capability_registry_check.sh: missing — it ships via package.json files[], so absence is deletion, not package mode"
+  fail=1
+elif _out=$(bash scripts/capability_registry_check.sh --self-test < /dev/null 2>&1); then
+  echo "PASS  capability_registry_check.sh --self-test ($(printf '%s\n' "$_out" | grep -oE '통과 [0-9]+ · 실패 [0-9]+' | tail -1))"
+else
+  echo "FAIL  capability_registry_check.sh: --self-test failed"
+  _show_failure "$_out"
+  fail=1
+fi
+
+# relay_channel — the other embedded --self-test subject kept out of the loop above: its
+# `--self-test` just `exec`s the sibling scripts/test_relay_channel_lanes.sh, whose own exit code
+# is already disciplined (`[ "$fail" -eq 0 ] || exit 1`), so gating on exit code — same shape as
+# utterance_landing_check.sh below — is both sufficient and correct here; a 캘리브레이션 substring
+# check would be the wrong instrument for this subject's actual completion marker
+# ("N PASS / M FAIL"). Ships via package.json files[] (no ACCEPTED_ABSENT declaration), so absence
+# is FAIL, not SKIP — same reasoning as utterance_landing_check.sh's absence branch below.
+# Existence check covers BOTH files: relay_channel.sh --self-test just execs the sibling lanes
+# file, so a missing sibling alone produces an unrelated-looking `exec: No such file` (rc=127) that
+# the generic FAIL branch would misreport as "the lane broke" rather than "the anchor is gone"
+# (cross-family review 2026-08-15).
+# `_LANE_TO` (defined above, the pair-suite loop's own guard) is reused rather than a fresh
+# timeout var — this is, by lane count, the largest suite dispatched anywhere in this file
+# (test_relay_channel_lanes.sh runs 45+ lanes, each spawning relay_channel.sh, each spawning its
+# own node subprocess), and it was the one dispatch here with NO time bound at all; `< /dev/null`
+# only stops a stdin-wait hang, not a runaway child (cross-family review 2026-08-15 — this file's
+# own comment two loops up already names exactly this failure shape: an unguarded call does not go
+# red, it hangs, and CI dies on a job timeout with the cause unattributable).
+if [ ! -f scripts/relay_channel.sh ] || [ ! -f scripts/test_relay_channel_lanes.sh ]; then
+  echo "FAIL  relay_channel.sh: missing (relay_channel.sh or its sibling test_relay_channel_lanes.sh) — ships via package.json files[], so absence is deletion, not package mode"
+  fail=1
+elif _out=$($_LANE_TO bash scripts/relay_channel.sh --self-test < /dev/null 2>&1); then
+  echo "PASS  relay_channel.sh --self-test ($(printf '%s\n' "$_out" | grep -oE 'relay_channel lanes: [0-9]+ PASS / [0-9]+ FAIL' | tail -1))"
+else
+  echo "FAIL  relay_channel.sh: --self-test failed"
+  _show_failure "$_out"
+  fail=1
+fi
 
 # memory-link-check — the memory store is a GRAPH (memory_intent_recall.md: nodes=files,
 # edges=[[links]], recall walks one hop). Measured 2026-07-28: 50 of 872 edges pointed at a note
