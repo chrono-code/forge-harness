@@ -4,6 +4,25 @@ AI reads this file first when searching past work. Open individual files for det
 
 ---
 
+## 2026-08-15 — Global positioning & distribution roadmap (Homebrew/npm compatibility)
+
+- **New doc** (`knowledge/shared/harness-core/fh_global_positioning_and_distribution_roadmap.md`):
+  Antigravity/Gemini-authored positioning report — npm (`@chrono-meta/fh-gate`) is a full 152-file
+  portable bundle (all skills/agents/harness-core doctrine/gate machinery, everything except
+  `tracks/`·`knowledge/domain/`·`paper/`), not a thin gate-only checker; subscription-LLM runtimes
+  and a future `brew install` CLI bridge are compatible, not competing.
+- **Reviewed and corrected same day** (source-grounding pass): download/agent-count figures verified
+  against live npm API + repo file count (both held); duplicate section numbering and a copy-paste
+  duplicate subheading fixed; ungrounded superlatives ("세계 최상위...") removed/hedged; the
+  competitor comparison table captioned as a positioning frame, not a benchmark; Phase 3 given two
+  explicit caveats it originally lacked — scaffolding a project structure is not the same as FH's
+  actual compounding (`meta-harness-thin-vs-full-distribution.md`, 2026-06-08, already-established
+  axis — the value accrues in `tracks/`/memory over time, not at `fh setup` time), and a new
+  Rust/Go binary's necessity is unevaluated against simply wrapping the already-live Node npm CLI in
+  a Homebrew formula.
+
+---
+
 ## 2026-08-01 — Harness-Verification Doctrine: core lens vs cluster instruments
 
 - **New doctrine** (`knowledge/shared/harness-core/harness_verification_core_extended.md`): the
