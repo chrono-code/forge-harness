@@ -118,6 +118,66 @@ else
   bad "$dangling declared capability entry point(s) missing from disk — npm would ship a broken files[] and the disk-side check alone stays green"
 fi
 
+# SIBLING DEPENDENCIES (added 2026-08-16 — occurrence #4 of the class this file's header names).
+# The two directions above both key on the ENTRY-POINT convention (`*_capability.sh`). That is
+# structurally blind to the failure that actually happened this time: a shipped script called a
+# NON-entry-point sibling that did not ship. `capability_registry_check.sh` shipped, its new M6 axis
+# ran `${0%/*}/capability_effect_probe.sh`, and that probe was absent from files[] — so on a consumer
+# install M6 would hit its fail-closed branch and reject every registration, blaming a "missing probe"
+# that exists in the repo.
+#
+# WHY `package_coverage_check.sh` IS BLIND TO IT — and why the fix belongs here, not there: that
+# checker's extraction regex requires a reference to START with a shipped top-level directory
+# (`scripts|templates|bin|docs|knowledge|plugins|.claude`). A script naming its own sibling writes
+# `${0%/*}/name.sh` or `$(dirname "$0")/name.sh` — the path is BUILT AT RUNTIME and no literal
+# `scripts/` appears. The reference-follower cannot see a path that does not textually exist.
+#
+# Scope kept narrow on purpose: only SELF-DIRECTORY forms. `$REPO_ROOT/scripts/x.sh` already contains
+# the literal `scripts/x.sh` and is caught upstream; widening past that would duplicate that checker.
+SIB_PAT='(\$\{0%/\*\}|\$\(dirname [^)]*\)|\$\{BASH_SOURCE[^}]*%/\*\})/[A-Za-z0-9_.-]+\.(sh|py|js)'
+SHIPPED_SH=$(node -e '
+  const f=JSON.parse(process.argv[1]);
+  process.stdout.write(f.filter(p=>/^scripts\/.*\.sh$/.test(p)).join("\n"));
+' "$FILES_JSON")
+
+sib_refs=0; sib_missing=0
+if [ -n "$SHIPPED_SH" ]; then
+  while IFS= read -r s; do
+    [ -n "$s" ] && [ -f "$s" ] || continue
+    # `grep -o` yields the whole matched expression; the sibling NAME is its last path segment.
+    # COMMENT LINES ARE STRIPPED FIRST, and that is not cosmetic: the finding's text asserts the
+    # callee is "called at runtime". A file whose PROSE names a sibling (this file's own header does)
+    # would be reported under a claim that is false about it — the right defect attributed to the
+    # wrong caller. Caught during this lane's own known-pair calibration, where the positive arm
+    # named two callers and only one of them actually calls anything.
+    for ref in $(sed 's/^[[:space:]]*#.*//' "$s" | grep -oE "$SIB_PAT" 2>/dev/null | sed 's|.*/||' | sort -u); do
+      sib_refs=$((sib_refs+1))
+      # Only assert on siblings that EXIST in the repo. A reference to a name that is absent from
+      # disk too is a different defect (a dead call), and it belongs to the dangling check above —
+      # claiming it here would report one defect as two.
+      [ -f "scripts/$ref" ] || continue
+      if node -e 'const f=JSON.parse(process.argv[1]);process.exit(f.includes(process.argv[2])?0:1)' \
+           "$FILES_JSON" "scripts/$ref"; then :; else
+        echo "  SIBLING-MISSING scripts/$ref (called by $s at runtime, absent from files[])"
+        sib_missing=$((sib_missing+1))
+      fi
+    done
+  done <<EOF
+$SHIPPED_SH
+EOF
+fi
+
+# Discovery-zero is an instrument failure here for the same reason as above: this repo is KNOWN to
+# contain at least one self-directory sibling call (that is why this block exists). Zero means the
+# pattern stopped matching — a silent scanner, not a clean repo.
+if [ "$sib_refs" -eq 0 ]; then
+  bad "INSTRUMENT DEAD — zero self-directory sibling references found across $(printf '%s\n' "$SHIPPED_SH" | grep -c .) shipped scripts; the pattern is no longer matching anything"
+elif [ "$sib_missing" -eq 0 ]; then
+  ok "all $sib_refs runtime sibling dependenc(ies) of shipped scripts are themselves in files[]"
+else
+  bad "$sib_missing runtime sibling dependenc(ies) absent from files[] — the consumer gets a caller whose callee is missing"
+fi
+
 # CONTROL — the check must be able to say NO. A checker that only ever prints ok is indistinguishable
 # from a checker that is not looking; assert the negative arm on a name that cannot be in files[].
 if node -e 'const f=JSON.parse(process.argv[1]);process.exit(f.includes(process.argv[2])?0:1)' \

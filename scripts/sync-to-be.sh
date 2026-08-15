@@ -100,6 +100,18 @@ fi
 # BSD — `mkdir` is atomic on every POSIX filesystem and needs no external binary. Shared (unsuffixed)
 # lock path: both hubs must serialize against EACH OTHER, not just themselves.
 mkdir -p "$BE"
+
+# DEFINED HERE, NOT AT ITS OLD SITE ~50 LINES BELOW (fixed 2026-08-16, reproduced first).
+# The lock loop below calls `log`. Bash resolves an unknown name through PATH, and macOS ships
+# `/usr/bin/log` — so on the CONTENTION path (and only there) `log "companion store busy…"` became
+# a syslog invocation that exits 64, and `set -euo pipefail` then killed the script before the
+# `exit 0` on that same line could run. The close chain saw a hard failure where the code says
+# "next run will retry". Known-positive used to find and confirm it: hold the lock
+# (`mkdir "$BE/.sync.lock.d"`) and run — rc was 64 with `log: Unknown subcommand`, now 0.
+# The contention path only executes under contention, which is why two parallel sessions on one
+# companion store were needed to surface a defect that had been shipping.
+log() { [ "$QUIET" = "--quiet" ] || echo "[sync-to-be] $*"; }
+
 LOCKDIR="$BE/.sync.lock.d"
 LOCK_WAIT=0
 while ! mkdir "$LOCKDIR" 2>/dev/null; do
@@ -152,8 +164,6 @@ resolve_mem_dir() {
   return 0
 }
 MEM="$(resolve_mem_dir "$FH")"
-
-log() { [ "$QUIET" = "--quiet" ] || echo "[sync-to-be] $*"; }
 
 TOTAL=0   # files synced (rsync mode, countable)
 DIRTY=0   # cp-fallback mode can't count cheaply → mark work done, let git-diff gate decide

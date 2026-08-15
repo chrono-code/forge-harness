@@ -10,6 +10,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [2.0.0] — 2026-08-16
+
+**BREAKING — M6 로 인해 종전 통과하던 capability 등록이 거부될 수 있다. 그리고 그 M6 는 1.4.99 에서 출하되지 않았다.**
+
+- 🔴 **BREAKING: `capability_registry_check.sh` 에 M6(선언 진위 관측)가 실제로 도달한다.**
+  M1–M5 를 전부 통과하던 capfile 이 `writes:` 선언과 실제 부작용이 다르면 이제 **REJECTED** 된다.
+  major 인 이유는 이것 하나다 — 소비자의 초록이 빨강이 될 수 있다. `^1.4.x` 범위가 이 변경을 자동
+  수용하지 않도록 minor 가 아니라 major 로 낸다. 🟥 **M6 를 opt-in 으로 낮추는 선택지는 거부했다**:
+  비가역 표면(등록 → 이후 자동 호출)의 fail-closed 축을 끌 수 있게 만들면 그건 floor 가 아니다.
+- 🔴 **fix: `scripts/capability_effect_probe.sh` 가 `files[]` 에 없어 출하되지 않았다.**
+  M6 를 배선한 커밋(`a48e644`)이 그 M6 가 호출하는 프로브를 출하 목록에 넣지 않았다. 실측 결과
+  1.4.99 tarball 의 `capability_registry_check.sh` 에는 **M6 가 0회** 등장한다 — 소비자는 깨진 M6 가
+  아니라 **M6 자체를 못 받았다**(출하본이 main 보다 뒤처져 있었다). 고치지 않고 재출하했다면 그때
+  프로브 부재 → fail-closed → **모든 등록 거부**가 됐다.
+- **feat: 형제 의존 출하 검사** — `test_capability_entrypoint_shipping.sh` 가 세 번째 방향을 얻었다.
+  출하되는 셸 스크립트가 `${0%/*}/x.sh` 형태로 부르는 **형제 파일**도 `files[]` 에 있어야 한다.
+  기존 두 방향은 `*_capability.sh` **진입점 규약**에만 걸려 있어 이번 결함에 구조적으로 눈이 멀었고,
+  `package_coverage_check.sh` 는 참조 정규식이 `scripts/` 로 **시작하는 리터럴**만 봐서 런타임에
+  조립되는 경로를 볼 수 없다. 이 클래스의 4번째 발생이라 앞단에 기계로 세웠다.
+- **fix: script-dir 해석이 symlink 를 통과한다** — `${0%/*}` 는 심링크 경유 호출에서 링크의
+  디렉토리를 가리켜 M6 가 «프로브 부재» 로 fail-closed 했다(있는데 없다고 말한다). `BASH_SOURCE` +
+  symlink 해소로 교체.
+- **feat: publish 신선도 게이트** — `prepublishOnly` 가 «출하 트리가 커밋된 main 인가» 를 본다.
+  이번 사고와 2026-08-13 의 «남의 미커밋 초안 출하» 가 같은 표면의 두 발생이다.
+- **fix: `sync-to-be.sh` 락 경합 경로가 rc=64 로 죽었다** — `log()` 가 호출부보다 아래에 정의돼
+  macOS `/usr/bin/log` 로 떨어졌고, `set -euo pipefail` 이 의도한 `exit 0` 도착 전에 스크립트를
+  죽였다. 경합 경로는 **경합할 때만** 실행되므로 병렬 세션 둘이 붙기 전까지 출하된 채로 있었다.
+
 ### [1.4.99] — 2026-08-15
 
 **fix: 검출기가 «호출부 0» 을 «10/10 초록» 으로 보고하고 있었다 — 그리고 이 릴리스는 #388 의 첫 출하이기도 하다**
