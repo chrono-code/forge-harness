@@ -35,8 +35,15 @@
 #
 # ──────────────────────────────────────────────────────────
 
-# mtime lookup (macOS / Linux compatible)
-_fh_mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0; }
+# mtime lookup (macOS / Linux compatible) — **GNU-first, and the order is load-bearing**.
+# This was BSD-first (`stat -f %m || stat -c %Y`) and that is silently wrong on GNU/Linux: `-f`
+# there means `--file-system`, so on a regular file it exits 0 and prints a filesystem report
+# instead of an epoch — the `||` fallback never runs and the caller gets a multi-line blob that
+# compares as garbage. Fixed 2026-08-15 after the identical bug was measured in
+# scripts/digest_landing_check.sh (macOS 10/10 PASS · ubuntu 1/10 FAIL). Every other _mtime helper
+# in this repo is already GNU-first (scripts/sync-from-be.sh:116 · scripts/fh_session_load.sh:105
+# carry the same warning); this template copy was the straggler, and it ships to field harnesses.
+_fh_mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }
 
 _fh_audit_check() {
   local -a warns=()
