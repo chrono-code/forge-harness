@@ -221,6 +221,34 @@ marker, never replacing it. Closed enum, same discipline as `crossfamily:`'s thr
 not / did not / did not look* split (a free-prose field would let an unrun check read as a clean
 pass):
 
+**🟥 DECIDE IN THIS ORDER — first match wins. Do not pick by matching a description.**
+
+```
+Q1. Did anything EXECUTE in the target's repo — a command, a script, a suite?
+      NO, I only read files          → tier1b(<harness>)   STOP.
+      NO, I did not touch its repo   → tier1               STOP.
+      YES                            → continue to Q2
+    ⚠️ tier2 AND tier2b BOTH REQUIRE EXECUTION. This question is first precisely so the
+    next one cannot be used to reason backwards into "tier2 must be the non-executing rung."
+Q2. Was the target's own LOCAL / gitignored wiring visible (settings, consent bindings,
+    node-local state) — i.e. its real installed runtime, not a bare clone?
+      NO  (bare clone, tracked content only)   → tier2(<harness>)
+      YES (the target's real runtime)          → tier2b(<harness>)
+Q3. Was it run by a DIFFERENT operator of the target harness, not you?
+      YES → tier3(<harness>)   (supersedes Q2)
+```
+
+**Why the procedure exists rather than more definition.** `tier2` vs `tier2b` is **wiring
+visibility**, NOT execution-vs-reading — both execute. But `tier2b`'s gloss names "the target's
+real runtime," which reads as *"tier2b is the execution rung"*, and a reader then infers that
+`tier2` must therefore be the non-executing one. Measured 2026-08-17: after `§7`, `CLAUDE.md` AND
+`auto-decorrelation/SKILL.md` were all three corrected to say **EXECUTED CODE**, two independent
+blind Sonnet reps STILL graded a pure cold-read `tier2` — one of them stating the inference
+outright: *"'Ran' in this taxonomy means 'situated the review in the target's repo', not 'executed
+code' — the fact that nothing executed is why I ruled out tier2b, not why I'd fall back to tier1."*
+Three rounds of rewording lost to the enum's own internal logic. Ordering the questions removes the
+inference instead of arguing with it.
+
 ```
 tier1                        content-only review — no standpoint decorrelation (the default
                               unless upgraded; NOT itself a failure, most changes have no target

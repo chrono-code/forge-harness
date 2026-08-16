@@ -264,8 +264,16 @@ enforceable layer) from the **declined** case above (chosen floor, first-class, 
 **shared-body / cross-harness-boundary** change — scoped by *effect* (alters another harness's
 behavior, gate outcome, or interaction contract), not merely by touching a synced file path — also
 emit `standpoint:` alongside `crossfamily:` in the same marker — recruiting family diversity here
-does not substitute for it. Values: `tier1` (content-only, the default) · `tier2(<harness>)`
-(peer-simulated — ran the target's own repo, content only) · `tier2b(<harness>)` (same operator,
+does not substitute for it. Values: `tier1` (content-only, the default) · **`tier1b(<harness>)`
+(STATIC read of the target's own files — executed nothing)** · `tier2(<harness>)`
+(peer-simulated — **EXECUTED CODE in** the target's own repo and observed the result.
+🟥 **Reading the target's real files, however cold, is `tier1b`, not this.** The discriminator is
+mechanical: *name the command you ran and the output you saw*; cannot name one → `tier1b`, always.
+This line said **"ran the target's own repo, content only"** until 2026-08-17 — actively teaching
+the opposite of the canon it summarizes — and it is the copy blind Sonnet sims actually reached
+for: after `field_verdict_crossfamily_gate.md §7` and `CLAUDE.md` were both corrected, two
+independent reps STILL graded a pure cold-read `tier2`, both quoting this phrasing. Two of three
+copies fixed is a fix that does not exist; see `§7` for the canon) · `tier2b(<harness>)` (same operator,
 target's real runtime — local wiring visible, but not an independent reviewer) · `tier3(<harness>)`
 (a *different* operator of the target harness ran it — the only fully independent + local-wiring
 rung) · `not-applicable` (no target-harness standpoint exists — most same-repo dispatches) ·

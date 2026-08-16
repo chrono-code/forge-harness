@@ -66,7 +66,7 @@ check k1b PASS "panel(codex, gemini) — SPACE after comma (was truncated to 'pa
 # The old bare-declined expectation is not deleted silently; it is inverted here with its reason.
 mk 'crossfamily: declined\n' k3
 check k3 BLOCK "declined BARE — no grounds (was PASS until 2026-08-16; an operator decision has a record)"
-mk 'crossfamily: declined — operator declined sidecars, chosen floor, see CLAUDE.local.md\n' k3b
+mk 'crossfamily: declined — operator declined sidecars, chosen floor, per knowledge/shared/rules/operational_adaptation.md\n' k3b
 check k3b PASS "declined + a record path that RESOLVES (the documented form)"
 # The real defect, verbatim-shaped: a genuine authorial judgment, plausibly worded, wrong token.
 # This is the known-POSITIVE that is not synthetic — it is the sentence that actually shipped.
