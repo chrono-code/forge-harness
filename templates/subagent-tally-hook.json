@@ -1,5 +1,5 @@
 {
-  "_readme": "FH dispatch-tally hook. Merge the `hooks.SubagentStop` block below into your .claude/settings.json (that file is gitignored, which is why this template exists). It feeds session_close_check.sh ④-e, which blocks a close push when sub-agents were dispatched and the day's invocation-log entries are zero. The hook TALLIES ONLY — it never writes a log entry, because a fabricated outcome/evidence field would poison the 60/40 promotion gate worse than a missing one.",
+  "_readme": "FH dispatch-tally hook. Merge the `hooks.SubagentStop` block below into your .claude/settings.json (that file is gitignored, which is why this template exists). It feeds session_close_check.sh ④-e, which blocks a close push when sub-agents were dispatched and the day's invocation-log entries are zero. The hook TALLIES ONLY — it never writes a log entry, because a fabricated outcome/evidence field would poison the 60/40 promotion gate worse than a missing one. Root resolution is 3-tier (CLAUDE_PROJECT_DIR -> git rev-parse --show-toplevel -> hardcoded path), matching the SAME convention fh_node_check.sh already uses in its own SessionStart hook -- a 2026-08-16 standpoint review on a sibling harness (pmh-dev) found this template's earlier 2-tier version get copy-pasted without picking up that convention, silently diverging from session_close_check.sh's own git-toplevel-first resolution in a nested/worktree/subagent context. If you adapt this template for another repo, keep the 3-tier form.",
   "hooks": {
     "SubagentStop": [
       {
@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'HUB=\"${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}\"; T=\"$HUB/tracks/_meta/.subagent_dispatch_tally\"; mkdir -p \"$(dirname \"$T\")\" 2>/dev/null; printf \"%s\\n\" \"$(date +%Y-%m-%d)\" >> \"$T\" 2>/dev/null; exit 0'",
+            "command": "bash -c 'HUB=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo \"$HOME/projects/forge-harness\")}\"; T=\"$HUB/tracks/_meta/.subagent_dispatch_tally\"; mkdir -p \"$(dirname \"$T\")\" 2>/dev/null; printf \"%s\\n\" \"$(date +%Y-%m-%d)\" >> \"$T\" 2>/dev/null; exit 0'",
             "timeout": 5
           }
         ]
