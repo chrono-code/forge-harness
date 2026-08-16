@@ -1161,6 +1161,37 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
        across `package.json` + every `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` (single-source =
        `package.json`) → Pre-Publish gate → `npm publish` → `git tag vX.Y.Z` at publish. **Propose, don't
        auto-publish.** (Why lockstep — Codex caches on plugin.json version — + drift-check + tag-drift caveat → §detail below.)
+
+       🟥 **WHICH DIGIT — operator decision 2026-08-17, and it is deliberately NOT strict semver.**
+       There was no policy before this line, which is why one session proposed three different bumps
+       for the same delta on three different (and each individually defensible) grounds. Decide by
+       **what the number tells a reader**, not by whether anything technically broke:
+
+       | Bump | Reserved for (operator's own wording, 2026-08-17) |
+       |---|---|
+       | **major** `+1.0.0` | **any one of three**: ⓐ **완전히 새로 지음** — rebuilt from scratch, not extended · ⓑ **정체성이 확립됨** — an identity of the five (+Ⓑ) actually standing 🟢, not progressing toward it · ⓒ **기능이 혁신적으로 변경되거나 늘어남** — a capability *class* appears or is replaced, not a capability instance. 🟥 **Never** for tightening a gate that already existed |
+       | **minor** `+0.1.0` | 미들급 — new assets, new gate lanes, doctrine that changes behavior; **including changes that break a consumer's gate acceptance**, which then carry a mandatory `BREAKING (gate):` line |
+       | **patch** `+0.0.1` | 트리비아급 — fixes, wiring, docs that change no behavior |
+
+       **The discriminator between major-ⓒ and minor**: *class* vs *instance*. A sixth Wave-1 attack
+       angle is an instance → minor. An attack-angle **registry** where none existed is a class → major.
+       Today's delta is instances and tightenings throughout, which is why it is 2.1.0 and not 3.0.0
+       even though it breaks a gate acceptance.
+
+       **Why gate-tightenings are minor here, stated so it is not mistaken for hiding a break**: what
+       breaks is the **record format of a gitignored local marker**, not an API or the consumer's code;
+       the hook prints exactly what to write instead; and the blast radius needs the consumer to have
+       installed the hook AND be making a load-bearing change AND have used the specific old form.
+       Against that, strict semver would burn a major on every gate we tighten — this repo took 2.0.0
+       for a publish-freshness gate one day and would have taken 3.0.0 for a commit gate the next.
+       **A major number that arrives monthly stops meaning anything**, and the milestone it should be
+       reserved for would have no word left.
+
+       ⚠️ **The condition that makes this honest, and it is not optional**: a minor that breaks gate
+       acceptance MUST carry `BREAKING (gate): <what now blocks> — <the one-line remedy>` in the
+       release description AND the CHANGELOG. Without it this policy is just burying breaks in minors.
+       **Applies from 2026-08-17 forward, not retroactively** (2.0.0 was the same class and is left
+       as-is rather than rewritten).
   → ④-c Handoff lifecycle (cross-machine continuity) — when a durable **result artifact lands** this
        session (mechanical hint: a new `*result*`/`*signal*`/`*_run_*` file in your companion store or
        `tracks/`), do two things: **(a) ④-c stamps** any `"run this/start here"` run-handoff whose
