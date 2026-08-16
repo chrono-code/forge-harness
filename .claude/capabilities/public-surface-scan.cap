@@ -1,0 +1,24 @@
+# forge-harness 가 **자기 능력을 스스로 선언한다.** FH 도 클러스터의 한 노드다 —
+# 다른 하네스가 `cluster_capability_scan.sh` 로 이걸 발견할 수 있어야 방향이 양쪽이 된다.
+# `requires_cwd: SELF` 인 이유: tracked 파일에 운영자 홈 절대경로를 싣지 않는다.
+# node A — 누출 렌즈 (public-surface-audit 의 기계층). degrade-scan 과 다른 질문을 한다:
+# "이 표면에 나가면 안 되는 토큰이 있나" (판정 로직이 아니라 내용을 본다)
+id: forge-harness:public-surface-scan
+summary: public surface leak scan over shipped/staged content — operator-private token detection
+tags: leak security publish surface audit
+entry: bash scripts/psa_probe_capability.sh
+requires_cwd: SELF
+verdict_channel: exit
+verdict_enum: 0=CLEAN 1=LEAK 3=NOT_CONFIGURED 10=HARNESS_ERROR
+approval: auto
+reversibility: reversible
+residency: operator-private
+degrade: fail-closed
+tier_floor: none
+writes: read-only
+judge: mechanical
+verdict_binding: LEAK NOT_CONFIGURED HARNESS_ERROR
+calibration_positive_args: --known-negative
+calibration_positive_expect: CLEAN
+calibration_negative_args: --known-positive
+calibration_negative_expect: LEAK

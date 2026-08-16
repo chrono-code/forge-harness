@@ -557,6 +557,24 @@ else
   fail=1
 fi
 
+# cluster_capability_scan — wired 2026-08-16 (정체성 ①-(a) cluster-wizard).
+# 종단 판정줄이 `… 캘리브레이션 통과/실패: N PASS / M FAIL` 이라 위 `_subj` 루프의
+# 캘리브레이션 게이트를 **진짜 판정줄로** 만족한다 — 테스트 케이스 제목이 아니다.
+# 그래서 이 subject 는 그 루프에 넣어도 안전하지만, 루프는 `scripts/<name>.sh` 존재를
+# 전제로 SKIP/FAIL 을 가르므로 여기 직접 디스패치로 둔다(다른 두 capability 검사기와 같은 형태).
+# 🟥 exit code 만 보지 않는다 — 레인이 전멸해도 0 이 나온다.
+if [ ! -f scripts/cluster_capability_scan.sh ]; then
+  echo "FAIL  cluster_capability_scan.sh: missing — it ships via package.json files[], so absence is deletion, not package mode"
+  fail=1
+elif _out=$(bash scripts/cluster_capability_scan.sh --self-test < /dev/null 2>&1) \
+     && printf '%s\n' "$_out" | grep -qE '캘리브레이션 통과: [1-9][0-9]* PASS / 0 FAIL'; then
+  echo "PASS  cluster_capability_scan.sh --self-test ($(printf '%s\n' "$_out" | grep -oE '[0-9]+ PASS / [0-9]+ FAIL' | tail -1))"
+else
+  echo "FAIL  cluster_capability_scan.sh: --self-test failed or produced no terminal verdict line"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # capability_effect_probe — wired 2026-08-16. `lane_runner_check.sh` had been flagging it as an
 # embedded --self-test subject with ZERO dispatchers, and that warning was load-bearing: the same
 # day, two SECURITY regression anchors were added to this suite (L8 args injection · L9 the git

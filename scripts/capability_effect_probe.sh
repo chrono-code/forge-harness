@@ -64,8 +64,22 @@ _key() {  # $1=capfile $2=key
     | sed 's/[[:space:]]*$//'
 }
 
+# `GIT_META_WATCH` = 격리 클론 안에서 **추가로** 해싱할 경로들(코드실행으로 이어지는 git
+# 메타데이터 표면). 비어 있으면 종전과 동일하게 트리만 잰다.
+GIT_META_WATCH=""
+
 _snapshot() {  # $1=dir → "path<TAB>sha" 목록 (정렬)
-  find "$1" -type f 2>/dev/null | LC_ALL=C sort | while IFS= read -r f; do
+  {
+    # `.git` 은 통째로 제외한다 — `git status` 류가 `.git/index` 를 정당하게 갱신하므로
+    # 전체를 재면 읽기 전용 capability 가 거짓 VIOLATION 을 받는다. 대신 아래에서
+    # **실행으로 이어지는 표면만** 골라 넣는다.
+    find "$1" -type f -not -path '*/.git/*' 2>/dev/null
+    local w
+    for w in $GIT_META_WATCH; do
+      [ -e "$w" ] || continue
+      find "$w" -type f 2>/dev/null
+    done
+  } | LC_ALL=C sort -u | while IFS= read -r f; do
     printf '%s\t%s\n' "$f" "$(shasum -a 256 "$f" 2>/dev/null | cut -d' ' -f1)"
   done
 }
@@ -106,9 +120,29 @@ probe_one() {  # $1=capfile → rc
   #    (2026-08-16 병렬 세션 실측: 같은 순서 문제로 한 레인이 두 번 장식이 됐다).
   local req_cwd wt=""
   req_cwd=$(_key "$cap" requires_cwd)
+  # ★`SELF` 를 여기서도 푼다. 초판은 `capability_registry_check.sh` 에만 넣고 이쪽에 안 넣어서,
+  #   프로브가 `-d "SELF/.git"` 을 보고 «git 레포 아님» 으로 판정 → 빈 mktemp 샌드박스 →
+  #   진입점 rc=127 → **UNVERIFIABLE** 이 났다. 등록 검사기는 통과시키는데 프로브만 막는
+  #   형태라 원인이 안 보인다. **반쪽-픽스 전파 경계**의 세 번째 재현이고
+  #   ([[feedback_half_fix_propagation_boundary]]), 계기가 잡았다.
+  #   해석은 검사기와 **같은 규칙**이어야 한다 — 다르면 두 축이 서로 다른 트리를 잰다.
+  if [ "$req_cwd" = "SELF" ]; then
+    req_cwd="$(git -C "$(dirname "$cap")" rev-parse --show-toplevel 2>/dev/null)"
+    if [ -z "$req_cwd" ]; then
+      printf '⚠️  UNVERIFIABLE %s — requires_cwd: SELF 인데 선언이 git 레포 안에 없다\n' "$cap" >&2
+      return "$RC_UNVERIFIABLE"
+    fi
+  fi
 
   local sandbox outside wt_parent=""
-  if [ -n "$req_cwd" ] && [ -d "$req_cwd/.git" ]; then
+  # ★`-d .git` 이 아니라 **git 자신에게 묻는다**. 워크트리·submodule 에서 `.git` 은 **파일**이라
+  #   `-d` 가 거짓이 되고, 그러면 이 프로브만 빈 mktemp 로 떨어져 같은 선언이
+  #   등록 검사기에선 VERIFIED · 프로브에선 UNVERIFIABLE 로 갈린다(cross-family 지목, 손 재현:
+  #   일반 레포 rc=0 / 워크트리 rc=3, 동일 capfile). 검사기는 이미 `rev-parse` 를 쓴다 —
+  #   두 계기가 다른 규칙을 들면 그게 이 레포가 이름 붙인 divergent-normalizer 다.
+  local _is_repo=""
+  [ -n "$req_cwd" ] && _is_repo="$(git -C "$req_cwd" rev-parse --show-toplevel 2>/dev/null)"
+  if [ -n "$_is_repo" ]; then
     # 🟥 **`git worktree` 를 쓰지 않는다 — 워크트리는 정의상 실물 레포의 `.git` 을 공유한다.**
     # 2026-08-16 보안 패스가 지목하고 거버너가 손으로 재현했다: `writes: read-only` 를 선언한
     # 진입점이 워크트리 안에서 `git config --local core.pager "sh -c <cmd>"` 를 심으면
@@ -120,23 +154,59 @@ probe_one() {  # $1=capfile → rc
     # 이건 헤더의 명명된 잔여(«절대경로로 다른 데를 쓰면 놓친다»)와 **다르다**: 그건 capability 가
     # 고른 경로이고, 이건 **프로브가 스스로 열어 준 통로**다.
     #
-    # 처방: `git archive` 로 **`.git` 이 없는 순수 파일 사본**을 만든다. 진입점은 여전히 전제
-    # (레포의 파일 배치)를 찾고, 공유 메타데이터 채널은 존재하지 않는다.
-    # ⚠️ 대가를 명시한다: 사본에 `.git` 이 없으므로 **git 명령을 실제로 쓰는 capability 는
-    #    여기서 못 돈다** → UNVERIFIABLE 로 떨어진다. 미측정을 통과로 렌더하는 것보다 낫다.
+    # 처방(2026-08-16 2차) — **격리된 로컬 클론**. 초판은 `git archive` 로 `.git` 없는 사본을
+    # 만들었는데, 그러면 안전하지만 **git 을 쓰는 capability 전부가 영구히 등록 불가**가 된다
+    # (실측: `qasp-dev:new-code-anchor-scan` 이 rc=127 → UNVERIFIABLE → REJECTED).
+    # 엣지가 아니라 **한 부류 통째의 배제**이고, 이 레포 자신의 규율이 그걸 금한다 —
+    # *"만족할 수 없는 게이트는 엄격한 게이트가 아니라 우회 훈련기다."*
+    #
+    # `git clone --local --no-hardlinks` 는 **자기 `.git` 을 가진 독립 레포**를 만든다:
+    #   · 진입점의 git 명령이 실제로 돈다(측정 가능해진다)
+    #   · 쓰기는 **클론 안**에 갇힌다 — 실물 레포의 `.git` 은 공유되지 않는다
+    #   · `--no-hardlinks` 로 오브젝트를 복사한다(하드링크는 같은 inode 를 공유한다)
+    # 🟥 그리고 **`origin` 을 지운다** — 클론의 origin 은 소스 경로를 가리키므로
+    #    `git push origin` 이 **실물 레포로 되돌아가는 통로**가 된다. 우발 경로를 닫는다
+    #    (절대경로를 직접 쓰는 공격은 헤더의 기존 명명 잔여이지 이 통로가 아니다).
     wt_parent=$(mktemp -d) || return "$RC_HARNESS"
-    _PROBE_WT_PARENT="$wt_parent"      # ★등록을 mktemp **직후**에 한다 — 아래 실패 경로에서
-    wt="$wt_parent/copy"; mkdir -p "$wt"   #   return 하면 트랩이 이걸 못 지우던 누수가 있었다
-    if ! ( cd "$req_cwd" && git archive --format=tar HEAD ) 2>/dev/null | ( cd "$wt" && tar xf - ) 2>/dev/null; then
-      printf '⚠️  UNVERIFIABLE %s — `.git` 없는 사본을 못 만들었다(%s)\n' "$cap" "$req_cwd" >&2
+    _PROBE_WT_PARENT="$wt_parent"      # ★등록을 mktemp **직후**에 (누수 수리)
+    wt="$wt_parent/clone"
+    if ! git clone --local --no-hardlinks -q "$req_cwd" "$wt" >/dev/null 2>&1; then
+      printf '⚠️  UNVERIFIABLE %s — 격리 클론을 못 만들었다(%s)\n' "$cap" "$req_cwd" >&2
       return "$RC_UNVERIFIABLE"
     fi
-    if [ -e "$wt/.git" ]; then
-      printf '❌ %s: 사본에 .git 이 있다 — 격리 전제 파손. 판정하지 않는다\n' "$cap" >&2
+    git -C "$wt" remote remove origin >/dev/null 2>&1 || true
+    # 🟥 **alternates 를 지운다** (2026-08-16 cross-family 지목, 거버너 손 재현).
+    # `--no-hardlinks` 는 오브젝트를 **복사**하지만, **소스가 이미 alternates 를 갖고 있으면
+    # 클론이 그 alternates 를 상속한다** — 즉 클론의 오브젝트 저장소가 **샌드박스 밖 경로**를
+    # 참조하게 된다. 내 초판 격리 측정은 alternates 없는 소스만 봐서 이 채널을 못 봤다.
+    # 재현: 소스에 `objects/info/alternates` 를 심고 `--local --no-hardlinks` 클론 →
+    #       클론의 alternates 에 그 경로가 그대로 남는다.
+    # 지운 뒤 **오브젝트가 실제로 다 있는지**는 아래 단언이 본다 — 지우기만 하고 깨진 채로
+    # 돌리면 진입점이 이상하게 실패하고 그게 «위반 없음» 으로 렌더될 수 있다.
+    rm -f "$wt/.git/objects/info/alternates" 2>/dev/null || true
+    # 격리 전제를 **단언한다** — 하나라도 어긋나면 판정하지 않는다(측정 대신 침묵).
+    if [ ! -d "$wt/.git" ] || [ -n "$(git -C "$wt" remote 2>/dev/null)" ] \
+       || [ -f "$wt/.git/objects/info/alternates" ]; then
+      printf '❌ %s: 격리 전제 파손(.git 부재 · origin 잔존 · alternates 잔존). 판정하지 않는다\n' "$cap" >&2
       return "$RC_HARNESS"
+    fi
+    # alternates 를 지우고도 HEAD 트리가 온전한가 — 아니면 «격리했지만 못 쓰는» 사본이다.
+    if ! git -C "$wt" rev-parse --verify -q HEAD >/dev/null 2>&1 \
+       || ! git -C "$wt" cat-file -e HEAD^{tree} 2>/dev/null; then
+      printf '⚠️  UNVERIFIABLE %s — alternates 제거 후 오브젝트가 불완전하다(소스가 alternates 에 의존)\n' "$cap" >&2
+      return "$RC_UNVERIFIABLE"
     fi
     sandbox="$wt"
     _PROBE_SANDBOX="$wt"
+    # 🟥 **코드실행으로 이어지는 git 메타데이터 표면**을 스냅샷 대상에 넣는다.
+    #    `.git` 전체를 넣지 않는 이유: `git status` 류가 `.git/index` 를 정당하게 갱신하므로
+    #    전체를 재면 **읽기 전용 capability 가 거짓 VIOLATION** 을 받는다. 그래서 «나중에
+    #    명령을 실행시킬 수 있는» 표면만 고른다 — config(core.pager·alias) · hooks · refs.
+    #   ★`info/attributes` 와 `modules/` 도 본다(cross-family 지목). 전자는 `filter`/`clean`/
+    #     `smudge` 속성으로 **체크아웃·add 시 임의 명령을 실행**시킬 수 있고, 후자는 submodule
+    #     의 실제 gitdir 라 그 안의 config·hooks 가 같은 실행 표면이다. config·hooks·refs 만
+    #     보면 그 둘로 새는 경로가 감시 밖에 남는다.
+    GIT_META_WATCH="$wt/.git/config $wt/.git/hooks $wt/.git/packed-refs $wt/.git/refs $wt/.git/info/attributes $wt/.git/modules"
   else
     sandbox=$(mktemp -d) || return "$RC_HARNESS"
     _PROBE_SANDBOX="$sandbox"
@@ -354,13 +424,99 @@ writes: read-only
 EOF
     probe_one "$d/meta.cap" >/dev/null 2>&1; rc=$?
     local _planted; _planted=$(git -C "$_tgt" config --local --get core.pager 2>/dev/null)
-    # 판정의 본체는 rc 가 아니라 **실물 레포가 안 변했다**는 것이다. rc=0(VERIFIED)이면
-    # 「안 썼다」를 거짓 주장한 것이고, _planted 가 있으면 격리 자체가 뚫린 것이다.
-    if [ "$rc" = "3" ] && [ -z "$_planted" ]; then
-      pass=$((pass+1)); echo "✅ L9 git 메타데이터 채널 차단 (UNVERIFIABLE · 실물 무변경)"
+    # ★기대값이 2026-08-16 2차에 **3 → 1 로 올라갔다.** 초판(`.git` 없는 사본)에서는 git 이
+    #   아예 안 돌아 «못 쟀다»(UNVERIFIABLE) 였다. 격리 클론으로 바꾸면서 진입점이 실제로
+    #   돌고, `.git/config` 쓰기가 **관측되어 VIOLATION** 이 된다 — 「못 쟀다」보다 강하다.
+    #   두 명제를 **각각** 단언한다:
+    #     ① rc=1  → 탐지했다        (rc=0 이면 「안 썼다」를 거짓 주장한 것)
+    #     ② 실물 무변경 → 격리했다   (planted 가 있으면 격리 자체가 뚫린 것)
+    #   둘은 독립이다. 하나만 보면 «막았는데 실물이 오염» 되거나 «깨끗한데 못 봤다» 를 놓친다.
+    if [ "$rc" = "1" ] && [ -z "$_planted" ]; then
+      pass=$((pass+1)); echo "✅ L9 git 메타데이터 채널: **탐지**(VIOLATION) + 실물 무변경(격리)"
     else
-      fails=$((fails+1)); echo "❌ L9 rc=$rc (3 기대) · 실물 core.pager=[$_planted]"
+      fails=$((fails+1)); echo "❌ L9 rc=$rc (1 기대) · 실물 core.pager=[$_planted]"
     fi
+  fi
+
+  # ── L10: alternates 상속 차단 (2026-08-16 cross-family 지목) ──────────────
+  #   `--no-hardlinks` 는 오브젝트를 복사하지만 **소스가 alternates 를 갖고 있으면 상속한다** —
+  #   클론의 오브젝트 저장소가 샌드박스 **밖 경로**를 참조하게 된다. 격리 주장이 조건부가 된다.
+  #   ★rc 만 보지 않는다: 「판정이 났다」와 「클론에 alternates 가 없다」는 다른 명제다.
+  local _alt="$d/altsrc"
+  mkdir -p "$_alt/donor" "$_alt/src"
+  ( cd "$_alt/donor" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo d > d.txt && git add d.txt && git commit -qm d ) >/dev/null 2>&1
+  ( cd "$_alt/src" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo x > f.txt && git add f.txt && git commit -qm i ) >/dev/null 2>&1
+  mkdir -p "$_alt/src/.git/objects/info"
+  printf '%s\n' "$_alt/donor/.git/objects" > "$_alt/src/.git/objects/info/alternates"
+  # ★관측 채널이 **프로브 자신의 판정**이어야 한다. 초판은 진입점의 stdout 에서 'LEAKED' 를
+  #   찾으려 했는데 `probe_one` 은 진입점 출력을 반환하지 않는다 — 그 grep 은 **원리적으로
+  #   못 맞는다.** 되돌림 프로브가 그걸 잡았다(수리를 지워도 10/10 초록이었다).
+  #   대신 «alternates 가 있으면 쓴다» 로 만들어 **read-only 선언 위반**으로 드러나게 한다:
+  #     상속됨  → 진입점이 파일을 쓴다 → VIOLATION(1)
+  #     차단됨  → 아무것도 안 쓴다     → VERIFIED(0)
+  cat > "$d/alt.cap" <<EOF
+id: test:alt
+entry: bash -c '[ -f .git/objects/info/alternates ] && echo x > ALT_INHERITED || true'
+requires_cwd: $_alt/src
+writes: read-only
+EOF
+  probe_one "$d/alt.cap" >/dev/null 2>&1; rc=$?
+  if [ "$rc" = "0" ]; then
+    pass=$((pass+1)); echo "✅ L10 소스의 alternates 가 샌드박스로 상속되지 않는다"
+  else
+    fails=$((fails+1)); echo "❌ L10 rc=$rc (0 기대) — alternates 가 상속돼 진입점이 썼다"
+  fi
+
+  # ── L11: 워크트리에서도 같은 판정이 나오나 (`.git` 이 **파일**인 경우) ────────
+  #   cross-family 지목 + 손 재현: `-d .git` 판정이면 워크트리가 빈 mktemp 로 떨어져
+  #   같은 capfile 이 일반 레포 rc=0 / 워크트리 rc=3 으로 갈렸다. 등록 검사기는 이미
+  #   `rev-parse` 를 쓰므로 두 계기가 어긋난 상태였다.
+  local _wt="$d/wtsrc"
+  mkdir -p "$_wt"
+  ( cd "$_wt" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo hello > f.txt && git add -A && git commit -qm init \
+      && git worktree add -q "$d/wtree" HEAD ) >/dev/null 2>&1
+  if [ -f "$d/wtree/.git" ]; then   # `.git` 이 파일이어야 이 레인이 의미가 있다
+    for _r in "$_wt" "$d/wtree"; do
+      mkdir -p "$_r/.claude/capabilities"
+      cat > "$_r/.claude/capabilities/c.cap" <<EOF
+id: t:needsfile
+entry: bash -c 'cat f.txt >/dev/null'
+requires_cwd: SELF
+writes: read-only
+EOF
+    done
+    probe_one "$_wt/.claude/capabilities/c.cap" >/dev/null 2>&1; local _plain=$?
+    probe_one "$d/wtree/.claude/capabilities/c.cap" >/dev/null 2>&1; local _work=$?
+    if [ "$_plain" = "0" ] && [ "$_work" = "0" ]; then
+      pass=$((pass+1)); echo "✅ L11 워크트리(.git 파일)도 일반 레포와 같은 판정"
+    else
+      fails=$((fails+1)); echo "❌ L11 일반=$_plain 워크트리=$_work (둘 다 0 기대)"
+    fi
+    git -C "$_wt" worktree remove --force "$d/wtree" >/dev/null 2>&1 || true  # noqa: destructive-op
+  else
+    fails=$((fails+1)); echo "❌ L11 픽스처 실패 — 워크트리의 .git 이 파일이 아니다(레인 무의미)"
+  fi
+
+  # ── L12: `info/attributes` 쓰기가 관측되나 (filter/clean/smudge = 코드실행) ──
+  local _at="$d/atsrc"
+  mkdir -p "$_at"
+  ( cd "$_at" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo x > f.txt && git add -A && git commit -qm init ) >/dev/null 2>&1
+  cat > "$d/attr.cap" <<EOF
+id: t:attrs
+entry: bash -c 'mkdir -p .git/info && echo "* filter=pwn" >> .git/info/attributes'
+requires_cwd: $_at
+writes: read-only
+EOF
+  probe_one "$d/attr.cap" >/dev/null 2>&1; rc=$?
+  local _leaked; _leaked=$(cat "$_at/.git/info/attributes" 2>/dev/null)
+  if [ "$rc" = "1" ] && [ -z "$_leaked" ]; then
+    pass=$((pass+1)); echo "✅ L12 info/attributes 쓰기 탐지(VIOLATION) + 실물 무변경"
+  else
+    fails=$((fails+1)); echo "❌ L12 rc=$rc (1 기대) · 실물 attributes=[$_leaked]"
   fi
 
   rm -rf "$d"

@@ -97,7 +97,12 @@ AXES_SET="verdict_binding"
 # 선언이 VIOLATION 으로 거부된다 — 2026-08-11 실측: registry_check 를 통과한 capfile 2개가
 # relay 에서 8건 VIOLATION. 같은 스펙에 대해 두 계기가 서로 다른 스키마를 든
 # divergent-normalizer 이고, 관대함이 갈리면 한쪽만 통과하는 입력이 생긴다.
-META_KEYS="id entry requires_cwd verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream calibration_positive_args calibration_positive_expect calibration_negative_args calibration_negative_expect"
+# 🟥 **2026-08-16 재발.** 위 문단이 이 함정을 2026-08-11 사례로 적어놨는데, `summary`/`tags` 가
+# `capability_registry_check.sh` 에만 추가되고 여기 안 들어와 **같은 파일이 같은 함정을 두 번**
+# 밟았다 — 출하된 `.claude/capabilities/*.cap` 2개가 `✅ REGISTRABLE` 인데 relay 에서
+# `⛔ COMPOSITION_VIOLATION` 이었다(등록되지만 **부를 수 없는** 선언). 아래 교차 레인이
+# 그 재발을 잡는 앵커다 — 산문 경고는 이미 있었고 막지 못했다.
+META_KEYS="id entry requires_cwd summary tags verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream calibration_positive_args calibration_positive_expect calibration_negative_args calibration_negative_expect"
 
 _die() { printf '❌ %s\n' "$*" >&2; exit "$RC_HARNESS"; }
 _violation() { printf '⛔ COMPOSITION_VIOLATION — %s\n' "$*" >&2; VIOLATED=1; }
@@ -387,6 +392,19 @@ _invoke_node() {
   key=$(_cap_get "$f" verdict_stdout_key); [ -z "$key" ] && key="FH_GATE_VERDICT"
 
   [ -n "$entry" ] || { NODE_VERDICT="HARNESS_ERROR"; NODE_EXIT=$RC_HARNESS; return 0; }
+  # ★`requires_cwd: SELF` = «이 선언을 품은 레포». 해석은 `capability_registry_check.sh` ·
+  #   `capability_effect_probe.sh` 와 **같은 규칙**(git 레포 루트)이어야 한다 — 규칙이 갈리면
+  #   두 계기가 서로 다른 트리를 재고, 그건 이 파일이 §divergent-normalizer 로 이름 붙인 결함이다.
+  #   🟥 이 값이 없으면 **tracked 선언이 구조적으로 uncallable** 하다: `SELF` 는 공개표면에
+  #   운영자 홈 절대경로를 안 싣기 위해 도입된 형태라, 하네스 자기선언은 전부 이 형태를 쓴다.
+  #   실측(2026-08-16): SELF 두 노드 → `NOT_CALLABLE … HARNESS_ERROR` · 절대경로 두 노드 → 진짜 판정.
+  if [ "$cwd" = "SELF" ]; then
+    cwd="$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null)"
+    if [ -z "$cwd" ]; then
+      printf 'ℹ️  NOT_CALLABLE: requires_cwd: SELF 인데 선언이 git 레포 안에 없다 → dispatch 폴백\n' >&2
+      NODE_VERDICT="HARNESS_ERROR"; NODE_EXIT=$RC_HARNESS; return 0
+    fi
+  fi
   if [ -n "$cwd" ] && [ ! -d "$cwd" ]; then
     printf 'ℹ️  NOT_CALLABLE: requires_cwd 부재(%s) → dispatch 폴백 대상\n' "$cwd" >&2
     NODE_VERDICT="HARNESS_ERROR"; NODE_EXIT=$RC_HARNESS; return 0

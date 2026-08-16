@@ -51,7 +51,10 @@ set -f    # noglob — 선언 파일의 값은 데이터지 파일 패턴이 아
 
 RC_OK=0; RC_REJECT=1; RC_HARNESS=10
 
-CLOSED_KEYS="id entry requires_cwd verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream approval reversibility residency degrade tier_floor writes judge verdict_binding calibration_positive_args calibration_positive_expect calibration_negative_args calibration_negative_expect"
+# `summary`/`tags` 는 **추천 전용**(2026-08-16, cluster-wizard). 판정에는 안 쓰이고
+# `cluster_capability_scan.sh recommend` 의 어휘 매칭에만 쓰인다. 닫힌 목록에 넣는 이유는
+# 이 목록의 목적이 «오타 축 무음 드롭 방지» 이기 때문이다 — 안 넣으면 정당한 키가 SCHEMA 로 막힌다.
+CLOSED_KEYS="id entry requires_cwd summary tags verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream approval reversibility residency degrade tier_floor writes judge verdict_binding calibration_positive_args calibration_positive_expect calibration_negative_args calibration_negative_expect"
 
 # 「안 돌았다」를 뜻하는 이름들 — 추가조항(§ⓑ.4 B1)이 요구하는 구분항
 DIDNOTRUN_NAMES="DID_NOT_RUN DIDNOTRUN NOT_RUN NO_TARGET SKIPPED UNMEASURED NOT_CONFIGURED HARNESS_ERROR"
@@ -67,7 +70,7 @@ _parse() {
   CAP_id=""; CAP_entry=""; CAP_requires_cwd=""; CAP_verdict_channel=""
   CAP_verdict_enum=""; CAP_verdict_stdout_key=""; CAP_judge=""; CAP_writes=""
   CAP_cal_pos_args=""; CAP_cal_pos_expect=""; CAP_cal_neg_args=""; CAP_cal_neg_expect=""
-  UNKNOWN_KEYS=""
+  UNKNOWN_KEYS=""; CAP_requires_cwd_was_self=0
   local line key val
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in ''|'#'*) continue ;; esac
@@ -130,6 +133,16 @@ _check_one() {
 
   [ -n "$UNKNOWN_KEYS" ] && _fail "SCHEMA" "닫힌 키 목록 밖:$UNKNOWN_KEYS (오타 축 무음드롭 방지 — 무시하지 않는다)"
 
+  # ── `requires_cwd: SELF` 를 **M1 보다 먼저** 푼다 (2026-08-16 순서 수리) ────
+  # 초판은 M5 에서 풀었는데, M1 이 그보다 먼저 돌면서 **상대 entry 를 현재 cwd 기준으로** 찾았다.
+  # FH 로컬 등록부 시절엔 entry 가 늘 절대경로라 안 터졌다 — 하네스 자기 선언(상대 entry +
+  # SELF)이 그 잠재 가정을 처음 실행에 노출시킨 것이다([[feedback_wiring_surfaces_hidden_failures]]).
+  # 해석 실패는 여기서 조용히 넘기고 M5 가 판정한다(한 결함을 두 축에서 두 번 세지 않는다).
+  if [ "$CAP_requires_cwd" = "SELF" ]; then
+    local _sr; _sr="$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null)"
+    [ -n "$_sr" ] && [ -d "$_sr" ] && CAP_requires_cwd="$_sr" && CAP_requires_cwd_was_self=1
+  fi
+
   # ── M1 실행 가능한 진입점 ──────────────────────────────────────────────────
   local first second
   first="$(printf '%s' "$CAP_entry" | awk '{print $1}')"
@@ -139,8 +152,15 @@ _check_one() {
       _fail "M1" "entry 가 argv 가 아니라 셸 문자열이다(파이프/리다이렉트/치환 포함) — 인젝션 표면" ;;
     '') _fail "M1" "entry 미선언" ;;
     *)
+      # 상대 경로는 **선언된 cwd 기준**으로도 본다. 선언은 자기 레포를 기준으로 쓰는 것이
+      # 자연스럽고(그래야 이식된다), 검사기가 자기 cwd 로만 보면 정당한 선언을 못 읽는다.
+      local _second_abs="$second"
+      case "$second" in
+        /*) ;;
+        *) [ -n "$CAP_requires_cwd" ] && [ -r "$CAP_requires_cwd/$second" ] && _second_abs="$CAP_requires_cwd/$second" ;;
+      esac
       if [ -x "$first" ] 2>/dev/null; then _ok "M1" "실행 가능: $first"
-      elif command -v "$first" >/dev/null 2>&1 && [ -r "$second" ]; then
+      elif command -v "$first" >/dev/null 2>&1 && [ -r "$_second_abs" ]; then
         _ok "M1" "선언된 인터프리터($first) + 읽을 수 있는 스크립트: $second"
       else _fail "M1" "entry 를 셸이 모델 없이 실행할 수 없다: $CAP_entry"; fi ;;
   esac
@@ -182,10 +202,43 @@ _check_one() {
 
   # ── M5 선언된 cwd (M4 를 그 자리에서 돌리므로 먼저) ────────────────────────
   case "$CAP_requires_cwd" in
-    /*) [ -d "$CAP_requires_cwd" ] && _ok "M5" "requires_cwd 실재: $CAP_requires_cwd" \
-          || _fail "M5" "requires_cwd 가 절대경로지만 존재하지 않는다: $CAP_requires_cwd" ;;
+    /*)
+      # `SELF` 는 위(M1 앞)에서 이미 레포 루트로 풀렸다. 그 사실을 판정문에 남긴다 —
+      # 안 남기면 독자가 선언 원문(`SELF`)과 검사 결과(절대경로)를 연결하지 못한다.
+      if [ -d "$CAP_requires_cwd" ]; then
+        if [ "${CAP_requires_cwd_was_self:-0}" = "1" ]; then
+          _ok "M5" "requires_cwd: SELF → 선언을 품은 레포 루트: $CAP_requires_cwd"
+        else
+          _ok "M5" "requires_cwd 실재: $CAP_requires_cwd"
+        fi
+      else
+        _fail "M5" "requires_cwd 가 절대경로지만 존재하지 않는다: $CAP_requires_cwd"
+      fi ;;
+    SELF)
+      # ★`SELF` = «이 선언을 품은 레포» (2026-08-16 신설, 정체성 ①-(a) cluster-wizard).
+      #
+      # 왜 필요했나: 이 스키마는 원래 **FH 로컬 등록부**(gitignored)를 위한 것이라 절대경로가
+      # 문제없었다. 그런데 (c) 를 닫으려면 선언이 **그 하네스 자신의 레포에 tracked 로** 살아야
+      # 하고, 그 순간 절대경로는 두 가지로 깨진다:
+      #   ① 이식 불가 — 다른 머신·다른 체크아웃에서 그 경로는 없다
+      #   ② **공개표면 위반** — 운영자 홈 경로가 tracked 파일에 실린다
+      # 그래서 «자기 자신» 을 가리키는 이식 가능한 표현이 필요했다.
+      #
+      # 해석은 **위치 가정이 아니라 git 레포 루트**다. `../../..` 같은 상대 오프셋으로 풀면
+      # `.claude/capabilities/` 배치를 하드코딩하게 되고, 배치가 바뀌는 순간 조용히 엉뚱한
+      # 디렉토리를 가리킨다. 레포 루트는 그 파일이 어디 놓이든 같은 답을 준다.
+      local _self_root
+      _self_root="$(git -C "$(dirname "$f")" rev-parse --show-toplevel 2>/dev/null)"
+      if [ -n "$_self_root" ] && [ -d "$_self_root" ]; then
+        CAP_requires_cwd="$_self_root"
+        _ok "M5" "requires_cwd: SELF → 선언을 품은 레포 루트로 해석: $_self_root"
+      else
+        # 🟥 fail-closed. git 레포 밖의 선언은 «자기» 가 무엇인지 정의되지 않는다 —
+        #    추측해서 cwd 를 정하면 M4 가 **엉뚱한 트리에서** 진입점을 돌린다.
+        _fail "M5" "requires_cwd: SELF 인데 이 선언이 git 레포 안에 없다 — «자기» 를 해석할 수 없다"
+      fi ;;
     '') _fail "M5" "requires_cwd 미선언 — 콕핏이 어디서 부를지 알 수 없다" ;;
-    *)  _fail "M5" "requires_cwd 가 절대경로가 아니다: $CAP_requires_cwd" ;;
+    *)  _fail "M5" "requires_cwd 가 절대경로도 SELF 도 아니다: $CAP_requires_cwd" ;;
   esac
 
   # ── M4 캘리브레이션 쌍 — 선언 + **실행** ──────────────────────────────────
@@ -323,6 +376,23 @@ EOF
   _t "M1: entry 가 셸 문자열" 1 "$T/shellstr.cap"
   sed 's|^requires_cwd: .*|requires_cwd: relative/path|' "$T/good.cap" > "$T/relcwd.cap"
   _t "M5: requires_cwd 상대경로" 1 "$T/relcwd.cap"
+
+  # ── M5 `SELF` (2026-08-16) — 하네스가 **자기 레포에 tracked 로** 선언할 수 있게 하는 값 ──
+  #   known-pair 를 **양쪽 다** 세운다. 양성만 세우면 「SELF 를 그냥 통과시킨다」와
+  #   「SELF 를 옳게 해석한다」가 구분되지 않는다.
+  local SR="$T/selfrepo"
+  mkdir -p "$SR/.claude/capabilities"
+  ( cd "$SR" && git init -q . && git config user.email t@t && git config user.name t \
+    && echo x > seed.txt && git add seed.txt && git commit -qm init ) >/dev/null 2>&1
+  cp "$T/probe.sh" "$SR/probe.sh" 2>/dev/null || true
+  sed -e 's|^requires_cwd: .*|requires_cwd: SELF|' \
+      -e "s|^entry: .*|entry: bash $SR/probe.sh|" "$T/good.cap" > "$SR/.claude/capabilities/self.cap"
+  _t "M5: SELF 는 레포 루트로 해석된다" 0 "$SR/.claude/capabilities/self.cap"
+
+  # known-negative(=fail-closed 방향): git 레포 **밖**의 SELF 는 해석 불가여야 한다.
+  # 이 레인이 없으면 「SELF 면 무조건 통과」가 되고, 그건 M5 를 없앤 것과 같다.
+  sed -e 's|^requires_cwd: .*|requires_cwd: SELF|' "$T/good.cap" > "$T/self_outside.cap"
+  _t "M5: git 밖의 SELF 는 fail-closed" 1 "$T/self_outside.cap"
 
   # ── M6: 선언 진위 (2026-08-16) — 2026-08-11 실사고 형태를 그대로 재현한다 ──
   #   `writes: read-only` 를 선언하고 진입점이 `rm -rf scripts` 를 한다. 그날 이 검사기는
