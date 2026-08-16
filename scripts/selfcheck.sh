@@ -308,7 +308,11 @@ fi
 # a consumer who simply has no hooks. That is the "unmeasured → clean" move this file legislates
 # against — and worse, the --self-test loop 200 lines below already routes rc=10 to `fail=1` saying
 # "it could not measure, so its verdicts prove nothing". Same file, same code, opposite verdict.
-# (Adversarial review 2026-08-16 found this; the contradiction was reproduced by reading :524.)
+# (Adversarial review 2026-08-16 found this. ⚠️ An earlier draft of this comment cited `:524` for
+# it; the standpoint review measured the real sites — the loop dispatches at :528 and routes
+# rc=10 to fail=1 at :562, and the quoted sentence lives at :429/:475. `:524` is none of them, so
+# a reviewer following it lands on prose. A stale line number in the comment that argues against
+# stale instruments is this commit's own defect class, recorded rather than quietly corrected.)
 #
 # The discriminator is mechanical, not a guess: the three harness-defect paths use plain `echo
 # "❌ harness-error: …"`, while the NOT-INSTALLED path goes through `say()` which `--quiet` suppresses.

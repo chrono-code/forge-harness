@@ -1176,6 +1176,57 @@ if [ -f "$JC_REG" ] && [ -f "$JC_LINT" ]; then
   fi
 fi
 
+# ── Portability lint (advisory — the SHELL-layer sibling of the two lints above) ──────────────
+# 🟥 WHY THIS IS HERE AND NOT DEFERRED. `scripts/portability_lint.sh` shipped in the immediately
+# preceding commit with its self-test wired and NO real-run caller, and `fh_4axis_gate.md:232` says
+# exactly what that is:
+#     "If you build a checker and defer its caller, you shipped prose. The gate below trims what
+#      you *attached*; it never licenses shipping something unreachable."
+# The standpoint review (2026-08-16, isolated agent reading the canon COLD before the diff) caught
+# it — and caught that the same commit CITED that section as its bundling justification while
+# violating it in the other half. Two other adversarial legs and a cross-family leg had all missed
+# this, because all three were handed the author's framing; the standpoint leg was handed the canon.
+# That is the axis earning its place, and this block is the repair.
+#
+# Placement is also not free choice: weekly_audit_2026-08-16 🟧-3 prescribed "pre-commit 에 패턴
+# denylist 한 장 … 새 러너가 아니라 degrade_direction_scan 옆 한 레인" — the runner already exists,
+# so this lane is the half that was missing from the prescription, not a second mechanism.
+#
+# STAGED BLOBS, not working-tree paths — same reason the two lints above use _stage_blob: measuring
+# the disk after `git add` reports clean while a different blob commits (optimistic fail-open).
+# ADVISORY by construction: FP-tolerant pre-screen, never blocks. Over-blocking here would train
+# `--no-verify`, which disarms the irreversible Destructive-Op gate living in the sibling hook.
+PL_LINT="$REPO_ROOT/scripts/portability_lint.sh"
+if [ -f "$PL_LINT" ]; then
+  _pl_targets=()
+  while IFS= read -r _pl_line; do
+    [ -n "$_pl_line" ] || continue
+    # 확장자 없는 셸 파일도 대상이다(.git-hooks/pre-commit·pre-push, bin/fh-*) — 이 레포에서
+    # BSD/GNU 결함이 가장 비싼 파일들이 바로 그 형태이고, 초판 스캔이 그래서 놓쳤다.
+    case "$_pl_line" in
+      *.sh) : ;;
+      templates/.git-hooks/*|bin/*) : ;;
+      *) continue ;;
+    esac
+    _b="$(_stage_blob "$_pl_line")" || continue
+    # 비-셸(bin/*.js 등)은 shebang 으로 걸러낸다. 확장자로 거르면 확장자 없는 훅이 다시 빠진다.
+    case "$_pl_line" in
+      *.sh) : ;;
+      *) head -1 "$_b" 2>/dev/null | grep -qE '^#!.*\b(ba)?sh' || { rm -f "$_b"; continue; } ;;
+    esac
+    _pl_targets+=("$_b"); _STAGE_TMPS+=("$_b"); _STAGE_MAP+=("$_b=$_pl_line")
+  done < <(printf '%s\n' "$STAGED")
+  if [ "${#_pl_targets[@]}" -gt 0 ]; then
+    echo "[Gate] shell file staged — portability lint (advisory)..."
+    _pl_out="$(bash "$PL_LINT" "${_pl_targets[@]}" 2>&1)"; _pl_rc=$?
+    printf '%s\n' "$(_unmap "$_pl_out")" | sed 's/^/  /'
+    # rc=10 은 이 스캐너 자신의 HARNESS-ERROR 다. PASS 도 FAIL 도 아니며, 삼키면 죽은 계기가
+    # 깨끗한 실행으로 렌더된다 — 이 커밋 전체가 고치고 있는 그 클래스다.
+    [ "$_pl_rc" = "10" ] && echo "  🟥 portability lint HARNESS-ERROR (rc=10) — instrument did not measure"
+    echo "  (advisory — does not block. 알고 쓰는 줄엔 \`# portability-noqa: <사유>\`.)"
+  fi
+fi
+
 # ── Novelty-claim ledger (advisory) ───────────────────────────────────────────
 # "Ask the world before asserting novelty" is an INTENT trigger — un-hookable, like the
 # repo-go-public surface. So this does not force the asking; it makes NOT having asked visible
