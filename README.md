@@ -198,7 +198,7 @@ this page: that table is *symptoms you might arrive with*, this is *what the hub
 
 | | Identity | What a person gets |
 |---|---|---|
-| **①** | **Multi-harness cluster** | One task rides several harnesses, and governance is computed *between* them |
+| **①** | **Harness cluster** | One task rides several harnesses, and governance is computed *between* them. Its load-bearing sub-mechanism, **cross-harness**: **call** a capability you do not have (rather than build it), and **absorb** the one you should have built |
 | **②** | **Project incubator** | A new harness comes out **walking where it was born**, not as an empty scaffold |
 | **③** | **Governance gate** | What must not ship is blocked **mechanically**, not by remembering to check |
 | **④** | **Frontier → org propagation** | What arrives from outside lands all the way *inside* the organization |

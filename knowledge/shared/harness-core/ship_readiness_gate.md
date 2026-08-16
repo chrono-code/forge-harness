@@ -167,7 +167,7 @@ where those numerals mean *identities*.
 > recorded here so they stay readable, **not** to make the numbering canonical. New writing uses names.
 
 **Why engines gate the advertised capabilities**: the harness's most-advertised surfaces — incubating a new
-project, orchestrating a multi-harness cluster — are simultaneously *long, autonomous, novel and shipping*.
+project, orchestrating the harness cluster — are simultaneously *long, autonomous, novel and shipping*.
 They therefore load all four engines at once, which is why a harness with a mature ship-gate and little
 else appears to fail *at* those surfaces while the cause is underneath them.
 
