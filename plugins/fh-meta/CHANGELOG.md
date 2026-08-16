@@ -10,6 +10,49 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [2.1.0] — 2026-08-17
+
+🟥 **BREAKING (gate)**: `crossfamily: declined` in an Axes 2-3 marker now requires grounds naming a
+record path that **resolves on disk**. Bare `declined`, and `declined` justified by author judgment,
+are **blocked at commit**.
+- **Remedy**: cite where the operator decision lives — e.g.
+  `crossfamily: declined — operator declined sidecars, per knowledge/shared/rules/operational_adaptation.md`
+- **Or use the value that describes what actually happened**: if a panel was reachable and you chose
+  not to recruit it, that is `DEGRADED_PANEL_UNUSED`, not `declined`.
+- **Why**: `declined` was the only value in the enum with no grounds requirement, so an author
+  judgment flowed into the nearest permissive token and passed clean. A cross-family review then
+  broke the first (vocabulary-grep) fix three ways — self-validating on the value's own token,
+  vacuous keyword passes, and over-blocking genuine declinations phrased in natural prose — so the
+  check asserts a **resolvable record** rather than words. It proves a cited record EXISTS, not that
+  it says what is claimed; that residual is the marker's own declared scope, stated in the code.
+
+**Added**
+- `standpoint:` gains **`tier1b`** (a STATIC read of a target repo — executed nothing) plus a
+  decide-in-order procedure, after blind floor-tier sims graded pure cold-reads as `tier2` for three
+  rounds, defeating three separate rewordings via the enum's own internal logic.
+- steel-quench Wave 1's sixth angle (**gate-locality**) gains the output-template row it never had —
+  a mandatory angle that was structurally unreportable. Gate-locality failing its own check.
+- `verify-bidirectional` category 5 — **prescriptive doctrine statement**, the operator-correction
+  shape that fell between its doubt-shaped triggers and its "simple correction, no review" exception.
+- Sister Asset Protocol gains an **active-adoption** condition — all four prior conditions were
+  passive discovery, so installing an external framework and running it against our own asset
+  matched none of them.
+- Resident doctrine: **Mechanization Boundary** (machinery at irreversible edges and channels;
+  judgment left to evolution) · **Local Execution First** (CI is a backstop, never the discovery
+  mechanism) · **Skeleton-not-Muscle** (a wiring change is done when the floor tier executes it) ·
+  **Expedition** track · **this package's versioning policy** (major reserved for built-anew /
+  identity-established / capability-class change — never for tightening an existing gate).
+
+**Fixed**
+- `fh-gate.sh` survives a missing or unreadable `package.json`; `selfcheck.sh` decides npm-surface
+  applicability at the call site.
+- `capability_registry_check.sh` M3 basename-token matching (a path containing "claude" was silently
+  rejected) + a stdin channel for calibration arms.
+- `subagent-tally-hook.json` root resolution is 3-tier, matching the convention the sibling
+  `SessionStart` hook already used.
+
+---
+
 ### [2.0.1] — 2026-08-16
 
 - **feat(cadence)**: `harness-doctor` 30일 캐던스가 산문 제안에서 SessionStart 훅으로 승격 —
