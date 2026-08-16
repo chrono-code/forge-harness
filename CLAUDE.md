@@ -183,6 +183,69 @@ you did not trace are all forms of not-running-it.
 change rather than to a peer harness — see `field_verdict_crossfamily_gate.md §7`
 «execution is the load-bearing half». Same principle, two surfaces.
 
+## Skeleton, Not Muscle — a wiring change is DONE when the floor tier executes it
+
+**Operator, 2026-08-16, verbatim**: *"배선에 대한 건 소넷이 실제로 돌아갈 수 있는지 봐야 잘 된
+거니까. **근육이 아니라 뼈대 기준으로 돌아야 하는 거야.**"* — and, on having had to ask for it:
+*"초기라서 내가 계속 이렇게 해봐라고 메뉴얼로 요청하고 있는데 **알아서 해야 할 거야.**"*
+
+**근육(muscle)** = a strong model's raw capability carrying a rule that is not actually wired.
+**뼈대(skeleton)** = the harness itself — the structure that makes the rule fire regardless of who
+is running. A rule that only works because the session was smart enough is not wired; it is being
+*carried*. It fails silently the moment a Sonnet session, a fresh install, or a compacted context
+picks it up — which is every install that is not the author's.
+
+**So the definition of done changes.** For any salience-dependent change (a rule, a trigger, an
+enum value, an onboarding path, a doctrine line), "done" is **not** «the text is correct and a
+reviewer agrees». It is: **a blind session at the floor tier, given a realistic situation and not
+told which rule is being tested, actually fires it.** This upgrades `fh_4axis_gate.md`'s target-tier
+sim gate from a near-mandatory step into the completion criterion itself.
+
+**And it is self-dispatched.** Do not wait to be asked to run it. The operator asking *"소넷이 실제로
+돌아갈지 확인은 하겠지?"* is the failure — the sim is part of authoring the change, like the
+known-pair is part of authoring an instrument.
+
+**Why «reads correctly» is not evidence — measured the day this was written.** A `tier1b` rung was
+added to the `standpoint:` enum precisely so a static review would stop being recorded as `tier2`.
+The text was correct; a reader would agree. Two independent blind Sonnet sims then graded a pure
+cold-read as **`tier2`, 0/2**, both quoting the *unfixed adjacent gloss* ("ran the target's own
+repo") as their justification. The rung existed and was bypassed by an ambiguity one line above it.
+**A static read of my own fix would have scored it PASS.** Only running it found the hole — the
+same asymmetry `field_verdict_crossfamily_gate.md §7` records for standpoint review, now measured on
+the doctrine layer itself.
+
+**Corollary — what a sim failure means.** It is a defect in the *wiring*, not in the floor model.
+The response is to make the rule fire (disambiguate, give it a mechanical discriminator, move it to
+where the actor reads it) — never to conclude the tier is too weak and move on. That conclusion is
+how a harness quietly becomes tier-gated, which `sonnet_floor_doctrine.md` calls a defect of the
+same severity class as a phantom reference.
+
+### Scope, and the target state it exists for (operator, 2026-08-16)
+
+**Scope — not FH-only**: *"FH뿐만이 아니라 **기계화 뼈대를 통해서 돌아가는 것들은 다** 이러한 과정을
+거쳐야 제대로 돌아가는지 아닌지 파악할 수 있을 거니까."* Anything whose behavior depends on a
+mechanized skeleton is in scope: field harnesses, propagated `templates/`, a mapped project's own
+gates, **and code contributed upstream to someone else's repo**. The question «does this actually
+fire for a reader who is not me, at the floor tier?» does not become optional because the artifact
+lives outside this repo.
+
+**Target state**: *"나머지는 정말 **저자(인간 저자)의 취향만** PR에서 첨삭할 수 있도록 하는 게
+목표야."* A PR should arrive with every **mechanical** question already settled — does it fire ·
+does it degrade in the safe direction · does the floor tier execute it · is the claim reproducible —
+so that the only thing left for the human reviewer is **taste**: naming, framing, whether this is
+the change they want. Review time spent re-deriving whether the thing works is review time
+*taken from* the judgment only a human can supply.
+
+**Existence proof, ours, this session**: *"우리가 최근에 클로드온데스크에 기여한 것처럼."*
+`rullerzhou-afk/clawd-on-desk` PR #888 was merged **exactly as submitted, with no changes
+requested** — the owner's words: *"focused, technically sound, and well-tested … we merged it
+exactly as submitted, with no changes needed."* That is the shape: the mechanical case was closed
+before submission (a fixture whose potency was reasoned about in-comment, a lane that re-executes
+the real consumer path rather than asserting a flag), so nothing was left to negotiate but whether
+they wanted it. **This is the bar to hold ourselves to on every outbound PR**, and it is why the
+survivor-lane technique from that same PR is worth absorbing rather than admiring
+(`tracks/_meta/fh_signal_2026-08-16_clawd-survivor-lane-air.md`).
+
 ## Instrument Calibration — before you trust a number, prove the instrument works *here*
 
 An instrument (a scan, a grep, a checker, a diagnostic row, a metric) is a claim about the world only
@@ -450,7 +513,11 @@ cross-harness-boundary** change — scoped by *effect* (alters another harness's
 outcome, or interaction contract), not merely by touching a synced file path — the marker
 additionally carries `standpoint:` — a closed enum (`tier1` content-only · **`tier1b(<harness>)`
 STATIC read of the target's own files, executed nothing** · `tier2(<harness>)`
-peer-simulated, **ran** the target's own repo · `tier2b(<harness>)` same operator, target's real
+peer-simulated, **EXECUTED CODE in** the target's own repo — 🟥 the discriminator is mechanical:
+*name the command you ran and the output you saw*; cannot name one → `tier1b`, always. Reading the
+target's real files, however cold, is `tier1b` (measured 2026-08-16: two blind Sonnet sims both
+graded a pure cold-read `tier2`, both citing an earlier gloss that said merely "ran the target's
+own repo") · `tier2b(<harness>)` same operator, target's real
 runtime (local wiring visible, not independent) · `tier3(<harness>)` a *different* operator of the
 target harness ran it · `not-applicable` · degrade triad `DEGRADED_NO_TARGET_ACCESS` could-not /
 `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same shape as `crossfamily:`'s triad,

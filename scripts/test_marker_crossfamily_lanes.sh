@@ -55,8 +55,38 @@ mk 'crossfamily: panel(codex,gemini) — R1..R3, 9 findings, 8 fixed 1 refuted, 
 check k1 PASS "panel() with family list + verdict"
 mk 'crossfamily: panel(codex, gemini) — spaced list, the S-grade over-block\n' k1b
 check k1b PASS "panel(codex, gemini) — SPACE after comma (was truncated to 'panel(codex,')"
+# ⚠️ CONTRACT CHANGE 2026-08-16 — `declined` now requires grounds. It used to pass BARE, which is
+# what the old k3 asserted. That was the enum's soft spot: `declined` means the OPERATOR declined
+# sidecars (UAP), a chosen floor — a factual, attributable claim — and it was the ONLY value with no
+# grounds requirement, so an author who had merely judged decorrelation unnecessary reached for the
+# nearest permissive token and passed clean. Measured in this repo the same day, by a session that
+# had corrected a different marker's crossfamily value hours earlier and had the correct semantics
+# printed to it in the hook's own error text. A closed enum stops prose from collapsing distinct
+# states; it does not stop a WRONG token from being a VALID one — that is what these three lanes are.
+# The old bare-declined expectation is not deleted silently; it is inverted here with its reason.
 mk 'crossfamily: declined\n' k3
-check k3 PASS "declined (operator chose this floor — not a degrade)"
+check k3 BLOCK "declined BARE — no grounds (was PASS until 2026-08-16; an operator decision has a record)"
+mk 'crossfamily: declined — operator declined sidecars, chosen floor, see CLAUDE.local.md\n' k3b
+check k3b PASS "declined + a record path that RESOLVES (the documented form)"
+# The real defect, verbatim-shaped: a genuine authorial judgment, plausibly worded, wrong token.
+# This is the known-POSITIVE that is not synthetic — it is the sentence that actually shipped.
+mk 'crossfamily: declined — this is a small, mechanically-verifiable hook-wiring fix, not a verdict-enum change; the standpoint axis is the decorrelation applied here\n' k3c
+check k3c BLOCK "declined + AUTHOR-judgment grounds — a choice with a panel reachable is DEGRADED_PANEL_UNUSED"
+# ── the three a cross-family review (codex/gpt-5.6-terra) found against the FIRST version of this
+# lane, which grepped for vocabulary (operator|uap|consent|…). All three reproduced on the spot,
+# which is why the check is now a RESOLVABLE-RECORD test rather than a word list.
+mk 'crossfamily: declined — declined because I judged it unnecessary myself\n' k3d
+check k3d BLOCK "SELF-VALIDATING: echoing the value satisfied the old word list ('declin')"
+mk 'crossfamily: declined — operator documentation says authors may choose freely\n' k3e
+check k3e BLOCK "VACUOUS: carries 'operator' but describes no declination at all"
+mk 'crossfamily: declined — operator declined sidecars, see tracks/_meta/nonexistent_record.md\n' k3f
+check k3f BLOCK "FABRICATED PATH: cites a record that does not exist on disk"
+# ⚠️ INSTRUMENT NOTE, recorded because it nearly produced a false verdict on this very lane:
+# the first attempt to known-pair these ran the extracted function under **zsh** (this operator's
+# interactive shell) while the hook runs under **bash**. zsh does not word-split an unquoted
+# parameter expansion, so the `for _tok in $reason` scan saw ONE token and the legitimate
+# path-citing case scored a false BLOCK — the code was correct and the harness was wrong.
+# Re-run under bash: 7/7. If you hand-test this function, invoke it with `bash`, not the login shell.
 mk 'crossfamily: DEGRADED_SINGLE_FAMILY — probed codex/agy/4090, 0 capable reachable\n' k4
 check k4 PASS "DEGRADED_SINGLE_FAMILY + substantive reason"
 mk 'crossfamily: UNKNOWN — consent unset, panel not probed this round\n' k5

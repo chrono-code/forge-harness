@@ -60,8 +60,21 @@ Added Wave 1 attack angles: N items
 | Bus factor | S/A/B | [single-person dependency area] | ○/△/× |
 | Platform obsolescence | S/A/B | [vulnerability point] | ○/△/× |
 | Self-referential structure | S/A/B | [closed circuit detection result] | ○/△/× |
+| Gate-locality | S/A/B | [any gate defined only where the enforcing actor never reads it] | ○/△/× |
 
 S-grade blockers: N / A-grade: N / B-grade: N
+
+> 🟥 **The 6th row was missing until 2026-08-16, and its absence was itself a gate-locality defect.**
+> `SKILL.md` Wave 1 has defined **six** angles since Gate-locality was added; this template shipped
+> **five rows**, and `quench-challenger.md` still said "5 angles" and omitted it from the
+> enumeration. So a mandatory angle had **no slot to be reported in** — an agent filling this table
+> correctly would report the other five and structurally never surface the sixth. That is the exact
+> shape Gate-locality itself is the check for: *a requirement placed where the actor who must
+> satisfy it does not read it.* Found by a sister-asset audit (an external adversarial framework's
+> **typed** attack registry vs. this repo's seven overlapping prose lists) — the fragmentation is
+> what let the three copies drift apart silently. If you add a Wave 1 angle, it lands in **three**
+> places or it does not land: `SKILL.md`'s table, this template, and `quench-challenger.md`'s
+> role-separation paragraph.
 
 Optional numeric score (0.0–1.0):
   overall_score: {score}

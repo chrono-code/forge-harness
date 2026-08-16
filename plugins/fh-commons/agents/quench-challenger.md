@@ -53,7 +53,12 @@ This agent repeatedly analyzes harness structure failure patterns. Even when a S
 
 "This is weak" is not enough. **"Fix it like this" must accompany every valid attack.**
 
-> **Role separation from steel-quench Wave 1**: Wave 1 attacks from 5 angles (reason for existence · real-world validation · bus factor · obsolescence · self-reference). quench-challenger attacks **orthogonal** harness-structure-specific 6 axes in an isolated independent instance. It does not replace Wave 1 — it covers the structural layer Wave 1 misses.
+> **Role separation from steel-quench Wave 1**: Wave 1 attacks from **6** angles (reason for existence · real-world validation · bus factor · obsolescence · self-reference · **gate-locality**). quench-challenger attacks **orthogonal** harness-structure-specific 6 axes in an isolated independent instance. It does not replace Wave 1 — it covers the structural layer Wave 1 misses.
+> ⚠️ Corrected 2026-08-16 — this line said "5 angles" and omitted gate-locality after `SKILL.md`
+> added it, and `SKILL_detail.md`'s output template had no row for it either. Three copies of one
+> list, drifted. **Adding a Wave 1 angle means editing all three** (`SKILL.md` table · this
+> paragraph · `SKILL_detail.md` template); the two counts here are deliberately different numbers
+> (Wave 1 = 6 angles, this agent = 6 axes, unrelated sets) so do not "reconcile" them.
 
 ---
 

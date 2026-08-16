@@ -233,9 +233,19 @@ tier1b(<target-harness>)     STATIC standpoint read — the reviewer read the TA
                               nearer value existed. A missing rung does not stay empty — it gets
                               filled by the next one up. Real but weak: see «execution is the
                               load-bearing half» below before crediting it.
-tier2(<target-harness>)      peer-simulated — the reviewer instantiated/ran the TARGET's own repo
-                              (a local clone, real content) and executed the change from that
-                              standpoint. Closes shared-body-path defects; a BARE clone cannot see
+tier2(<target-harness>)      peer-simulated — the reviewer EXECUTED CODE in the TARGET's own repo
+                              (a local clone, real content) and observed the result.
+                              🟥 DISCRIMINATOR — «reading the target's real files is NOT this rung».
+                              Measured 2026-08-16: two independent blind Sonnet sims BOTH graded a
+                              pure cold-read as tier2, and BOTH quoted this line's earlier wording
+                              ("instantiated/ran the target's own repo") as their justification —
+                              «ran» was read as «operated within / engaged with», which a read
+                              satisfies. 0/2 on the fix that added tier1b, because the new rung was
+                              added without disambiguating the rung above it.
+                              THE TEST, and it is mechanical: **name the command you executed and
+                              the output you observed.** Cannot name one → `tier1b`, always. An
+                              agent that read files, however cold and however many, executed
+                              nothing. Closes shared-body-path defects; a BARE clone cannot see
                               the target's gitignored local wiring (settings, consent bindings,
                               node-local state) — that gap is inherent to a clone, not a defect in
                               a given run. Named exception, not a loophole: if the reviewer's own
@@ -290,6 +300,31 @@ recorded because it is the first time the two arms were run *separately on the s
 their yields could be attributed. ⚠️ **Do not read the table as "static review is worthless"** — it
 found a real defect that shipped a fix. Read it as: *static is the half that has substitutes;
 execution is the half that does not.*
+
+**🟥 What dynamic standpoint review DOES and DOES NOT subsume (operator + governor, agreed
+2026-08-16 after both arms were measured).** Operator's proposal: *"FH가 기여하는 다른 레포들도 다
+마찬가지일 테니, 그쪽 입장에서의 동적 리뷰는 소넷을 상주시켜 돌려보는 거지. 이건 굳이 짓지 않아도
+동적 입장리뷰만 잘 시킨다면 알아서 커버될 거라고 생각해."* Agreed, with one boundary — and the
+agreement is evidenced, not deferential:
+
+- **SUBSUMES: building per-target instruments.** Do not write a new scanner for each contributed
+  repo, language, or defect class. Execution is **stack-agnostic**; an instrument is not. Measured
+  the same day: `degrade_direction_scan.sh` is bound to shell/python *and* to verdict vocabulary —
+  a faithful Python port of a real upstream defect scores CLEAN, because the fail-open value was
+  ordinary *data*, not a verdict token. An instrument carries a scope boundary into every repo it
+  visits; running the target's own suite does not.
+- **DOES NOT SUBSUME: adversarial reading.** **Execution is a detector, not a generator.** It
+  answers *does this break · does it fire · does the environment differ*; it cannot answer *is
+  there a defect class nobody has instrumented yet*. The upstream `clawd-on-desk` PR #888 defect
+  was **not** found by running that repo's tests — it was found by reading and conceiving the
+  unreadable-file case, after which a test was written. And where the target ships no runnable
+  suite, execution has nothing to run at all.
+
+**The measured split, same delta, same day**: static read → **1** finding · execution → **2** more.
+Neither arm was zero, which is the whole result. So both run: reading generates the hypothesis,
+execution confirms or refutes it, **and the hypothesis that survives becomes a test left behind in
+the target** — which is exactly what our own upstream contribution did (the survivor-lane pattern,
+`tracks/_meta/fh_signal_2026-08-16_clawd-survivor-lane-air.md`).
 
 **Consequence for the marker**: a `tier2`/`tier2b`/`tier3` claim asserts that something was RUN. If
 the review only read, the honest value is `tier1b` — and since `tier1b` is explicitly the weak rung,
