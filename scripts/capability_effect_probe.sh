@@ -135,7 +135,14 @@ probe_one() {  # $1=capfile → rc
   fi
 
   local sandbox outside wt_parent=""
-  if [ -n "$req_cwd" ] && [ -d "$req_cwd/.git" ]; then
+  # ★`-d .git` 이 아니라 **git 자신에게 묻는다**. 워크트리·submodule 에서 `.git` 은 **파일**이라
+  #   `-d` 가 거짓이 되고, 그러면 이 프로브만 빈 mktemp 로 떨어져 같은 선언이
+  #   등록 검사기에선 VERIFIED · 프로브에선 UNVERIFIABLE 로 갈린다(cross-family 지목, 손 재현:
+  #   일반 레포 rc=0 / 워크트리 rc=3, 동일 capfile). 검사기는 이미 `rev-parse` 를 쓴다 —
+  #   두 계기가 다른 규칙을 들면 그게 이 레포가 이름 붙인 divergent-normalizer 다.
+  local _is_repo=""
+  [ -n "$req_cwd" ] && _is_repo="$(git -C "$req_cwd" rev-parse --show-toplevel 2>/dev/null)"
+  if [ -n "$_is_repo" ]; then
     # 🟥 **`git worktree` 를 쓰지 않는다 — 워크트리는 정의상 실물 레포의 `.git` 을 공유한다.**
     # 2026-08-16 보안 패스가 지목하고 거버너가 손으로 재현했다: `writes: read-only` 를 선언한
     # 진입점이 워크트리 안에서 `git config --local core.pager "sh -c <cmd>"` 를 심으면
@@ -195,7 +202,11 @@ probe_one() {  # $1=capfile → rc
     #    `.git` 전체를 넣지 않는 이유: `git status` 류가 `.git/index` 를 정당하게 갱신하므로
     #    전체를 재면 **읽기 전용 capability 가 거짓 VIOLATION** 을 받는다. 그래서 «나중에
     #    명령을 실행시킬 수 있는» 표면만 고른다 — config(core.pager·alias) · hooks · refs.
-    GIT_META_WATCH="$wt/.git/config $wt/.git/hooks $wt/.git/packed-refs $wt/.git/refs"
+    #   ★`info/attributes` 와 `modules/` 도 본다(cross-family 지목). 전자는 `filter`/`clean`/
+    #     `smudge` 속성으로 **체크아웃·add 시 임의 명령을 실행**시킬 수 있고, 후자는 submodule
+    #     의 실제 gitdir 라 그 안의 config·hooks 가 같은 실행 표면이다. config·hooks·refs 만
+    #     보면 그 둘로 새는 경로가 감시 밖에 남는다.
+    GIT_META_WATCH="$wt/.git/config $wt/.git/hooks $wt/.git/packed-refs $wt/.git/refs $wt/.git/info/attributes $wt/.git/modules"
   else
     sandbox=$(mktemp -d) || return "$RC_HARNESS"
     _PROBE_SANDBOX="$sandbox"
@@ -456,6 +467,56 @@ EOF
     pass=$((pass+1)); echo "✅ L10 소스의 alternates 가 샌드박스로 상속되지 않는다"
   else
     fails=$((fails+1)); echo "❌ L10 rc=$rc (0 기대) — alternates 가 상속돼 진입점이 썼다"
+  fi
+
+  # ── L11: 워크트리에서도 같은 판정이 나오나 (`.git` 이 **파일**인 경우) ────────
+  #   cross-family 지목 + 손 재현: `-d .git` 판정이면 워크트리가 빈 mktemp 로 떨어져
+  #   같은 capfile 이 일반 레포 rc=0 / 워크트리 rc=3 으로 갈렸다. 등록 검사기는 이미
+  #   `rev-parse` 를 쓰므로 두 계기가 어긋난 상태였다.
+  local _wt="$d/wtsrc"
+  mkdir -p "$_wt"
+  ( cd "$_wt" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo hello > f.txt && git add -A && git commit -qm init \
+      && git worktree add -q "$d/wtree" HEAD ) >/dev/null 2>&1
+  if [ -f "$d/wtree/.git" ]; then   # `.git` 이 파일이어야 이 레인이 의미가 있다
+    for _r in "$_wt" "$d/wtree"; do
+      mkdir -p "$_r/.claude/capabilities"
+      cat > "$_r/.claude/capabilities/c.cap" <<EOF
+id: t:needsfile
+entry: bash -c 'cat f.txt >/dev/null'
+requires_cwd: SELF
+writes: read-only
+EOF
+    done
+    probe_one "$_wt/.claude/capabilities/c.cap" >/dev/null 2>&1; local _plain=$?
+    probe_one "$d/wtree/.claude/capabilities/c.cap" >/dev/null 2>&1; local _work=$?
+    if [ "$_plain" = "0" ] && [ "$_work" = "0" ]; then
+      pass=$((pass+1)); echo "✅ L11 워크트리(.git 파일)도 일반 레포와 같은 판정"
+    else
+      fails=$((fails+1)); echo "❌ L11 일반=$_plain 워크트리=$_work (둘 다 0 기대)"
+    fi
+    git -C "$_wt" worktree remove --force "$d/wtree" >/dev/null 2>&1 || true  # noqa: destructive-op
+  else
+    fails=$((fails+1)); echo "❌ L11 픽스처 실패 — 워크트리의 .git 이 파일이 아니다(레인 무의미)"
+  fi
+
+  # ── L12: `info/attributes` 쓰기가 관측되나 (filter/clean/smudge = 코드실행) ──
+  local _at="$d/atsrc"
+  mkdir -p "$_at"
+  ( cd "$_at" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo x > f.txt && git add -A && git commit -qm init ) >/dev/null 2>&1
+  cat > "$d/attr.cap" <<EOF
+id: t:attrs
+entry: bash -c 'mkdir -p .git/info && echo "* filter=pwn" >> .git/info/attributes'
+requires_cwd: $_at
+writes: read-only
+EOF
+  probe_one "$d/attr.cap" >/dev/null 2>&1; rc=$?
+  local _leaked; _leaked=$(cat "$_at/.git/info/attributes" 2>/dev/null)
+  if [ "$rc" = "1" ] && [ -z "$_leaked" ]; then
+    pass=$((pass+1)); echo "✅ L12 info/attributes 쓰기 탐지(VIOLATION) + 실물 무변경"
+  else
+    fails=$((fails+1)); echo "❌ L12 rc=$rc (1 기대) · 실물 attributes=[$_leaked]"
   fi
 
   rm -rf "$d"

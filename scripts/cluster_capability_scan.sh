@@ -79,7 +79,15 @@ PROJECTS_HOME="${FH_PROJECTS_HOME:-$HOME/projects}"
 _die() { printf '❌ %s\n' "$1" >&2; exit "$RC_HARNESS"; }
 
 _key() {  # $1=capfile $2=key → 첫 값 (없으면 빈 문자열)
-  sed -n "s/^[[:space:]]*$2:[[:space:]]*//p" "$1" 2>/dev/null | head -1 | sed 's/[[:space:]]*$//'
+  # ★따옴표를 벗긴다. 초판은 그대로 뒀고, 그래서 `residency: "operator-private"` 가
+  #   가드의 `case` 리터럴과 안 맞아 **가드를 통째로 우회**했다(cross-family 지목, 손 재현).
+  #   선언 값은 데이터이고 인용은 표기일 뿐이다 — 표기 차이가 판정을 바꾸면 안 된다.
+  # ★`head -1`(first-wins) 이 아니라 `tail -1`(last-wins) 이다. `capability_registry_check.sh`
+  #   의 파서가 last-wins 이고(같은 키가 두 번 나오면 나중 값이 이긴다), 초판은 first-wins 라
+  #   **같은 cap 의 id 가 검사와 추천에서 달라질 수 있었다**(cross-family 지목).
+  #   어느 쪽이 옳은지보다 **두 계기가 같아야 한다**는 게 요점이다 — 검사기 쪽에 맞춘다.
+  sed -n "s/^[[:space:]]*$2:[[:space:]]*//p" "$1" 2>/dev/null | tail -1 \
+    | sed -e 's/[[:space:]]*$//' -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
 }
 
 # 매핑된 하네스 열거. 출력: "<name>\t<root>" 줄 목록.
@@ -290,8 +298,12 @@ cmd_recommend() {
     local f
     for f in "$dir"/*.cap; do
       [ -f "$f" ] || continue
-      local id; id="$(_key "$f" id)"
-      [ -n "$id" ] || { partial=1; continue; }
+      # ★`discover` 는 «id 또는 entry 누락» 을 MALFORMED 로 보는데 초판의 recommend 는
+      #   **id 만** 검사했다. 그러면 같은 cap 이 한쪽에선 MALFORMED, 다른 쪽에선 후보로 나온다
+      #   — 두 경로가 다른 스키마를 든 divergent-normalizer 다(cross-family 지목).
+      #   판정 기준을 discover 와 같게 맞춘다.
+      local id entry_v; id="$(_key "$f" id)"; entry_v="$(_key "$f" entry)"
+      [ -n "$id" ] && [ -n "$entry_v" ] || { partial=1; continue; }
       scanned=$((scanned+1))
       local hay score=0 t
       hay="$(printf '%s %s %s' "$id" "$(_key "$f" summary)" "$(_key "$f" tags)" | tr '[:upper:]' '[:lower:]')"
@@ -299,9 +311,14 @@ cmd_recommend() {
         case "$hay" in *"$(printf '%s' "$t" | tr '[:upper:]' '[:lower:]')"*) score=$((score+1)) ;; esac
       done
       [ "$score" -gt 0 ] || continue
-      printf '%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$score" "$name" "$id" \
-        "$(_key "$f" residency)" "$(_key "$f" approval)" "$(_key "$f" reversibility)" \
-        "$(_key "$f" writes)" "$f" >> "$hits"
+      # ★빈 값을 `-` 로 채운다. 초판은 빈 필드를 그대로 뒀고 `read` 가 연속 탭을 하나로
+      #   압축해서 **뒤 필드가 앞으로 밀렸다** — 그 결과 capfile 절대경로가 «제약» 칸에
+      #   찍혔다(손 재현). residency 가드가 있어도 경로가 다른 칸으로 새면 소용이 없다.
+      # ★그리고 **경로 자체를 출력 레코드에 안 싣는다.** 추천은 id 로 충분하고,
+      #   경로는 어느 칸에 있든 조직 식별자가 될 수 있다. 필요하면 discover 로 본다.
+      _f() { local v; v="$(_key "$f" "$1")"; printf '%s' "${v:--}"; }
+      printf '%d\t%s\t%s\t%s\t%s\t%s\t%s\n' "$score" "$name" "$id" \
+        "$(_f residency)" "$(_f approval)" "$(_f reversibility)" "$(_f writes)" >> "$hits"
     done
   done <<EOF
 $rows
@@ -319,7 +336,7 @@ EOF
   else
     printf '%-5s %-14s %-34s %-16s %s\n' "SCORE" "HARNESS" "ID" "RESIDENCY" "제약(approval/rev/writes)"
     # 점수 내림차순. `sort -rn` 은 첫 필드 기준.
-    sort -rn "$hits" | while IFS=$'\t' read -r score name id residency approval rev writes path; do
+    sort -rn "$hits" | while IFS=$'\t' read -r score name id residency approval rev writes; do
       # 🟥 residency 가드 — company/operator-private 는 **id 와 점수만** 내보낸다.
       #    경로·스크립트명은 조직 식별자가 될 수 있고, 이 출력은 붙여넣기 되는 표면이다.
       case "$residency" in
@@ -482,6 +499,40 @@ EOF
     f=$((f+1)); echo "  ❌ L13b 충돌이 없는데도 경고가 나온다(항상 짖는다)"
   else
     p=$((p+1)); echo "  ✅ L13b 충돌이 없으면 조용하다 (컨트롤)"
+  fi
+
+  # ── L14: discover 와 recommend 가 **같은 스키마**를 든다 ────────────────────
+  #   entry 없는 cap 은 discover 가 MALFORMED 로 본다. recommend 도 후보로 내면 안 된다.
+  mkdir -p "$T/mal/$CAP_SUBDIR" "$T/trmal/mal"
+  cat > "$T/mal/$CAP_SUBDIR/m.cap" <<'EOF'
+id: broken:noentry
+summary: malformed probe
+tags: leak
+residency: public
+EOF
+  out="$(FH_PROJECTS_HOME="$T" FH_TRACKS_ROOT="$T/trmal" bash "$SELF" recommend leak 2>&1)"; rc=$?
+  if printf '%s' "$out" | grep -q 'broken:noentry'; then
+    f=$((f+1)); echo "  ❌ L14 entry 없는 cap 을 추천했다 (discover 는 MALFORMED 로 본다)"
+  else
+    p=$((p+1)); echo "  ✅ L14 entry 없는 cap 은 추천 안 한다 (discover 와 일치)"
+  fi
+
+  # ── L15: 중복 키 해석이 등록 검사기와 같은가 (last-wins) ──────────────────
+  #   초판은 first-wins 라 **같은 cap 의 id 가 검사와 추천에서 달라질 수 있었다.**
+  mkdir -p "$T/dup2/$CAP_SUBDIR" "$T/trdup2/dup2"
+  cat > "$T/dup2/$CAP_SUBDIR/d.cap" <<'EOF'
+id: first:wrong
+id: second:right
+entry: /bin/true
+summary: duplicate key probe
+tags: leak
+residency: public
+EOF
+  out="$(FH_PROJECTS_HOME="$T" FH_TRACKS_ROOT="$T/trdup2" bash "$SELF" recommend leak 2>&1)"; rc=$?
+  if printf '%s' "$out" | grep -q 'second:right' && ! printf '%s' "$out" | grep -q 'first:wrong'; then
+    p=$((p+1)); echo "  ✅ L15 중복 키는 last-wins (등록 검사기와 동일)"
+  else
+    f=$((f+1)); echo "  ❌ L15 중복 키 해석이 검사기와 어긋난다"
   fi
 
   # ── L13c 🟥 **실물 경로가 살아 있는가** — self-test 가 못 보던 사각 ───────────
