@@ -71,6 +71,9 @@ _parse() {
   CAP_verdict_enum=""; CAP_verdict_stdout_key=""; CAP_judge=""; CAP_writes=""
   CAP_cal_pos_args=""; CAP_cal_pos_expect=""; CAP_cal_neg_args=""; CAP_cal_neg_expect=""
   UNKNOWN_KEYS=""; CAP_requires_cwd_was_self=0
+  # 「선언했는데 값이 비었다」와 「선언 자체가 없다」는 다른 사실이다 — 관측 범위 블록이
+  # 둘을 구분해 적으려면 파서가 그 구분을 보존해야 한다(빈 문자열 하나로는 못 나눈다).
+  CAP_cal_pos_args_seen=0; CAP_cal_neg_args_seen=0
   local line key val
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in ''|'#'*) continue ;; esac
@@ -87,9 +90,9 @@ _parse() {
       requires_cwd) CAP_requires_cwd="$val" ;; verdict_channel) CAP_verdict_channel="$val" ;;
       verdict_enum) CAP_verdict_enum="$val" ;; verdict_stdout_key) CAP_verdict_stdout_key="$val" ;;
       judge) CAP_judge="$val" ;;               writes) CAP_writes="$val" ;;
-      calibration_positive_args) CAP_cal_pos_args="$val" ;;
+      calibration_positive_args) CAP_cal_pos_args="$val"; CAP_cal_pos_args_seen=1 ;;
       calibration_positive_expect) CAP_cal_pos_expect="$val" ;;
-      calibration_negative_args) CAP_cal_neg_args="$val" ;;
+      calibration_negative_args) CAP_cal_neg_args="$val"; CAP_cal_neg_args_seen=1 ;;
       calibration_negative_expect) CAP_cal_neg_expect="$val" ;;
     esac
   done < "$1"
@@ -124,11 +127,74 @@ _run_arm() {   # $1=extra args → ARM_RC / ARM_NAME. 파이프로 읽지 않는
   ARM_NAME="$(_enum_name_of "$ARM_RC" "$CAP_verdict_enum")"
 }
 
+# ── 관측 범위 블록 (2026-08-16) — «판정» 이 아니라 «채널» ────────────────────────
+#
+# 🟥 이 블록은 **exit code 에 아무 영향을 주지 않는다.** `_fail` 을 부르지 않고, 어떤 축도
+#    새로 판정하지 않는다. 순수 정보 추가다 — 이 레포의 규율("기계는 비가역 경계와 채널에만,
+#    판단은 안 짓는다")대로, 여기서 하는 일은 **무엇을 관측했고 무엇을 안 했는지 적는 것**뿐이다.
+#
+# 왜 필요한가 — 2026-08-16 실측 두 건이 같은 얼굴을 하고 있었다:
+#   ① **M4 는 enum↔구현 일치를 구조적으로 안 본다.** 같은 stale 선언이 캘리브레이션 쌍에
+#      따라 판정이 갈린다 — 쌍이 우연히 «선언 밖 exit» 을 밟으면 REJECTED, 구 enum 안에서만
+#      갈리면 M1–M6 전부 통과. 즉 M4 는 «자기가 부른 두 번의 실행에서 본 것» 만 판정한다.
+#   ② **M6 도 선언된 arm 만 관측한다.** `pmh-dev:merge-noop-check` 는 분기 입력에서 git 객체를
+#      쓰지만(격리 클론 실측: `.git/objects` 2145 → 2146), 선언된 두 arm 이 그 경로를 안 지나므로
+#      `writes: read-only` 로 **거짓 선언해도 통과한다**(실측 확인).
+#
+# 둘 다 «판정이 틀렸다» 가 아니라 **«판정의 관측 범위가 출력에 안 적혀 있다»** 이다. 그래서
+# 고치는 방향은 새 판정 축이 아니라 이 블록이다: 읽는 사람이 초록을 «선언 전체가 참이다» 로
+# 읽지 않게, 이 실행이 실제로 밟은 곳을 이름으로 적는다.
+# ★ 「없음」도 **반드시 찍는다.** 침묵은 «관측되지 않은 값이 없다» 와 «계산하지 않았다» 를
+#    구분하지 못한다 — 미측정을 0 으로 렌더하지 않는다([[feedback_not_found_is_not_zero_family]]).
+_observation_scope() {
+  printf '  ── 관측 범위 (이 판정이 «무엇을 안 봤는지») ──\n'
+  printf '     M4/M6 는 **선언된 캘리브레이션 arm 의 실행에서 본 것만** 판정한다.\n'
+
+  local _pa _na
+  if [ "${CAP_cal_pos_args_seen:-0}" = "1" ]; then
+    [ -n "$CAP_cal_pos_args" ] && _pa="$CAP_cal_pos_args" || _pa='<빈 값 — 인자 없이 실행>'
+  else _pa='<미선언>'; fi
+  if [ "${CAP_cal_neg_args_seen:-0}" = "1" ]; then
+    [ -n "$CAP_cal_neg_args" ] && _na="$CAP_cal_neg_args" || _na='<빈 값 — 인자 없이 실행>'
+  else _na='<미선언>'; fi
+  printf '     실행된 arm: 양성 «%s» / 음성 «%s»\n' "$_pa" "$_na"
+
+  if [ "${OBS_STATE:-none}" = "run" ]; then
+    printf '     관측된 exit: 양성 rc=%s(%s)%s / 음성 rc=%s(%s)\n' \
+      "$OBS_POS_RC" "${OBS_POS_NAME:-<enum 밖>}" \
+      "$( [ "$OBS_POS_RC" = "$OBS_POS_RC2" ] && printf ' ×2회 동일' || printf ' ×2회째 rc=%s(갈림)' "$OBS_POS_RC2" )" \
+      "$OBS_NEG_RC" "${OBS_NEG_NAME:-<enum 밖>}"
+  else
+    printf '     관측된 exit: 없음 — arm 을 실행하지 않았다(%s)\n' "${OBS_WHY:-사유 미기록}"
+  fi
+
+  # 미관측 enum = 선언 enum − 이 실행에서 실제로 나온 rc. **계산해서** 적는다.
+  if [ -z "$CAP_verdict_enum" ]; then
+    printf '     ⚠️ 선언된 enum 이 없어 「관측되지 않은 값」을 계산할 수 없다(미측정이지 0 이 아니다 — M2 가 이미 실패로 기록했다)\n'
+  else
+    local _pair _code _unobs="" _seenrc=""
+    [ "${OBS_STATE:-none}" = "run" ] && _seenrc=" $OBS_POS_RC $OBS_POS_RC2 $OBS_NEG_RC "
+    for _pair in $CAP_verdict_enum; do
+      _code="${_pair%%=*}"
+      case "$_seenrc" in *" $_code "*) ;; *) _unobs="$_unobs $_pair" ;; esac
+    done
+    if [ -n "$_unobs" ]; then
+      printf '     ⚠️ 선언된 enum 중 이 실행에서 **관측되지 않은** 값:%s\n' "$_unobs"
+    else
+      printf '     · 선언된 enum 중 이 실행에서 관측되지 않은 값: 없음 (선언된 전 값이 이 실행에서 관측됐다)\n'
+    fi
+  fi
+  printf '     ⚠️ 이 실행이 지나지 않은 코드 경로의 부작용(M6 의 `writes:` 축 포함)은 관측 대상이 아니다.\n'
+}
+
 _check_one() {
   local f="$1"
   [ -r "$f" ] || _die "capfile 도달 불가: $f"
   _parse "$f"
   FILE_FAILED=0
+  # 관측 원장 — 「안 돌았다」가 디폴트다. 실행한 arm 만 이 값들을 채운다.
+  OBS_STATE=none; OBS_WHY=""; OBS_POS_RC=""; OBS_POS_RC2=""; OBS_NEG_RC=""
+  OBS_POS_NAME=""; OBS_NEG_NAME=""
   printf '\n── %s (%s)\n' "${CAP_id:-<id 미선언>}" "$f"
 
   [ -n "$UNKNOWN_KEYS" ] && _fail "SCHEMA" "닫힌 키 목록 밖:$UNKNOWN_KEYS (오타 축 무음드롭 방지 — 무시하지 않는다)"
@@ -244,16 +310,22 @@ _check_one() {
   # ── M4 캘리브레이션 쌍 — 선언 + **실행** ──────────────────────────────────
   if [ -z "$CAP_cal_pos_expect" ] || [ -z "$CAP_cal_neg_expect" ]; then
     _fail "M4" "캘리브레이션 쌍 미선언(양성·음성 expect 둘 다 필요) — 답을 아는 케이스를 못 가르는 계기는 재는 게 아니다"
+    OBS_WHY="캘리브레이션 쌍 미선언"
   elif [ "$FILE_FAILED" -eq 1 ] && [ -z "${CRC_FORCE_M4:-}" ]; then
     printf '  ⏭  M4 — 앞선 축이 실패해 실행 생략(SKIPPED, PASS 아님)\n'
+    OBS_WHY="앞선 축 실패로 M4 생략"
   elif ! _validate_arm_args "$CAP_cal_pos_args" || ! _validate_arm_args "$CAP_cal_neg_args"; then
     printf '  ⏭  M4 — args 검문 실패로 arm 을 실행하지 않았다(SKIPPED, PASS 아님)\n'
+    OBS_WHY="args 검문 실패"
   else
-    local pos_name neg_name pos_rc neg_rc pos_name2
+    local pos_name neg_name pos_rc neg_rc pos_name2 pos_rc2
     _run_arm "$CAP_cal_pos_args"; pos_rc="$ARM_RC"; pos_name="$ARM_NAME"
     [ "$pos_rc" = "127" ] && _fail "M4" "requires_cwd 로 진입 실패 — arm 을 돌릴 수 없다"
-    _run_arm "$CAP_cal_pos_args"; pos_name2="$ARM_NAME"     # reps=2 (M3 부분 방어)
+    _run_arm "$CAP_cal_pos_args"; pos_name2="$ARM_NAME"; pos_rc2="$ARM_RC"   # reps=2 (M3 부분 방어)
     _run_arm "$CAP_cal_neg_args"; neg_rc="$ARM_RC"; neg_name="$ARM_NAME"
+    # 관측 원장에 남긴다 — 판정과 무관하게, 이 실행이 **실제로 밟은 exit** 만 적는다.
+    OBS_STATE=run; OBS_POS_RC="$pos_rc"; OBS_POS_RC2="$pos_rc2"; OBS_NEG_RC="$neg_rc"
+    OBS_POS_NAME="$pos_name"; OBS_NEG_NAME="$neg_name"
 
     if [ -z "$pos_name" ]; then
       _fail "M4" "양성 arm 의 exit $pos_rc 가 선언된 enum 밖 — enum 밖 값은 HARNESS_ERROR 이지 PASS 가 아니다"
@@ -307,6 +379,7 @@ _check_one() {
       _hops=$((_hops+1))
       if [ "$_hops" -gt 40 ]; then
         _fail "M6" "심링크가 40회를 넘어간다 — 순환으로 본다. 프로브 경로를 못 정한다"
+        _observation_scope   # 이 이른 return 에서도 관측 범위는 찍힌다(조건부로 찍히면 채널이 아니다)
         return 0   # _fail 이 이미 기록했다. 판정 불가를 통과로 렌더하지 않는다
       fi
       _dir=$(cd -P "$(dirname "$_src")" >/dev/null 2>&1 && pwd) || break
@@ -332,6 +405,10 @@ _check_one() {
       esac
     fi
   fi
+
+  # ★무조건 찍는다 — PASS 든 REJECTED 든, arm 을 돌렸든 안 돌렸든. 관측 범위가 조건부로
+  #   찍히면 그건 채널이 아니라 또 하나의 판정이 된다.
+  _observation_scope
 }
 
 # ── self-test (known-pair: 통과해야 할 선언 1 · 막혀야 할 선언 6) ─────────────
@@ -438,6 +515,47 @@ LIAR
   else
     fail=$((fail+1)); printf '  ❌ %-34s — rc 는 1 인데 M6 가 막은 게 아니다(다른 축이 먼저 걸렸다)\n' "M6: 차단 귀속"
   fi
+  # ── 관측 범위 블록 (2026-08-16) — 「무엇을 안 봤는지」가 출력에 남는가 ───────────
+  #   이 레인들은 **판정을 재지 않는다**(rc 는 위 레인들이 이미 고정한다). 재는 것은
+  #   «채널이 켜져 있나 · 계산이 맞나 · 조건부로 꺼지지 않나» 셋이다.
+  _tg() {   # $1=이름 $2=기대 rc $3=capfile $4=반드시 포함할 문자열
+    local o r hit; o="$(bash "$0" "$3" 2>&1)"; r=$?
+    if printf '%s' "$o" | grep -qF "$4"; then hit=1; else hit=0; fi
+    if [ "$r" = "$2" ] && [ "$hit" = "1" ]; then
+      pass=$((pass+1)); printf '  ✅ %-34s rc=%s\n' "$1" "$r"
+    else
+      fail=$((fail+1))
+      printf '  ❌ %-34s rc=%s (기대 %s) · 부분문자열 «%s» %s\n%s\n' \
+        "$1" "$r" "$2" "$4" "$( [ "$hit" = 1 ] && printf 있음 || printf 없음 )" "$o"
+    fi
+  }
+
+  # ⓐ 부분 관측: 선언 enum 4값 · 이 실행이 밟는 건 2값 → **나머지 2값을 이름으로** 적어야 한다.
+  #    (`good.cap` 의 probe 는 ok→0 / 그 외→1 만 낸다. 3·7 은 이 실행이 갈 수 없는 값이다.)
+  sed 's/^verdict_enum: .*/verdict_enum: 0=PASS 1=FAIL 3=DID_NOT_RUN 7=NO_TARGET/' \
+      "$T/good.cap" > "$T/obs_partial.cap"
+  _tg "관측범위: 미관측 enum 을 이름으로" 0 "$T/obs_partial.cap" \
+      "관측되지 않은** 값: 3=DID_NOT_RUN 7=NO_TARGET"
+
+  # ⓑ 🟥**컨트롤** — 전부 관측되면 「없음」을 찍어야 한다. 이게 없으면 「늘 경고하는 계기」와
+  #    「실제로 계산하는 계기」가 구분되지 않는다(경고만 하는 계기는 판별력이 0 이다).
+  #    선언 전 값이 관측되려면 음성 arm 이 「안 돌았다」 코드로 떨어져야 한다(M2+ 가 그 값을
+  #    요구하므로) — 그래서 전용 probe 를 쓴다.
+  printf '#!/bin/sh\n[ "$1" = ok ] && exit 0\nexit 3\n' > "$T/probe_allobs.sh"
+  sed -e 's/^verdict_enum: .*/verdict_enum: 0=PASS 3=DID_NOT_RUN/' \
+      -e "s|^entry: .*|entry: bash $T/probe_allobs.sh|" \
+      -e 's/^calibration_negative_expect: .*/calibration_negative_expect: DID_NOT_RUN/' \
+      "$T/good.cap" > "$T/obs_all.cap"
+  _tg "관측범위: 전부 관측되면 「없음」" 0 "$T/obs_all.cap" \
+      "관측되지 않은 값: 없음"
+
+  # ⓒ REJECTED 에서도 블록이 찍힌다 + arm 을 안 돌렸다는 사실과 사유가 적힌다.
+  #    (`nocal.cap` = 캘리브레이션 키 전체 제거 → args 는 「미선언」, 관측 exit 은 「없음」.)
+  _tg "관측범위: REJECTED 에서도 찍힌다" 1 "$T/nocal.cap" \
+      "관측된 exit: 없음 — arm 을 실행하지 않았다(캘리브레이션 쌍 미선언)"
+  _tg "관측범위: 미선언 args 를 미선언이라 적는다" 1 "$T/nocal.cap" \
+      "실행된 arm: 양성 «<미선언>» / 음성 «<미선언>»"
+
   printf '\n  통과 %d · 실패 %d\n' "$pass" "$fail"
   rm -rf "$T"
   [ "$fail" -eq 0 ] || return 1

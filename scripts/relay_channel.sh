@@ -383,7 +383,7 @@ _sha() { # stdin → sha256 hex (macOS/linux 양쪽)
 # 반환: 전역 NODE_VERDICT / NODE_EXIT / NODE_OUT_FILE
 # 파이프로 verdict 를 읽지 않는다(D6) — 출력은 파일로 받고 exit status 를 직접 취한다.
 _invoke_node() {
-  local f="$1" task="$2" upstream="$3" outdir="$4" n="$5"
+  local f="$1" task="$2" upstream="$3" outdir="$4" n="$5" node_args="${6:-}"
   local entry cwd chan enum key argv_extra rc line code name
   entry=$(_cap_get "$f" entry)
   cwd=$(_cap_get "$f" requires_cwd)
@@ -424,8 +424,10 @@ _invoke_node() {
     argv_extra="--upstream-verdict $upstream"
   fi
 
+  # 순서: entry → **노드 인자** → 결박 플래그. 노드 인자를 결박 플래그 뒤에 붙이면
+  # 위치 인자를 읽는 진입점이 `--upstream-verdict` 를 자기 인자로 삼는다.
   ( [ -n "$cwd" ] && cd "$cwd"; RELAY_TASK="$task" RELAY_UPSTREAM_VERDICT="$upstream" \
-      $entry $argv_extra ) > "$NODE_OUT_FILE" 2>&1
+      $entry $node_args $argv_extra ) > "$NODE_OUT_FILE" 2>&1
   rc=$?
   NODE_EXIT=$rc
 
@@ -507,11 +509,54 @@ _invoke_node() {
 
 # ── run ───────────────────────────────────────────────────────────────────────
 do_run() {
-  local task="" recdir="" ack=0 n=0 upstream="" rc final=$RC_PASS
-  CAPS=()
+  local task="" recdir="" ack=0 n=0 upstream="" rc final=$RC_PASS _ci
+  CAPS=(); CAPARGS=(); CAPARGS_SET=()
   while [ $# -gt 0 ]; do
     case "$1" in
-      --cap) shift; CAPS+=("$1") ;;
+      --cap) shift; CAPS+=("$1"); CAPARGS+=("") ;;
+      # ── 노드별 호출 인자 채널 ────────────────────────────────────────────────
+      #   🟥 **왜 이게 필요한가(실측 2026-08-16)**: 호출 시점 인자를 요구하는 능력은
+      #   relay 를 통과할 방법이 아예 없었다. pmh-dev 의 `merge-noop-check` 는
+      #   «무엇을 무엇에 반입하나» 가 인자인데, 채널이 없어 **항상 ARGS→HARNESS_ERROR
+      #   →BLOCKED** 로 떨어졌다. 방향은 fail-closed 로 옳았지만 **신호가 0** 이었고,
+      #   그건 정체성 ①의 «재사용이 실재하고 호출 가능한가» 를 구조적으로 못 만족시킨다.
+      #   ⚠️ **결박은 «가장 최근 --cap»** 이다. 위치 인덱스로 짝지으면 순서가 어긋났을 때
+      #   조용히 다른 노드에 붙는다 — 그건 계기가 대상을 바꾸는 형태다.
+      #   ⚠️ `--cap` 없이 먼저 오면 **fail-closed**: 어디 붙일지 모르는 인자를 버리지 않는다.
+      --cap-args)
+        shift
+        [ "${#CAPS[@]}" -gt 0 ] || _die "--cap-args 는 --cap 뒤에 와야 한다(어느 노드의 인자인지 결박 불가)"
+        _ci=$(( ${#CAPS[@]} - 1 ))
+        # 🟥 **중복 지정은 fail-closed**(cross-family 지목 + 재현, 2026-08-16). 초판은 같은
+        #   `--cap`에 `--cap-args` 를 두 번 주면 **앞 값이 조용히 사라지고** 정상 실행됐다
+        #   (`--cap A --cap-args FIRST --cap-args SECOND` → 노드가 `ARGS=[SECOND]`).
+        #   무음 폐기는 이 레포가 반복해서 이름 붙인 결함이다 — 의미가 append 인지 replace 인지
+        #   **정하지 않은 채 하나를 버리느니** 막는다.
+        [ -z "${CAPARGS_SET[$_ci]:-}" ] || _die "같은 --cap 에 --cap-args 가 두 번 왔다 — 무음 폐기 대신 막는다(의미가 append 인지 replace 인지 정의되지 않았다)"
+        # 🟥 **결박 플래그와의 충돌은 fail-closed**(cross-family 지목 + 재현). 진입점은
+        #   `$entry $node_args $argv_extra` 순으로 단어분해 실행되므로, `upstream_argv: yes` 를
+        #   선언한 노드에 `--cap-args --` 를 주면 그 노드의 옵션 파서가 `--` 에서 멈추고
+        #   뒤따르는 `--upstream-verdict <v>` 를 **위치 인자로 삼는다** = 인과 결박이 조용히 죽는다.
+        #   순서를 뒤집으면 위치 인자를 읽는 진입점이 깨지므로, 안전한 순서가 없다.
+        #   ⇒ 두 계약을 **동시에 요구하지 않게** 한다. 결박은 `RELAY_UPSTREAM_VERDICT` env 로
+        #     항상 전달되므로 이 노드도 결박 자체를 잃지는 않는다.
+        if [ "$(_cap_get "${CAPS[$_ci]}" upstream_argv 2>/dev/null)" = "yes" ]; then
+          _die "이 노드는 upstream_argv: yes 다 — argv 결박과 --cap-args 를 같이 쓸 수 없다(둘의 인자 순서가 정의되지 않았다). env RELAY_UPSTREAM_VERDICT 로 결박을 받아라"
+        fi
+        # 셸 메타문자·제어문자 거부. ⚠️ **이건 «명령 실행 우회» 방어가 아니다** — 진입점은
+        #   `eval` 이 아니라 단어분해로 돌고 전역 `set -f` 라 `;` `|` `$()` 글롭 틸드 중괄호는
+        #   연산자/확장으로 재해석되지 않는다. 이 가드가 막는 것은 **인자 경계의 조용한 변형**이다.
+        #   초판 주석은 "프로브와 같은 규칙" 이라고 적었는데 **과잉주장이었다**: 개행이 통과해
+        #   한 인자가 두 인자로 쪼개졌다(`$'GO\nSECOND'` → 노드가 `ARGC=2`). 개행/탭/제어문자를
+        #   추가로 막고, 문구를 사실에 맞춘다.
+        case "$1" in
+          *[\;\|\&\`\$\(\)\<\>]*|*'..'/*) _die "--cap-args 에 셸 메타문자/상위경로: $1" ;;
+        esac
+        case "$1" in
+          *[$'\n\t\r\v\f']*) _die "--cap-args 에 개행/탭/제어문자 — 인자 경계가 조용히 바뀐다" ;;
+        esac
+        CAPARGS[$_ci]="$1"; CAPARGS_SET[$_ci]=1
+        ;;
       --task) shift; task="$1" ;;
       --record) shift; recdir="$1" ;;
       --ack) ack=1 ;;
@@ -557,7 +602,7 @@ do_run() {
 
   for f in "${CAPS[@]}"; do
     n=$((n+1))
-    _invoke_node "$f" "$task" "$upstream" "$recdir" "$n"
+    _invoke_node "$f" "$task" "$upstream" "$recdir" "$n" "${CAPARGS[$((n-1))]:-}"
     printf 'FH_NODE%d_ID: %s\n' "$n" "$(_cap_get "$f" id)"
     printf 'FH_NODE%d_VERDICT: %s\n' "$n" "$NODE_VERDICT"
     printf 'FH_NODE%d_EXIT: %s\n' "$n" "$NODE_EXIT"
