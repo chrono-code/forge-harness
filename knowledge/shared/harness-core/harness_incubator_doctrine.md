@@ -299,7 +299,7 @@ disruptive path *looks inferior early* — running it is a deliberate bet, named
 ### 4-b. Boundary crossing — what actually flows between harnesses
 
 Compose and disrupt say *what FH does to* other harnesses. They do not say **what moves across the
-boundary, or what must not**. That gap is where the value of a multi-harness cluster is won or lost, so
+boundary, or what must not**. That gap is where the value of the **harness cluster** (identity ①; renamed from "multi-harness cluster" 2026-08-16 — "multi" and "cluster" both meant plurality) is won or lost, so
 name it: a harness that only deepens its own well stays blind to what the neighbouring well knows —
 one harness sees runtime behaviour and not source structure, another sees source structure and never
 runtime. **The meta-harness's job is not to dig a deeper well; it is to make outputs flow across the

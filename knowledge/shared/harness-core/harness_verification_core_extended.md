@@ -14,7 +14,7 @@ has two structurally different sources of lift:
 | Mode | What it is | Availability |
 |---|---|---|
 | **Core** | Verification questions FH/PMH can ask **natively, with no cluster member present** — methodology internalized as FH's own lens | Must hold stand-alone (cluster-independent) |
-| **Extended** | Verification **instruments** dispatched from the multi-harness cluster — a field QA harness's audit lens, a trace-boundary auditor, a process-fidelity/judge harness | Available when the cluster member and its consent lane are |
+| **Extended** | Verification **instruments** dispatched from the **harness cluster** (identity ①; renamed from "multi-harness cluster" 2026-08-16) — a field QA harness's audit lens, a trace-boundary auditor, a process-fidelity/judge harness | Available when the cluster member and its consent lane are |
 
 **First clause (the boundary)**: *harness-verification core = the FH-native triad-consistency lens;
 harness-verification extended = cluster instruments.* The operative test is **what discharges the
