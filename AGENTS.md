@@ -116,9 +116,18 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    (2026-08-09) and §1-a-2 expanded them to six (2026-08-16)**: ⓐ different family · ⓑ standpoint ·
    ⓒ isolated grounding · ⓓ third-party encounter · ⓔ first real use · ⓕ revert-and-observe.
    Axes are separated by **what they received**, not by how adversarial they are — same input,
-   same blind spot, however many reviewers you add. ⚠️ The machine layer is still four: `axes-run`
-   requires four letters, ⓑ has its own marker field, and **ⓓ has no field at all** — record it in
-   prose and do not read a silent ⓓ as a run one. Read it before recording; §1-c
+   same blind spot, however many reviewers you add. ⚠️ The machine layer is **4+1, not four**:
+   `axes-run` requires four letters AND ⓑ is separately mechanized as its own `standpoint:` marker
+   field — that field is the +1, so counting it as "four" erases a mechanized axis. (This sentence
+   said "four" until 2026-08-17 while describing the +1 in its own next clause; the canon was
+   corrected in `fh_three_layer_canon.md` and this entry point was not, which is precisely the
+   CC↔Codex drift the session-close ④-b parity check exists to catch — found by that check.)
+   **ⓓ has no field at all** — record it in prose and do not read a silent ⓓ as a run one.
+   🟥 ⓑ **standpoint is itself split** (2026-08-17): a STATIC read of the target's own files is
+   `tier1b` and **executes nothing**; `tier2`+ asserts that something was RUN — the discriminator is
+   mechanical, *name the command you ran and the output you saw*. Measured on one delta: the static
+   arm found 1, running the target's own suite found 2 more, one of which printed neither `FAIL` nor
+   `❌`. Execution is the half with no substitute; see `field_verdict_crossfamily_gate.md §7`. Read it before recording; §1-c
    holds the sample limits — read it before citing. This record is self-attested and has no hook
    behind it; it is closed by a different-family reader, not by writing it more carefully.
 8. **Branch-surface claims:** GitHub branch protection is two independent layers — legacy
