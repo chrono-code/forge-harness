@@ -200,6 +200,76 @@ if [ -d "$_AUDIT_DIR" ] && fh_cadence_due "$_FH_HOOK_SRC"; then
   fi
 fi
 
+# 1-c) harness-doctor cadence — 위 1-b 와 같은 이유로, 같은 훅에서, 한 블록 더.
+# MEASURED 2026-08-16 (weekly_audit_2026-08-16.md 🟥-3): 직전 감사(07-31)가 «산문 캐던스 미이행»을
+# N=2 로 집계하면서 **주간감사(50일)와 harness-doctor(당시 ~49일) 둘을 함께** 지목했다. 그 뒤 16일
+# 동안 주간감사는 50→16일로 움직였고 — 그건 1-b 가 기계화돼 있기 때문이다 — harness-doctor 는
+# **한 번도 돌지 않아 65일**이 됐다(캐던스 30). 즉 같은 세션이 같은 날 같은 문서에서 지목한 두
+# 캐던스가, 하나는 훅이고 하나는 산문이라는 차이만으로 정반대로 갔다. 그것이 N=3 이고,
+# `operations.md §Recurrence escalation` 은 그때 «새 습관 규칙이 아니라 계기»를 만들라고 한다.
+# 1-b 와 동일하게 **advisory** 다: 밀린 진단은 비가역 표면이 아니므로 표면화하고 절대 막지 않는다.
+#
+# 🟥 not-found ≠ 0 — 이 블록이 1-b 와 다른 유일한 지점이다. 1-b 는 파일이 없으면 조용하고, 그건
+# 갓 클론한 설치를 나그하지 않기 위해 옳다. 그러나 harness-doctor 는 **한 번도 안 돌린 상태가
+# 실재하는 결함**이고(이 레포가 2026-06-12 이후 정확히 그 상태였다), 파일 부재를 침묵으로 렌더하면
+# 「없음」과 「0일 경과」가 같은 출력이 된다 — 이 레포가 반복해 배운 그 클래스다. 그래서 부재를
+# **다른 문장으로** 말하되, «이미 굴러가는 설치인가»를 `fh_completed_*.md` 존재로 판별해 갓
+# 클론한 설치에는 여전히 침묵한다. 그 판별은 1-b 의 audit-dir 존재 검사와 같은 역할이다.
+#
+# 🟥 스코프와 정렬, 둘 다 위 1-b 를 그대로 베끼면 틀린다 — 적대검증 2026-08-16 이 둘 다 잡았다.
+#
+# (1) **노드-로컬만 보면 안 된다.** `tracks/` 는 gitignored 라 노드 간에 안 따라오고, 진단은
+#     `sync-to-be.sh` 로 `$BE/$TM` 에 실린다. 프로에서 돌리고 에어에서 세션을 열면 에어엔
+#     `fh_completed_*.md` 는 있고 진단 리포트만 없어서 **「기록 0건」이라는 거짓 단언**이 난다.
+#     그리고 이건 1-b 보다 나쁘다: 1-b 는 부재를 침묵으로 렌더해 «틀린 말을 안 하는» 쪽으로
+#     degrade 하는데, 이 블록은 부재를 **큰 소리 단언으로 승격**시켰기 때문이다. 스코프가 틀린
+#     채로 소리를 키우면 오보 비용도 같이 커진다. 바로 위 `_fd_ready()`(:129)가 이미 같은 버그를
+#     한 번 겪고 합집합으로 고쳤다 — **같은 형태를 쓴다**(divergent-leniency 금지).
+#
+# (2) **`sort | tail -1` 은 사전순이지 시간순이 아니다.** 1-b 의 글롭 `weekly_audit_*.md` 는
+#     접두어가 고정이라 사전순≈시간순이지만, 여기 글롭은 `*harness_doctor*.md` 로 **양쪽
+#     와일드카드**다. `reference_harness_doctor_notes.md` 가 `harness_doctor_2026-08-16.md` 를
+#     사전순으로 이기고, 그 파일의 mtime 이 나이가 된다 → 거짓 나그 또는 거짓 침묵. **mtime
+#     최대값으로 뽑는다.** (`ls -t` 는 이식성 때문에 안 쓴다 — 이 커밋이 짓는 린트의 P-클래스다.)
+_hd_latest() {  # stdout: 가장 최근 리포트의 mtime (없으면 빈 문자열)
+  _best=""; _bestm=0
+  for _d in "$FH/tracks/_meta" ${BE:+"$BE/$TM"}; do
+    [ -d "$_d" ] || continue
+    while IFS= read -r _f; do
+      [ -n "$_f" ] || continue
+      _m=$(_mtime "$_f")
+      [ "$_m" -gt "$_bestm" ] && { _bestm="$_m"; _best="$_f"; }
+    done < <(find "$_d" -maxdepth 1 -name '*harness_doctor*.md' -print 2>/dev/null)
+  done
+  [ -n "$_best" ] && printf '%s\t%s\n' "$_bestm" "$_best"
+}
+_hd_has_history() {  # «굴러가는 설치인가» — 이것도 합집합으로 본다
+  for _d in "$FH/tracks/_meta" ${BE:+"$BE/$TM"}; do
+    [ -d "$_d" ] || continue
+    find "$_d" -maxdepth 1 -name 'fh_completed_*.md' -print 2>/dev/null | grep -q . && return 0
+  done
+  return 1
+}
+_HD_DIR="$FH/tracks/_meta"
+if [ -d "$_HD_DIR" ] && fh_cadence_due "$_FH_HOOK_SRC"; then
+  _HD_ROW="$(_hd_latest)"
+  _LATEST_HD="${_HD_ROW#*	}"; _HD_MTIME="${_HD_ROW%%	*}"
+  if [ -n "$_HD_ROW" ]; then
+    _HD_AGE_D=$(( ( $(date +%s) - _HD_MTIME ) / 86400 ))
+    if [ "$_HD_AGE_D" -ge 30 ]; then
+      echo "🩺 [harness-doctor] 마지막 구조 진단이 ${_HD_AGE_D}일 전이다($(basename "$_LATEST_HD")) — 캐던스는 30일."
+      echo "    → /harness-doctor (구조·드리프트·끊긴 참조). --lint 는 언어 패턴까지."
+    fi
+  # `-print | grep -q` 이지 `-quit` 이 아니다: `-quit` 은 GNU/BSD 양쪽에 있으나 버전 편차가 있고,
+  # 이 파일이 고치는 결함군에 BSD/GNU 이식성이 들어 있다(감사 🟧-3). 최적화 한 톨을 위해 그 클래스를
+  # 새로 들이지 않는다 — 여기 모집단은 디렉터리 하나이므로 얻을 것도 없다.
+  elif _hd_has_history; then
+    # 세션 이력은 있는데 진단 기록이 0건 = «한 번도 안 돌렸다». 부재를 0 으로 읽지 않는다.
+    echo "🩺 [harness-doctor] 구조 진단 기록이 **0건**이다 — 캐던스 30일이 한 번도 발화한 적 없다."
+    echo "    → /harness-doctor (첫 베이스라인). 부재는 «최신»이 아니다."
+  fi
+fi
+
 # ── branch-claim 자동 기록 (2026-08-09) ────────────────────────────────────────
 # WHY HERE, ABOVE THE COMPANION-STORE EARLY EXIT: 공유 체크아웃 사고는 Mode D 와 무관하다.
 # companion store 가 없는 설치에서도 병렬 세션은 돌고, 그때도 `.git/HEAD` 는 트리당 하나다.

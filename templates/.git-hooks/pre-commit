@@ -284,8 +284,20 @@ else
   psa_load "$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults" \
            "${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
   if [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
-    echo "  ⚠️  operator pattern override absent — only committed defaults active (home paths)."
-    echo "     Populate .claude/rules/.public-surface-patterns (gitignored) for company-specific tokens."
+    # 2026-08-16 weekly-audit residual — operator decision: LOUDER WARNING, not fail-closed.
+    # A hard block here would fail every fresh clone's / CI's / worktree's first commit (the
+    # override is gitignored by construction), training PUBLIC_SURFACE_OK into a reflex — the same
+    # override-habituation this repo has measured and warned against repeatedly. So the degrade
+    # direction stays PASS; what changed is that the old two-line notice was easy to scroll past in
+    # a green hook run. This is now impossible to miss, still non-blocking.
+    echo ""
+    echo "  🟧🟧🟧 CONFIDENTIALITY COVERAGE REDUCED — READ BEFORE TRUSTING THIS PASS 🟧🟧🟧"
+    echo "  ⚠️  operator pattern override ABSENT — only committed defaults are active."
+    echo "     Company/employer-name and real-username token classes are UNSCANNED this run."
+    echo "     A clean PASS below reflects the defaults-only pattern set, not the full one."
+    echo "     Fix: populate .claude/rules/.public-surface-patterns (gitignored, one severity<TAB>regex per line)."
+    echo "  🟧🟧🟧 ────────────────────────────────────────────────────────────── 🟧🟧🟧"
+    echo ""
   fi
   if [ "$PSA_DEFAULTS_OK" -eq 0 ] || [ "$PSA_BAD_ROWS" -gt 0 ] \
      || [ -z "$(printf '%s' "$PSA_STREAM" | grep -vE '^[[:space:]]*(#|$)' || true)" ]; then
