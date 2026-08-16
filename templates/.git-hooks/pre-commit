@@ -569,7 +569,32 @@ validate_crossfamily_leg() { # $1 = marker path
 
   case "$val" in
     declined)
-      echo "  ✅ cross-family leg: declined (operator-chosen floor, first-class — not a degrade)" ;;
+      # `declined` means ONE thing: the OPERATOR declined sidecars (UAP), a chosen floor. It was
+      # the only value in this enum with no grounds requirement, and that made it the enum's soft
+      # spot: an author who judged decorrelation unnecessary reached for the nearest permissive
+      # token and it passed clean. Measured 2026-08-16, in this repo, by the session that had
+      # CORRECTED a different marker's crossfamily value earlier the same day and had the correct
+      # semantics printed to it in this hook's own error text — i.e. neither ignorance of the enum
+      # nor of the file. Form was satisfied, so the question stopped.
+      #
+      # A closed enum stops free prose from collapsing distinct states; it does NOT stop a wrong
+      # token from being a valid one. This lane is the difference. The grounds bar is deliberately
+      # the same shape as the degrade branch below (substance + a token naming WHO/WHERE), because
+      # the claim being made is factual and attributable: an operator decision has a record.
+      if [ "${#reason}" -lt 20 ] \
+         || ! printf '%s' "$reason" | grep -qiE 'operator|운영자|uap|user_adaptation|consent|utterance|발화|CLAUDE\.local|standing|lease|declin'; then
+        echo "  ❌ FAIL — 'declined' without grounds naming the OPERATOR decision."
+        echo "     declined = the operator declined sidecars (UAP), a chosen floor. It does NOT"
+        echo "     mean 'I judged decorrelation unnecessary here' — that is a CHOICE the author"
+        echo "     made with a panel reachable, whose honest value is DEGRADED_PANEL_UNUSED."
+        echo "     Cite where the decision lives (UAP entry, a quoted operator utterance, the"
+        echo "     CLAUDE.local binding), or pick the value that describes what actually happened:"
+        echo "       crossfamily: declined — operator declined sidecars in <UAP/utterance>, chosen floor"
+        echo "       crossfamily: DEGRADED_PANEL_UNUSED — codex+agy reachable, not recruited (<why>)"
+        return 1
+      fi
+      echo "  ✅ cross-family leg: declined (operator-chosen floor, first-class — not a degrade)"
+      echo "     $(printf '%s' "$reason" | cut -c1-80)" ;;
     panel*)
       if ! printf '%s' "$val" | grep -qE '^panel\([^)]+\)$'; then
         echo "  ❌ FAIL — panel claim without a family list: '$val'"

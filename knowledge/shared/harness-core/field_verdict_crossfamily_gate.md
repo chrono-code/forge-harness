@@ -225,6 +225,14 @@ pass):
 tier1                        content-only review — no standpoint decorrelation (the default
                               unless upgraded; NOT itself a failure, most changes have no target
                               standpoint to borrow)
+tier1b(<target-harness>)     STATIC standpoint read — the reviewer read the TARGET's own files
+                              (cold, from the target's repo, without the author's framing) and
+                              adjudicated the change against them, but executed NOTHING. Added
+                              2026-08-16 because its absence was actively harmful: a run of exactly
+                              this shape was recorded as `tier2`, since tier1 undersold it and no
+                              nearer value existed. A missing rung does not stay empty — it gets
+                              filled by the next one up. Real but weak: see «execution is the
+                              load-bearing half» below before crediting it.
 tier2(<target-harness>)      peer-simulated — the reviewer instantiated/ran the TARGET's own repo
                               (a local clone, real content) and executed the change from that
                               standpoint. Closes shared-body-path defects; a BARE clone cannot see
@@ -258,6 +266,35 @@ DEGRADED_NO_TARGET_ACCESS     could not — applicable, but no local clone/acces
 DEGRADED_NOT_RUN              did not — target was accessible, standpoint review was skipped
 UNKNOWN                       did not look — applicability itself was never assessed
 ```
+
+**🟥 Execution is the load-bearing half — a static standpoint read is largely subsumed by the other
+axes (operator decision, 2026-08-16).** The reason to pay for a standpoint at all is not that
+someone re-read the diff from a different chair; it is that **the target harness was actually made
+to run.** Operator's framing, verbatim: *"그 하네스의 입장에서 정적리뷰하는 것만으로도 뭔가 잡을
+수야 있겠지만 그건 다른 검증축으로도 커버가 아마 가능하지 않을까. 진짜로 중요한 건, 그 하네스
+입장에서 돌려봐서 구동이 되는지를 로컬에서 완벽하게 확인하는 것."* A static read competes with
+cross-family review (§3) and isolated grounding for the same defect classes and mostly loses —
+those axes are cheaper and already routine. Execution has no substitute, because the class it
+catches is *unreachable by reading*: the target's own environment differs (absent files, different
+resolution order, a lane that has never once run there).
+
+**Measured the same day this was written, on one delta (pmh-dev PR #72)**:
+
+| Arm | Found |
+|---|---|
+| `tier1b` static standpoint read (isolated agent, target's own files, cold) | **1** — a 2-tier-vs-3-tier root-path resolution mismatch |
+| Running the target's own `selfcheck.sh` to completion, locally | **2 more**, both invisible to any read: a test fixture keying on a file that does not exist in that repo, and an npm-shipping check whose premise is inapplicable there. One of them printed **neither `FAIL` nor `❌`** anywhere in its output (it used its own vocabulary, `INSTRUMENT ERROR`) and needed a `bash -x` trace to locate — a defect that is *structurally* undiscoverable by reading, since the reader must already know which string to look for. |
+
+n=1 delta, same operator, same session — reported as a directional observation, not a rate. It is
+recorded because it is the first time the two arms were run *separately on the same change* and
+their yields could be attributed. ⚠️ **Do not read the table as "static review is worthless"** — it
+found a real defect that shipped a fix. Read it as: *static is the half that has substitutes;
+execution is the half that does not.*
+
+**Consequence for the marker**: a `tier2`/`tier2b`/`tier3` claim asserts that something was RUN. If
+the review only read, the honest value is `tier1b` — and since `tier1b` is explicitly the weak rung,
+recording it truthfully is what surfaces that the execution arm is still owed. (This rule exists
+because it was broken on the day it was written: see the `tier1b` entry above.)
 
 **Residual this enum split names rather than hides**: for a harness pair with one shared human
 operator (this repo and a sibling field harness the same operator also runs), `tier3` is either

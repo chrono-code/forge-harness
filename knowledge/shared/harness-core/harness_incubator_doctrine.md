@@ -328,6 +328,37 @@ record**. Known-pair to run before the ledger is cited as evidence of anything: 
 recorded reason is explicitly *cannot run* must KILL. If the known-positive is KILLed, the
 instrument over-screens and every prior KILL is weakened by that much.
 
+### 3-d. What separates incubating from boosting — the AUTHORITY, not the effort (operator, 2026-08-16)
+
+Operator, verbatim: *"부스팅보다 인큐베이터의 장점은 그 레포 전체(또는 출하하기 전 상태의 플젝)를
+FH가 감싸서 **모든 것을 만들어내고 재설계한다**에 있어. 그래서 모든 것을 빠삭히 알아야 하고,
+그러면서도 **모든 것을 조작할 수 있는 권한**이 있는 거야. 부스팅과는 다른 지점이 이것이기도 하다."*
+
+The two identities are not «small help» vs «big help». They differ in **scope of authority over the
+target**, and the two properties are a matched pair — neither is optional:
+
+| | Ⓑ Project Booster | ② Project Incubator |
+|---|---|---|
+| Touches | the point that was asked about | **the whole repo — including redesigning what already works** |
+| Must know | enough for that point | **the entire target, thoroughly** |
+| Reads the codebase | on demand, to answer | **as a precondition, before proposing anything** |
+
+**Why the pair is load-bearing**: total authority without total knowledge is vandalism, and total
+knowledge without authority is a booster that reads a lot. An incubation session that has not read
+the target's design canon, gate code, and existing verification surfaces has not *earned* the second
+column — and the correct move there is to read first, not to scope down to a booster-shaped change
+and call it incubation.
+
+**Where this bit, same day**: the-bible's ⓐ run scoped itself to «invariant-preserving» — correct as
+a *choice the operator made for that request*, and it was then mistaken for the identity's own reach.
+It is not. ⓐ/ⓑ is the operator setting the blast radius for one job; the incubator's standing
+authority is the full repo either way. A session that reads a per-request scope as the identity's
+ceiling will never propose the redesign that was the point of incubating.
+
+**Relationship to 3-a's «day one» bar**: 3-a says what the *born thing* must do. This says what the
+*nursery* is allowed to do to it while it is still inside. The first is an exit condition; the second
+is a working posture.
+
 ## 4. Compose ∪ disrupt — two operating modes over other harnesses
 
 | Mode | What | FH mechanism |

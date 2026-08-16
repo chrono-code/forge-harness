@@ -122,6 +122,67 @@ onto their single hardest sub-mechanism, and a failure from a **non-harness** ru
 metric — each read a live-but-incomplete thing as zero, each caught by the operator, not self-caught.
 Detail: `[[feedback_reinvention_reflex_normalization_counterweight]]`.)
 
+## Mechanization Boundary — machinery at irreversible edges and channels, judgment left to evolution
+
+**Operator thesis (2026-08-16, verbatim)**: *"기계는 비가역 경계와 채널에만 두고, 판단은 진화에
+맡긴다. 「한 모델로도 도달하지만 진화에 기대어 100%를 뽑는다」는 그 형태에서만 성립한다 — 판단을
+내가 코드로 굳혀두면 그게 바로 진화를 막는 천장이 되니까."*
+
+This is the standing answer to *"should this become a check?"*, and it is **not** "mechanize less":
+
+| Build machinery | Leave to judgment |
+|---|---|
+| **Irreversible boundaries** — publish · delete · history-rewrite · anything a stranger can observe | Whether a given review was deep enough |
+| **Channels** — that a typed field carries a value, that a verdict is typed not grepped, that grounds are attributable | What the right value *is* |
+
+The discriminator: does the check assert a **property of the record** (present · typed · attributable ·
+non-vacuous), or does it assert a **conclusion**? The first is a channel and ages well. The second
+freezes today's judgment into tomorrow's ceiling — and this repo's own thesis is that the model layer
+converges upward while the harness persists, so a frozen conclusion is a harness that gets *worse*
+relative to what it wraps.
+
+**Corollary — tier-visible behavior is not automatically a defect.** Some FH capability only becomes
+reachable at a higher tier. `sonnet_floor_doctrine.md` is unchanged and remains a floor: **base ops
+must run 100% at Sonnet, and a tier-gated *base op* is still a defect.** What this corollary adds is
+the other side — where the gap is in *judgment quality* rather than in whether the capability fires,
+the answer is not always to encode the judgment. Discipline and channel-typing are how Sonnet reaches
+it; a frozen rule is how nobody ever exceeds it.
+
+⚠️ **Applied honestly to this file's own machinery, same day**: the `declined`-grounds lane added to
+`templates/.git-hooks/pre-commit` is a **channel** check (a claim must name attributable grounds) —
+it does not judge whether decorrelation was warranted. But its grounds test is a *vocabulary grep*,
+and a vocabulary list is a small frozen judgment: a legitimately-phrased `declined` in unforeseen
+wording over-blocks. Accepted because the failure is **loud and cheap** (author rephrases) rather
+than silent, and because it mirrors the existing degrade-branch form — named here rather than
+claimed pure.
+
+## Local Execution First — CI is a backstop, never the discovery mechanism
+
+**Operator, 2026-08-16**: *"이 실패가 CI 확인 단계에서야 발견되는 건 매우 늦다 … 로컬에서 그
+[대상 레포]를 통해서 실제로 구동시켜 봤다면 안 발생했을까"* and *"CI 확인도 중요하지만 사실 이는
+**깃헙의 기능에 기대는 것**이라고 봐야 하려나."*
+
+Both halves are load-bearing. **Late**: a red CI check is discovery at the slowest, most expensive
+point in the loop, after push, after the PR, in front of an audience. **Borrowed**: CI is a
+*platform* feature, so a harness that only finds its own defects there has not built a gate — it has
+outsourced one, and it silently inherits that platform's coverage boundaries as its own.
+
+**The order**: run the target's own suite locally, **to completion**, before pushing. Then let CI
+confirm. A green CI on a change whose suite was never run locally is not a second opinion — it is the
+*first* one.
+
+**Why "to completion" is the operative phrase** (measured 2026-08-16, pmh-dev): that repo's
+`validate.yml` was wired the same day, so CI's first run was the suite's first real execution ever —
+there was no "previously known-good" for it to confirm. A partial local run would have missed it too:
+the suite printed `SELFCHECK: FAIL` while **neither `FAIL` nor `❌` appeared anywhere in its output**
+(the failing lane used its own vocabulary, `INSTRUMENT ERROR`), so locating it needed `bash -x` to
+the actual failing line. Reading the tail, grepping for the expected token, or trusting an exit code
+you did not trace are all forms of not-running-it.
+
+**Relationship to the standpoint axis**: this is that axis's execution half, applied to your own
+change rather than to a peer harness — see `field_verdict_crossfamily_gate.md §7`
+«execution is the load-bearing half». Same principle, two surfaces.
+
 ## Instrument Calibration — before you trust a number, prove the instrument works *here*
 
 An instrument (a scan, a grep, a checker, a diagnostic row, a metric) is a claim about the world only
@@ -387,12 +448,22 @@ raises resolution *within* one standpoint (the author's own repo, the author's o
 target's rules); it does not decorrelate the review's ground-truth source. For a **shared-body /
 cross-harness-boundary** change — scoped by *effect* (alters another harness's behavior, gate
 outcome, or interaction contract), not merely by touching a synced file path — the marker
-additionally carries `standpoint:` — a closed enum (`tier1` content-only · `tier2(<harness>)`
-peer-simulated, ran the target's own repo · `tier2b(<harness>)` same operator, target's real
+additionally carries `standpoint:` — a closed enum (`tier1` content-only · **`tier1b(<harness>)`
+STATIC read of the target's own files, executed nothing** · `tier2(<harness>)`
+peer-simulated, **ran** the target's own repo · `tier2b(<harness>)` same operator, target's real
 runtime (local wiring visible, not independent) · `tier3(<harness>)` a *different* operator of the
 target harness ran it · `not-applicable` · degrade triad `DEGRADED_NO_TARGET_ACCESS` could-not /
 `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same shape as `crossfamily:`'s triad,
-**distinct literal values**, do not reuse crossfamily's tokens). Naming note: this collides in
+**distinct literal values**, do not reuse crossfamily's tokens).
+🟥 **The execution is the load-bearing half** (operator decision 2026-08-16): a static standpoint
+read competes with cross-family review for the same defect classes and mostly loses — *running the
+target harness locally, to completion*, is the part with no substitute. Measured on one delta the
+same day: static read found 1, running the target's own suite found 2 more, one of which printed
+neither `FAIL` nor `❌` and was unreachable by any read. So **`tier2`+ asserts something was RUN** —
+if the review only read, it is `tier1b`, and `tier1b` is deliberately the weak rung so that
+recording it honestly surfaces that the execution arm is still owed. (Broken on the day it was
+written — a static read was recorded as `tier2` because `tier1b` did not yet exist; a missing rung
+gets filled by the next one up rather than staying empty.) Naming note: this collides in
 English with FH's own persona/viewpoint sense of "standpoint" (`fh-meta:beginner`/`main-player`/
 `expert`) — a different axis (which persona reviews, not whose repo is ground truth); kept as-is,
 not renamed, but do not conflate the two. **Prose-only today** — unlike `crossfamily:`, no
@@ -1049,6 +1120,25 @@ Card update is NOT a sub-step of harvest-loop — even if harvest-loop is skippe
 **Card update obligation** (independent obligation — regardless of harvest-loop completion): Update `reference_next_session_starter.md`.  
 ① **Agent View pre-read** (see above) → ② Step 0-b cross-check generates removal list → ③ Remove completed items → ④ Add new priorities → ⑤ Fix stale paths/versions → ⑥ Overwrite → ⑦ Output "BEFORE N items → AFTER M items" diff.  
 "Delta update" not "snapshot" — completed items remaining in next session card is a bug.
+
+**Thread-continuation block (operator, 2026-08-16)**: *"특정 주제에 집중해서 진행한 세션이라면
+앞으로도 마감할 때 그 갈래로 이어갈 수 있게 알아서 정리해줘."* When a session ran predominantly on
+**one thread** (an incubation, one field harness, one doctrine arc) — as opposed to scattered
+maintenance — the card additionally carries a **named continuation block for that thread**, without
+being asked:
+
+```
+🧵 <thread name> — 이어가려면
+   지금 어디  : <state, with the artifact that proves it — a verdict line, a test count, a merged PR>
+   다음 한 걸음: <the single next action, concrete enough to start without re-deriving>
+   안 닫힌 것 : <what is open, stated as open — not omitted>
+   읽을 것    : <the 1-3 files that reconstitute context, in read order>
+```
+
+Not a second card and not a summary of the session — it is the **entry point for the next session
+that picks up this thread**, and it is written so that session does not have to re-derive where the
+thread stood. A scattered-maintenance session correctly writes none. Two or more threads → one block
+each, in priority order.
 
 ## Session Sync / Knowledge Push Protocol
 

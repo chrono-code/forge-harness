@@ -39,8 +39,41 @@ Also triggered in external user environments by these natural language phrases:
 | "what's your basis?", "why do you think that?" | Baseline grep trigger |
 | "check that one more time" | Self-validation request |
 
+### 🟥 5. Prescriptive doctrine statement — the category that fell through (added 2026-08-16)
+
+Every trigger above is shaped as **doubt about a claim**. A large class of operator correction is not
+doubt at all — it is a **standing rule being handed over**, stated as fact or instruction:
+
+| Shape | Real examples (2026-08-16 session) |
+|---|---|
+| *"X should also include Y"* | *"입장리뷰에는 정적리뷰뿐만 아니라 **동적리뷰도 포함되어야 할 거야**"* |
+| *"the real point of X is Z"* (redefining, not doubting) | *"부스팅보다 인큐베이터의 장점은 그 레포 전체를 감싸서 …**모든 것을 조작할 수 있는 권한**이 있는 거야"* |
+| *"isn't this too late / wrong-ordered?"* (rhetorical, expects agreement) | *"이 실패가 CI 확인 단계에서야 발견되는 건 매우 **늦은 게 아닐까**"* |
+| *"from now on, do W at Z"* | *"앞으로도 마감할 때 그 갈래로 이어갈 수 있게 **알아서 정리해줘**"* |
+
+**Why these were missed 4 times out of 4** — they sit in the blind spot between the triggers (which
+expect a *challenge*) and the Exceptions below (which release a *simple correction* with "no
+review"). A doctrine statement is neither: it does not dispute a claim, and it is not a one-off fix
+to apply and forget. Treated as the exception, it gets a verbal acknowledgment and evaporates at
+session end. **Measured**: four such statements in one session, all acknowledged in conversation,
+**zero landed in any file** until a later review grepped for them and found nothing.
+
+**The tell is grammatical, and it is language-independent** — the listed phrases above are all
+English interrogatives, which is why a Korean declarative (`~해야 할 거야` · `~인 거야` · `~아닐까`)
+matched none of them. Do not fix this by appending more literals (Grep-Collision Treadmill, P10);
+the discriminator is: **does this utterance describe how I should behave from now on, rather than
+what is wrong with this one output?** If yes, it is this category regardless of language or phrasing.
+
+**Required action** — an acknowledgment is not compliance. The statement must land **in a file** in
+the same session: canon (`CLAUDE.md` / `knowledge/`) if it governs future behavior, memory if it is
+about this operator, a signal file if it needs a decision first. Then say WHERE it landed, so the
+operator can see it did.
+
 **Exceptions** (this skill does NOT apply):
-- Simple user correction ("this is wrong, redo it") = direct negation → immediate correction (no review)
+- Simple user correction ("this is wrong, redo it") = direct negation → immediate correction (no review).
+  ⚠️ **Not the same as category 5 above** — "redo this" is scoped to one output; "from now on do X"
+  is a standing rule. When both readings fit, take it as category 5: over-landing costs a file edit,
+  under-landing loses the rule entirely.
 - This harness AI self-catch (no external counter-argument) = `fact-checker` rule (narrow 1 / broad N+1)
 
 ## Execution Steps
