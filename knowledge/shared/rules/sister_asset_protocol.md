@@ -12,6 +12,18 @@ When a **sister asset** (another team in the organization · external frontier �
 - An external resource with **similar scope but different resolution** from a `knowledge/shared/` asset is found
 - An external reference URL repeatedly appears in the weekly audit scanner aggregation
 - User mentions "that other project/team also did this"
+- 🟥 **ACTIVE ADOPTION — you went looking for an external asset, installed it, and RAN it** against
+  something this hub owns. Added 2026-08-16 because every condition above is **passive discovery**
+  ("a resource *is found*"), and the strongest sister signal there is does not look like discovery
+  at all: deliberately reaching for an outside tool *because ours did not cover something* is a
+  measured resolution difference, not a hunch about one. **Measured miss**: an external red-team
+  framework was installed, run against a field harness's safety gate, and found a real bypass — and
+  none of it fired this protocol. It was filed in memory as `type: reference`, a **tool pointer**,
+  because "a tool I used" was an available and correct-looking category while "sister asset" was a
+  category no listed condition named. That is the normalization reflex `CLAUDE.md
+  §Envelope-Boundary Discipline` exists to counter, reproduced inside the protocol meant to catch it.
+  **The tell**: if you can answer *"what does it do that ours doesn't?"* — you have already done
+  step 1's resolution-difference analysis, and owe steps 2–3.
 
 ## Lightweight path (C-tier — cheap debt entry)
 
