@@ -191,6 +191,27 @@ cmd_discover() {
   printf -- '---------------------------------------------------------------\n'
 
   local partial=0 total=0 okn=0
+  local tmp_ids tmp_paths
+  tmp_ids="$(mktemp "${TMPDIR:-/tmp}/ccs_ids.XXXXXXXX")" || _die "mktemp 실패"
+  tmp_paths="$(mktemp "${TMPDIR:-/tmp}/ccs_paths.XXXXXXXX")" || _die "mktemp 실패"
+  # shellcheck disable=SC2064
+  trap "rm -f '$tmp_ids' '$tmp_paths'" EXIT INT TERM
+  # ★relay 사본(FH 손-단언)도 유일성 대조에 넣는다 — 충돌은 **자리를 가로질러** 생긴다.
+  #   실측된 충돌이 정확히 그 형태였다(relay 2 + 하네스 자기선언 1 이 같은 id).
+  # ★픽스처 모드에서는 **실물 relay 를 읽지 않는다.** 초판은 무조건 읽어서, 충돌이 없는
+  #   픽스처 실행에도 진짜 레포의 중복이 섞여 «항상 짖는» 상태가 됐다 — L13b 컨트롤이 잡았다.
+  #   컨트롤이 없었으면 L13 의 초록을 「탐지가 된다」로 읽었을 것이다(사실은 실물 오염).
+  # ⚠️ 명령치환 안에서 글롭을 쓰지 않는다 — `printf '%s' <다중 워드>` 는 **구분자 없이
+  #    이어붙여서** 경로 하나로 뭉갠다. 초판이 그 형태였고 실물 탐지가 조용히 0 이 됐다
+  #    (self-test 는 초록이었다 — 픽스처 모드에선 이 블록이 아예 안 도니까).
+  local _rf
+  if [ -z "${FH_TRACKS_ROOT:-}" ]; then
+    for _rf in "$FH_ROOT"/tracks/_meta/relay/*.cap; do
+      [ -f "$_rf" ] || continue
+      printf '%s\n' "$_rf" >> "$tmp_paths"
+      _key "$_rf" id >> "$tmp_ids"
+    done
+  fi
   while IFS=$'\t' read -r name root alias_note; do
     [ -n "$name" ] || continue
     local line; line="$(_harness_status "$name" "$root" "$alias_note")"
@@ -201,7 +222,14 @@ cmd_discover() {
     printf '%-18s %-12s %5s  %s\n' "$name" "$st" "$cnt" "$detail"
     total=$((total+1))
     case "$st" in
-      OK) okn=$((okn+cnt)) ;;
+      OK)
+        okn=$((okn+cnt))
+        local _cf
+        for _cf in "$root/$CAP_SUBDIR"/*.cap; do
+          [ -f "$_cf" ] || continue
+          printf '%s\n' "$_cf" >> "$tmp_paths"
+          _key "$_cf" id >> "$tmp_ids"
+        done ;;
       UNREACHABLE|MALFORMED|AMBIGUOUS) partial=1 ;;
     esac
   done <<EOF
@@ -210,6 +238,27 @@ EOF
 
   printf -- '---------------------------------------------------------------\n'
   printf '하네스 %d개 · 선언된 능력 %d개\n' "$total" "$okn"
+
+  # ── id 유일성 (2026-08-16 신설 — recall arm 이 지목한 결함) ────────────────
+  # 🟥 **같은 `id` 를 여러 파일이 주장할 수 있고 그중 하나가 픽스처일 수 있다.**
+  #    실측: `forge-harness:degrade-direction-scan` 을 3개 파일이 주장했고, 그중 하나는
+  #    `entry` 에 arm 플래그가 박힌 relay 픽스처였다. 그러면 **어느 파일을 건네느냐로
+  #    같은 이름이 다른 동작이 된다** — 이름이 식별자 노릇을 못 한다.
+  #    이 축은 «읽어서 구조를 보는» 쪽이 잡았고 기계 스캔 초판은 못 봤다.
+  #    dup 은 **차단하지 않는다**(정당한 이유가 있을 수 있다) — 대신 **이름으로 표면화**한다.
+  local ids="$tmp_ids"
+  if [ -s "$ids" ]; then
+    local dups; dups="$(LC_ALL=C sort "$ids" | uniq -d)"
+    if [ -n "$dups" ]; then
+      printf '\n⚠️  같은 id 를 여러 선언이 주장한다 — 이름이 동작을 특정하지 못한다:\n'
+      printf '%s\n' "$dups" | while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        printf '    %s\n' "$d"
+        grep -l "^id:[[:space:]]*$d\$" $(cat "$tmp_paths") 2>/dev/null | sed 's/^/        /'
+      done
+      printf '    ⇒ 어느 파일을 relay 에 건네느냐로 동작이 갈린다. 정리하거나, 갈라야 한다면 id 를 구분하라.\n'
+    fi
+  fi
   if [ "$partial" = "1" ]; then
     printf '⚠️  PARTIAL — 도달 못 했거나 파손된 선언이 있다. **이 목록은 클러스터의 전부가 아니다.**\n'
     return "$RC_PARTIAL"
@@ -410,6 +459,44 @@ EOF
   mkdir -p "$PH/eta" "$PH/eta-dev" "$TR/eta"
   out="$(FH_PROJECTS_HOME="$PH" FH_TRACKS_ROOT="$TR" bash "$SELF" discover 2>&1)"; rc=$?
   _lane "L12 후보 둘이면 고르지 않고 AMBIGUOUS" 4 "$rc" "AMBIGUOUS" "$out"
+
+  # ── L13 같은 id 를 여러 선언이 주장하면 **이름으로 표면화**한다 ────────────
+  #   recall arm(2026-08-16 dominance 측정)이 지목한 결함이고, **기계 스캔 초판은 못 봤다.**
+  #   차단하지 않는다 — 정당한 이유가 있을 수 있다. 다만 조용하지 않다.
+  mkdir -p "$T/dupA/$CAP_SUBDIR" "$T/dupB/$CAP_SUBDIR" "$T/trdup/dupA" "$T/trdup/dupB"
+  for h in dupA dupB; do
+    cat > "$T/$h/$CAP_SUBDIR/x.cap" <<'EOF'
+id: shared:same-name
+entry: /bin/true
+summary: collision probe
+tags: dup
+residency: public
+EOF
+  done
+  out="$(FH_PROJECTS_HOME="$T" FH_TRACKS_ROOT="$T/trdup" bash "$SELF" discover 2>&1)"; rc=$?
+  _lane "L13 id 충돌을 이름으로 표면화한다" 0 "$rc" "shared:same-name" "$out"
+  # 컨트롤: 충돌이 없으면 그 경고가 **안 나와야** 한다(항상 짖는 개가 아님을 단언).
+  rm -f "$T/dupB/$CAP_SUBDIR/x.cap"
+  out="$(FH_PROJECTS_HOME="$T" FH_TRACKS_ROOT="$T/trdup" bash "$SELF" discover 2>&1)"; rc=$?
+  if printf '%s' "$out" | grep -q '같은 id 를 여러 선언이'; then
+    f=$((f+1)); echo "  ❌ L13b 충돌이 없는데도 경고가 나온다(항상 짖는다)"
+  else
+    p=$((p+1)); echo "  ✅ L13b 충돌이 없으면 조용하다 (컨트롤)"
+  fi
+
+  # ── L13c 🟥 **실물 경로가 살아 있는가** — self-test 가 못 보던 사각 ───────────
+  #   실측 사고: 픽스처 격리를 넣으면서 명령치환+글롭으로 실물 relay 수집을 뭉갰고,
+  #   **self-test 는 15/15 초록인 채 실물 탐지가 0 이 됐다.** 픽스처 모드에선 그 블록이
+  #   아예 안 돌기 때문이다 — 레인이 구조적으로 못 보는 자리였다.
+  #   그래서 이 레인만 **픽스처가 아니라 이 레포 자신**을 대상으로 돈다.
+  out="$(bash "$SELF" discover 2>&1)"; rc=$?
+  if printf '%s' "$out" | grep -q '같은 id 를 여러 선언이'; then
+    p=$((p+1)); echo "  ✅ L13c 실물 relay 수집이 살아 있다(자기 레포 대상)"
+  else
+    f=$((f+1)); echo "  ❌ L13c 실물에서 id 충돌이 안 잡힌다 — 수집 경로가 죽었을 수 있다"
+  fi
+  #   ⚠️ 이 레인의 한계: 이 레포에 **실제로 중복이 있는 동안만** 유효하다. 중복을 정리하면
+  #      이 레인은 조용히 무의미해진다 — 그때는 픽스처를 실물 경로에 심는 형태로 바꿔야 한다.
 
   # ── L10 전제 파손은 «능력 0» 이 아니다 ────────────────────────────────────
   out="$(FH_CLUSTER_ROOTS=" " bash "$SELF" discover 2>&1)"; rc=$?

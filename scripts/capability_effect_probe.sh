@@ -168,10 +168,26 @@ probe_one() {  # $1=capfile → rc
       return "$RC_UNVERIFIABLE"
     fi
     git -C "$wt" remote remove origin >/dev/null 2>&1 || true
-    # 격리 전제를 **단언한다** — 클론에 .git 이 없거나 origin 이 남아 있으면 판정하지 않는다.
-    if [ ! -d "$wt/.git" ] || [ -n "$(git -C "$wt" remote 2>/dev/null)" ]; then
-      printf '❌ %s: 격리 전제 파손(.git 부재 또는 origin 잔존). 판정하지 않는다\n' "$cap" >&2
+    # 🟥 **alternates 를 지운다** (2026-08-16 cross-family 지목, 거버너 손 재현).
+    # `--no-hardlinks` 는 오브젝트를 **복사**하지만, **소스가 이미 alternates 를 갖고 있으면
+    # 클론이 그 alternates 를 상속한다** — 즉 클론의 오브젝트 저장소가 **샌드박스 밖 경로**를
+    # 참조하게 된다. 내 초판 격리 측정은 alternates 없는 소스만 봐서 이 채널을 못 봤다.
+    # 재현: 소스에 `objects/info/alternates` 를 심고 `--local --no-hardlinks` 클론 →
+    #       클론의 alternates 에 그 경로가 그대로 남는다.
+    # 지운 뒤 **오브젝트가 실제로 다 있는지**는 아래 단언이 본다 — 지우기만 하고 깨진 채로
+    # 돌리면 진입점이 이상하게 실패하고 그게 «위반 없음» 으로 렌더될 수 있다.
+    rm -f "$wt/.git/objects/info/alternates" 2>/dev/null || true
+    # 격리 전제를 **단언한다** — 하나라도 어긋나면 판정하지 않는다(측정 대신 침묵).
+    if [ ! -d "$wt/.git" ] || [ -n "$(git -C "$wt" remote 2>/dev/null)" ] \
+       || [ -f "$wt/.git/objects/info/alternates" ]; then
+      printf '❌ %s: 격리 전제 파손(.git 부재 · origin 잔존 · alternates 잔존). 판정하지 않는다\n' "$cap" >&2
       return "$RC_HARNESS"
+    fi
+    # alternates 를 지우고도 HEAD 트리가 온전한가 — 아니면 «격리했지만 못 쓰는» 사본이다.
+    if ! git -C "$wt" rev-parse --verify -q HEAD >/dev/null 2>&1 \
+       || ! git -C "$wt" cat-file -e HEAD^{tree} 2>/dev/null; then
+      printf '⚠️  UNVERIFIABLE %s — alternates 제거 후 오브젝트가 불완전하다(소스가 alternates 에 의존)\n' "$cap" >&2
+      return "$RC_UNVERIFIABLE"
     fi
     sandbox="$wt"
     _PROBE_SANDBOX="$wt"
@@ -409,6 +425,37 @@ EOF
     else
       fails=$((fails+1)); echo "❌ L9 rc=$rc (1 기대) · 실물 core.pager=[$_planted]"
     fi
+  fi
+
+  # ── L10: alternates 상속 차단 (2026-08-16 cross-family 지목) ──────────────
+  #   `--no-hardlinks` 는 오브젝트를 복사하지만 **소스가 alternates 를 갖고 있으면 상속한다** —
+  #   클론의 오브젝트 저장소가 샌드박스 **밖 경로**를 참조하게 된다. 격리 주장이 조건부가 된다.
+  #   ★rc 만 보지 않는다: 「판정이 났다」와 「클론에 alternates 가 없다」는 다른 명제다.
+  local _alt="$d/altsrc"
+  mkdir -p "$_alt/donor" "$_alt/src"
+  ( cd "$_alt/donor" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo d > d.txt && git add d.txt && git commit -qm d ) >/dev/null 2>&1
+  ( cd "$_alt/src" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo x > f.txt && git add f.txt && git commit -qm i ) >/dev/null 2>&1
+  mkdir -p "$_alt/src/.git/objects/info"
+  printf '%s\n' "$_alt/donor/.git/objects" > "$_alt/src/.git/objects/info/alternates"
+  # ★관측 채널이 **프로브 자신의 판정**이어야 한다. 초판은 진입점의 stdout 에서 'LEAKED' 를
+  #   찾으려 했는데 `probe_one` 은 진입점 출력을 반환하지 않는다 — 그 grep 은 **원리적으로
+  #   못 맞는다.** 되돌림 프로브가 그걸 잡았다(수리를 지워도 10/10 초록이었다).
+  #   대신 «alternates 가 있으면 쓴다» 로 만들어 **read-only 선언 위반**으로 드러나게 한다:
+  #     상속됨  → 진입점이 파일을 쓴다 → VIOLATION(1)
+  #     차단됨  → 아무것도 안 쓴다     → VERIFIED(0)
+  cat > "$d/alt.cap" <<EOF
+id: test:alt
+entry: bash -c '[ -f .git/objects/info/alternates ] && echo x > ALT_INHERITED || true'
+requires_cwd: $_alt/src
+writes: read-only
+EOF
+  probe_one "$d/alt.cap" >/dev/null 2>&1; rc=$?
+  if [ "$rc" = "0" ]; then
+    pass=$((pass+1)); echo "✅ L10 소스의 alternates 가 샌드박스로 상속되지 않는다"
+  else
+    fails=$((fails+1)); echo "❌ L10 rc=$rc (0 기대) — alternates 가 상속돼 진입점이 썼다"
   fi
 
   rm -rf "$d"
