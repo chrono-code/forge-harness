@@ -277,6 +277,57 @@ recommended path is *simulate inside the chamber first, then emit the initial mo
 build-immediately. (Wired as a recommendation branch in `CLAUDE.md §Onboarding / Acceleration
 Autopilot`; build-immediately remains correct for clear, small, low-failure-cost projects.)
 
+### 3-c. The EMIT bar — «walks on its own» (operator-forged, 2026-08-16)
+
+> **Relationship to §3's EMIT-worthiness criterion — two different questions, do not merge them.**
+> That one screens candidates *going in*: is this worth emitting at all (net-new · artifact-shaped ·
+> precision-adequate). This one judges a candidate *coming out*: is it ready to stand. A candidate can
+> clear the first and fail this one (worth building, not yet alive), or clear this one and fail the
+> first (alive, but a reinvention). Both are required; neither substitutes.
+
+Until now the chamber's EMIT threshold was **implicit**, and that is why its record (9 runs,
+8 KILL, 1 EMIT) could not be read: with no stated bar, "screened well" and "over-screened" are
+the same picture. An instrument whose output is almost always one value is indistinguishable
+from an instrument stuck on that value — the dead-control signature this repo keeps re-finding.
+The bar is therefore stated, and stated **low on purpose**:
+
+> **A candidate EMITs when it can stand on its own — not when it is good.**
+>
+> ① It **runs standalone**, with no defect severe enough to prevent execution.
+> ② Every necessary function **fires at least weakly**. Firing, not performing.
+> ③ It is in a state where it can **fill itself in through back-and-forth with a human**.
+> ④ **Weakness is not a KILL.** Only inability-to-run is.
+
+Newborn-foal semantics: it staggers, and it is standing. Shortcomings are expected and are the
+*point* — an emitted harness is raised, not delivered finished.
+
+**The mechanical discriminator, and it is already in hand.** ② is not a judgment call, because
+"fired weakly" and "did not fire" separate cleanly at the exit boundary:
+
+```
+dead   — dies before doing anything             e.g. a gate that aborts on its own version line (rc=1)
+alive  — ran and returned a TYPED verdict       e.g. the same gate returning HARNESS_ERROR (rc=10)
+```
+
+`HARNESS_ERROR` is a *bad* result and it satisfies ②: the unit ran and said why it could not
+finish. `rc=1`-before-anything is not a weak firing, it is absence. This is the same
+`not found ≠ 0` line the rest of this repo runs on, applied to birth.
+
+**Where the judgment must happen: outside the author's environment.** Measured 2026-08-16 — a
+gate suite read 31/31 green in the harness that wrote it and was structurally dead in the sibling
+that inherited it, because the author's repo happened to supply a file the code assumed. An EMIT
+verdict rendered inside the incubator's own environment cannot see that class at all. So the EMIT
+check is run the way a recipient would run it: a clean checkout, none of the author's local state,
+each declared function exercised once.
+
+**Calibration owed, not claimed.** This bar makes the chamber testable for the first time; it does
+not retroactively validate the existing ledger. The 8 KILLs were decided against an unstated bar,
+so whether each died on "cannot run" (correct) or on "weak" (over-screen) is **unknown from the
+record**. Known-pair to run before the ledger is cited as evidence of anything: a known-positive
+(a field harness the operator judges already stands on its own) must EMIT; a ledger KILL whose
+recorded reason is explicitly *cannot run* must KILL. If the known-positive is KILLed, the
+instrument over-screens and every prior KILL is weakened by that much.
+
 ## 4. Compose ∪ disrupt — two operating modes over other harnesses
 
 | Mode | What | FH mechanism |
