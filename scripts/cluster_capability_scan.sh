@@ -78,6 +78,18 @@ PROJECTS_HOME="${FH_PROJECTS_HOME:-$HOME/projects}"
 
 _die() { printf '❌ %s\n' "$1" >&2; exit "$RC_HARNESS"; }
 
+# ── `.cap` 파일 열거 — **단 하나의 소스** ────────────────────────────────────
+#   🟥 2026-08-16: 세 자리가 각각 `"$dir"/*.cap` 로 글롭하고 있었고 **비재귀**였다.
+#   그래서 `.claude/capabilities/adapters/*.cap`(FH 내장 어댑터 — 운영자 결정으로
+#   **기본 경로**가 된 형태)이 **discover 에 통째로 안 보였다**: 허브가 어댑터 3종을 갖고도
+#   `OK 2` 로 계상됐다. 지어놓고 배선 안 한 상태이고([[feedback_built_but_not_wired]]),
+#   이 파일 자신이 «두 경로가 다른 스키마를 들면 divergent-normalizer» 라고 적어놨으므로
+#   열거도 한 벌로 모은다. 재귀 + 정렬 + 널 안전.
+_cap_files() {  # $1=dir → .cap 경로를 한 줄에 하나씩
+  [ -d "$1" ] || return 0
+  find "$1" -type f -name '*.cap' 2>/dev/null | LC_ALL=C sort
+}
+
 _key() {  # $1=capfile $2=key → 첫 값 (없으면 빈 문자열)
   # ★따옴표를 벗긴다. 초판은 그대로 뒀고, 그래서 `residency: "operator-private"` 가
   #   가드의 `case` 리터럴과 안 맞아 **가드를 통째로 우회**했다(cross-family 지목, 손 재현).
@@ -172,14 +184,14 @@ _harness_status() {  # $1=name $2=root $3=alias-note
     printf '%s\tNONE\t0\t선언 디렉토리 없음: %s\n' "$name" "$CAP_SUBDIR"; return
   fi
   local n=0 bad=0 f
-  for f in "$dir"/*.cap; do
+  while IFS= read -r f; do
     [ -f "$f" ] || continue
     if [ -z "$(_key "$f" id)" ] || [ -z "$(_key "$f" entry)" ]; then
       bad=$((bad+1))
     else
       n=$((n+1))
     fi
-  done
+  done < <(_cap_files "$dir")
   if [ "$bad" -gt 0 ]; then
     printf '%s\tMALFORMED\t%d\t%d개 선언이 id 또는 entry 를 빠뜨렸다\n' "$name" "$n" "$bad"; return
   fi
@@ -233,11 +245,11 @@ cmd_discover() {
       OK)
         okn=$((okn+cnt))
         local _cf
-        for _cf in "$root/$CAP_SUBDIR"/*.cap; do
+        while IFS= read -r _cf; do
           [ -f "$_cf" ] || continue
           printf '%s\n' "$_cf" >> "$tmp_paths"
           _key "$_cf" id >> "$tmp_ids"
-        done ;;
+        done < <(_cap_files "$root/$CAP_SUBDIR") ;;
       UNREACHABLE|MALFORMED|AMBIGUOUS) partial=1 ;;
     esac
   done <<EOF
@@ -296,7 +308,7 @@ cmd_recommend() {
       continue
     fi
     local f
-    for f in "$dir"/*.cap; do
+    while IFS= read -r f; do
       [ -f "$f" ] || continue
       # ★`discover` 는 «id 또는 entry 누락» 을 MALFORMED 로 보는데 초판의 recommend 는
       #   **id 만** 검사했다. 그러면 같은 cap 이 한쪽에선 MALFORMED, 다른 쪽에선 후보로 나온다
@@ -319,7 +331,7 @@ cmd_recommend() {
       _f() { local v; v="$(_key "$f" "$1")"; printf '%s' "${v:--}"; }
       printf '%d\t%s\t%s\t%s\t%s\t%s\t%s\n' "$score" "$name" "$id" \
         "$(_f residency)" "$(_f approval)" "$(_f reversibility)" "$(_f writes)" >> "$hits"
-    done
+    done < <(_cap_files "$dir")
   done <<EOF
 $rows
 EOF
@@ -535,6 +547,36 @@ EOF
     f=$((f+1)); echo "  ❌ L15 중복 키 해석이 검사기와 어긋난다"
   fi
 
+  # ── L16/L16b: 하위 디렉토리의 선언도 센다 (어댑터 경로) ─────────────────────
+  #   🟥 2026-08-16 실측: 이 파일의 세 자리가 각각 `"$dir"/*.cap` 로 **비재귀** 글롭이라
+  #   `.claude/capabilities/adapters/*.cap` 이 통째로 안 보였다 — 허브가 어댑터 3종을 갖고도
+  #   `OK 2` 로 계상됐다. 운영자 결정으로 **어댑터가 기본 경로**가 됐으므로 이건 엣지가 아니라
+  #   주 경로가 죽어 있던 것이다([[feedback_built_but_not_wired]]).
+  #   L16 = 하위 것이 세어지는가 · L16b = **컨트롤**, 최상위 것도 여전히 세어지는가
+  #   (재귀로 바꾸면서 평평한 경로를 깨면 그게 다음 결함이다).
+  mkdir -p "$T/nest/$CAP_SUBDIR/adapters" "$T/trnest/nest"
+  cat > "$T/nest/$CAP_SUBDIR/flat.cap" <<'EOF'
+id: nest:flat
+entry: /bin/true
+EOF
+  cat > "$T/nest/$CAP_SUBDIR/adapters/deep.cap" <<'EOF'
+id: nest:deep
+entry: /bin/true
+EOF
+  out="$(FH_PROJECTS_HOME="$T" FH_TRACKS_ROOT="$T/trnest" bash "$SELF" discover 2>&1)"; rc=$?
+  if printf '%s' "$out" | grep -qE '^nest[[:space:]]+OK[[:space:]]+2[[:space:]]'; then
+    p=$((p+1)); echo "  ✅ L16 하위 디렉토리(adapters/)의 선언도 계상된다"
+  else
+    f=$((f+1)); echo "  ❌ L16 하위 선언이 안 세어진다 — 비재귀 글롭 회귀 (기대 OK 2)"
+  fi
+  rm -f "$T/nest/$CAP_SUBDIR/adapters/deep.cap"
+  out="$(FH_PROJECTS_HOME="$T" FH_TRACKS_ROOT="$T/trnest" bash "$SELF" discover 2>&1)"; rc=$?
+  if printf '%s' "$out" | grep -qE '^nest[[:space:]]+OK[[:space:]]+1[[:space:]]'; then
+    p=$((p+1)); echo "  ✅ L16b 컨트롤 — 최상위 선언은 여전히 계상된다(재귀화가 평평한 경로를 안 깼다)"
+  else
+    f=$((f+1)); echo "  ❌ L16b 최상위 선언이 깨졌다 — 재귀화가 기존 경로를 부쉈다"
+  fi
+
   # ── L13c 🟥 **실물 경로가 살아 있는가** — self-test 가 못 보던 사각 ───────────
   #   실측 사고: 픽스처 격리를 넣으면서 명령치환+글롭으로 실물 relay 수집을 뭉갰고,
   #   **self-test 는 15/15 초록인 채 실물 탐지가 0 이 됐다.** 픽스처 모드에선 그 블록이
@@ -549,7 +591,10 @@ EOF
   #   앵커를 **추적되는 파일**로 옮긴다 — `.claude/capabilities/*.cap` 은 커밋돼 있어
   #   어느 체크아웃에서도 존재한다. 수집 경로가 죽으면 이 카운트가 0 이 되어 빨개진다.
   out="$(bash "$SELF" discover 2>&1)"; rc=$?
-  tracked_n="$(ls -1 "$(cd -P "$(dirname "$SELF")/.." && pwd)/.claude/capabilities"/*.cap 2>/dev/null | wc -l | tr -d ' ')"
+  # ★세는 규칙은 도구와 **같아야 한다**. 초판은 `ls .../*.cap`(비재귀)였는데 도구가 재귀로
+  #   바뀌자 레인만 2를 세고 도구는 5를 세어 거짓 적색이 났다 — 레인 자신이
+  #   divergent-normalizer 가 된 경우다. `_cap_files` 한 벌로 통일한다.
+  tracked_n="$(_cap_files "$(cd -P "$(dirname "$SELF")/.." && pwd)/.claude/capabilities" | wc -l | tr -d ' ')"
   if [ "${tracked_n:-0}" -lt 1 ]; then
     f=$((f+1)); echo "  ❌ L13c 전제 파손 — 추적되는 .claude/capabilities/*.cap 이 0건이다(앵커 대상 부재)"
   elif printf '%s' "$out" | grep -qE '^forge-harness\(hub\)[[:space:]]+OK[[:space:]]+'"$tracked_n"'[[:space:]]'; then

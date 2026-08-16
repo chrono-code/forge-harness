@@ -1,0 +1,110 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# 어댑터 선언 — FH 가 **남의 하네스 능력을 자기 안에서** 선언한다
+# ═════════════════════════════════════════════════════════════════════════════
+# 이 파일은 forge-harness 의 «자기 능력» 선언이 아니다. peer 하네스 `gstack` 의 능력을
+# FH 가 **호출 가능하게 감싼** 것이다. 어댑터임은 **id 네임스페이스**(`adapter/…`)와 이
+# 헤더로 표시한다 — 🟥 **새 스키마 키를 만들지 않는다.** `.cap` 파서가 이 클러스터에 네 벌
+# 있고(relay · registry · cluster_scan · effect-probe), 오늘만 관대함 차이로 두 번 터졌다
+# (`summary`/`tags` 가 한쪽에만 추가돼 «등록되나 호출 불가»). 키를 늘리면 네 곳을 동시에
+# 고쳐야 하고 그게 이 레포의 재발 결함이다.
+#
+# 왜 여기 사나 (운영자 결정 2026-08-16): *"사용자들은 다들 대상 레포에 짓지 않을 거야.
+# FH 내부에 상주시키겠지 — 로컬에서 작업하기 위한 거니까 어댑터는 내장되어 있어야지."*
+# 남의 레포 안 `.cap`(소유 선언)은 그 하네스를 소유하고 **동시에 노출을 결정한** 특권적
+# 경우이지 일반 경로가 아니다. gstack 레포에도 같은 목적의 소유 선언
+# (`.claude/capabilities/content-safety-scan.cap`)이 있고, 이 어댑터는 그것과 **경쟁하지
+# 않는다** — peer 가 자기 선언을 갖든 안 갖든 FH 가 부를 수 있게 하는 것이 어댑터의 일이다.
+#
+# `requires_cwd: SELF` 인 이유: 선언이 FH 안에 있고, tracked 파일에 운영자 홈 절대경로를
+# 싣지 않는다. peer 레포 위치는 **실행 시점에** `scripts/adapters/peer_resolve.sh` 가
+# 푼다 — 규칙은 `cluster_capability_scan.sh` 와 같은 한 벌이다(`FH_CLUSTER_ROOTS` 또는
+# `FH_PROJECTS_HOME`(기본 `$HOME/projects`) + 별칭 `<n>`·`<n>-dev`·`_`→`-`, 모호하면 안 고른다).
+#
+# ── 무엇을 재나 ──────────────────────────────────────────────────────────────
+# 텍스트 표면의 내용 안전성. gstack 의 공유 redact 엔진(`lib/redact-engine.ts`, 34패턴 /
+# secret·pii·legal·internal)이 매칭 **전에** 정규화(NFKC + zero-width 제거 + 소형 HTML
+# 엔티티 디코드)하므로 유니코드 혼동문자·제로폭 회피가 통하지 않고, 스캔하기엔 너무 큰
+# 입력에서는 조용한 통과 대신 합성 HIGH 로 **fail-closed** 한다.
+#
+# ── 왜 net-new 인가 (기계 확인, 기억 아님 — gstack 소유 선언에서 옮겨온 근거) ──
+# 가장 가까운 기존 노드는 허브의 `public-surface-scan`(누출 렌즈)이다.
+#   · OVERLAP(정직하게, 그리고 더 큰 쪽): 자격증명 **형태**. 허브가 이미 AWS/GitHub/Slack/
+#     OpenAI/Anthropic/Google 키 형태와 PEM 헤더를 담는다.
+#   · NET-NEW(등록할 값어치): 허브는 `pii`·`legal`·`internal` 범주에 패턴이 **0개**다 —
+#     SSN·카드번호·E.164 전화·이메일·공인 IP 탐지가 아예 없다. 그리고 `grep -E` 로 raw
+#     바이트를 보므로 정규화 층이 없고 제로폭/혼동문자에 뚫린다. 심각도 중간값(«사람이
+#     봐야 한다»)도 없다 — CLEAN/LEAK 둘뿐이다.
+#   허브 자신의 게이트 문서가 그 갭을 자기 말로 적어 뒀다 — 커밋시점·발행시점 스캔은
+#   *"자기 경로 위의 denylist 이지 범용 시크릿 스캐너가 아니다"* 이고 *"패턴 없는 시크릿
+#   형태"* 가 명명된 잔여로 올라 있다. 이 선언은 그 잔여를 겨눈다.
+#
+# ── 왜 `bin/gstack-redact` 를 직접 선언 못 하나 ──────────────────────────────
+# 그 CLI 의 exit 은 {0 clean, 2 MEDIUM, 3 HIGH} + git 레포 아님용 1 이고, **「아무것도 안
+# 쟀다」를 뜻하는 값이 없다.** 빈 파일·후보 0개 디렉토리·인터프리터 부재가 전부 exit 0 =
+# CLEAN 으로 렌더된다 — 「PASS 가 no-op 과 구분 불가」(§ⓑ.4 B1). CLI 코드를 바꾸는 선택지는
+# 일부러 버렸다: gstack 의 다른 스킬과 pre-push 훅이 그 코드를 소비하므로, 설명하는 행위로
+# 남의 레포 계약을 조용히 바꾸지 않는다. 래퍼가 없는 구분만 더한다.
+id: forge-harness:adapter/gstack-content-safety
+summary: adapter to gstack content-safety scan — secret/PII/legal patterns with normalization-before-match
+tags: adapter gstack secret pii leak redact publish surface scan content-safety
+entry: bash scripts/adapters/gstack_content_safety.sh
+requires_cwd: SELF
+verdict_channel: exit
+#
+# 🟥 「안 돌았다」가 **세 값**으로 갈라져 있다 — 셋은 서로 다른 명제다:
+#      NO_TARGET(3)     계기는 멀쩡한데 잴 대상이 없다   (대상에 대한 진술)
+#                       도달 경로(실물): `--target <dir>` 인데 전 파일이 바이너리/빈/공백뿐 ·
+#                       `--target <file>` 이 0바이트이거나 공백뿐
+#      HARNESS_ERROR(10) 노드는 있는데 계기가 깨졌다     (계기에 대한 진술)
+#                       도달 경로: bun 부재 · CLI/엔진 부재 · 대상 부재/불가독 · find 열거
+#                       실패 · 인자 없음 · 하위 CLI 가 자기 {0,2,3} 계약 밖 코드 반환 ·
+#                       peer 별칭이 둘 이상 동시에 맞음(어느 트리를 쟀는지 말할 수 없다)
+#      PEER_ABSENT(20)  그 노드가 이 머신에 없다        (클러스터에 대한 진술)
+#                       ★어댑터 고유값. 「gstack 을 안 깔았다」가 CLEAN 으로도
+#                        HARNESS_ERROR 로도 접히면 안 된다. 전자는 미측정을 통과로 렌더하고
+#                        후자는 멀쩡한 이웃을 고장으로 렌더한다.
+#    ★등록 바는 아래 두 arm 만 돌린다 — REVIEW_MEDIUM·NO_TARGET·HARNESS_ERROR·PEER_ABSENT 는
+#     선언돼 있으나 그 판정에서 **관측되지 않는다**(검사기가 자기 출력에 그렇게 적는다).
+#     그 넷은 `scripts/test_adapter_lanes.sh` 가 따로 덮는다.
+verdict_enum: 0=CLEAN 1=BLOCK_HIGH 2=REVIEW_MEDIUM 3=NO_TARGET 10=HARNESS_ERROR 20=PEER_ABSENT
+approval: auto
+reversibility: reversible
+# 진입점이 스캔한 파일 **경로**와 엔진의 마스킹된 미리보기(매치 구간 앞 4자 이내)를 싣는다.
+# 경로는 호출자가 고르므로 콕핏이 운영자 파일을 겨눌 수 있다 — `public` 선언은 출력이 나를
+# 수 있는 것을 느슨하게 하는 쪽이다. `company` 는 주장하지 않는다: gstack 은 공개 OSS 이고
+# 이 레포는 회사 자산을 담지 않는다.
+residency: operator-private
+degrade: fail-closed
+tier_floor: none
+#
+# `writes: read-only` — **실측했다**(양 arm 연속 실행 전후 대조):
+#   ① `$HOME` 엔트리 목록 diff = 비어 있음
+#   ② FH 워킹트리 `git status --porcelain` 이 이 실행으로 바뀐 항목 0건
+#   ③ peer(gstack) 워킹트리 `git status --porcelain` diff = 비어 있음 (peer 를 변이하지 않는다)
+#   래퍼가 `$TMPDIR` 아래 만드는 스크래치는 자기 cleanup 트랩이 지운다(경로를 찍어 재-stat:
+#   사라짐).
+# ⚠️ 명명된 잔여: 인터프리터가 `bun` 이고 패키지 매니저는 원리상 `$HOME/.bun/` 아래 캐시를
+#    건드릴 수 있다. 위 측정은 `$HOME` **엔트리**를 보므로 이미 존재하는 `~/.bun` 하위의
+#    쓰기는 못 봤을 것이다. 측정 머신에 `~/.bun` 은 이미 있었고 새 최상위 엔트리는 안 생겼다.
+#    이 진입점은 install/resolve 단계를 돌리지 않는다(상대 모듈과 내장만 임포트).
+writes: read-only
+judge: mechanical
+# CLEAN 만 clearing. REVIEW_MEDIUM 은 자동 경로를 막고 사람에게 넘긴다. 나머지 셋은 결과가
+# 아니라 「안 쟀다」이므로 정확히 그 이유로 막는다.
+verdict_binding: BLOCK_HIGH REVIEW_MEDIUM NO_TARGET HARNESS_ERROR PEER_ABSENT
+#
+# known-pair — 양 arm 모두 래퍼 자신의 스크래치 디렉토리에서 실행시점에 픽스처를 만들고,
+# 둘 다 **실제로 실행했다**:
+#   양성(BLOCK_HIGH): AWS 액세스키 형태 + SSN 형태 → 실측 rc=1
+#                     (`aws.access_key` HIGH + `pii.ssn` MEDIUM)
+#   음성(CLEAN)     : 같은 길이대·같은 주제, 자격증명도 PII 도 없음 → 실측 rc=0
+# ★고정 SHA 도 `HEAD~N` 도 쓰지 않는다. 상대 ref 는 커밋이 쌓이면 조용히 다른 구간을 재고,
+#  고정 SHA 는 얕은 클론에서 해석 불가인데 effect probe 가 레포를 복제한다. 실행시점 생성
+#  픽스처는 **양쪽 모두에서** 안정적이다. 대가: 쌍이 재는 것은 이 레포의 히스토리가 아니라
+#  엔진이다 — 내용 스캐너에는 그쪽이 옳은 표적이다.
+# ★픽스처 리터럴은 래퍼 안에서 printf 인자로 **쪼개져** 있다. 픽스처가 자기를 담은 레포를
+#  발행 불가로 만들면 안 된다.
+calibration_positive_args: --known-positive
+calibration_positive_expect: BLOCK_HIGH
+calibration_negative_args: --known-negative
+calibration_negative_expect: CLEAN

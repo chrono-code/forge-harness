@@ -1,0 +1,110 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# 어댑터 선언 — FH 가 **남의 하네스 능력을 자기 안에서** 선언한다
+# ═════════════════════════════════════════════════════════════════════════════
+# peer 하네스 `mate`(로컬 별칭 해석: `mate-dev`)의 기존 회귀 앵커를 FH 가 호출 가능하게
+# 감싼 것이다. 어댑터임은 **id 네임스페이스**(`adapter/…`)와 이 헤더로 표시한다 —
+# 🟥 **새 스키마 키를 만들지 않는다.** `.cap` 파서가 이 클러스터에 네 벌 있고
+# (relay · registry · cluster_scan · effect-probe), 키를 늘리면 네 곳을 동시에 고쳐야 하며
+# 그게 이 레포의 재발 결함이다(오늘만 관대함 차이로 두 번 터졌다).
+#
+# 왜 여기 사나 (운영자 결정 2026-08-16): 어댑터가 **기본 경로**다. 남의 레포 안 `.cap`
+# (소유 선언)은 그 하네스를 소유하고 **동시에 노출을 결정한** 특권적 경우이지 일반 경로가
+# 아니다. `requires_cwd: SELF` 인 이유: 선언이 FH 안에 있고 tracked 파일에 운영자 홈
+# 절대경로를 싣지 않는다. peer 위치는 실행 시점에 `scripts/adapters/peer_resolve.sh` 가
+# 푼다 — 규칙은 `cluster_capability_scan.sh` 와 **같은 한 벌**이다
+# (`FH_CLUSTER_ROOTS` 또는 `FH_PROJECTS_HOME`(기본 `$HOME/projects`) + 별칭
+# `<n>`·`<n>-dev`·`_`→`-`, 모호하면 고르지 않는다). 두 계기가 다른 트리를 보면 안 된다.
+#
+# ── 무엇을 재나 ──────────────────────────────────────────────────────────────
+# 에이전트 명세서가 **정보경계 불변식을 여전히 담고 있는가**(11항 회귀 앵커):
+# 입력 어휘 allowlist(denylist 아님) · 금지 대상을 «위치» 가 아니라 **«출처»** 로 정의
+# (레포 안 사본·빌드 산출물·`sourcesContent` 소스맵 포함) · 금지가 **도구 무관**임을 명시
+# (도구를 열거하면 열거 안 된 경로가 우회로가 된다) · 런타임 증거 없을 때의 **신뢰도 상한**
+# 이 다른 모든 조항에 우선 · **메모리 쓰기 금지**(저장값은 다음 호출에 자동 주입되어 세션
+# 경계를 넘어 오염이 지속된다) · 배선 상태 정직 표기 · 능동탐색과 조우의 분리.
+# 그 불변식은 **전부 산문 규칙**이라 편집 한 번으로 조용히 되돌아간다 — 이 앵커가 그걸 막는다.
+#
+# ── 왜 net-new 인가 ──────────────────────────────────────────────────────────
+# FH 에 같은 계기가 **없다**. FH 의 인접 자산은 전부 다른 질문을 한다:
+#   · `public-surface-scan` / `public_surface_scan_files.sh` — 「이 표면에 나가면 안 되는
+#     **토큰**이 있나」(내용의 리터럴을 본다)
+#   · `degrade-direction-scan` — 「판정이 어느 방향으로 무너지나」(verdict 로직을 본다)
+#   · `judgment_circuit_lint.sh` — 판단 회로의 형태를 본다
+# 이 능력은 「**한 에이전트 정의가 자기 정보경계 계약을 아직 담고 있나**」를 본다 — 토큰도
+# verdict 도 아니라 **명세서의 안전 조항 자체**가 대상이다. FH 는 그 렌즈를 갖고 있지 않다.
+#
+# ── 왜 진입점을 그대로 못 쓰나 ───────────────────────────────────────────────
+# peer 스크립트의 exit 은 {0,1,10} 으로 이미 typed 이고 「안 돌았다」(10)도 갖고 있다 —
+# 그래서 여기서 고칠 게 별로 없다. 어댑터가 더하는 것은 딱 하나: **peer 자체의 부재**를
+# 뜻하는 값이다. 그게 없으면 「이 머신에 mate 를 안 깔았다」가 HARNESS_ERROR(= mate 가
+# 깨졌다)로 렌더되고, 클러스터 스캔이 그 노드를 «고장» 으로 세게 된다.
+id: forge-harness:adapter/mate-agent-boundary
+summary: adapter to mate agent information-boundary invariant anchor — checks an agent spec still carries its safety clauses
+tags: adapter mate agent boundary invariant regression anchor safety spec information-boundary
+entry: bash scripts/adapters/mate_agent_boundary.sh
+requires_cwd: SELF
+verdict_channel: exit
+#
+# 🟥 「안 돌았다」가 **두 값**으로 갈라져 있다 — 다른 명제이기 때문이다:
+#      HARNESS_ERROR(10) 하네스는 있는데 못 쟀다   (계기/대상에 대한 진술)
+#                        도달 경로(실물): 대상 파일 부재/불가독(peer 스크립트가 직접 냄) ·
+#                        peer 진입점 부재 · peer 별칭이 둘 이상 동시에 맞음 · 모드 미지정 ·
+#                        peer 가 자기 {0,1,10} 계약 밖 코드 반환
+#      PEER_ABSENT(20)   그 노드가 이 머신에 없다  (클러스터에 대한 진술)
+#    peer 헤더 자신이 앞의 것을 못 박아 뒀다 — *"exit 10 은 «위반 0» 이 **아니다**. 대상을
+#    못 읽은 것이므로 검사가 시작조차 안 한 상태다. 부재를 통과로 렌더하면 이 앵커는
+#    장식이 된다."* 어댑터는 그 규율을 클러스터 층까지 연장한다.
+#    ★등록 바는 아래 두 arm 만 돌린다 — HARNESS_ERROR·PEER_ABSENT 는 선언돼 있으나 그
+#     판정에서 **관측되지 않는다**. 둘은 `scripts/test_adapter_lanes.sh` 가 덮는다.
+verdict_enum: 0=PASS 1=FAIL 10=HARNESS_ERROR 20=PEER_ABSENT
+approval: auto
+reversibility: reversible
+#
+# 🟥 `residency: company` — peer 레포가 company 다. `--target`/`--peer-default` 모드에서
+#    이 어댑터는 **peer 의 실물 명세서**를 검사하고 그 진입점의 출력(위반한 조항의 grep
+#    히트 줄 포함)을 stdout 에 그대로 싣는다. 그 줄은 조직 식별자를 나를 수 있다.
+#    ⇒ 이 능력의 **출력**은 로컬에 남기고, 외부 계열 디스패치에 그대로 넘기지 않는다.
+#    ⚠️ 캘리브레이션 arm(아래)은 합성 픽스처만 읽으므로 그 경로에 한해 조직 내용이 없다.
+#       그러나 residency 는 **가장 넓게 관측된 값**으로 선언한다 — arm 이 좁다는 이유로
+#       능력 전체를 느슨하게 선언하지 않는다.
+residency: company
+degrade: fail-closed
+tier_floor: none
+#
+# `writes: read-only` — **실측했다**(양 arm 연속 실행 전후 대조, 2026-08-16):
+#   `$HOME` 엔트리 목록 · `$HOME/.config` 엔트리 목록 · FH 워킹트리 `git status --porcelain` ·
+#   peer(mate-dev) 워킹트리 · qasp-dev 워킹트리 — **다섯 diff 전부 비어 있음**.
+#   이 어댑터는 스크래치 디렉토리도 만들지 않는다(픽스처가 tracked 파일이다).
+# ⚠️ 명명된 잔여: peer 진입점은 `grep` 만 돌리지만, 그 진입점이 미래에 바뀌면 이 선언은
+#    낡는다. M6 는 **선언된 arm 이 지난 경로만** 관측한다.
+writes: read-only
+judge: mechanical
+# PASS 만 clearing. FAIL 은 회귀, 나머지 둘은 「안 쟀다」 — 셋 다 막는다.
+verdict_binding: FAIL HARNESS_ERROR PEER_ABSENT
+#
+# known-pair — **어댑터가 자기 픽스처를 갖는다**:
+#   `scripts/adapters/fixtures/mate_agent_boundary_known_{positive,negative}.md`
+#   peer 레포의 `scripts/fixtures/agent_boundary_known_*.md` 에서 **바이트 동일하게** 복사
+#   (sha1 positive=ad317909fd6415d02609da5f21a50c1e13bb0508 ·
+#         negative=8e81f200eb17ce60901a6211b6916d47822ad029, 복사 직후 양쪽 대조).
+#   양성(PASS): 불변식 11항을 전부 담은 합성 명세서 → 실측 rc=0
+#   음성(FAIL): 같은 형태에서 불변식 문장을 **의도적으로 뺀** 것 → 실측 rc=1
+# ★왜 peer 의 실물 명세서를 arm 으로 안 쓰나: 실물은 팀이 계속 고치는 살아있는 문서라,
+#  그것을 양성 arm 으로 쓰면 이 어댑터의 판정이 **남의 편집에 따라 조용히 뒤집힌다**
+#  (감사 대상은 얼려야 한다). 실물은 `--peer-default` 로 계속 검사할 수 있다.
+# ★잔여(명명): 복사본이라 **드리프트한다.** peer 가 불변식을 늘리면 이 사본은 낡고, 그때
+#  음성 arm 이 여전히 FAIL 이더라도 «새 불변식을 재고 있다» 는 뜻은 아니다. 대가를 알고
+#  고른 것이다 — 실행시점에 peer 트리를 읽으면 계기가 남의 편집에 흔들린다.
+# 🟥 residency 확인(복사 전, 컨트롤 포함 — 유출은 되돌릴 수 없으므로 손으로 닫았다):
+#   ① 두 파일 **전문을 눈으로 읽었다**(1608 + 3615 바이트).
+#   ② peer 자신의 식별자 denylist grep → 0건. **그 grep 이 살아있음을 합성 known-positive
+#      로 증명**했다(peer 의 실물 에이전트 정의 4개도 0건이라, 그것만으로는 「식별자가
+#      없다」와 「grep 이 안 문다」가 구분되지 않았다 — 컨트롤 없이는 판별력이 없다).
+#   ③ 경로/URL/이메일/IP/`.co.kr`·`.com` grep → 0건. 컨트롤(합성 유출 줄) 은 정상 발화.
+#   ④ 두 파일의 **라틴 토큰 25개 전수 열거** — 전부 일반 기술어/파일명이고 조직 식별자 0건.
+#   ⑤ gstack redact 엔진(34패턴)도 돌렸으나 **컨트롤이 안 물었다**(그 엔진은 조직 자산명
+#      패턴이 0개다) ⇒ 이 질문에 대해 **UNCALIBRATED**. 근거로 세지 않았다.
+calibration_positive_args: --known-positive
+calibration_positive_expect: PASS
+calibration_negative_args: --known-negative
+calibration_negative_expect: FAIL

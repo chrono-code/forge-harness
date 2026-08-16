@@ -1,0 +1,116 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# 어댑터 선언 — FH 가 **남의 하네스 능력을 자기 안에서** 선언한다
+# ═════════════════════════════════════════════════════════════════════════════
+# peer 하네스 `qasp`(로컬 별칭 해석: `qasp-dev`)의 `scripts/new_code_anchor_scan.sh` 를
+# FH 가 호출 가능하게 감싼 것이다. 어댑터임은 **id 네임스페이스**(`adapter/…`)와 이 헤더로
+# 표시한다 — 🟥 **새 스키마 키를 만들지 않는다.** `.cap` 파서가 이 클러스터에 네 벌 있고
+# (relay · registry · cluster_scan · effect-probe), 키를 늘리면 네 곳을 동시에 고쳐야 하며
+# 그게 이 레포의 재발 결함이다.
+#
+# 왜 여기 사나 (운영자 결정 2026-08-16): 어댑터가 **기본 경로**다. 남의 레포 안 `.cap`
+# (소유 선언)은 그 하네스를 소유하고 **동시에 노출을 결정한** 특권적 경우이지 일반 경로가
+# 아니다. `requires_cwd: SELF` 인 이유: 선언이 FH 안에 있고 tracked 파일에 운영자 홈
+# 절대경로를 싣지 않는다. peer 위치는 실행 시점에 `scripts/adapters/peer_resolve.sh` 가
+# 푼다 — 규칙은 `cluster_capability_scan.sh` 와 **같은 한 벌**이다
+# (`FH_CLUSTER_ROOTS` 또는 `FH_PROJECTS_HOME`(기본 `$HOME/projects`) + 별칭
+# `<n>`·`<n>-dev`·`_`→`-`, 모호하면 고르지 않는다).
+#
+# ── 무엇을 재나 ──────────────────────────────────────────────────────────────
+# **새로 추가된 실행 코드에 그것을 보는 앵커(테스트)가 있는가.** peer 헤더의 기원 실측
+# (PR #66): 앵커 0개인 신규 스크립트가 들어왔고 CI 는 `success / 123 passed` 였다 — 그
+# 123개 중 그 파일을 보는 게 **하나도 없었을** 뿐이다. 그 상태로 fail-open 3건이 같이
+# 통과했다. 나중에 앵커 25건을 붙이고 초판으로 되돌리자 9건이 즉시 빨개졌다.
+# 이 스캔이 닫는 것은 딱 하나: **「안 돌았다」가 「깨끗하다」로 읽히는 것.**
+# 판정은 느슨하다(«이 파일을 보는 테스트가 존재하기는 하는가»), 그게 의도다 — 재는 것은
+# «테스트가 훌륭한가» 가 아니다. 면제는 `ANCHOR_EXEMPT:` 트레일러로만 되고 사유가 출력에
+# 남는다(침묵 면제 없음 — 과차단은 우회를 습관으로 만들고 그 습관은 같은 레포의 비가역
+# 게이트까지 무장해제한다).
+#
+# ── 왜 net-new 인가 ──────────────────────────────────────────────────────────
+# FH 에 같은 계기가 **없다**. FH 의 인접 자산은 다른 질문을 한다:
+#   · `scripts/gate_anchor_check.sh` — **기존 게이트**의 앵커가 살아있나(되돌리면 빨개지나)
+#   · `scripts/lane_runner_check.sh` — 레인 러너가 배선돼 있나
+#   · `degrade_direction_scan.sh` — 판정이 어느 방향으로 무너지나
+# 이 능력은 「**이 diff 가 새로 들여온 실행 코드**에 앵커가 붙어 있나」를 본다 — 대상이
+# «기존 자산» 이 아니라 **«이 범위의 신규 추가»** 이고, 판정 단위가 diff 다. 그 렌즈는
+# FH 에 없다. ([[feedback_built_but_not_wired]] 의 앞단 — 아예 안 지어진 앵커를 잡는다.)
+#
+# ── 왜 진입점을 그대로 못 쓰나 ───────────────────────────────────────────────
+# peer 의 exit 은 {0,1,2,3,4} 로 이미 typed 이고 「안 돌았다」가 셋(2·3·4)이나 갈라져
+# 있다 — 잘 지어진 계기다. 어댑터가 더하는 것은 **peer 자체의 부재**를 뜻하는 값이다.
+# 그게 없으면 「이 머신에 qasp 를 안 깔았다」가 HARNESS_ERROR(= qasp 가 깨졌다)로 렌더된다.
+id: forge-harness:adapter/qasp-new-code-anchor
+summary: adapter to qasp new-code anchor scan — newly added executable code without any test that looks at it
+tags: adapter qasp anchor test coverage new-code diff gate regression fail-open
+entry: bash scripts/adapters/qasp_new_code_anchor.sh
+requires_cwd: SELF
+verdict_channel: exit
+#
+# 🟥 「안 돌았다」가 **네 값**으로 갈라져 있다 — 전부 다른 명제다:
+#      ARGS(2)          인자가 틀렸다                  (호출에 대한 진술)
+#      HARNESS_ERROR(3) 하네스는 있는데 못 쟀다        (계기에 대한 진술)
+#                       도달 경로(실물): ref 해석 불가 · merge-base 없음 · git diff 실패 ·
+#                       git 레포 아님 · peer 진입점 부재 · peer 별칭 다중 히트 ·
+#                       peer 가 자기 {0,1,2,3,4} 계약 밖 코드 반환
+#      OUT_OF_SCOPE(4)  계기는 돌았는데 대상이 사각지대다 (범위에 대한 진술)
+#                       — 다른 언어의 신규 실행 코드가 있어 **검사되지 않았다**.
+#                         peer 실측: 신규 `src/newthing.js` 1개 · 앵커 0개 → 이전 판은 rc=0
+#                         (「범위 밖」이 「부재」로 접혔다). 그 접힘을 깨려고 신설된 값이다.
+#      PEER_ABSENT(20)  그 노드가 이 머신에 없다       (클러스터에 대한 진술)
+#    ★peer 헤더 자신의 규율: *"같은 숫자가 이 레포 안에서 다른 사건을 뜻한다 — 값을 옮겨
+#     쓰지 마라."* (`judge_rer.sh` 의 4=BLOCKED · `pull_cli.py` 의 4=NO_CORPUS 는 여기의
+#     4=OUT_OF_SCOPE 와 전부 다른 사건이다.) 어댑터는 하위 exit 을 전파하지 않고 **명시
+#     case 로 재매핑**한다.
+#    ★등록 바는 아래 두 arm 만 돌린다 — ARGS·HARNESS_ERROR·OUT_OF_SCOPE·PEER_ABSENT 는
+#     선언돼 있으나 그 판정에서 **관측되지 않는다**. 넷은 `scripts/test_adapter_lanes.sh` 가 덮는다.
+verdict_enum: 0=PASS 1=VIOLATION 2=ARGS 3=HARNESS_ERROR 4=OUT_OF_SCOPE 20=PEER_ABSENT
+approval: auto
+reversibility: reversible
+#
+# 🟥 `residency: company` — peer 레포가 company 다. `--range` 모드에서 이 어댑터는 peer
+#    히스토리를 검사하고 진입점 출력에 **peer 의 파일 경로 목록**(위반 파일 · 범위 밖 파일)을
+#    그대로 싣는다. 그 경로는 조직 자산명을 나른다.
+#    ⇒ 이 능력의 **출력**은 로컬에 남기고 외부 계열 디스패치에 그대로 넘기지 않는다.
+#    ⚠️ 캘리브레이션 arm 은 합성 레포만 만지므로 그 경로에 한해 조직 내용이 없다. 그러나
+#       residency 는 **가장 넓게 관측된 값**으로 선언한다(§ⓐ.5).
+residency: company
+degrade: fail-closed
+tier_floor: none
+#
+# `writes: read-only` — **실측했다**(양 arm 연속 실행 전후 대조, 2026-08-16):
+#   `$HOME` 엔트리 목록 · `$HOME/.config` 엔트리 목록 · FH 워킹트리 `git status --porcelain` ·
+#   peer(qasp-dev) 워킹트리 · mate-dev 워킹트리 — **다섯 diff 전부 비어 있음**.
+#   캘리브레이션 arm 이 `$TMPDIR` 아래에 합성 git 레포를 만든다(git init + 2 커밋). 그건
+#   OWNED_TMP 안이고 cleanup 트랩이 지운다 — 실측: 실행 전후 `/var/folders/**/T/tmp.*`
+#   디렉토리 수 1063 → 1063(순증 0). 신원은 `git -c user.email/user.name` 으로 넘겨
+#   **전역 gitconfig 를 읽지도 쓰지도 않는다.**
+#   peer 트리는 `--range` 에서도 cwd 로만 쓰이고 rm/write 경로에 절대 안 들어간다.
+# ⚠️ 명명된 잔여: M6 의 격리 샌드박스에는 `.git` 이 없어 **git 을 실제로 쓰는 capability 는
+#    거기서 못 돈다**(그 프로브 헤더가 그렇게 적어 뒀다). 이 어댑터의 arm 은 자기 임시
+#    레포를 만들므로 샌드박스의 `.git` 부재와 무관하지만, 그 사실 자체가 프로브의 관측
+#    범위를 넓혀 주지는 않는다. 위 근거는 프로브 판정이 아니라 **손 실측**이다.
+writes: read-only
+judge: mechanical
+# PASS 만 clearing. VIOLATION 은 위반, 나머지 넷은 「안 쟀다」의 서로 다른 얼굴 — 전부 막는다.
+verdict_binding: VIOLATION ARGS HARNESS_ERROR OUT_OF_SCOPE PEER_ABSENT
+#
+# known-pair — **합성 레포**에서 실행시점에 세운다. peer 히스토리를 안 쓰는 이유 셋:
+#   ① peer 의 이 진입점은 **수리 중**이다(qasp PR #174, 브랜치
+#      `fix/anchor-scan-out-of-scope-repairs` — 이 쌍을 고른 시점의 체크아웃 상태다).
+#      고정 SHA 를 박으면 그 브랜치가 squash 머지되는 순간 커밋이 orphan 이 되어 쌍이 죽는다.
+#   ② 상대 ref(`HEAD~N`)는 커밋이 쌓이면 가리키는 구간이 조용히 움직인다 — 같은 선언이
+#      다른 것을 재게 된다.
+#   ③ peer 는 company 다. peer 히스토리를 arm 으로 쓰면 **캘리브레이션 출력에 조직 경로가
+#      실린다.** 합성 레포는 그 표면을 아예 만들지 않는다.
+#   대가(정직하게): 이 쌍이 재는 것은 «peer 의 히스토리» 가 아니라 **«peer 의 계기가 답
+#   아는 두 케이스를 가르는가»** 다. M4 가 묻는 것이 정확히 후자다.
+#   양성(VIOLATION): 신규 `src/plain_config.py`(앵커 0) → 실측 rc=1
+#   음성(PASS)     : 같은 파일 + `tests/test_plain_config.py`(stem 을 언급하는 앵커) → 실측 rc=0
+# ★파일명 `plain_config.py` 는 peer 자신의 B1 실측에서 온 **대조군**이다: `latest_config.py`
+#  는 `la·test_·config` 의 `test_` 부분문자열 때문에 제외 규칙에 걸려 무검사 통과했고
+#  (fail-open), `plain_config.py` 는 정상 차단됐다. 즉 이 양성 arm 은 peer 가 이미 손으로
+#  가른 바로 그 케이스와 같다 — 우연히 빨간 케이스가 아니다.
+calibration_positive_args: --known-positive
+calibration_positive_expect: VIOLATION
+calibration_negative_args: --known-negative
+calibration_negative_expect: PASS

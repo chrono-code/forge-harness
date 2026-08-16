@@ -320,6 +320,22 @@ fi
 # how a fresh CI checkout gets approximated, so the check was absent from exactly the tree used
 # to reason about CI. scripts/test_package_coverage_lanes.sh pins the predicate across all four
 # tree shapes plus a known pair.
+# ── FH 내장 어댑터 레인 ────────────────────────────────────────────────────
+# 어댑터(`.claude/capabilities/adapters/*.cap` + `scripts/adapters/*.sh`)는 남의 하네스 능력을
+# FH 안에서 호출하는 **기본 경로**다(운영자 결정 2026-08-16 — 남의 레포에 선언을 심지 않는다).
+# 🟥 배선이 없으면 이 레인은 «만들고 배선 안 함» 이 된다 — 같은 날 `cluster_capability_scan.sh`
+# 가 비재귀 글롭이라 어댑터를 통째로 못 보던 것을 이 세션이 실측으로 잡았고, 그 회귀를 막는
+# 레인(L16/L16b)이 그 파일 self-test 안에 있다. 어댑터 자체의 레인은 여기서 돈다.
+if [ ! -f scripts/adapters/peer_resolve.sh ]; then
+  _absent_subject_verdict "test_adapter_lanes.sh" "scripts/adapters/peer_resolve.sh" || fail=1
+elif [ -f scripts/test_adapter_lanes.sh ]; then
+  if ! bash scripts/test_adapter_lanes.sh; then
+    fail=1
+  fi
+else
+  _absent_subject_verdict "test_adapter_lanes.sh" "scripts/test_adapter_lanes.sh" || fail=1
+fi
+
 if [ ! -f scripts/package_coverage_check.sh ]; then
   _absent_subject_verdict "test_package_coverage_lanes.sh" "scripts/package_coverage_check.sh" || fail=1
 elif [ -f scripts/test_package_coverage_lanes.sh ]; then
