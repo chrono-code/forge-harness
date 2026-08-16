@@ -107,12 +107,18 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    Pre-Publish or Destructive-Op gate in `CLAUDE.md`. `pre-push` is only the git-side backstop.
 7. **Self-contrast on asset touch:** the trigger for the three-layer self-contrast (process ·
    engines · identities) is *touching an FH/PMH asset*, not being asked. Pick verification axes by
-   failure mode — running all four every time is not the rule. Record, in the existing Axes 2–3
+   failure mode — running all six every time is not the rule. Record, in the existing Axes 2–3
    marker fields: the soul line written before design (or `none`), each axis run and not run — by
    name, and each axis's control with whether it survived. The minimum evidence that an axis ran is
    execution output with a live control; reporting an axis as run without one, or recording only a
-   reason for not choosing it, is not compliance. The four axes are named in
-   `knowledge/shared/harness-core/fh_three_layer_canon.md` §1-a — read it before recording; §1-c
+   reason for not choosing it, is not compliance. The axes are named in
+   `knowledge/shared/harness-core/fh_three_layer_canon.md` — **§1-a is the original four
+   (2026-08-09) and §1-a-2 expanded them to six (2026-08-16)**: ⓐ different family · ⓑ standpoint ·
+   ⓒ isolated grounding · ⓓ third-party encounter · ⓔ first real use · ⓕ revert-and-observe.
+   Axes are separated by **what they received**, not by how adversarial they are — same input,
+   same blind spot, however many reviewers you add. ⚠️ The machine layer is still four: `axes-run`
+   requires four letters, ⓑ has its own marker field, and **ⓓ has no field at all** — record it in
+   prose and do not read a silent ⓓ as a run one. Read it before recording; §1-c
    holds the sample limits — read it before citing. This record is self-attested and has no hook
    behind it; it is closed by a different-family reader, not by writing it more carefully.
 8. **Branch-surface claims:** GitHub branch protection is two independent layers — legacy
