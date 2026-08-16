@@ -2044,3 +2044,39 @@
     ★**어댑터 담당이 자기 검증의 한계를 먼저 선언했다** — M6 가 작업 트리에서 UNVERIFIABLE 인 이유를 추정이 아니라 실측(`git archive HEAD | tar -t | grep -c adapters` = 0)으로 대고, 버려지는 클론에서 돌린 초록은 «진짜 판정이 아니다» 라고 못박았다. 사후에 거버너가 커밋 후 재실행해 확정.
     🟥 **거버너 쪽 실책 4건**: ⓐ `git add scripts/` 가 **다른 에이전트의 편집 중 파일을 삼켰다**(`feedback_shared_checkout_ops_touch_others_work` 재현, 그 에이전트가 스스로 확인해 보고) ⓑ zsh 비인용 확장으로 두 인자를 한 인자로 넘겨 전 항목 rc=3 — 오늘 두 번째 ⓒ 레인 앵커를 **gitignored 데이터**(L13c)와 **운영자 머신 레이아웃**(어댑터 레인)에 걸어 **로컬 초록 / CI 적색**을 두 번 만들었다 ⓓ 6축 절을 재작성하며 ⓑ행의 `§7` 링크를 떨어뜨렸고 그게 **4개 언어판 전부로 번졌다**(동기화 에이전트가 «부수효과» 로 보고해 잡힘, 자력 아님).
     ★**두 번째 실책의 수리에서 새 규율이 나왔다**: peer 의존 레인의 SKIP 은 **시끄러워야 한다** — 컨트롤이 전부 빠지면 남은 초록이 「늘 같은 값을 내는 계기」와 구분되지 않는다. `not found ≠ 0` 를 레인 자신에게 적용한 형태."
+- date: 2026-08-16
+  agent: general-purpose (isolated) — weekly-audit 결함클래스 재발 추출
+  purpose: "tracks/_meta 와 a private companion store 미러의 fh_completed_*/fh_signal_* 17일치를 읽어 결함 클래스별 재발 집계"
+  outcome: accepted
+  evidence: "결함행 ~567 추출, N≥3 클래스 13종. 라이브 결함 1건 신규 적발(gate_anchor_check.sh 호출부 0). 자기 계기 결함 1건 자기신고(./ 접두 불일치로 진짜 양성을 부재로 렌더 → known-pair 로 수정 후 재실행). 🟥 그 보고의 논거 하나는 거버너가 기각 — 「다른 zero-caller 는 전부 문서화돼 있다」가 publish_freshness_check(md 참조 0 + 배선됨)로 반증됨"
+  cost: 292k tokens
+- date: 2026-08-16
+  agent: fh-meta:expert (isolated) — agy 문서 외부 인용 실사
+  purpose: "signal_2026-08-16_test_time_compute 의 arXiv/시스템카드 인용 4건을 실제 페치해 지지 여부 판정"
+  outcome: accepted
+  evidence: "팬텀 ID 0건 · 오귀속 3건. Snell 2408.03314 의 4x(best-of-N 대비)를 14x(FLOPs-matched+조건부)와 혼동한 것이 최대 소득. 거버너가 abs 초록을 직접 페치해 verbatim 재확인(사이드카 발견을 소스로 닫음)"
+  cost: 96k tokens
+- date: 2026-08-16
+  agent: fh-meta:fact-checker (isolated) — agy 문서 FH 내부 그라운딩
+  purpose: "같은 문서의 restricted-env 실측 인용·정본 서술·누출 토큰을 file:line 으로 역추적"
+  outcome: accepted
+  evidence: "「중복 0건」이 원 기록과 정반대임을 적발(원본은 convergence 가 결론) · 「S급 6·zero overlap」이 다른 날짜·다른 대상 실험에서 이식된 것 · LEAK 1건(HIGH+MED)"
+  cost: 116k tokens
+- date: 2026-08-16
+  agent: fh-meta:challenger (isolated) — Axis 2 적대검증, audit remediation staged diff
+  purpose: "4축 게이트 Axis 2. 내 델타 4종의 degrade 방향·계기 타당성·스코프를 공격"
+  outcome: accepted
+  evidence: "M5·S6·R6, 「Trend: Increasing · Signal: Not yet」. 거버너가 하중 큰 M 셋을 재현해 전부 성립 확인 후 수리(rc=10 fail-open 자기모순 · CI hooksPath 0건 영구 SKIP · 노드-로컬 스코프). Bash 미가용이라 실행 확인은 못 했다고 스스로 명시 — 그 한계 표기가 판정의 신뢰도를 올렸다"
+  cost: 162k tokens
+- date: 2026-08-16
+  agent: fh-meta:fact-checker (isolated) — Axis 3 그라운딩, audit remediation staged diff
+  purpose: "4축 게이트 Axis 3. 내 주석의 file:line·PR·수치·메모리 참조를 전수 역추적"
+  outcome: accepted
+  evidence: "🟥 내 주석의 팬텀 2건 적발 — publish_freshness_check 의 「md 참조 0건」은 거짓(tracks/*.md 3건) · fh-gate.sh:37 은 같은 세션 수리로 :52 로 밀린 stale 참조(이 커밋이 지적하는 클래스의 자기재현). Bash 미가용을 UNMEASURED 로 명시하고 초록으로 렌더하지 않음"
+  cost: 126k tokens
+- date: 2026-08-16
+  agent: codex/gpt-5.6-terra (cross-family, headless) — Axis 2 탈상관 레그
+  purpose: "같은 staged diff 를 다른 계열로 공격. crossfamily 마커 값 확보"
+  outcome: accepted
+  evidence: "1M/4S/2R. 챌린저와 중첩 2건뿐(rc=10 fail-open · 사전순 정렬) — 렌즈가 계열보다 갈랐다. 단독 적발 3건: package.json files[] 누락 · 비UTF8 바이트에서 grep 무매치하는 로케일 fail-open(양쪽 로케일 직접 실행) · 파일스코프 set -e 판별. 그리고 의심 하나를 기각(§ 구분자는 두 로케일에서 실측 통과)"
+  cost: 105k tokens
