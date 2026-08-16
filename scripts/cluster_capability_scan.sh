@@ -540,14 +540,30 @@ EOF
   #   **self-test 는 15/15 초록인 채 실물 탐지가 0 이 됐다.** 픽스처 모드에선 그 블록이
   #   아예 안 돌기 때문이다 — 레인이 구조적으로 못 보는 자리였다.
   #   그래서 이 레인만 **픽스처가 아니라 이 레포 자신**을 대상으로 돈다.
+  #
+  #   🟥 **2026-08-16 정정 — 앵커를 gitignored 데이터에 걸었다가 CI 에서만 빨개졌다.**
+  #   초판은 «같은 id 충돌이 보이는가»로 살아있음을 쟀는데, 그 충돌을 만드는 파일이
+  #   전부 `tracks/_meta/relay/*.cap`(gitignored)이라 **CI 체크아웃엔 존재하지 않는다.**
+  #   즉 레인이 잰 것은 «수집 경로가 사는가»가 아니라 «내 로컬에 잡동사니가 있는가»였다
+  #   ([[feedback_ci_measures_state_not_transition]] 의 데이터 판본).
+  #   앵커를 **추적되는 파일**로 옮긴다 — `.claude/capabilities/*.cap` 은 커밋돼 있어
+  #   어느 체크아웃에서도 존재한다. 수집 경로가 죽으면 이 카운트가 0 이 되어 빨개진다.
   out="$(bash "$SELF" discover 2>&1)"; rc=$?
-  if printf '%s' "$out" | grep -q '같은 id 를 여러 선언이'; then
-    p=$((p+1)); echo "  ✅ L13c 실물 relay 수집이 살아 있다(자기 레포 대상)"
+  tracked_n="$(ls -1 "$(cd -P "$(dirname "$SELF")/.." && pwd)/.claude/capabilities"/*.cap 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "${tracked_n:-0}" -lt 1 ]; then
+    f=$((f+1)); echo "  ❌ L13c 전제 파손 — 추적되는 .claude/capabilities/*.cap 이 0건이다(앵커 대상 부재)"
+  elif printf '%s' "$out" | grep -qE '^forge-harness\(hub\)[[:space:]]+OK[[:space:]]+'"$tracked_n"'[[:space:]]'; then
+    p=$((p+1)); echo "  ✅ L13c 실물 수집이 살아 있다 — 허브 자신의 추적 선언 ${tracked_n}건을 실제로 집었다"
   else
-    f=$((f+1)); echo "  ❌ L13c 실물에서 id 충돌이 안 잡힌다 — 수집 경로가 죽었을 수 있다"
+    f=$((f+1)); echo "  ❌ L13c 실물에서 허브 선언 ${tracked_n}건이 안 잡힌다 — 수집 경로가 죽었을 수 있다"
   fi
-  #   ⚠️ 이 레인의 한계: 이 레포에 **실제로 중복이 있는 동안만** 유효하다. 중복을 정리하면
-  #      이 레인은 조용히 무의미해진다 — 그때는 픽스처를 실물 경로에 심는 형태로 바꿔야 한다.
+  #   부가 관측(판정 아님): 로컬에 relay 픽스처가 있으면 id 충돌도 같이 보인다. 그 여부는
+  #   환경마다 다르므로 **PASS/FAIL 로 쓰지 않는다** — 없는 것을 결함으로 렌더하지 않기 위함.
+  if printf '%s' "$out" | grep -q '같은 id 를 여러 선언이'; then
+    echo "     ↳ (부가) 이 체크아웃엔 id 충돌도 실재해 충돌 표면화까지 확인됨"
+  else
+    echo "     ↳ (부가) 이 체크아웃엔 중복 id 가 없다 — 충돌 표면화는 이번 실행에서 미관측(부재≠결함)"
+  fi
 
   # ── L10 전제 파손은 «능력 0» 이 아니다 ────────────────────────────────────
   out="$(FH_CLUSTER_ROOTS=" " bash "$SELF" discover 2>&1)"; rc=$?
