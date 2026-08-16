@@ -578,6 +578,82 @@ A_N10=$(cap a_n10.cap "id: demo:a" "entry: bash $T/n_key_pass.sh" "verdict_chann
 rc=0; bash "$RELAY" run --cap "$A_N10" --cap "$B" --task t > "$T/on10" 2>&1 || rc=$?
 _t "N10 both 채널의 **일치** 정상 경로가 실제로 돈다(과차단 아님)" 0 "$rc"
 
+# ── N11–N15 노드별 호출 인자 채널 (`--cap-args`) ─────────────────────────────
+#   🟥 이 채널이 없던 동안 **호출 시점 인자를 요구하는 능력은 relay 를 통과할 수 없었다**
+#   (실측 2026-08-16, pmh-dev:merge-noop-check → 항상 ARGS→HARNESS_ERROR→BLOCKED).
+#   fail-closed 라 방향은 옳았지만 신호가 0 이었고, 그건 «호출 가능» 을 구조적으로 못 만든다.
+#   레인은 네 가지를 따로 단언한다 — 도달 · 결박 대상 · fail-closed · **비주입 컨트롤**.
+mk n_echo_args.sh '#!/usr/bin/env bash
+# 받은 위치 인자를 그대로 찍고, 첫 인자가 "GO" 일 때만 통과한다.
+echo "ARGS=[$*]"
+[ "${1:-}" = "GO" ] && exit 0
+exit 1'
+ARGSCAP() { cap "$1" "id: demo:$2" "entry: bash $T/n_echo_args.sh" "verdict_channel: exit" \
+  "verdict_enum: 0=PASS 1=FAIL" "approval: auto" "reversibility: reversible" "residency: public" \
+  "degrade: fail-closed" "tier_floor: none" "writes: read-only" "judge: mechanical" \
+  "verdict_binding: FAIL"; }
+
+# N11 인자가 실제로 진입점에 **도달한다** — 없으면 FAIL 이어야 할 노드가 통과한다
+A_N11=$(ARGSCAP a_n11.cap a)
+rc=0; bash "$RELAY" run --cap "$A_N11" --cap-args "GO" --cap "$B" --task t \
+  --record "$T/rec11" > "$T/on11" 2>&1 || rc=$?
+_t    "N11 --cap-args 가 진입점에 실제로 도달한다" 0 "$rc"
+# ★ 단언 대상은 relay 의 stdout 이 아니라 **노드 자신의 출력**이다. relay 는 노드 stdout 을
+#   기록 디렉터리로 보내므로, relay 출력에 대고 grep 하면 늘 «없음» 이 나와 거짓 적색이 된다
+#   (초판이 그렇게 틀렸다 — 계기가 아니라 단언 위치가 틀린 경우).
+_tout "N11b 받은 인자를 진입점이 그대로 본다" "ARGS=\[GO\]" "$T/rec11/node1.out"
+
+# N12 🟥 **비주입 컨트롤** — 같은 capfile 에 인자만 빼면 FAIL 이어야 한다.
+#     이게 없으면 N11 은 «인자와 무관하게 늘 통과하는 계기» 와 구분되지 않는다.
+rc=0; bash "$RELAY" run --cap "$A_N11" --cap "$B" --task t \
+  --record "$T/rec12" > "$T/on12" 2>&1 || rc=$?
+_t    "N12 인자를 안 주면 같은 노드가 막힌다(컨트롤 — 채널이 실재한다는 증거)" 2 "$rc"
+_tout "N12b 인자 없이 부르면 진입점이 빈 인자를 본다" "ARGS=\[\]" "$T/rec12/node1.out"
+
+# N13 결박 대상은 **가장 최근 --cap** 이다 — 위치 인덱스로 짝지으면 조용히 다른 노드에 붙는다
+A_N13=$(ARGSCAP a_n13.cap a)
+rc=0; bash "$RELAY" run --cap "$B" --cap "$A_N13" --cap-args "GO" --task t > "$T/on13" 2>&1 || rc=$?
+_t    "N13 인자가 «가장 최근 --cap» 에 결박된다(첫 노드로 새지 않는다)" 0 "$rc"
+
+# N14 `--cap` 없이 먼저 오면 fail-closed — 어디 붙일지 모르는 인자를 조용히 버리지 않는다
+rc=0; bash "$RELAY" run --cap-args "GO" --cap "$A_N11" --cap "$B" --task t > "$T/on14" 2>&1 || rc=$?
+_t    "N14 --cap 앞의 --cap-args 는 fail-closed(무음 폐기 아님)" 10 "$rc"
+
+# N15 셸 메타문자 거부 — 진입점이 단어분해로 실행되므로 프로브와 같은 규칙을 쓴다
+rc=0; bash "$RELAY" run --cap "$A_N11" --cap-args 'GO; rm -rf /tmp/x' --cap "$B" --task t > "$T/on15" 2>&1 || rc=$?
+_t    "N15 --cap-args 의 셸 메타문자는 거부된다" 10 "$rc"
+
+# ── N16–N18 cross-family 3건(2026-08-16) — 전부 손 재현 후 앵커 ────────────────
+# 셋 다 「조용히 잘못되는」 형태다: 값이 사라지거나, 결박이 죽거나, 인자 경계가 바뀐다.
+A_N16=$(ARGSCAP a_n16.cap a)
+rc=0; bash "$RELAY" run --cap "$A_N16" --cap-args "FIRST" --cap-args "GO" --cap "$B" --task t > "$T/on16" 2>&1 || rc=$?
+_t "N16 같은 --cap 에 --cap-args 두 번은 fail-closed(앞 값 무음 폐기 금지)" 10 "$rc"
+
+# N17 결박 플래그와의 충돌 — `--cap-args --` 로 `--upstream-verdict` 를 위치인자로 밀어낼 수 있었다
+A_N17=$(cap a_n17.cap "id: demo:a" "entry: bash $T/n_echo_args.sh" "upstream_argv: yes" \
+  "verdict_channel: exit" "verdict_enum: 0=PASS 1=FAIL" \
+  "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
+  "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
+rc=0; bash "$RELAY" run --cap "$A_N17" --cap-args "GO" --cap "$B" --task t > "$T/on17" 2>&1 || rc=$?
+_t "N17 upstream_argv 노드에 --cap-args 를 붙이면 fail-closed(결박이 조용히 죽지 않는다)" 10 "$rc"
+# N17b 컨트롤 — upstream_argv 를 **선언하지 않은** 노드는 종전대로 통과해야 한다(과차단 방지)
+rc=0; bash "$RELAY" run --cap "$A_N16" --cap-args "GO" --cap "$B" --task t > "$T/on17b" 2>&1 || rc=$?
+_t "N17b 컨트롤 — upstream_argv 미선언 노드는 --cap-args 를 정상 수용" 0 "$rc"
+
+# N18 개행 — 초판 가드를 통과해 **한 인자가 두 인자로 쪼개졌다**($'GO\nSECOND' → ARGC=2)
+rc=0; bash "$RELAY" run --cap "$A_N16" --cap-args "$(printf 'GO\nSECOND')" --cap "$B" --task t > "$T/on18" 2>&1 || rc=$?
+_t "N18 --cap-args 의 개행은 거부된다(인자 경계 무음 변형 차단)" 10 "$rc"
+# N18b 컨트롤 — **정상 다중 인자**(공백 구분)는 계속 통과해야 한다. 안 그러면 N18 은
+#      「인자를 여러 개 못 주는 계기」와 구분되지 않는다.
+A_N18=$(cap a_n18.cap "id: demo:a" "entry: bash $T/n_echo_args.sh" "verdict_channel: exit" \
+  "verdict_enum: 0=PASS 1=FAIL" "approval: auto" "reversibility: reversible" "residency: public" \
+  "degrade: fail-closed" "tier_floor: none" "writes: read-only" "judge: mechanical" \
+  "verdict_binding: FAIL")
+rc=0; bash "$RELAY" run --cap "$A_N18" --cap-args "GO SECOND THIRD" --cap "$B" --task t \
+  --record "$T/rec18" > "$T/on18b" 2>&1 || rc=$?
+_t    "N18b 컨트롤 — 공백 구분 다중 인자는 정상 통과" 0 "$rc"
+_tout "N18b2 세 인자가 그대로 도달한다" "ARGS=\[GO SECOND THIRD\]" "$T/rec18/node1.out"
+
 printf '\n── relay_channel lanes: %d PASS / %d FAIL ──\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1
 exit 0

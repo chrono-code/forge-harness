@@ -43,14 +43,14 @@ core invariants never melt). The nursery also **verifies what it births**: harne
 | **③ AI Collaboration Guide** | Accumulates and distributes best practices for token efficiency and dialogue methodology — "how to ask, delegate, and record". | `CHEATSHEET.md` · `knowledge/shared/dialogue/ai_dialogue_playbook.md` · `MEMORY.md` intent-based + associative recall (`knowledge/shared/dialogue/memory_intent_recall.md`) |
 | **Core Axis** | **Harness Engineering (How)** — the methodology and practice axis that realizes the three layers above. The 6-axis framework is the operating unit. **A harness is a means, not an end** — Field harness: "simpler over time" (complexity = warning signal). Meta-harness: *optimize*, not necessarily simplify — complexity earns its scope; red flags are orphaned, redundant, and decorative units, not complexity itself. | `harness_6axis_framework.md` · `hub_compounding_loop.md` · `claude_code_runtime_flow.md` · `plugins/*/agents/` (sub-agents) |
 
-> **3층 정본 — 공정 · 엔진 · 정체성**: FH 를 설명하는 뼈대는 세 층이고 셋의 관계가 정본으로 적혀 있다 — **3단 공정**(엔진을 벼리는 순서: 초기 영혼 → 중간 탈상관 가속화 → **마무리 4축 태우기**) → **4대 엔진**(영혼·품질게이트·질문하기·맥락유지) → **5대 정체성**(사람이 실제로 쓰는 기능). **Read `knowledge/shared/harness-core/fh_three_layer_canon.md`** before naming, re-scoping, or citing any of the three — it also defines the **4 verification axes** (ⓐ구현 · ⓑ재는 방식 · ⓒ주장 · ⓓ앵커) that the third stage actually consists of, and states why the three are *not* a clean stack. Grade table stays canonical in `ship_readiness_gate.md`; this pointer never carries grades.
+> **3층 정본 — 공정 · 엔진 · 정체성**: FH 를 설명하는 뼈대는 세 층이고 셋의 관계가 정본으로 적혀 있다 — **3단 공정**(엔진을 벼리는 순서: 초기 영혼 → 중간 탈상관 가속화 → **마무리 6축 태우기**) → **4대 엔진**(영혼·품질게이트·질문하기·맥락유지) → **5대 정체성**(사람이 실제로 쓰는 기능). 기억용 형태는 **3단 공정 · 4대 엔진 · 5대 정체성 · 6축 검증**이나 🟥 **6축은 네 번째 층이 아니다** — 3단 공정 ③단계가 무엇으로 이루어지는지다. **Read `knowledge/shared/harness-core/fh_three_layer_canon.md`** before naming, re-scoping, or citing any of the three — it also defines the **6 verification axes** (ⓐ계열 · ⓑ입장 · ⓒ격리 그라운딩 · ⓓ3자대면 · ⓔ첫실사용 · ⓕ되돌림; §1-a 가 최초 4축, §1-a-2 가 2026-08-16 확장) that the third stage actually consists of, and states why the three are *not* a clean stack. 🟥 **축은 «얼마나 적대적인가»가 아니라 «무엇을 받았는가»로 갈린다** — 받는 것이 같으면 리뷰어를 몇 명 붙여도 같은 사각이 남는다. 🟥 **명칭 충돌 — 이 파일 안에 「4축」이 두 개다.** §FH Improvement **4-Axis Auto-Gate** 의 4축(Axis 1 회귀 · 2 적대 · 3 팬텀 · 4 매니페스트)은 **커밋 게이트**이고, 여기 6축은 **검증 축**이다. 부분적으로만 겹치고(Axis 1·4 는 ⓐ~ⓕ 에 대응이 없다) **서로 대체하지 않는다**. 그래서 6축은 「6축 게이트」가 아니라 **「6축 검증」**으로 부른다. Grade table stays canonical in `ship_readiness_gate.md`; this pointer never carries grades.
 
 > **자기 대조는 상시 의무 — 트리거는 발화가 아니라 «지금 FH/PMH 자산을 건드리고 있다»**
 > (운영자 결정 2026-08-09; 이 저장소든 **다른 사용자의 install 이든** 동일). §FH Improvement
 > 4-Axis Auto-Gate 와 **같은 트리거**이므로 새 트리거도 새 파일도 만들지 않는다 — 기록 자리는
 > **4축 마커의 기존 필드**(`axis2-*` · `axis3-*` · `residual`)다.
 > **마커에 반드시 남는 3줄** ① **①영혼** — 설계 *전에* 쓴 «성공 정의 / 절대 안 함»(없으면 `없음`)
-> · ② **돌린 축과 안 돌린 축을 각각 이름으로**(ⓐ구현 · ⓑ재는 방식 · ⓒ주장 · ⓓ앵커)
+> · ② **돌린 축과 안 돌린 축을 각각 이름으로.** 마커 `axes-run` 이 기계적으로 요구하는 것은 **네 글자**(a=계열 · b=첫실사용 · c=격리 그라운딩 · d=되돌림)이고, ⓑ**입장**은 마커의 **`standpoint:` 자기 필드**로, ⓓ**3자대면**은 **아직 기록할 필드가 없다**(명시된 잔여). 즉 산문 정본은 6축인데 기계는 4+1축이다 — 이 어긋남을 알고 쓴다
 > · ③ **각 축의 컨트롤과 그 생사**. 축을 «돌렸다»의 **최소 증거 = 컨트롤이 살아 있는 실행 출력**
 > 이다 — 안 고른 이유만 적은 것은 준수가 아니다.
 > **비용 경계**: 넷을 매번 다 돌리지 않는다. 실패 모드에 맞춰 **고른다**.

@@ -68,7 +68,21 @@ _key() {  # $1=capfile $2=key
 # 메타데이터 표면). 비어 있으면 종전과 동일하게 트리만 잰다.
 GIT_META_WATCH=""
 
-_snapshot() {  # $1=dir → "path<TAB>sha" 목록 (정렬)
+# 🟥 **`GIT_META_NAMEONLY` 는 폐기했다(2026-08-16, cross-family 지목 + 손 재현).**
+# 한때 `.git/objects` 를 «이름만» 세는 별도 목록으로 뒀다 — 근거는 「객체 파일명이 곧 내용
+# 해시라 이름 집합이 안 바뀌면 내용도 안 바뀐다」였다. **그 추론은 정직한 액터에만 참이다.**
+# 재현: `writes: read-only` 로 선언한 진입점이 기존 loose object 하나에
+# `printf CORRUPT > "$p"` 를 하면 이름 집합은 그대로라 **`✅ VERIFIED · 관측=no-write`** 가 났다.
+# 「같은 이름, 다른 내용」을 못 본다. 팩파일 수동 덮어쓰기도 같은 얼굴이다.
+# ⇒ 이름만 세는 건 **정직성을 가정하는 계기**이고, 이 프로브의 대상은 정확히 그 가정이 깨진
+#    경우다. 되돌리고, 대신 **비용 쪽을 고친다**(아래 배치 해싱).
+#
+# 비용 이력(적어 둔다 — 같은 실수를 두 번 하지 않게): 처음엔 파일당 `shasum` 프로세스라
+# 2871개 × before/after × 양·음 arm 으로 **2분 타임아웃**이 났다. 원인은 `.git/objects` 가
+# 아니라 **파일당 프로세스 스폰**이었다. `xargs` 배치로 한 번에 넘기면 같은 대상을 재면서
+# 비용이 떨어진다 — 정확도를 깎아 비용을 맞추려던 게 잘못된 트레이드였다.
+
+_snapshot() {  # $1=dir → "sha  path" 목록 (정렬)
   {
     # `.git` 은 통째로 제외한다 — `git status` 류가 `.git/index` 를 정당하게 갱신하므로
     # 전체를 재면 읽기 전용 capability 가 거짓 VIOLATION 을 받는다. 대신 아래에서
@@ -77,11 +91,22 @@ _snapshot() {  # $1=dir → "path<TAB>sha" 목록 (정렬)
     local w
     for w in $GIT_META_WATCH; do
       [ -e "$w" ] || continue
+      # 🟥 **경로 소속을 확인한다(2026-08-16).** 초판은 `$1` 과 무관하게 감시면을 **항상**
+      #   붙였다. `GIT_META_WATCH` 는 **샌드박스 안** 경로이므로, 바깥 카나리아를 잴 때
+      #   `_snapshot "$outside"` 가 **샌드박스의 `.git` 을 같이 재는** 상태였다.
+      #   증상: 샌드박스 안 git 메타를 건드린 capability 가 VIOLATION 은 맞게 받되
+      #   이유가 **«샌드박스 밖이 바뀌었다»** 로 찍혔다 — 판정은 맞고 **처방이 오라우팅**된다.
+      #   레인이 `rc=1` 만 단언하고 **이유를 안 쟀기 때문에** 여태 안 보였다
+      #   ([[feedback_metric_measures_presence_not_relation]]).
+      case "$w" in "$1"/*|"$1") ;; *) continue ;; esac
       find "$w" -type f 2>/dev/null
     done
-  } | LC_ALL=C sort -u | while IFS= read -r f; do
-    printf '%s\t%s\n' "$f" "$(shasum -a 256 "$f" 2>/dev/null | cut -d' ' -f1)"
-  done
+  } | LC_ALL=C sort -u \
+    | tr '\n' '\0' \
+    | xargs -0 -n 400 shasum -a 256 2>/dev/null \
+    | LC_ALL=C sort
+  # ⚠️ 명명된 한계: 개행이 든 파일명은 `find` 출력에서 쪼개진다. 이 프로브가 도입될 때부터
+  #    있던 성질이고 이번에 안 고쳤다 — 고치려면 `find -print0` 로 전 구간을 널 구분해야 한다.
 }
 
 # ★정리 트랩 — 신호/중단에도 temp 가 안 남게 한다(cross-family 지목).
@@ -206,7 +231,15 @@ probe_one() {  # $1=capfile → rc
     #     `smudge` 속성으로 **체크아웃·add 시 임의 명령을 실행**시킬 수 있고, 후자는 submodule
     #     의 실제 gitdir 라 그 안의 config·hooks 가 같은 실행 표면이다. config·hooks·refs 만
     #     보면 그 둘로 새는 경로가 감시 밖에 남는다.
-    GIT_META_WATCH="$wt/.git/config $wt/.git/hooks $wt/.git/packed-refs $wt/.git/refs $wt/.git/info/attributes $wt/.git/modules"
+    # 🟥 `.git/objects` 추가(2026-08-16). 이 축이 빠져 있는 동안 **`writes: read-only` 로
+    #   거짓 선언해도 VERIFIED 가 나왔다** — pmh-dev 자기선언 작업에서 실측으로 지목됐다
+    #   (`git merge-tree --write-tree` 가 objects 2143→2144, 스냅샷은 그걸 안 봄).
+    #   즉 M6 는 «선언 진위» 를 잰다고 하면서 **쓰기의 한 종류를 구조적으로 못 보고 있었다.**
+    #   객체 생성은 읽기가 아니다 — 그래서 감시면에 넣는다. `.git/index` 는 여전히 제외다
+    #   (`git status` 류가 정당하게 갱신하므로 넣으면 거짓 VIOLATION 이 된다).
+    #   `.git/objects` 는 **내용까지** 해싱한다 — 이름만 세면 「같은 이름, 다른 내용」
+    #   (기존 객체 덮어쓰기)을 못 본다(§_snapshot 의 폐기 기록 참조). 비용은 배치 해싱으로 낸다.
+    GIT_META_WATCH="$wt/.git/config $wt/.git/hooks $wt/.git/packed-refs $wt/.git/refs $wt/.git/info/attributes $wt/.git/modules $wt/.git/objects"
   else
     sandbox=$(mktemp -d) || return "$RC_HARNESS"
     _PROBE_SANDBOX="$sandbox"
@@ -308,6 +341,30 @@ $out2"
   if [ "$rc" -ge 10 ] || printf '%s' "$out" | grep -qiE 'command not found|no such file|not a git repository'; then
     printf '⚠️  UNVERIFIABLE %s — 진입점이 이 샌드박스에서 못 돌았다(rc=%s). 미측정이지 통과 아님\n' "$cap" "$rc"
     return "$RC_UNVERIFIABLE"
+  fi
+
+  # 🟥 **cross-family 지목 + 손 재현(2026-08-16)**: `entry: bash -c 'false'` 를 `writes: read-only`
+  #   로 선언하면 **`✅ VERIFIED · 관측=no-write`** 가 나왔다. 진입점은 아무 일도 안 했는데
+  #   프로브가 「선언이 참임을 확인했다」고 말한 것이다 — **선언 거짓말을 잡으라고 만든 계기가
+  #   «안 돌았다» 를 «깨끗하다» 로 렌더**했다([[feedback_not_found_is_not_zero_family]] 의 자기 판본).
+  #   같은 결함이 그 리뷰어의 환경에서 실제로 발현했다: 샌드박스가 `$HOME` 쓰기를 막아
+  #   L7 의 위반 arm 이 `rc≠0 + 무변화` 가 되자 **레인이 통과 방향으로 무너졌다.**
+  #
+  #   판별 규칙 — rc 자체가 신호가 아니다. **선언된 enum 에 있는 rc = 「진입점이 돌고 판정을
+  #   냈다」**(정상 관측), **선언 밖 rc = 「이 실행이 무엇을 했는지 모른다」**(미측정).
+  #   실물 capability 는 음성 arm 에서 정당하게 비영을 내므로(LEAK·FINDINGS) rc≠0 을 통째로
+  #   막으면 과차단이 된다 — 그래서 enum 소속 여부로 가른다.
+  if [ "$rc" -ne 0 ]; then
+    local _enum _rc_declared=0 _pair
+    _enum="$(_key "$cap" verdict_enum)"
+    for _pair in $_enum; do
+      [ "${_pair%%=*}" = "$rc" ] && _rc_declared=1
+    done
+    if [ "$_rc_declared" = "0" ]; then
+      printf '⚠️  UNVERIFIABLE %s — 진입점이 rc=%s 로 끝났고 그 값은 선언된 enum 밖이다(enum=[%s]). 이 실행이 선언된 일을 실제로 했는지 알 수 없다 — 무변화를 «안 썼다» 로 읽지 않는다\n' \
+        "$cap" "$rc" "${_enum:-없음}"
+      return "$RC_UNVERIFIABLE"
+    fi
   fi
 
   printf '✅ VERIFIED %s — 선언=%s · 관측=%s\n' "$cap" "$declared" \
@@ -517,6 +574,113 @@ EOF
     pass=$((pass+1)); echo "✅ L12 info/attributes 쓰기 탐지(VIOLATION) + 실물 무변경"
   else
     fails=$((fails+1)); echo "❌ L12 rc=$rc (1 기대) · 실물 attributes=[$_leaked]"
+  fi
+
+  # ── L13/L13b: git **객체 생성**이 `writes: read-only` 를 뚫던 자리 ──────────────
+  #   🟥 이 축이 없는 동안 M6 는 «선언 진위» 를 잰다면서 **쓰기의 한 종류를 못 봤다**.
+  #   실측 지목(pmh-dev 자기선언 작업, 2026-08-16): `git merge-tree --write-tree` 가
+  #   `.git/objects` 를 2143→2144 로 늘렸는데 스냅샷이 `.git/` 을 통째 제외해 VERIFIED 가 났다.
+  #   양·음 **둘 다** 세운다 — 양성만 있으면 「.git 만 닿으면 무조건 막는 계기」와 구분이 안 된다.
+  local _ob="$d/obsrc"
+  mkdir -p "$_ob"
+  ( cd "$_ob" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo x > f.txt && git add -A && git commit -qm init ) >/dev/null 2>&1
+  cat > "$d/obj_write.cap" <<EOF
+id: t:objwrite
+entry: bash -c 'echo payload | git hash-object -w --stdin >/dev/null'
+requires_cwd: $_ob
+writes: read-only
+EOF
+  probe_one "$d/obj_write.cap" >/dev/null 2>&1; rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L13 git 객체 생성이 read-only 선언 위반으로 탐지된다"
+  else
+    fails=$((fails+1)); echo "❌ L13 rc=$rc (1 기대) — 객체 쓰기가 여전히 안 보인다"
+  fi
+  # L13b 컨트롤(과차단 방지): 진짜 읽기 전용 git 사용은 조용해야 한다
+  cat > "$d/obj_read.cap" <<EOF
+id: t:objread
+entry: bash -c 'git log --oneline -1 >/dev/null; git status --porcelain >/dev/null; git diff HEAD >/dev/null'
+requires_cwd: $_ob
+writes: read-only
+EOF
+  probe_one "$d/obj_read.cap" >/dev/null 2>&1; rc=$?
+  if [ "$rc" = "0" ]; then
+    pass=$((pass+1)); echo "✅ L13b 컨트롤 — 읽기 전용 git 사용(log/status/diff)은 통과한다"
+  else
+    fails=$((fails+1)); echo "❌ L13b rc=$rc (0 기대) — 과차단: 읽기만 하는 능력을 막는다"
+  fi
+
+  # ── L14/L14b **이유**를 잰다 — 판정만 재면 오라우팅이 안 보인다 ────────────────
+  #   🟥 실측(2026-08-16): 샌드박스 안 git 메타를 건드린 capability 가 VIOLATION 은 맞게
+  #   받으면서 이유는 «**샌드박스 밖**이 바뀌었다» 로 찍혔다(원인: `_snapshot` 이 인자와 무관하게
+  #   샌드박스 안 감시면을 항상 붙임). 기존 레인은 **`rc=1` 만 단언해서 못 봤다.**
+  #   틀린 이유는 사람을 틀린 수리로 보낸다 — 그래서 이유를 별도 레인으로 못 박는다.
+  local _rs="$d/reasonsrc"
+  mkdir -p "$_rs"
+  ( cd "$_rs" && git init -q . && git config user.email t@t && git config user.name t \
+      && echo x > f.txt && git add -A && git commit -qm init ) >/dev/null 2>&1
+  cat > "$d/inside.cap" <<EOF
+id: t:inside
+entry: bash -c 'git config --local core.pager "sh -c id"'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/inside.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ] && printf '%s' "$out" | grep -q '샌드박스가 바뀌었다'; then
+    pass=$((pass+1)); echo "✅ L14 샌드박스 **안** 쓰기의 이유가 «안» 으로 찍힌다(오라우팅 없음)"
+  else
+    fails=$((fails+1)); echo "❌ L14 rc=$rc · 이유=[$(printf '%s' "$out" | tail -1)]"
+  fi
+  # L14b 컨트롤 — L14 를 고치면서 **밖 감시를 죽이지 않았는가.**
+  # ⚠️ 과녁은 **프로브가 실제로 보는 밖**이어야 한다. 초판은 self-test 자신의 temp 디렉토리를
+  #    과녁으로 잡았다가 정당하게 실패했다 — 그건 헤더가 이미 «못 본다» 로 명명한 잔여 구간이고,
+  #    거기서 탐지를 기대하는 것은 레인이 **문서화된 한계를 결함으로 오채점**하는 것이다.
+  #    실제 밖-감시면은 홈 엔트리 목록이므로 거기를 친다(L7 과 같은 채널, **이유**를 단언한다).
+  local _homemark="$HOME/.fh_probe_l14b_$$"
+  cat > "$d/outside.cap" <<EOF
+id: t:outside
+entry: bash -c 'echo pwned > $_homemark'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/outside.cap" 2>&1); rc=$?
+  rm -f "$_homemark"
+  if [ "$rc" = "1" ] && printf '%s' "$out" | grep -q '홈 디렉토리'; then
+    pass=$((pass+1)); echo "✅ L14b 컨트롤 — 밖(홈) 쓰기는 여전히 VIOLATION 이고 이유도 «홈» 이다"
+  else
+    fails=$((fails+1)); echo "❌ L14b rc=$rc · 이유=[$(printf '%s' "$out" | tail -1)] — 밖 감시가 죽었거나 이유가 틀렸다"
+  fi
+
+  # ── L15/L15b «안 돌았다» 를 «안 썼다» 로 렌더하지 않는다 ─────────────────────
+  #   cross-family 지목 + 손 재현: `entry: bash -c 'false'` + `writes: read-only` 가
+  #   **`✅ VERIFIED · 관측=no-write`** 를 받았다. 선언 거짓말을 잡는 계기가 미실행을 통과로 렌더.
+  cat > "$d/nz_undeclared.cap" <<EOF
+id: t:nzu
+entry: bash -c 'false'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/nz_undeclared.cap" 2>&1); rc=$?
+  if [ "$rc" = "3" ]; then
+    pass=$((pass+1)); echo "✅ L15 선언 밖 비영 종료는 UNVERIFIABLE(미측정≠통과)"
+  else
+    fails=$((fails+1)); echo "❌ L15 rc=$rc (3 기대) — 안 돈 실행이 통과로 렌더된다"
+  fi
+  # L15b 컨트롤(과차단 방지): 실물 capability 는 음성 arm 에서 정당하게 비영을 낸다.
+  #      선언된 enum 안의 비영은 **정상 관측**이어야 한다.
+  cat > "$d/nz_declared.cap" <<EOF
+id: t:nzd
+entry: bash -c 'exit 2'
+requires_cwd: $_rs
+writes: read-only
+verdict_enum: 0=CLEAN 2=FINDINGS
+EOF
+  out=$(probe_one "$d/nz_declared.cap" 2>&1); rc=$?
+  if [ "$rc" = "0" ]; then
+    pass=$((pass+1)); echo "✅ L15b 컨트롤 — 선언된 enum 안의 비영은 정상 관측(과차단 아님)"
+  else
+    fails=$((fails+1)); echo "❌ L15b rc=$rc (0 기대) — 정당한 비영 verdict 를 막는다"
   fi
 
   rm -rf "$d"

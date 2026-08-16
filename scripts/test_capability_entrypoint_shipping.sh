@@ -41,7 +41,14 @@ command -v node >/dev/null 2>&1 || {
 # Discover entry points by convention. A DISCOVERY of zero is an instrument failure, not a clean
 # result: this check exists precisely because the surface it guards is invisible to reference
 # walking, so "found nothing to check" must never render as "everything ships".
-ENTRIES=$(find scripts -maxdepth 1 -type f -name '*_capability.sh' 2>/dev/null | sort)
+# 🟥 2026-08-16: 발견 규약이 **한 벌뿐**이었다(`scripts/*_capability.sh`, maxdepth 1). 같은 날
+# 도입된 **어댑터 진입점**(`scripts/adapters/*.sh` — 남의 하네스 능력을 FH 안에서 부르는 기본
+# 경로)은 이름도 위치도 그 규약 밖이라 **이 검사에 구조적으로 안 보였다.** 즉 어댑터 스크립트가
+# `files[]` 에서 빠져도 이 검사는 초록이었다 — 검사기가 지키려던 바로 그 결함이 검사기 자신의
+# 사각에서 재현될 수 있었다. 두 규약을 **합집합**으로 본다(빼지 말고 더한다).
+ENTRIES=$( { find scripts -maxdepth 1 -type f -name '*_capability.sh' 2>/dev/null
+             find scripts/adapters -maxdepth 1 -type f -name '*.sh' 2>/dev/null
+           } | LC_ALL=C sort -u )
 n=$(printf '%s\n' "$ENTRIES" | grep -c . || true)
 n=$(( ${n:-0} + 0 ))
 if [ "$n" -eq 0 ]; then

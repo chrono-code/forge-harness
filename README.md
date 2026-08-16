@@ -244,7 +244,13 @@ four engines      the capability that makes it possible   (capability — what i
       ↑ produced by
 three-stage       the ORDER those engines are forged in   (process — how it gets made)
   process
+      └ stage ③ = the six-axis gate                     (§The six verification axes, below)
 ```
+
+As a mnemonic: **three-stage process · four engines · five identities · six-axis gate**.
+⚠️ But **the six axes are not a fourth layer** — they are *what stage ③ of the three-stage process
+consists of*. Read the four as parallel layers and you get back the very "the layers do not land"
+problem this section was written to fix.
 
 **The four engines.** Each one is what some identity above is standing on. They were not invented for this
 page: the readiness gate had already been scoring every identity against these same four capabilities in a
@@ -285,29 +291,60 @@ harness is actually used.
                           direction of its own; the judgment circuit from ① is what picks.
                           This is a way of WORKING, not the end-of-line check in ③.
 
-③ Burn it down at the     the four axes below. Adversarial review is ONE of them, not all of them
-   end, on four axes
+③ Burn it down at the     the six axes below. Adversarial review is ONE of them, not all of them —
+   end, on six axes       adversariality is a **posture**, not an axis. It can ride on any axis, and
+                          riding it does not make that axis see what it cannot see
 ```
 
-**The four verification axes** — where "we reviewed it" usually turns out to mean only the first of them.
-Read the middle column to pick one, and the right column to see what it catches:
+**The six verification axes** — where "we reviewed it" usually turns out to mean only the first of them.
 
-| Axis | Reach for it when… | What it catches | Typical instrument |
+🟥 **Axes are not divided by *how adversarial* they are. They are divided by *what they were given*.**
+Hand two reviewers the same input and **the same blind spot survives**, however many of them you add.
+That is why the column that matters most below is *what it gets*:
+
+| Axis | **What it gets** | What it catches | Typical instrument |
 |---|---|---|---|
-| **ⓐ Different family** | the change decides something — a PASS/FAIL, a gate, a safety rule | the **implementation** is wrong | a reviewer from another model family (`auto-decorrelation`) |
-| **ⓑ First real use** | you are about to trust a number, a count, or a scan's output | the **way you are measuring** is wrong | run it once against one real target and look at the result by hand |
-| **ⓒ Record grounding** | you wrote down claims, figures or citations others will act on | the **claim** is wrong | someone who did not write it re-measures what it says |
-| **ⓓ Revert and observe** | you added a test, a guard or a check and believe it protects you | the **anchor** is wrong — the check is decorative | delete the thing it guards and confirm *that specific* check goes red |
+| **ⓐ Different family** | the diff + the author's framing | the **implementation** is wrong | a reviewer from another model family (`auto-decorrelation`) |
+| **ⓑ Standpoint** | the diff + **the target harness's own canon** | **whether the rule you cited actually says that** | run the diff from that harness's own repo and rules ([`§7`](knowledge/shared/harness-core/field_verdict_crossfamily_gate.md)) |
+| **ⓒ Isolated grounding** | the sentences the author wrote + the tree as it stands now | the **claim** is wrong | someone who did not write it re-measures what it says |
+| **ⓓ Third-party encounter** | the problem + **someone else's codebase** | **is this already solved** · where your change touches someone else's repo | look at the same problem in an unrelated third repo |
+| **ⓔ First real use** | one real target | the **way you are measuring** is wrong — the instrument's instrument | run it once against one real target and check the result by hand |
+| **ⓕ Revert and observe** | the tree with the wiring deleted | the **anchor** is wrong — the check is decorative | delete the thing it guards and confirm *that specific* check goes red |
 
-**You do not run all four every time, and that is the design.** A one-line fix earns none of them; a change
-that returns a verdict earns ⓐ; a published number earns ⓑ and ⓒ; a new guard earns ⓓ; an irreversible
-surface — publish, delete, history rewrite — earns whichever of the four its failure mode exposes, and the
-benefit of the doubt goes to running one more. Multiplying reviewers is not the same as adding an axis.
+**You do not run all six every time, and that is the design** — do not multiply them, **choose**:
 
-One further axis sits outside this four because it changes *whose* ground truth you stand on rather than
-*what* you check: **standpoint** — when a change crosses into another harness, run the diff from the
-target's own repo and rules, not from your reading of them
-([`field_verdict_crossfamily_gate.md §7`](knowledge/shared/harness-core/field_verdict_crossfamily_gate.md)).
+```
+one-line fix (typo · gitignore)     nothing burns. Not even ①'s circuit — when there is one answer,
+                                    planting one is overhead
+ordinary code change (reversible)   ⓔ first real use + ⓕ revert
+verdict · gate code                 + ⓐ different family — verdict logic is what a reviewer who
+                                    shares the author's optimism misses **structurally**
+change that touches another         + ⓑ standpoint — bolt on three families and if all three eat
+harness                             your framing, nobody asks "does that canon actually say so"
+very large · irreversible           + ⓒ isolation + ⓓ third-party encounter. Burn all of it
+```
+
+⚠️ **ⓓ third-party encounter is the most expensive and has the smallest unique yield.** And yet that
+handful were all of the **boundary-crossing** kind (a rule someone else had already retired · someone
+else's repo importing your file). On small, reversible changes such items simply **do not arise**; on
+large irreversible ones those two are exactly what becomes an incident. That is where the cost earns
+itself.
+
+**Why this is not superseded by base-model advances** — an axis is defined by its **input**, not by the
+*reviewer's ability*. A stronger model still **cannot see information it was not given.** Scaffolding
+sheds as models improve, but **input-boundary decorrelation does not**, and a single author cannot, by
+definition, step outside their own input. 🟥 Honest edge: if the agent **fetches more input by itself
+with tools**, the boundary blurs — an outside judgment held that "the store is never used in full" and
+"the swallowed exception" are catchable by ⓐ and ⓒ as well, since those reviewers grep for themselves.
+Conversely, "a rule another repo retired long ago" **cannot be fetched by any tool** — there is no reason
+to have access to that project's review history in the first place. That is where ⓓ remains.
+
+> 🟥 **Limits to read before citing this**: the six-axis table is **n=1** (one artifact · one session ·
+> one author). Whether the axes' non-overlap is structural or an accident of that day is **unmeasured**.
+> And when the author's self-scoring was stripped out — 16 findings handed, **with their provenance
+> removed**, to two classifiers from other families for blind judgment — **3 of the 5** the author had
+> attributed to ⓓ were judged to belong to a different axis; those three were not "what the axis was
+> needed for" but "what another axis missed". Discount the table's attributions accordingly.
 
 > **Honest note — this is not a clean stack, and that is the point.** Stage ① and stage ③ are made of the
 > same material as the engines, so the lower layer uses the upper one. The contradiction resolves on

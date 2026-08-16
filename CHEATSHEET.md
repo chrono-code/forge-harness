@@ -70,6 +70,22 @@ cp <harness-root>/templates/CLAUDE.md <project>/CLAUDE.md
 > existing harness/config files (merges are proposed instead), and irreversible actions
 > (publish · delete · history-rewrite) still stop for you.
 
+### Autonomy & parallel dispatch — the phrases that spend tokens
+
+These change *how much runs without you*. Three of them buy speed **with tokens**; the fourth is the
+one that gives budget back. Each row states what actually happens, what it costs or assumes, and when
+it is the wrong call.
+
+| Say this | What actually happens | 🟥 Cost / precondition | Don't use it when |
+|---|---|---|---|
+| **"그래프로 병렬작업해줘"** · **"병렬 탈상관으로 돌려줘"** · *"run these as a parallel graph"* | Independent units are dispatched as **parallel agents in waves** (`CLAUDE.md` §Agent Dispatch Operation, *Parallel dispatch* row), planned by `agent-composer`. This is stage ② of the 3-stage process — *decorrelated acceleration* (`knowledge/shared/harness-core/fh_three_layer_canon.md` §1). | Cost scales with the **number of agents**, not the size of the work. `agent-composer` caps a wave at **≤4** and decomposes hierarchically above that — flat fan-out at N≥5 adds ~+285% coordination overhead (`agent-composer` SKILL.md §Coordination-overhead budget; DACS, arXiv:2604.07911). Parallel dispatch also needs a **recorded standing request**, or Claude asks per dispatch. | **The axes are the same.** Canon: *"병렬화 자체엔 방향이 없다"* — parallelism has no direction of its own. Two reviewers with the same lens is not decorrelation, it is the same blind spot read twice at double the price. **Choose the axis to match the failure mode; don't multiply it** (`fh_three_layer_canon.md` §1 ②). Genuinely dependent steps gain nothing either. |
+| **"이노베이터 자율주행해줘"** · *"let the innovator drive"* | Dispatches the `persona-innovator` agent to run **on its own agenda** — it picks the gap, scans internal assets *and* the external frontier, and returns judgments + candidates. It proposes; it does not adopt. | It runs `WebSearch`/`WebFetch`, which is exactly why it is **not always-on** (`CLAUDE.md` §Event-bound proposals: a per-turn fire "would tax tokens"). Its output is proposals, so the review after it costs too. Observed: **loop-continuation depth differs by tier** — on a lower tier expect a shorter run, not a blocked one (the Sonnet floor holds; no capability here is tier-gated). | It removes no gate: a heavy autonomous run still goes under **`/goal-quench`** (budget + quality), and its candidates need a separate evaluator before adoption. Don't reach for it to execute a list you already have — that is the row below. |
+| **"끝까지 해줘"** · **"자율완주해줘"** · *"run it to the end"* | Runs **a task you already stated** to completion, without per-item approval prompts. Full contract in the box above. | Budget agreed up front via `goal-quench` — one long block of spend rather than a multiple. | The difference from the innovator row: this executes **your** list, the innovator sets its own. If "the end" isn't defined, run `deep-clarify` first — an unbounded end condition is what makes an autonomous run expensive. |
+| **"내 판단이 필요한 것만 넘겨"** · **"내 통찰이 필요한 부분은 내게 돌려줘"** | The **budget-returning** counterpart: keep running autonomously, but hand back the decision forks instead of the finished work. Pairs with either autonomy row above. | Cheap — this is the phrase that *saves* tokens rather than spending them. | It is a **prose modifier with no mechanical route**: it moves where Claude pauses, never what the floors are. It cannot loosen a gate — irreversible actions (publish · delete · history-rewrite) stop for you whether or not you said it. |
+
+> Unsure whether you can afford one of the first three? Say **"how expensive is this"** first
+> (`token-budget-gate`) — it returns a Green/Yellow/Orange/Red verdict before the run, not after.
+
 ---
 
 ## 5. Session Sync
@@ -170,7 +186,7 @@ Copy just 1 agent without plugin install and it's immediately callable. Updates 
 |-------------|---------------------|
 | Audit external reader asset | "run persona audit" → calls `hub-persona-auditor` |
 | Code review | "review this diff" → calls project `code-reviewer` |
-| Naming gap detection + ideation | `/persona-innovator` or "find naming candidates" → 6-type classification + external signal scan |
+| Naming gap detection + ideation | the `persona-innovator` **agent** (dispatch it by name, or say "find naming candidates") → 6-type classification + external signal scan |
 | Meta-simulation run | `/sim-conductor` (Area C default) · `/sim-conductor B` (internal audit) · `/sim-conductor A` (external user perspective) |
 
 **Promotion gate (after 2+ week pilot):** accepted ≥ 60% → maintain · rejected ≥ 40% → deprecate.
