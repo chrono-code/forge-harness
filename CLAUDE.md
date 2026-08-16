@@ -799,6 +799,40 @@ At session start, determine the last run time from history files and auto-propos
 
 > A cadence reminder the user has repeatedly declined is **muted** per the UAP (see the loop below) — don't re-nag.
 
+#### Expedition (원정) — measured first, cadence only if it earns one
+
+**Operator, agreed and recorded 2026-08-17** (it had been agreed verbally before and was **not in any
+file** — grepped, zero hits; that gap is why this paragraph exists): *"원정이 가치 있고 성공적이었다면
+**주기적으로 제안하는 것**으로 가기로 했었지."*
+
+An **expedition** is a deliberate, extended run that uses the harness cluster at full stretch against
+targets outside this hub — contributing to an external repo, declaring a peer's assets as cluster
+nodes, driving a foreign codebase through FH's own gates. Its operating conditions are unusual and
+must not be judged by another track's: **token cost is expected and pre-approved** (the `/goal-quench`
+budget gate still applies — approval removes the prompt, never the gate), **one session will not
+finish it**, and the success definition is not "expedition completed" but ⓐ **finding the pieces that
+move identities to 🟢 faster than internal work would** and ⓑ **hardening existing weak points by
+stressing them somewhere real**. An expedition that builds nothing and produces those two has succeeded.
+
+**Promotion path — and the interval is set AFTER the first one, not before** (operator, 2026-08-17:
+*"그 주기를 얼마나에 한 번씩 잡아야 할지도 그때 세우도록 할게 — 원정 한 차례 다 마치고 답습한 후에"*).
+Expeditions are **not** on a cadence today; they are proposed case-by-case.
+
+Sequence, in order, and do not skip to the end:
+1. **Run one, all the way through.** Not a slice — a complete expedition, however many sessions it
+   takes (the thread-continuation block on the session card is the carrier).
+2. **Absorb it** (답습) — what came back, what it cost, what it hardened, what it found that internal
+   work would not have.
+3. **Then set the interval**, informed by (2). An expedition's cadence has to be derived from what one
+   actually costs and yields — a number picked before the first run is a guess wearing a schedule.
+
+⚠️ **This deliberately does NOT use the `operations.md` `accepted ≥ 60%` promotion gate.** That gate
+measures how often a proposal class is *accepted*, which is the wrong quantity here: an expedition
+could be accepted every time and still not warrant a schedule, or be proposed once and clearly warrant
+one. The evidence that sets the interval is the **completed run itself**, not an acceptance rate.
+**No new gate, no new cadence table, no new registry** either — when the interval is set, it graduates
+into the existing §Cadence-Rules table like any other row.
+
 #### Event-bound proposals (context-entry, not time)
 
 Some proposals are not *time*-overdue — they fire **once when a specific work context is entered**. `persona-innovator` (ideation/naming + external-frontier absorption) is most valuable in exactly two contexts and friction-noise everywhere else, so it is proposed on context-entry rather than every session or every N days:
