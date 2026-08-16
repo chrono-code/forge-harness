@@ -10,6 +10,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [2.1.0] — 2026-08-16
+
+- **feat(cadence)**: `harness-doctor` 30일 캐던스가 산문 제안에서 SessionStart 훅으로 승격 —
+  초과 상태가 더 이상 침묵으로 렌더되지 않는다.
+- **feat(portability)**: BSD/GNU·zsh/bash 패턴 denylist 린트를 pre-commit에 배선 —
+  `degrade_direction_scan` 옆 셸 레이어 자매 레인, advisory(비차단).
+- **fix(branch-claim)**: `branch_claim.sh show`가 live claim 수를 실제 동시편집 스레드 수처럼
+  오독시키는 문제 — 헤더 주석 + 출력 자체에 경계선 명시.
+- **fix(confidentiality)**: `.public-surface-patterns`(operator override) 부재 시 fail-open
+  경고가 두 줄짜리 아쉬운 존재였던 것을 놓칠 수 없는 배너로 — 방향(PASS)은 그대로, 가시성만.
+- **fix(fh-gate)**: `package.json` 부재 시 `set -euo pipefail` 아래서 즉사하던 결함 수리 —
+  known-pair 확정(수정본 rc=12 / package.json 있으면 rc=12 / HEAD 사본 rc=1).
+- **feat(cluster)**: 정체성 ① 하네스 클러스터 🔵→🟢 — 기준을 dominance에서 재정의된 ⓐⓑⓒ로
+  교체(운영자 결정). 크로스하네스 어댑터 + `relay_channel.sh --cap-args` 노드별 인자 채널.
+  잔여 명시: (d) 등록 바가 선언의 진위를 검증하지 못하는 구조는 안 닫힘 — 별도 항목 추적.
+- **docs(canon)**: 6축 검증 정본(§1-a-2) 표기가 파일 내 두 자리에서 어긋나 있던 것 동기화.
+
 ### [2.0.0] — 2026-08-16
 
 **BREAKING — M6 로 인해 종전 통과하던 capability 등록이 거부될 수 있다. 그리고 그 M6 는 1.4.99 에서 출하되지 않았다.**
