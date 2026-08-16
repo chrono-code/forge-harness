@@ -35,6 +35,26 @@ trap 'rm -rf "$T"' EXIT
 FAIL=0; N=0
 RED_LANES=""     # 이번 실행에서 빨개진 레인 ID (되돌림 프로브가 읽는다)
 
+# ── peer 가 이 머신에 **있어야만** 의미가 있는 레인 ──────────────────────────
+#   🟥 실측(2026-08-16): 로컬 23/23 초록인데 **CI 는 9레인 적색**이었다(G2 G3 G6 G9 M2 M3
+#   Q2 Q3 Q6). 이 레인들이 루트 오버라이드 없이 어댑터를 불러 `$HOME/projects` 를 보는데,
+#   CI 체크아웃엔 peer 레포가 없어 전부 `PEER_ABSENT(20)` 이 나왔다. 즉 레인의 앵커가
+#   **운영자 머신의 레이아웃**에 걸려 있었다 — 같은 날 `L13c` 가 gitignored 데이터에 앵커를
+#   걸어 CI 만 빨갛던 것과 **같은 클래스**다([[feedback_ci_measures_state_not_transition]]).
+#
+#   🟥 그리고 이 스킵은 **조용하면 안 된다.** peer 가 없는 환경에서 컨트롤이 전부 빠지면
+#   남는 것은 PEER_ABSENT 레인뿐이고, 그건 「늘 PEER_ABSENT 를 내는 계기」와 **구분되지 않는다**
+#   — 컨트롤이 막으려던 바로 그 상태다. 그래서 스킵 수를 세어 **종결 줄에 반드시 찍는다.**
+SKIPPED=0
+_lane_peer() {  # $1=peer_root $2=id $3=class $4=설명 $5=expected $6=actual
+  if [ -n "$1" ]; then
+    _lane "$2" "$3" "$4" "$5" "$6"
+  else
+    SKIPPED=$((SKIPPED + 1))
+    printf '  ⏭  %-6s [%-14s] %s — peer 부재로 SKIP (**통과 아님**)\n' "$2" "$3" "$4"
+  fi
+}
+
 _lane() {   # $1=id $2=class $3=설명 $4=expected_rc $5=actual_rc
   N=$((N + 1))
   if [ "$4" = "$5" ]; then
@@ -81,9 +101,9 @@ echo
 echo "── gstack-content-safety (enum 0=CLEAN 1=BLOCK_HIGH 2=REVIEW_MEDIUM 3=NO_TARGET 10=HARNESS_ERROR 20=PEER_ABSENT)"
 _lane G1 resolve-absent "peer 불가시 → 전용값 PEER_ABSENT(CLEAN 도 HARNESS_ERROR 도 아니다)" 20 \
   "$(FH_CLUSTER_ROOTS="$EMPTY_WORLD" _rc bash "$G" --known-positive)"
-_lane G2 control "peer 가시 → 실제 판정 BLOCK_HIGH («늘 PEER_ABSENT» 와 구분)" 1 \
+_lane_peer "$GS_ROOT" G2 control "peer 가시 → 실제 판정 BLOCK_HIGH («늘 PEER_ABSENT» 와 구분)" 1 \
   "$(_rc bash "$G" --known-positive)"
-_lane G3 control "peer 가시 → 음성 arm 은 CLEAN (계기가 «가른다» 는 증거)" 0 \
+_lane_peer "$GS_ROOT" G3 control "peer 가시 → 음성 arm 은 CLEAN (계기가 «가른다» 는 증거)" 0 \
   "$(_rc bash "$G" --known-negative)"
 if [ -n "$GS_ROOT" ]; then
   _lane G4 resolve-alias "명시 루트 목록(FH_CLUSTER_ROOTS)으로 해석된다" 0 \
@@ -96,15 +116,15 @@ mkdir -p "$T/world_prefix/gstackx"
 _lane G5 resolve-guard "basename 부분일치는 peer 가 아니다(gstackx ≠ gstack)" 20 \
   "$(FH_CLUSTER_ROOTS="$T/world_prefix/gstackx" _rc bash "$G" --known-positive)"
 mkdir -p "$T/empty_target"
-_lane G6 enum "빈 디렉토리 → NO_TARGET(3). CLEAN 이 아니다 — 아무것도 안 쟀다" 3 \
+_lane_peer "$GS_ROOT" G6 enum "빈 디렉토리 → NO_TARGET(3). CLEAN 이 아니다 — 아무것도 안 쟀다" 3 \
   "$(_rc bash "$G" --target "$T/empty_target")"
-_lane G7 enum "없는 대상 → HARNESS_ERROR(10). 부재 대상은 빈 대상이 아니다" 10 \
+_lane_peer "$GS_ROOT" G7 enum "없는 대상 → HARNESS_ERROR(10). 부재 대상은 빈 대상이 아니다" 10 \
   "$(_rc bash "$G" --target "$T/does_not_exist")"
-_lane G8 enum "인자 없음 → HARNESS_ERROR(10). 안 돈 실행을 판정으로 렌더하지 않는다" 10 \
+_lane_peer "$GS_ROOT" G8 enum "인자 없음 → HARNESS_ERROR(10). 안 돈 실행을 판정으로 렌더하지 않는다" 10 \
   "$(_rc bash "$G")"
 # MEDIUM 만 — 자동 차단이 아니라 사람 판단. 리터럴은 이 소스가 자기 스캐너에 물리지 않게 쪼갠다.
 printf 'payroll note\ncontact ssn %s-%s-%s for the record\n' '123' '45' '6789' > "$T/medium_only.txt"
-_lane G9 enum "MEDIUM 만 → REVIEW_MEDIUM(2). CLEAN 과도 BLOCK 과도 다른 값이다" 2 \
+_lane_peer "$GS_ROOT" G9 enum "MEDIUM 만 → REVIEW_MEDIUM(2). CLEAN 과도 BLOCK 과도 다른 값이다" 2 \
   "$(_rc bash "$G" --target "$T/medium_only.txt")"
 echo
 
@@ -114,8 +134,8 @@ echo
 echo "── mate-agent-boundary (enum 0=PASS 1=FAIL 10=HARNESS_ERROR 20=PEER_ABSENT)"
 _lane M1 resolve-absent "peer 불가시 → 전용값 PEER_ABSENT(PASS 로도 HARNESS_ERROR 로도 안 접힌다)" 20 \
   "$(FH_CLUSTER_ROOTS="$EMPTY_WORLD" _rc bash "$M" --known-positive)"
-_lane M2 control "peer 가시 → 실제 판정 PASS" 0 "$(_rc bash "$M" --known-positive)"
-_lane M3 control "peer 가시 → 음성 arm 은 FAIL (판별력의 증거)" 1 "$(_rc bash "$M" --known-negative)"
+_lane_peer "$MT_ROOT" M2 control "peer 가시 → 실제 판정 PASS" 0 "$(_rc bash "$M" --known-positive)"
+_lane_peer "$MT_ROOT" M3 control "peer 가시 → 음성 arm 은 FAIL (판별력의 증거)" 1 "$(_rc bash "$M" --known-negative)"
 if [ -n "$MT_ROOT" ]; then
   # 🟥 별칭 레인의 핵심: 이름은 `mate` 인데 실물 디렉토리는 `mate-dev` 다.
   #    별칭 후보에서 `<n>-dev` 가 빠지면 이 레인이 즉시 PEER_ABSENT 로 빨개진다.
@@ -124,9 +144,9 @@ if [ -n "$MT_ROOT" ]; then
 else
   echo "  ⏭  M4    [resolve-alias ] mate 실물 루트 없음 — SKIP (통과 아님)"
 fi
-_lane M5 enum "없는 대상 → HARNESS_ERROR(10). peer 헤더가 «위반 0 이 아니다» 라고 못 박은 값" 10 \
+_lane_peer "$MT_ROOT" M5 enum "없는 대상 → HARNESS_ERROR(10). peer 헤더가 «위반 0 이 아니다» 라고 못 박은 값" 10 \
   "$(_rc bash "$M" --target "$T/does_not_exist.md")"
-_lane M6 enum "알 수 없는 모드 → HARNESS_ERROR(10)" 10 "$(_rc bash "$M" --bogus-mode)"
+_lane_peer "$MT_ROOT" M6 enum "알 수 없는 모드 → HARNESS_ERROR(10)" 10 "$(_rc bash "$M" --bogus-mode)"
 echo
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -135,8 +155,8 @@ echo
 echo "── qasp-new-code-anchor (enum 0=PASS 1=VIOLATION 2=ARGS 3=HARNESS_ERROR 4=OUT_OF_SCOPE 20=PEER_ABSENT)"
 _lane Q1 resolve-absent "peer 불가시 → 전용값 PEER_ABSENT(PASS 로도 HARNESS_ERROR 로도 안 접힌다)" 20 \
   "$(FH_CLUSTER_ROOTS="$EMPTY_WORLD" _rc bash "$Q" --known-positive)"
-_lane Q2 control "peer 가시 → 실제 판정 VIOLATION" 1 "$(_rc bash "$Q" --known-positive)"
-_lane Q3 control "peer 가시 → 음성 arm 은 PASS (판별력의 증거)" 0 "$(_rc bash "$Q" --known-negative)"
+_lane_peer "$QS_ROOT" Q2 control "peer 가시 → 실제 판정 VIOLATION" 1 "$(_rc bash "$Q" --known-positive)"
+_lane_peer "$QS_ROOT" Q3 control "peer 가시 → 음성 arm 은 PASS (판별력의 증거)" 0 "$(_rc bash "$Q" --known-negative)"
 if [ -n "$QS_ROOT" ]; then
   _lane Q4 resolve-alias "이름 qasp → 실물 $(basename "$QS_ROOT") 로 별칭 해석된다" 0 \
     "$(FH_CLUSTER_ROOTS="$QS_ROOT" _rc bash "$Q" --known-negative)"
@@ -148,7 +168,7 @@ if [ -n "$QS_ROOT" ]; then
 else
   echo "  ⏭  Q4/Q5 [resolve-*    ] qasp 실물 루트 없음 — SKIP (통과 아님)"
 fi
-_lane Q6 enum "--range 에 base 없음 → ARGS(2). 판정이 아니다" 2 "$(_rc bash "$Q" --range)"
+_lane_peer "$QS_ROOT" Q6 enum "--range 에 base 없음 → ARGS(2). 판정이 아니다" 2 "$(_rc bash "$Q" --range)"
 
 # ── 합성 peer — peer 히스토리를 만지지 않고 나머지 enum 을 덮는다 ────────────
 # 🟥 왜 합성 peer 인가: peer 는 `residency: company` 다. 실물 히스토리를 레인으로 쓰면
@@ -266,7 +286,11 @@ if [ "$FAIL" -eq 0 ]; then
   #   `unbound variable` 로 죽는다(실측 2026-08-16: 레인 23개 전부 초록인데 마지막 요약
   #   줄에서 rc=1). 계기가 자기 보고 줄에서 죽으면 초록이 빨강으로 렌더된다.
   echo "✅ 레인 ${N}개 전부 기대대로"
+  if [ "$SKIPPED" -gt 0 ]; then
+    echo "⏭  단, peer 부재로 **${SKIPPED}개 레인이 안 돌았다** — 그중 컨트롤이 빠지면"
+    echo "   남은 초록은 「늘 PEER_ABSENT 를 내는 계기」와 구분되지 않는다. 초록을 그렇게 읽지 마라."
+  fi
 else
-  echo "❌ 회귀 — 빨강:$RED_LANES (레인 ${N}개 실행)"
+  echo "❌ 회귀 — 빨강:$RED_LANES (레인 ${N}개 실행 · peer 부재 SKIP ${SKIPPED}개)"
 fi
 exit "$FAIL"
