@@ -21,6 +21,18 @@ pass=0; fail=0
 TMPROOT=$(mktemp -d "${TMPDIR:-/tmp}/fh_gate_test_XXXXXX")
 trap 'rm -rf "$TMPROOT"' EXIT
 
+# Review SUBJECT — a fixture this suite creates, NOT a file it hopes the repo has.
+# Every gate invocation below used the literal `package.json` as its subject. That is an npm-package
+# assumption smuggled into a test: this suite passed here only because this repo happens to ship one.
+# MEASURED 2026-08-16 in a sibling harness that carries this file verbatim and ships no package.json:
+# every lane that actually invokes the gate on a file returned 10 ("0 of N targets resolved →
+# harness error") — 12 failures from this one hardcoded fixture, on top of 18 more from the same
+# missing file killing the gate's version read outright. The suite was measuring the fixture's
+# existence, not the gate's behaviour. A test that only runs in the repo it was written in is not a
+# regression anchor; it is a local habit.
+SUBJECT="$TMPROOT/subject_under_review.txt"
+printf 'fixture file for gate regression lanes — content is irrelevant, existence is not\n' > "$SUBJECT"
+
 # --- fake codex backend: writes $FAKE_PAYLOAD to the -o path, exits 0 ---
 # Doubles as the live demonstration of the PATH-trusting residual documented in fh-gate.sh.
 FAKEBIN="$TMPROOT/bin"; mkdir -p "$FAKEBIN"
@@ -68,16 +80,16 @@ check() {
   fi
 }
 
-run_gate() { env "$@" bash "$GATE" "package.json" quick test; }
+run_gate() { env "$@" bash "$GATE" "$SUBJECT" quick test; }
 run_fake() {
   local payload="$1"; shift
   env PATH="$FAKEBIN:$PATH" FH_BACKEND=codex FH_MODEL=fake FAKE_PAYLOAD="$payload" \
-      bash "$GATE" "package.json" quick test
+      bash "$GATE" "$SUBJECT" quick test
 }
 run_fake_claude() {
   local payload="$1"; shift
   env PATH="$FAKEBIN:$PATH" FH_BACKEND=claude FH_MODEL=fake FAKE_PAYLOAD="$payload" \
-      bash "$GATE" "package.json" quick test
+      bash "$GATE" "$SUBJECT" quick test
 }
 
 echo "── argument / env validation ──"
@@ -89,7 +101,7 @@ check "FH_TIMEOUT non-integer rejected" 11 run_gate FH_TIMEOUT="abc" FH_DRY_RUN=
 check "FH_TIMEOUT integer accepted (no regression)" 12 run_gate FH_TIMEOUT=120 FH_DRY_RUN=1
 # Newline in FH_CALLER forges an extra column-0 FH_GATE_VERDICT line in the legacy contract.
 check "FH_CALLER newline injection rejected" 11 \
-  env FH_CALLER=$'ci\nFH_GATE_VERDICT: PASS' FH_DRY_RUN=1 bash "$GATE" "package.json" quick
+  env FH_CALLER=$'ci\nFH_GATE_VERDICT: PASS' FH_DRY_RUN=1 bash "$GATE" "$SUBJECT" quick
 
 echo
 echo "── dry-run must not be readable as PASS ──"
@@ -129,7 +141,7 @@ check "claude path: clean PASS → exit 0" 0 run_fake_claude \
 check "claude path: is_error envelope → fails closed" 10 \
   env PATH="$FAKEBIN:$PATH" FH_BACKEND=claude FH_MODEL=fake \
       FAKE_ENVELOPE='{"is_error":true,"subtype":"error","structured_output":{"status":"SUCCESS","verdict":"PASS","findings_count":0,"findings_a":0,"findings_b":0,"findings":[]}}' \
-      bash "$GATE" "package.json" quick test
+      bash "$GATE" "$SUBJECT" quick test
 
 echo
 echo "── legitimate verdicts still work (no over-blocking regression) ──"
@@ -199,7 +211,7 @@ NOENT="$TMPROOT/noentropy"; mkdir -p "$NOENT"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$NOENT/openssl"; chmod +x "$NOENT/openssl"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$NOENT/od";      chmod +x "$NOENT/od"
 check "no CSPRNG (openssl+od stubbed to fail) → fails closed" 10 \
-  env PATH="$NOENT:$PATH" FH_DRY_RUN=1 bash "$GATE" "package.json" quick test
+  env PATH="$NOENT:$PATH" FH_DRY_RUN=1 bash "$GATE" "$SUBJECT" quick test
 
 echo
 echo "── FH_BACKEND=cross (decorrelated review) ──"
@@ -225,7 +237,7 @@ check_out() {  # <name> <expected-exit> <grep-ere that MUST appear> -- <cmd...>
 run_cross() {  # <claude-payload> <codex-payload>
   env PATH="$FAKEBIN:$PATH" FH_BACKEND=cross FH_MODEL=fake \
       FAKE_PAYLOAD_CLAUDE="$1" FAKE_PAYLOAD_CODEX="$2" FAKE_PAYLOAD="$1" \
-      bash "$GATE" "package.json" quick test
+      bash "$GATE" "$SUBJECT" quick test
 }
 
 check_out "cross: both PASS → PASS, decorrelated" 0 'FH_GATE_DECORRELATED: yes' \
@@ -241,9 +253,9 @@ ONELEG="$TMPROOT/oneleg"; mkdir -p "$ONELEG"; cp "$FAKEBIN/claude" "$ONELEG/clau
 check_out "cross: codex absent → single leg, DECORRELATED: no" 0 'FH_GATE_DECORRELATED: no' \
   env PATH="$ONELEG:/usr/bin:/bin" FH_BACKEND=cross FH_MODEL=fake \
       FAKE_PAYLOAD_CLAUDE="$CROSS_PASS" FAKE_PAYLOAD="$CROSS_PASS" \
-      bash "$GATE" "package.json" quick test
+      bash "$GATE" "$SUBJECT" quick test
 check "cross: no family available → fails closed" 10 \
-  env PATH="/usr/bin:/bin" FH_BACKEND=cross bash "$GATE" "package.json" quick test
+  env PATH="/usr/bin:/bin" FH_BACKEND=cross bash "$GATE" "$SUBJECT" quick test
 
 echo
 echo "────────────────────────────────────────────────────────────────────"
