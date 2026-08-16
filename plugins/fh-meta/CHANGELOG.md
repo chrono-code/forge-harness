@@ -10,7 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
-### [2.1.0] — 2026-08-16
+### [2.0.1] — 2026-08-16
 
 - **feat(cadence)**: `harness-doctor` 30일 캐던스가 산문 제안에서 SessionStart 훅으로 승격 —
   초과 상태가 더 이상 침묵으로 렌더되지 않는다.
