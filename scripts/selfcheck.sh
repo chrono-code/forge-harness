@@ -276,6 +276,82 @@ else
   fail=1
 fi
 
+# gate-anchor harness — the SAME defect the block above documents, still open six days later.
+# MEASURED 2026-08-16 (weekly_audit_2026-08-16.md 🟥-2): scripts/gate_anchor_check.sh has shipped in
+# package.json files[] since 2026-08-10 (b18a2bf, PR #323) with ZERO callers — not selfcheck, not
+# prepublishOnly, not .git-hooks/, not .github/, not npm scripts. Its only other mention is a comment
+# line in a .cap adapter, which is not a call. So the one instrument this repo owns for asking
+# "is the gate green for the RIGHT REASON?" was itself never green, never red, never run.
+#
+# 🟥 The detector did not see it: lane_runner_check.sh reports 46/46 wired · self-test 13/13, because
+# this file is neither a lane suite nor a --self-test subject — it is OUTSIDE the detector's field of
+# view, exactly like directional_diff_gate on 2026-08-15, and it survived that repair.
+#
+# ⚠️ Do NOT use "documented in a .md" as the wiring test: publish_freshness_check.sh has no reference
+# in any TRACKED doc (knowledge/, docs/) and IS wired (prepublishOnly), and it blocked a publish on
+# 2026-08-16. (An earlier draft of this line said "zero .md references" flat; that is false — three
+# gitignored tracks/*.md files mention it. The thesis survives, the number did not, and Axis 3 caught
+# it.) Call sites are the evidence; documentation is not. The first scan for this finding also missed
+# templates/.git-hooks/* because those files carry no extension — scope corrected twice.
+#
+# Exit contract (from the script header): 0 = every known-pair held · 1 = a pair COLLAPSED (real
+# defect) · 10 = harness error OR hooks-not-installed.
+#
+# 🟥 10 IS TWO DIFFERENT PROPOSITIONS AND THIS BLOCK MUST SPLIT THEM. gate_anchor_check.sh reaches
+# `exit 10` from FOUR places, and only ONE of them is a legitimate consumer state:
+#     :43  cwd/script repo mismatch      → harness defect
+#     :99  mktemp failed                 → harness defect
+#     :133 _fixture_fail (git init/seed/remote/origin-main)  → harness defect
+#     :339 NOT_INSTALLED > 0             → legitimate: a package-mode consumer has no hooks
+# Folding all four into a quiet SKIP is fail-open: a fixture collapse in THIS repo (a git default
+# -branch policy change, a restricted TMPDIR, forced commit.gpgsign) would render byte-identically to
+# a consumer who simply has no hooks. That is the "unmeasured → clean" move this file legislates
+# against — and worse, the --self-test loop 200 lines below already routes rc=10 to `fail=1` saying
+# "it could not measure, so its verdicts prove nothing". Same file, same code, opposite verdict.
+# (Adversarial review 2026-08-16 found this; the contradiction was reproduced by reading :524.)
+#
+# The discriminator is mechanical, not a guess: the three harness-defect paths use plain `echo
+# "❌ harness-error: …"`, while the NOT-INSTALLED path goes through `say()` which `--quiet` suppresses.
+# Verified 2026-08-16: running the script from an unrelated git repo with --quiet returns rc=10 AND
+# prints `harness-error` to the captured stream. So harness-error-in-output → FAIL; rc=10 without it
+# → genuine NOT-INSTALLED → SKIP, labelled UNMEASURED and loud.
+#
+# ⚠️ NAMED RESIDUAL, not closed here: in CI this lane is structurally UNMEASURED. No workflow sets
+# core.hooksPath (grep: 0 hits in .github/workflows/), so validate.yml's selfcheck step always lands
+# on the NOT-INSTALLED arm — and `validate` is this repo's only required status check. A permanently
+# SKIPPED lane in the one required check is worse than a permanently red one, because SKIP does not
+# catch the eye. Fixing it is one line in validate.yml (set core.hooksPath before the selfcheck step)
+# and is deliberately NOT bundled here — see the handoff. Until then the only real measurement arm is
+# the author's machine, which is the exact shape portability_lint.sh was written to condemn.
+if [ ! -f scripts/gate_anchor_check.sh ]; then
+  _absent_subject_verdict "gate-anchor harness" "scripts/gate_anchor_check.sh" || fail=1
+else
+  # Capture the status BEFORE any display filter — $? after a pipe is the filter's, and a failed
+  # check would read as 0 (the repo's own pipe-verdict guard fired on this exact shape twice while
+  # this block was being written).
+  _ga_out="$(bash scripts/gate_anchor_check.sh --quiet 2>&1)"; _ga_rc=$?
+  case "$_ga_rc" in
+    0)  echo "PASS  gate-anchor harness (every known-pair held — gate is green for the right reason)" ;;
+    1)  echo "FAIL  gate-anchor harness: a known-pair COLLAPSED — a gate is green for the wrong reason"
+        [ -n "$_ga_out" ] && printf '%s\n' "$_ga_out" | sed 's/^/      /'
+        fail=1 ;;
+    10) if printf '%s' "$_ga_out" | grep -q 'harness-error'; then
+          echo "FAIL  gate-anchor harness: the anchor could not MEASURE (harness-error, rc=10) — a"
+          echo "      collapsed fixture is a defect in the instrument, not a consumer's missing hook."
+          printf '%s\n' "$_ga_out" | sed 's/^/      /'
+          fail=1
+        else
+          echo "SKIP  gate-anchor harness: UNMEASURED (hooks not installed, rc=10)"
+          echo "      Absence is not a pass — this run did NOT establish that the gates are sound."
+          [ -n "$_ga_out" ] && printf '%s\n' "$_ga_out" | sed 's/^/      /'
+        fi ;;
+    *)  echo "FAIL  gate-anchor harness: undeclared exit code $_ga_rc — the contract is 0/1/10, so an"
+        echo "      unknown status is a harness defect, not a pass."
+        [ -n "$_ga_out" ] && printf '%s\n' "$_ga_out" | sed 's/^/      /'
+        fail=1 ;;
+  esac
+fi
+
 # count_check's README format override is a mandatory-pass gate whose pattern is caller-supplied.
 # Same subject-present/anchor-gone shape as the block above: if the guard ships without its known
 # pair, a template that defeats the gate (a rendered newline turns the pattern into an OR search)
@@ -505,7 +581,16 @@ done
 # and capability_registry_check does not: its terminal line is a genuine VERDICT
 # ("publish_freshness 캘리브레이션 통과/실패"), not a Korean test-case title, so a future rename of
 # any single lane cannot flip a real PASS into a false "dispatcher missing?" here.
-for _subj in compaction_probe judgment_circuit_lint novelty_claim_check chamber_witness digest_landing_check publish_freshness_check; do
+# portability_lint joined 2026-08-16 (weekly_audit 🟧-3). Same qualification as publish_freshness_check:
+# its terminal line is a genuine verdict ("portability-lint 캘리브레이션 통과/실패"), emitted once in
+# the summary position, not a Korean test-case title — so renaming any single lane cannot flip a real
+# PASS into a false "dispatcher missing?" here. It earns the slot for a second reason: its own
+# self-test caught THREE defects in it before it ever shipped (a `|` field separator colliding with
+# regex alternation, a line-window too narrow to see the next-line guard, and a rule that flagged its
+# own prescription), and a hand-check then removed two false-positive classes that had inflated its
+# first repo-wide count by 40% (50 → 30). An instrument that has never been able to fail is not
+# calibrated; this one has failed, been fixed, and still discriminates (10 pass / 0 fail).
+for _subj in compaction_probe judgment_circuit_lint novelty_claim_check chamber_witness digest_landing_check publish_freshness_check portability_lint; do
   if [ ! -f "scripts/$_subj.sh" ]; then
     _absent_subject_verdict "$_subj --self-test" "scripts/$_subj.sh" || fail=1
   else
@@ -544,6 +629,24 @@ for _subj in compaction_probe judgment_circuit_lint novelty_claim_check chamber_
         echo "      so its verdicts prove nothing about $_subj. Not a lane failure, not a pass either."
         fail=1; continue ;;
     esac
+    # 🟥 portability_lint 만 **전체 줄 + 비영 카운트**를 요구한다 (적대검증 2026-08-16).
+    # 아래 substring 게이트는 «`캘리브레이션` 이라는 글자가 출력 어딘가에 있나» 만 본다. 그래서
+    # 그 스크립트의 `RULES` 를 통째로 비우고 `_ck` 호출을 전부 지워도
+    # `portability-lint 캘리브레이션 통과: 0 pass / 0 fail` 이 나오고 rc=0 → **PASS** 다.
+    # 이건 이 파일이 directional_diff_gate 에 대해 이미 명시적으로 방어한 결함
+    # (*"a suite with nothing left in it certifies itself"*)이고, 새 subject 만 약한 게이트에
+    # 들어갔다. 저자의 되돌림 프로브(«디스패처 제거 → FAIL»)는 **디스패처 존재**만 입증하고
+    # **레인 생존**은 입증하지 않는다 — 더 강한 뮤턴트(레인 삭제)는 안 돌았고, 돌았으면 초록이었다.
+    if [ "$_subj" = portability_lint ]; then
+      case "$_st_out" in
+        *"portability-lint 캘리브레이션 통과: "[1-9]*" pass / 0 fail"*) : ;;
+        *) echo "FAIL  $_subj: --self-test 가 «비영 pass + 0 fail» 종단 verdict 를 내지 않았다"
+           echo "      (레인이 전멸해도 substring 게이트는 통과한다 — 그래서 여기만 전체 줄을 본다)"
+           printf '%s\n' "$_st_out" | tail -3 | sed 's/^/      /'
+           fail=1; _st_rc=0 ;;
+      esac
+      continue
+    fi
     case "$_st_out" in
       *캘리브레이션*) : ;;
       *) echo "FAIL  $_subj: --self-test produced no calibration verdict (dispatcher missing?)"

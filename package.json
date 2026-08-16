@@ -1,6 +1,6 @@
 {
   "name": "@chrono-meta/fh-gate",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "FH runtime adapters — run FH governance, skills, and agents via Claude or Codex with machine-parseable gates.",
   "license": "MIT",
   "keywords": [
@@ -205,6 +205,7 @@
     "scripts/test_knowledge_seam_lanes.sh",
     "tests/seam_absence_probes.md",
     "scripts/gate_anchor_check.sh",
+    "scripts/portability_lint.sh",
     "scripts/rtk_gross_ablation.sh",
     ".claude/capabilities"
   ]

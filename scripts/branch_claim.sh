@@ -21,6 +21,19 @@
 #   세션 정체성은 배관이 필요 없다. 실측(2026-08-09): git 훅은 Claude Code 가 주입한
 #   `CLAUDE_CODE_SESSION_ID` · `CLAUDE_PID` 를 그대로 상속한다.
 #
+# `show` 를 읽는 사람(사람이든 세션이든)에게: claim 수 ≠ 실제 동시편집 스레드 수  ★ 관측 보강, 2026-08-16
+#   `show` 는 `.git/fh-claims/*` 를 그대로 나열하고 pid 생존만 본다. 그래서 **claim 이 "live"라는
+#   것은 «그 pid 가 아직 살아있다»는 뜻이지 «그 세션이 지금 이 브랜치를 편집 중」이란 뜻이 아니다.**
+#   실측(2026-08-16, 이 감사-remediation 세션 자신): `show` 가 이 브랜치에 live claim 5개를 냈다.
+#   교차확인(peer 에게 직접 SendMessage) 결과 5개 중 실질 편집 스레드는 **1~2개** 뿐이었다 —
+#   나머지는 ⓐ idle bg 세션(작업 없음) ⓑ pid 는 살아있지만 **다른 레포로 이동한 세션의 stale claim**
+#   (release 를 안 하고 옮겨감) ⓒ 이미 handoff 되어 ListAgents 에도 안 잡히는 완료 세션의 잔존 파일.
+#   즉 이 스크립트의 판정(§판정 키 = 세션)은 여전히 옳다 — «내 claim vs HEAD» 비교는 claim 수와
+#   무관하게 성립한다. 틀렸던 건 **그 옆에서 `show` 출력을 읽고 "N개 세션이 동시에 이 브랜치를
+#   건드리고 있다"고 위험도를 추정하는 것**이다. 그 추정을 하려면 `show` 가 아니라 ⓐ`reap` 으로
+#   죽은 claim 을 먼저 걷어내고 ⓑ 남은 claim 의 세션에 **직접 물어라**(ListAgents+SendMessage) —
+#   claim 파일 자체엔 "지금 이 트리를 실제로 만지고 있는가"를 답할 필드가 없다.
+#
 # WHAT THIS DOES / DOESN'T
 #   막는다     : «내가 마지막으로 claim 한 브랜치» ≠ HEAD 인 채로 커밋
 #   안 막는다  : `git switch` 자체 (git 에 switch 훅이 없다 — 막을 자리가 없다)
@@ -223,6 +236,7 @@ cmd_show() {
         "$(_field "$f" branch)" "$(_field "$f" label)" "$alive"
     done
   else echo "  (기록 없음)"; fi
+  echo "  (live = pid 생존일 뿐, 지금 이 트리를 편집 중이란 뜻 아님 — 위험도 추정은 reap 후 직접 문의)"
 }
 
 # 0 = 통과, 1 = 차단
