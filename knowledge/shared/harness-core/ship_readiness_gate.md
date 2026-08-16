@@ -279,12 +279,161 @@ unchanged and keeps its own 2026-07-14 evidence).
 
 | # | Identity | Engines it loads | Status | Evidence / what's missing |
 |---|---|---|---|---|
+| **Ⓑ** | **프로젝트 부스터** (booster) — 🟥 **다른 다섯과 같은 층이 아니다. 포괄 기능이되 ①②⑤ 를 «포함»하지 않고 «끌어다 쓴다» — 셋 다 부스팅 밖의 고유 범위를 갖는다** — 번호 대신 Ⓑ 를 쓰는 이유이자 §Ⓑ-layering 을 먼저 읽어야 하는 이유 | judgment-circuit + ship-gate | 🟢 **GREEN (신설 2026-08-16)** | **이 행이 없던 것이 이 표의 맹점이었다.** 온보딩 문 ③(«매핑 프로젝트 가속»)이 오래전부터 이 기능을 팔고 있었는데 등급표에 대응 행이 없었다 — 그래서 부스터는 **한 번도 등급이 매겨진 적이 없고, 약점이 발견될 자리도 없었다.** 미할당 기능은 미감사 기능이다. **인접 세 행이 이걸 안 덮는다**: ②는 *새 하네스를 낳고*(성숙한 하네스는 대상 아님), ⑤는 *사람의 의도*를 벼리고(증폭 대상이 하네스가 아니다), ①은 남의 능력을 *FH 가* 쓴다(활용 ∪ 흡수 — 둘 다 FH 가 이득 보는 방향). 부스터는 **FH 의 기계가 상대 하네스의 자체 개발을 가속하는 것**이라 셋 다와 방향이 다르다. **실적(운영자 열거 + 실측)**: pmh 는 *이 경로에서 출발했다* · mate 스킬 출하 + 인프라 배선 · 조직 환경 2건(품질 게이트 인프라 이식, 자산명은 residency 로 미기재) · clawd-on-desk · gstack. **Dominance — §Gate consequence 를 면제 없이 그대로 만족한다.** 경쟁자 = *그 하네스 자신의 개발 과정*, 결과 = 그 과정이 놓친 것을 부스팅이 잡았다: ⑴ **gstack**(외부·운영자 통제 밖) — 이슈 #1890 을 외부인 자격으로 제기, 그 레포 오너가 수정하고 **회귀 테스트 `test/claude-provider-keychain.test.ts` 로 못 박아 릴리스에 실었다**(2026-08-15). 채택 판정이 **우리가 아니라 그쪽 메인테이너**라 자기채점이 아니다. ⑵ **pmh**(2026-08-16 실측) — 이식된 자산이 대상 환경에서 **게이트가 죽은 채** 있었고 selfcheck 35 FAIL 이 CI 부재로 몇 달간 안 보였다; 부스팅 경로가 그걸 드러내고 31/31·35→2 로 닫았다. ①이 받은 dominance 면제는 **이 행에 필요하지 않다** — ①은 산출이 «안 지어도 됐다»라 겨냥이 틀렸던 경우고, 부스터의 산출은 «상대가 못 잡던 걸 잡았다»라 이 절의 정의에 그대로 맞는다. 🟥 **명시 잔여 — 초록 행의 잔여이지 보류 사유가 아니다**(①이 «(d) 안 닫힘»을 안고 🟢인 것과 같은 처리): **부스팅이 이식한 자산이 대상 환경에서 실제로 발화하는지 재는 계기가 없었다.** 2026-08-16 pmh 실측이 그 대가다 — 한 줄(`set -euo pipefail` 아래 `package.json` 읽는 할당문)이 게이트를 즉사시켰고, 30레인 회귀 스위트가 그걸 30번 보고하는데 **아무도 안 봤다**(그 레포에 CI 가 없었으므로). 승급이 아니라 **이 행의 첫 승급 기준**이 거기서 나온다(아래). ⚠️ n 은 세지 않는다 — 실적 열거는 운영자 증언 + 오늘 실측 2건이고, 조직 환경 2건은 이 파일에서 검증 불가(residency)이므로 **증언으로 표기하고 측정으로 세지 않는다** |
 | ③ | 거버넌스 게이트 (governance) | ship-gate | 🟢 GREEN | pre-commit/pre-push physically block; moat measured 3–4 family blind (HITL 8/8 ABSENT); cross-family caught a real companion-store-name leak 2026-07-14 (fail-closed) |
 | ⑤ | 증폭자 (amplifier) | judgment-circuit | 🟢 GREEN | short-intent→literature-grounding→ultimate-doc real instances; rules-diet −18.2k measured; intent-routing probe 94% (below) |
 | ④ | 프런티어→조직 전파 (**🔵 RC, 2026-08-09**) | external-grounding | 🔵 RC | frontier-digest launchd auto + AX submission docs both real, but digest→org never closed as ONE pipeline. **2026-08-09**: the missing link was built — `scripts/digest_landing_check.sh` extracts the digest's candidate table into probes and reuses the existing landing checker (no second verifier). Self-test 8 lanes green. **🔵 RC (2026-08-09)**: the mtime defect that initially held it back is closed — the since-filter now splits two axes (git-tracked → commit time via `git log --since`; gitignored `tracks/**` → mtime, the only evidence that axis has; dirty-tracked → `UNMEASURED`), and **two lanes pin that split**: a file with only a fresh mtime is *not* counted, and a file with only a fresh commit *is* counted even when its mtime is stale. The second lane matters — without it the fix degenerates into "discard all tracked files so only negatives pass" (named by the cross-family reviewer). Self-test **10 lanes** green. **What remains is a named residual, not a calibration gap**: `file-change ≠ token-introduction` — a file committed after the digest may carry the token from before (closing it needs token-level diff, which does not fit the checker's interface). The instrument therefore prints, and this row states, that it is a **screener, not an adjudicator**: hits must be opened. Four real runs, four hand-verifications, four defects found |
 | ① | 하네스 클러스터 (**🟢 2026-08-16 — 기준이 바뀌었다, 아래 §①-2026-08-16 를 먼저 읽어라**) | context-continuity | 🟢 | routing already ran for real (17 nodes, sidecar-orchestrator, Skill Bus). **The relay half is now built rather than specified**: `capability_composition_contract.md` (2026-08-02) was a complete spec with **zero implementing code** — the ① blocker was missing wiring, not missing design ([[feedback_built_but_not_wired]]). `scripts/relay_channel.sh` executes it (strictest-wins merge · typed invocation · checks 1/2/3 · short-circuit · causal binding), `scripts/test_relay_channel_lanes.sh` carries **64 lanes, BLOCK/PASS symmetric**, and three arms ran across **two real field harnesses** (pmh-dev · qasp-dev) on FH's own assets. ⭐ **The measured result is the divergence arm, and its mechanism is not what the first draft of this row said.** On `templates/.git-hooks`, `qasp` alone returns exit 0 — a single-node pass would have shipped it — and the composition returns `BLOCKED` because `pmh` returns `FINDINGS`. But `qasp`'s exit 0 is `degrade-scan: no scannable (py/sh) target files`: **zero files were scanned.** The qasp copy predates pmh's 2026-07-28 shebang pass, so extension-less hook files are invisible to it, and its exit 0 means *no target*, not *clean*. So the composition did not catch a substantive disagreement between two harnesses — it caught **a single node rendering an unmeasured surface as a pass**, which is `[[feedback_not_found_is_not_zero_family]]`, and structurally the spec's own §ⓑ.4 B1 ("the exit 0 that means I never started"). That is a *stronger* result than the first framing and a narrower one: it demonstrates the union catching a blind spot, not decorrelated judgment. **Correction also to the order claim**: both orders return `rc=2`, but in the pmh-first order the chain short-circuits at node 1 and qasp never runs — only the qasp-first order actually exercises the union. Non-decorative: reverting each wiring line reddens lanes and no reversion passes silently. **Why this is RC and not 🟢** — *updated 2026-08-11; (b) and (c) moved, (a) did not, and a fourth appeared*: (a) the row's *other* half, external-harness recommend, is still parked — **unchanged, and it is a build, not a check**; (b) ~~`scripts/capability_registry_check.sh` does not exist~~ → **built 2026-08-11** (M1–M5 + the ran≠did-not-run clause, M4 pair executed, 7 self-test lanes BLOCK/PASS symmetric); (d) **NEW, and it cuts against the row**: a capability declaring `writes: read-only` passed all of M1–M5 and its entry point then `rm -rf`'d this repo's `scripts/`. The registration bar measures *form* and *known-pair separation*, never *whether the declaration is true* — so the machinery this row now points at carries a demonstrated structural hole (`capability_composition_contract.md §Salience`). A checker whose green can precede a destructive act is not yet a green identity; (c) ~~the two nodes are copies of one scanner at different staleness~~ → **superseded 2026-08-11, but only partly**: a run now exists across two *genuinely different* capabilities (a leak lens ∪ a verdict-direction lens — different enums, different defect classes, each blocking on its own finding), and the clean arm exercised the union end-to-end. ⚠️ **That satisfies the letter of the old (c) and not the identity's spirit: both new nodes live inside FH.** This identity was then named *멀티하네스 클러스터* (shortened to *하네스 클러스터* 2026-08-16); the only run that actually crossed harness boundaries is still the older pmh-dev/qasp-dev one, whose nodes were<a name="c-orig"></a> **copies of one scanner at different staleness** (all three copies — pmh 237 ln, qasp 121 ln, FH 269 ln — share a byte-identical 12-line header; the clean arm's two `out_sha` were identical), so the run proves the channel turns and that composing unequal copies has value, not that two independent judgments were decorrelated. Artifact: `tracks/_meta/identity_audit_2026-08-09_relay_channel.md` <br><br>**<a name="id1-20260816"></a>§①-2026-08-16 — 이 행이 🟢 이 된 이유는 «더 잘해서» 가 아니라 «다른 것을 재서» 다. 그 사실을 먼저 적는다.** 🟥 **옛 바로 재면 이 행은 오늘도 🔵 다.** §Gate consequence 의 dominance 절을 **두 번** 쟀고 **둘 다 미성립**이다 — 1차(기계 스캔 vs recall, `tracks/_meta/dominance_2026-08-16_cluster_scan_vs_recall_RESULT.md`)는 **상보**: 기계는 실행 축(M4·M6)을 독점하고 recall 은 구조·정합 축을 독점한다 — 서열이 아니라 직교다. 2차(**복사 vs 호출**, survives 다리, `tracks/_meta/dominance_2026-08-16b_copy_vs_call_RESULT.md`)는 **safety 동률**: 구 enum 사본으로 `exit 4` 를 부르면 relay 가 enum 밖 값을 `HARNESS_ERROR` 로 접어 `BLOCKED`(rc=2), 소유 선언은 `OUT_OF_SCOPE` 로 `BLOCKED`(rc=2) — **둘 다 막는다.** 「복사는 조용히 썩는다」는 예측이 반증됐고, 안 썩게 막아주는 것은 이 레포가 이미 가진 «미측정≠PASS» 규율의 기계 판본이었다. 두 측정 다 **사전등록 봉인 후 실행**이고 반증 조건을 결과 뒤에 옮기지 않았다. ⇒ **운영자 결정(2026-08-16)**: ①의 🟢 기준을 dominance 에서 **ⓐⓑⓒ 3기준으로 대체**한다. 운영자 원문 — *"그들의 능력을 활용하고 **내 쪽에서 더 짓지 않기 위한(재발명을 최소화하기 위한)** 목적이 멀티하네스 클러스터"* · *"FH 의 **뾰족한 부분을 유지하면서** 능력을 최대한 쓸 수 있는 방법"* · *"오래오래 진화에 따라 **살아남으면서 얇아지면서도** 가치를 발휘 … LLM 의 진화 그리고 다른 유수의 하네스들의 진화, **그 덕을 받는 것이 목적**"* (전문 + 방법론: `tracks/_meta/doctrine_2026-08-16_identity1_redefinition_and_method.md`). ①의 산출은 «더 많이 잡았다»가 아니라 **«안 지어도 됐다»** 라서 dominance 는 겨냥이 틀린 계기다. ⚠️ **이 대체는 ①에만 적용된다** — 다른 행의 dominance 요구는 그대로다. **ⓐ 재사용이 실재하고 호출 가능한가(복붙 아님)** → ✅ **측정**: `pmh-dev:merge-noop-check` 가 **pmh 자기 레포에서** 선언되고(`.claude/capabilities/merge-noop-check.cap`, `requires_cwd: SELF`, known-pair 는 그 레포의 실제 커밋 두 개), FH 가 `cluster_capability_scan.sh discover` 로 **발견** → `capability_registry_check.sh` M1–M6 `REGISTRABLE` → `relay_channel.sh run` 으로 **실제 호출**한다. 양·음 arm 이 갈린다 — NO-OP 입력은 `FH_NODE1_VERDICT: NO_OP` 로 node1 에서 BLOCKED, 차이 있는 입력은 node1 통과(`HAS_DIFF`) 후 node2(`forge-harness:degrade-direction-scan`)가 `FINDINGS` 로 BLOCKED. **다른 노드에서 다른 이유로** 막히므로 「늘 막는 계기」와 구분된다. **ⓑ FH 가 안 커졌는가 — «안 한 일»을 이름으로 댈 수 있는가** → ✅: `merge_noop_check.sh`(트리해시 + 조상관계 판정)를 FH 는 짓지 않았고, FH 자기 정본 `knowledge/shared/rules/multi_session_close_protocol.md §1-b` 가 **그 파일을 이름으로 지목하며 «가져오면 된다»** 고 이미 적어둔 자리가 여기다. 오늘 FH 가 새로 지은 것은 **채널**(`relay_channel.sh --cap-args`, 노드별 호출 인자)이지 판단이 아니다 — 그 채널이 없는 동안 호출 시점 인자를 요구하는 능력은 **항상 `ARGS → HARNESS_ERROR → BLOCKED`** 였다(방향은 fail-closed 로 옳았으나 **신호가 0**, 즉 «호출 가능» 을 구조적으로 만족시킬 수 없었다). **ⓒ 뾰족함이 보존되는가** → ✅ **측정**: 합성이 `FH_MERGED_residency: company`(둘 중 엄격한 쪽) · `verdict_binding` 은 4값 합집합 · 상류가 막히면 하류 노드 미실행. 🟥 **명시 잔여 — 축소하지 않는다.** ⑴ **두 측도를 갈라 적는다.** **㉮ 선언 보유 하네스 = 2**(FH · pmh) — *능력(capacity)* 측도. **㉯ 실제로 함께 돈 하네스 = 5** — *사건(event)* 측도이고 정체성이 묻는 쪽이다. 🟥 **단일 합성 한 번에 5개가 돌았다(실측, 세션 말)**: `relay_channel.sh run` 4노드 체인이 `gstack`(어댑터) → `pmh-dev`(소유 선언) → `mate-dev`(어댑터) → `qasp-dev`(어댑터) 를 태우고 FH 가 그 사이에서 병합했다 — 청정 arm 은 **네 노드 전부 실행 후 `FH_RELAY_VERDICT: PASS`(rc=0)**, 교란 arm 은 node3 `FAIL` 에서 `BLOCKED` + 하류 미실행(rc=2). **늘 통과하지도 늘 막지도 않는다.** 병합 결과: `residency: company`(다섯 중 최엄격) · `verdict_binding` **9값 합집합**. ⚠️ ㉮ 가 여전히 2인 것은 나머지 셋이 **어댑터**(FH 소유·FH 유지)이기 때문이고, 그게 결함이 아니라 운영자 결정으로 정해진 **기본 경로**다(§선언 위치). ㉮ 가 커지는 것은 남이 «노출한다» 고 자기 정본에 적었을 때뿐이다. 그리고 ㉮ 가 여전히 작다는 사실은 남는다: ⚠️ **부풀리지 않는다**: clawd-on-desk 는 하네스 자산이 없는 **대상 레포**라 PR #888 은 기여였지 하네스 주행이 아니다 — 세지 않았다. 그리고 ㉮ 가 여전히 작다는 사실은 남는다: qasp 는 **그 하네스 자신의 입장리뷰가 REJECT** 했다 — 정본 근거 0건 · 소비자 0곳(읽는 건 FH 뿐) · `session.md:101` 「n=3 전엔 추상화 금지」 위반 · **그 선언 경로가 그 하네스의 조직 미러 대상에서 제외돼 있지 않다**(운영자가 이 레포에서 통제하지 않는 목적지로 그대로 복제된다). 운영자 결정(2026-08-16)으로 **보류**이며, 「이 하네스는 외부 하네스에 자기 인터페이스를 노출한다」를 **그 하네스 자신의 정본에 적는 것**이 선행 조건이다. 선언 파일이 남의 레포에 **있다**는 것과 그 하네스가 노출을 **결정했다**는 것은 다른 명제다. ⑵ 🟥 **(d) 는 안 닫혔다.** `.git/objects` 를 감시면에 넣어 객체 쓰기 한 부류를 닫았고(probe L13 탐지 / L13b 과차단 컨트롤 / 되돌림 시 정확히 L13 만 적색), **그러나 M6 는 선언된 캘리브레이션 arm 만 관측한다** — 실증: `merge_noop_check.sh` 는 **분기 입력에서 git 객체를 쓰는데**(격리 클론 실측: `.git/objects` 파일 수가 **+1**. ⚠️ 절대값은 클론 상태에 의존하므로 **델타만 인용한다** — 이전 판본이 적었던 절대 쌍은 재현 불가라 철회한다) 선언된 두 arm 이 그 경로를 안 지나므로 `writes: read-only` 로 거짓 선언해도 `REGISTRABLE` 이 난다(실측 확인). 같은 날 아침에 나온 **「검사기에 enum↔구현 일치 축이 없다」와 같은 형태**다 — 같은 stale 선언이 캘리브레이션 쌍에 따라 REJECTED 도 REGISTRABLE 도 된다. 한 문장으로: **검사기는 선언이 시키는 것만 본다.** ⑶ 그러므로 이 🟢 은 **「클러스터가 실제로 돈다」**에 대한 것이지 **「등록 바가 선언의 진위를 검증한다」**에 대한 것이 아니다. 후자는 열려 있고, 열려 있다고 적는다. Artifact: `tracks/_meta/identity_audit_2026-08-16_cluster_green.md` <br><br>**<a name="id1-naming"></a>§①-naming (운영자 결정, 2026-08-16) — 이름을 줄이고, 그 안의 하중 부품에 이름을 준다.** 「멀티하네스 클러스터」 → **「하네스 클러스터」**: 「멀티」와 「클러스터」가 둘 다 복수를 뜻해 **중복이었다**. 그리고 그 아래에 **크로스하네스**를 둔다 — *"서로간의 능력을 보강하기 위함이야. **없는 걸 쓰기 위함**이고, FH 에서 **‘짓지 않아도 되는 것’을 다른 레포 개발에 활용**하기 위함이지. 다만 그 와중에 **FH 에서 지어야 하는 게 보이면 개선해서 답습**하는 거고."*(운영자) ⇒ **크로스하네스는 양방향이다**: **활용**(남의 능력을 호출해 FH 가 안 짓는다) **∪ 흡수**(FH 가 지어야 할 것이 보이면 개선해 들여온다). 종전 정의는 앞의 절반뿐이었다. 🟥 **둘의 관계는 합집합이 아니라 «포함 + 하중»이다.** 운영자: *"하네스 클러스터가 돌려면 크로스하네스는 항상 있어야 하니까."* ⇒ **크로스하네스는 하네스 클러스터의 필요조건**이고, 그래서 판정에서 다음이 따라 나온다 — **ⓐ(«재사용이 실재하고 호출 가능한가»)가 곧 크로스하네스 시험이고, 그게 이 정체성의 결박 지점이다.** 노드 수 n 은 클러스터의 **범위**를 재지 «도는가»를 재지 않는다. (이 구분이 없어서 이 행의 잔여 ⑴이 «n=1»을 마치 미성립처럼 읽히게 적혀 있었다 — n=1 에서도 교환은 실제로 일어났다. 다만 **n 을 늘리는 것은 여전히 옳고, 그건 선언이 없어서지 기제가 없어서가 아니다**: 실측 2026-08-16, 매핑된 하네스 12개 중 선언 보유 2개 · 나머지 10개는 `.claude/capabilities` 디렉토리 자체가 없다. 도구는 있다 — gstack `bin/*`=69 · gbrain 50 · openhuman 43 · mate-dev 7 · qasp-dev 16.) 🟥 **크로스하네스는 두 형태를 갖고, 둘 다 «건넜다»에 든다(운영자, 2026-08-16).** **기계 형태** = 남의 능력을 typed 채널로 호출한다(`.cap` 선언 필요) · **판단 형태** = **남의 정본을 근거로 심사받는다**(입장리뷰 — 선언 불요). 운영자: *"입장리뷰도 크로스가 아닐까 … 결국 너와 그쪽 하네스 2개가 동시에 도는 거니까."* ⇒ **판단 형태는 선언 없이 지금 당장 모든 하네스에서 성립한다**, 그리고 **한 번의 크로싱이 이미 하네스 2개의 동시 주행**이다. *"크로스하네스는 노드 1개라도 발휘되는 거고 … 그게 늘어나면 클러스터가 되는 거고."* ⇒ **크로스하네스 = 사건(건넜다) · 하네스 클러스터 = 그 사건의 누적.** 🟥 **이 문장이 아래 잔여 ⑴의 계수 오류를 잡는다** — 나는 «외부 **선언** 수»를 셌는데 정체성이 묻는 것은 «**함께 돈 하네스** 수»다. 두 측도를 갈라 적는다(둘 다 남긴다, 유리한 쪽만 남기지 않는다). 🟥 **명칭 경계 — 알고 쓴다.** `cross-harness` 는 이 레포에서 **이미 다른 뜻**으로 쓰인다: `CLAUDE.md §Standpoint axis` · `field_verdict_crossfamily_gate.md §7` 의 *"cross-harness-boundary change"* = **다른 하네스의 동작·게이트 결과·상호작용 계약을 바꾸는 diff**(게이트 트리거 범위). 정체성 이름이 「하네스 클러스터」로 남으므로 **최상위 층에서는 충돌하지 않지만**, 하위 기제 「크로스하네스」와는 여전히 같은 낱말이다 — 구분: **명사 「크로스하네스」 = 능력 교환(이 정체성의 필요조건)** · **형용구 cross-harness-boundary = 그 게이트의 적용 범위**. 섞어 쓰지 마라. 🟥 **ⓑ 기준이 양방향화에 맞춰 «좁아진다»(느슨해지는 게 아니다).** 흡수를 허용하면 ⓑ(«FH 가 안 커졌는가»)가 그대로는 무력해지므로: **FH 는 «닫는 FH 결함을 이름으로 댈 수 있을 때만» 커진다.** 새 규율이 아니라 이미 있는 증거-임계 빌드 규율(`fh_signal_2026-08-16_expedition_two_tracks.md` §경계 2 — *"«좋아 보여서»가 아니라 «우리 결함이 그걸 요구해서»"*)을 ⓑ 의 판정 문구로 승격시킨 것이다. ⇒ **ⓑ = ⑴ 호출로 대체한 것을 이름으로 댈 수 있고, ⑵ 새로 지은 것은 각각 닫는 FH 결함을 이름으로 댄다.** 오늘 실적: 대체 = `merge_noop_check.sh`(안 지었다) · 신축 = `--cap-args` 채널(닫는 결함 = «호출 시점 인자를 요구하는 능력이 relay 를 통과할 방법이 없다», 실측) + `.git/objects` 감시(닫는 결함 = «`writes: read-only` 거짓 선언이 VERIFIED 를 받는다», 실측). 둘 다 이름이 붙는다. 🟥 **선언 위치는 두 종류이고, 기본은 «어댑터»다(운영자 결정 2026-08-16 — 초판은 이걸 거꾸로 적었다).** 운영자: *"사용자들은 다들 대상 레포에 짓지 않을 거야. **FH 내부에 상주시키겠지.** 필요하다면 개인용 레포로 분리해서 관리할 거고."* · *"로컬에서 작업하기 위한 거니까 **어댑터는 내장되어 있어야지.**"* ⇒ **어댑터 선언 = 기본 경로**(FH 안 `.claude/capabilities/adapters/` + FH 소유 스크립트, **유지 책임은 FH**, peer 는 **이름으로 해석**해 tracked 파일에 홈 절대경로를 안 싣는다). **소유 선언 = 특권적 경우** — 그 하네스를 소유하고 **동시에** 「외부 하네스에 인터페이스를 노출한다」를 **그 하네스 자신의 정본에 적었을 때만**(pmh-dev 가 그 유일한 사례다). 🟥 **이 뒤집기는 실측이 강제했다**: qasp 입장리뷰가 남의 레포 안 선언을 REJECT 했고(정본 근거 0건 · 소비자 0곳 · n=3 규칙 위반 · 조직 미러 노출), gstack 은 **애초에 남의 공개 레포(READ 권한)라 푸시 자체가 불가능**했다 — 즉 소유 선언은 «드문 경우»가 아니라 **대부분의 경우 성립조차 하지 않는다.** 어댑터가 허용되는 근거는 dominance-2 가 잰 것이다 — 복사 vs 호출이 **safety 동률**이었고 차이는 «정보와 유지 책임»뿐이었다. 라벨과 FH 소유가 그 차이를 닫는다. ⚠️ **residency 경계**: `company` peer 의 어댑터는 **tracked 로 두지 않는다** — 커밋 시점 공개표면 스캔이 floor 이지만, 판단이 먼저다. ⚠️ **미결 — 운영자 결정 대기**: *"운영자 환경에서는 상시 제안 가능. 사실 제안도 자동으로 반영 가능"*. 제안의 **자동 반영**은 자율성 확장이라 §Operational Adaptation Loop 의 action-class floor 를 그대로 통과해야 한다 — 흡수 커밋 자체는 가역이지만 **그것이 publish 를 먹이면 taint 가 전파**되고, 그 경우 registry floor 가 `promotion_eligible` 을 금한다. 바운드된 형태(운영자 환경 한정 · 가역 표면 한정 · typed 기록 필수 · 게이트는 그대로)로 좁히기 전엔 자동화하지 않는다. **미구축이며, 미구축이라고 적는다.**
 | ② | 프로젝트 인큐베이터 (**🔵 RC, 2026-08-09**) | context-continuity + judgment-circuit | 🔵 RC | **RC 세 다리가 섰다** — (a) 구현: `chamber_run.sh` 6단계 게이트 (b) known-pair: 러너 게이트 **18 레인**(`test_chamber_run_lanes.sh`, BLOCK/PASS 대칭 — PASS arm 이 있어야 "전부 막는 게이트"도 걸린다) + 순서 증인 **16 레인**(`chamber_witness.sh`) (c) self-test 초록. **실상황 발화 대기 = formal chamber EMIT 아직 0** — 그것이 RC 가 🟢 이 아닌 이유이자 RC 정의 그 자체다. ⚠️ **그 0 의 해석이 2026-08-09 에 바뀌었다**: 지금까지 *"챔버가 엄격해서"* 로 읽었으나, KILL 된 후보 다수가 **메타-형** 이고 유일한 EMIT(`forge-wiki`)만 **필드-형** 이다 — 즉 *낳을 수 없었던* 게 아니라 **애초에 대상이 아닌 후보가 들어왔을** 가능성이 있다. 필드 ⊥ 메타 프로파일과 씨앗(precocial) 기준 정의: `harness_incubator_doctrine.md §3-a`. ⚠️ 그 분류는 **사후에 이뤄졌고 n=9** 라 가설이다 — 사전 등록 후 다음 런을 예측해야 결과가 된다. 아래 옛 판정 줄은 이력으로 남긴다 |
 | ②-old | (이력) 프로젝트 인큐베이터 | context-continuity + judgment-circuit | 🟡 PARTIAL | incubation is running — **stockbattle is being incubated now** (S1 built, mid-flight) + qasp/pmh spin-out precedent + scaffold-emit shipped (doctrine: "emit shipped today as scaffold+approval; the chamber flow is the named target"). **Corrected 2026-08-08** (the old text read "6 runs, 6 KILL … 0/6", which was stale on both counts, and the ledger itself was missing a run): hand-counted from `tracks/_chamber/INDEX.md` — **9 full runs (#2–#10), 8 KILL, 1 EMIT** (#1 is a trigger probe, not a full run). Runs #5–#6 *measured* the emit-worthiness criterion (net-new ∧ artifact-shaped ∧ real-data-precision-adequate ∧ hub-state-independent); run #6 confirmed the graduation-order principle — hub-internal proof before standalone extraction, never the reverse. **The 🟡 is now held for a different reason than before.** The old reason ("no closed emit-via-incubation yet") is false: run #9 `forge-wiki` emitted and shipped publicly under operator approval with the Pre-Publish gate passed. What is *not* proven is that the **formal chamber flow** produced it — that run's workspace holds only an `EMISSION_VERDICT.md`, with no `INTENT.md`, `BUDGET.md` or `SIM_NOTES.md`, so the intent/budget/blind-persona gates have no artifact and the verdict was written after the fact. The first run to complete the formal flow end-to-end is #10 (2026-08-08, 3 blind isolated personas) and it KILLed. So: **the identity has fired once, the mechanism has not yet been shown to be what fired it**, and the dominance result every 🟢 owes is still outstanding → 🟡 |
+
+### <a name="b-layering"></a>§Ⓑ-layering — **프로젝트 부스터**는 여섯 번째 행이 아니라 **다른 층**이다 (운영자, 2026-08-16)
+
+> 🟥 **먼저 — 이 절을 위계도로 읽지 마라. 이 표는 분류학이 아니라 재고 목록이다.**
+> 운영자(2026-08-16): *"사실 계층구조로 지으면 5대 정체성은 **서로를 먹고 먹지만**, 그럼에도
+> 정체성을 두는 이유는 **여기에 뭐가 있는지를 볼 수 있게** 하기 위함이야. 실제로는 유기적으로
+> 서로 연결되고 조합하여 사용해내게 되는 거지."*
+>
+> 아래 관계 서술은 **«무엇이 무엇 밑이다»를 굳히려는 게 아니라, 각 행이 서로 다른 범위를 갖는다는
+> 증거**다. 관계를 정밀화할수록 표는 실제 사용과 멀어진다 — 현장에서는 한 작업이 ①⑤ 를 같이
+> 태우고 그 결과가 ② 로 흐른다. **정합한 위계를 못 그리는 것은 이 표의 결함이 아니다.**
+>
+> ⇒ 그래서 Ⓑ 부재의 비용도 «위계가 틀렸다»가 아니다. **목록에 없어서 안 보였고, 안 보이니 감사가
+> 물을 수 없었다** — 그게 전부이고, 그거면 충분히 비싸다.
+
+이 항목의 초판은 부스터를 «⑥» 으로, 즉 나머지 다섯과 **나란한 여섯 번째 정체성**으로 적었다.
+운영자가 그걸 정정했다: *"증폭자, 하네스클러스터 이 두 개가 사실 부스팅을 위한 **과정적
+정체성**인데 부스터는 **포괄적 기능**이라고 보는 게 맞을지도 모르겠다"* · *"인큐베이터도
+비슷한 것 같네."*
+
+🟥 **그리고 그 정정의 초판도 과했다 — 운영자가 같은 자리에서 두 번 고쳤다.** 초판은 위 문장을
+«Ⓑ 가 ①②⑤ 를 **포함**한다»로 옮겨 적었는데, 운영자가 되물었다: *"증폭자는 하네스를 부스팅하기
+위한 것뿐만이 아니라 **훨씬 범용적으로** 쓸 수 있는 거 아닌가?"* 맞다. 그리고 같은 잣대를 나머지
+둘에 대면 셋 다 포함관계가 아니다:
+
+| 행 | 부스팅 밖의 범위 | 그래서 |
+|---|---|---|
+| ⑤ 증폭자 | **사람의 의도** 전반. `CLAUDE.md §Intent Marshaling` 이 하네스가 전혀 안 끼는 일반 작업(문서·리서치·정리)까지 명시적으로 이 아래 둔다 | Ⓑ 보다 **넓다** |
+| ① 하네스 클러스터 | 남의 능력을 **FH 가** 써서 FH 가 안 짓는다 — 수혜자가 FH 다 | Ⓑ 와 **방향이 반대** |
+| ② 프로젝트 인큐베이터 | **유닛을 낳는다 — 하네스만이 아니다.** 「프로젝트」는 더 큰 틀로 고른 이름이고 범위가 **하네스 · 스킬 · 에이전트 · 하네스 형태가 아닌 일반 레포**까지다(운영자, 2026-08-16). 부스팅은 낳은 뒤에 온다 | **순차**지 종속이 아니다 |
+
+⇒ **관계는 «포함»이 아니라 «끌어다 쓴다»(uses)** 다.
+
+```
+          Ⓑ 프로젝트 부스터      ← 포괄 기능이되, 셋을 소유하지 않는다
+             ↑ 끌어다 쓴다 (uses, not contains)
+          ⑤ 증폭자 · ① 하네스 클러스터 · ② 프로젝트 인큐베이터
+             — 각자 부스팅 밖의 고유 범위를 갖는다 (위 표)
+             ② 의 산출 유닛 = 하네스 · 스킬 · 에이전트 · 일반 프로젝트 레포
+```
+
+이 구분이 실질을 바꾼다: 포함이면 ①②⑤ 의 등급이 Ⓑ 의 등급에 종속되고, **끌어다 쓰는 관계면
+각 행이 자기 승급 기준을 그대로 진다.** 후자가 맞고, 그래서 Ⓑ 신설이 다른 행의 등급을 하나도
+건드리지 않는다.
+
+**이게 왜 «행이 없었나»를 설명한다.** 부스터는 다섯과 같은 층에 없었으므로 다섯을 아무리
+들여다봐도 나오지 않는다 — 빠진 게 아니라 **층이 하나 접혀 있었다.** 다섯은 각각 자기 자리에서
+감사됐고, **그것들을 무엇에 쓰고 있었는지**는 표에 적힌 적이 없다.
+
+🟥 **그리고 «왜 아무도 안 적었나»의 답은 «빠뜨렸다»가 아니다.** 운영자: *"부스터가 비워져
+있던 이유는 사실 FH 자체의 **너무나도 당연한 기본 정체성**이었기 때문이야. 가장 근원적인 것.
+계속 **숨쉬듯이** 해왔으니까. 그 위에 5개 정체성이 서게 되었는데."*
+
+이건 흔한 사각과 **방향이 반대다.** 보통 놓치는 것은 드물고 눈에 안 띄는 것인데, 이것은
+**항상 하고 있어서 안 보였다.** 사람은 자기가 끊임없이 하는 일을 명제로 적지 않는다 — 적을
+이유를 못 느끼기 때문이고, 그래서 **가장 근원적인 항목이 가장 늦게 문서화된다.**
+
+⇒ 이 표에 대한 진단 질문이 하나 생긴다: **«우리가 매일 하고 있는데 여기 적혀 있지 않은 것은
+무엇인가»** — 없는 것을 찾는 게 아니라 **있는데 너무 흔해서 안 세는 것**을 찾는 물음이다.
+`[[feedback_reinvention_reflex_normalization_counterweight]]` 의 사촌이되 반대 극이다: 저쪽은
+낯선 것을 익숙한 것으로 접는 반사고, 이쪽은 **익숙한 것을 아예 항목으로 세지 않는 반사**다.
+
+**난이도 순서가 등급을 설명한다(정합성 확인).** 운영자: *"인큐베이터는 이 부스팅보다
+어렵기에(**없는 걸 만드는 자리니까**) 초록이 되기까지 오래 걸린 거였고."* ⇒ 있는 것을 빠르게
+하는 일(Ⓑ) < 없는 것을 만드는 일(②). 그러므로 **Ⓑ 가 🟢 이고 ② 가 🔵 RC 인 것은 이상이
+아니라 예상되는 순서다.** 만약 반대였다면 둘 중 하나의 등급을 의심해야 했다.
+
+**명명이 평행한 것은 우연이 아니다 — 두 행의 유닛 범위가 같기 때문이다(운영자, 2026-08-16).**
+② 가 「하네스 인큐베이터」가 아니라 **「프로젝트 인큐베이터」**인 이유가 *"하네스를 인큐베이팅하기
+위한 것도 있지만 **스킬이나 에이전트도** 인큐베이팅하기 위해 더 큰 틀로 프로젝트라 명명한 것"*
+이고, *"하네스 형태가 아니더라도 **프로젝트 레포**를 만들어 줄 수도 있"*다. 부스터도 같은 범위를
+다루므로 **「프로젝트 부스터」**다. 초판이 「하네스 부스터」로 적은 것은 ② 를 「하네스를 낳는다」로
+좁게 적은 것과 **같은 실수**이며, 같은 자리에서 두 번 났다.
+
+```
+유닛 난이도 사다리 (두 행 공통)
+   일반 프로젝트 레포  <  스킬  <  에이전트  <  하네스
+   ↑ 쉽다                                      ↑ 가장 어렵다
+```
+
+**⇒ 등급 판정 규칙(운영자): «하네스까지 도달해 있으면 이미 초록이다».** 하네스가 사다리 꼭대기라
+거기 닿았다는 것은 아래 단계를 이미 통과했다는 뜻이다.
+🟥 **이 사다리는 «하네스까지 할 수 있습니다»이지 «하네스만 가능하다»가 아니다**(운영자, 2026-08-16).
+포함 관계이지 배타가 아니다 — 하네스에 도달하려면 **그 전까지의 모든 것이 가능해야** 하므로,
+꼭대기 칸의 실적은 아래 칸들의 실적을 **함께 주장한다**. 그래서 Ⓑ 의 🟢 은 «하네스를 부스팅한다»가
+아니라 **«일반 레포부터 하네스까지 부스팅한다»**로 읽어야 하고, 반대로 아래 칸 실적만 있는 상태를
+꼭대기 실적으로 올려 읽어서도 안 된다. 이 자로 두 행을 같이 재면 현재 등급이
+설명된다 — **Ⓑ 는 하네스 급 대상(pmh · gstack · mate)에서 실적이 있어 🟢**, **② 는 유일한 EMIT 이
+사다리의 아래쪽 유닛이라 아직 🔵**. 두 행이 다른 등급인 것은 서로 다른 잣대를 써서가 아니라
+**같은 사다리의 다른 칸에 도달했기 때문**이다.
+
+**기전(운영자 비유)**: *"실무자도 사회초년생을 가르치는 자보다 **3년 이상 실무한 사람을 옆에서
+부스팅**해주는 게 훨씬 쉬운 것과 마찬가지."* 3년차에게는 이미 판단·맥락·도는 루프가 있어
+**지렛대를 대면 된다**. 신입에게는 그 엔진 자체를 **만들어 줘야** 한다. 부스터는 전자, 인큐베이터는
+후자다.
+
+🟥 **그래서 이 행이 실제로 주장하는 범위는 좁게 적어야 한다.** 부스터의 난이도는 **대상의
+성숙도에 반비례**하고, 위 실적의 대상은 **전부 이미 도는 개발 과정을 가진 하네스**였다(pmh ·
+gstack · mate · 조직 환경 2건 — 어느 것도 무에서 시작하지 않았다). 그러니 이 🟢 은 «성숙한
+엔진에 지렛대를 댔다»에 대한 초록이지 «무에서 길렀다»에 대한 초록이 아니다 — 후자는 ②의
+자리이고 ②는 아직 🔵 다.
+⇒ 승급 기준 4로 승격: **실적을 셀 때 대상의 성숙도를 같이 기록한다.** 안 그러면 «하네스 6개를
+부스팅했다»가 «도는 엔진 6개를 가속했다»와 «6개를 무에서 길렀다» 사이에서 **어느 쪽인지 모르는
+숫자**가 된다. 지금까지의 실적은 전부 전자이며, 그렇게 적는다.
+
+⚠️ **③ 과 ④ 는 이 아래로 넣지 않았다 — 운영자가 그 둘을 말하지 않았고, 내가 대신 정할 일이
+아니다.** 잠정 관찰만 남긴다: ③ 거버넌스 게이트는 부스팅을 *포함한* 모든 행위가 통과하는
+품질 바닥이라 하위라기보다 **직교**로 보이고, ④ 프런티어→조직 전파는 대상이 하네스가 아니라
+조직이라 **다른 축**일 수 있다. 둘 다 운영자 판단 대기이며, 그때까지 이 표에서 위치를
+바꾸지 않는다.
+
+⚠️ 그리고 **계보와 포함은 다른 관계다.** 운영자는 별도로 *"부스터로부터 모든 정체성이
+발아했다"* 고도 말했는데, 그건 «부스터가 나머지를 포함한다»가 아니라 **«나머지가 거기서
+나왔다»**다. 씨앗이 나무를 포함하지 않는다 — 각 행은 자기 승급 기준을 그대로 진다.
+
+### §Ⓑ-genealogy — 그리고 계보상으로도 **첫 번째**다 (운영자, 2026-08-16)
+
+운영자 원문: *"부스터로부터 모든 정체성이 발아했다고 보면 될 정도임."* 이 행이 표에 **늦게 추가된
+것**은 발견 순서이지 계보의 순서가 아니다. 나머지 행들이 전제하는 것을 보면 이유가 보인다:
+
+- **① 하네스 클러스터**는 *클러스터할 남의 하네스가 존재하고 연결돼 있어야* 성립한다. 그 하네스들이
+  존재하고 연결된 경위가 부스팅이다. pmh 는 이 경로에서 **출발했다**.
+- **② 인큐베이터**가 방출한 것은 방출로 끝나지 않는다 — 길러진다. 그 기르는 행위가 부스팅이다.
+- **⑤ 증폭자**는 사람의 의도를 벼리고, 부스터는 그렇게 벼려진 것을 **다른 하네스에 실어 나른다**.
+
+🟥 **그래서 이 행의 부재가 비쌌다.** 등급표는 FH 가 자기를 감사하는 계기인데, 계보상 첫 번째인 기능에
+행이 없으면 그 기능은 매 감사에서 **구조적으로 시야 밖**이다. 2026-08-16 pmh 실측(이식 자산이 대상
+환경에서 죽어 있었고 몇 달간 안 보였음)은 그 사각의 청구서다.
+
+⚠️ **여기서 «모든 정체성이 부스터에서 나왔다»를 «부스터가 나머지를 포함한다»로 읽지 마라.** 계보와
+포함은 다른 관계다. 씨앗이 나무를 포함하지 않는다 — 각 행은 자기 승급 기준을 그대로 진다.
+
+### §Ⓑ promotion criteria — 이 행이 지킬 것
+
+🟢 로 신설됐으므로 이 절은 «어떻게 올라가나»가 아니라 **«무엇이 이 행을 내릴 수 있나»**를 적는다.
+잔여가 닫히는 조건이자, 다음 감사가 이 행에 물어야 할 질문이다.
+
+1. **이식 발화 검사 (핵심 잔여, 미구축).** 부스팅이 대상 하네스에 자산을 이식했을 때, 그 자산이
+   **대상 환경에서 실제로 발화하는가**를 재는 계기가 없다. 2026-08-16 의 실패 형태가 정본이다:
+   저자 레포에는 있고 대상 레포에는 없는 전제(여기서는 npm 표면)를 자산이 조용히 깔고 있었고,
+   **저자 환경에서는 31/31 초록**이었다. ⇒ 판정은 **대상 환경에서** 이뤄져야 한다. 판별선은
+   `harness_incubator_doctrine.md §3-b` 의 것을 그대로 쓴다 — **«아무것도 하기 전에 죽는다»(rc=1)**
+   와 **«돌았고 타입 있는 verdict 를 낸다»(HARNESS_ERROR)** 는 다른 상태다.
+2. **가속과 오염을 가른다.** 부스팅은 **자산을 이식하는 행위**라, 이식되는 것에는 저자 하네스의
+   결함도 같이 실린다. 이 행의 실적은 «몇 개를 이식했나»가 아니라 «이식된 것이 **거기서** 도나»로
+   센다. 전자는 활동량이고 후자만 결과다.
+3. **조직 환경 실적은 증언으로 남고 측정으로 세지 않는다.** residency 때문에 이 파일에서 검증할 수
+   없고, 검증 못 하는 것을 숫자에 넣으면 그 숫자 전체가 못 쓰게 된다.
 
 ### ② promotion criteria — and what the criteria themselves turned out not to be able to check
 

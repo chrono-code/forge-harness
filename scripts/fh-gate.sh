@@ -34,7 +34,22 @@ set -euo pipefail
 FH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Single source of truth: read version from the package.json shipped alongside this script.
 # No jq dependency (users may not have it); fall back to "unknown" if unreadable.
-VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$FH_ROOT/package.json" 2>/dev/null | head -1)"
+# VERSION — the `|| true` is load-bearing under `set -euo pipefail`, and it is the ONLY part that
+# is. Without it, a package.json that is missing OR unreadable makes this pipeline non-zero, and
+# because the whole thing is an ASSIGNMENT, `set -e` aborts the script right here — so the
+# `:-unknown` fallback on the next line never runs and the gate exits 1 before doing any work.
+# MEASURED 2026-08-16: a sibling harness carries this file verbatim but ships no package.json (it
+# is not an npm package), so its gate was dead on every invocation and its 30-lane regression
+# suite reported 30 failures that were all this one line. One lane appeared to PASS only because
+# its expected exit code happened to be 1 — the textbook signature of a dead control. Nobody had
+# looked, because that repo had no CI. Latent HERE too, not merely a sibling's problem: a copy of
+# this script run from a directory with no package.json died the same way.
+# A `[ -f "$FH_ROOT/package.json" ]` guard was written first and then REMOVED, because a 4-way
+# mutant matrix refuted it: with the file merely absent either mechanism alone suffices, but with
+# the file present-and-unreadable the guard passes and only `|| true` survives. A guard that
+# covers nothing `|| true` does not already cover is decoration, and the first version of this
+# comment claimed both were load-bearing — that claim was false.
+VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$FH_ROOT/package.json" 2>/dev/null | head -1 || true)"
 VERSION="${VERSION:-unknown}"
 CALLER_CWD="$(pwd -P)"
 _TMPDIR="${TMPDIR:-/tmp}"

@@ -415,11 +415,30 @@ fi
 if [ ! -f scripts/package_coverage_check.sh ]; then
   _absent_subject_verdict "test_package_coverage_lanes.sh" "scripts/package_coverage_check.sh" || fail=1
 elif [ -f scripts/test_package_coverage_lanes.sh ]; then
-  if ! bash scripts/test_package_coverage_lanes.sh; then
+if ! bash scripts/test_package_coverage_lanes.sh; then
     fail=1
   fi
-  if ! bash scripts/package_coverage_check.sh; then
-    fail=1
+  # The CHECKER's semantics are deliberately fail-closed and must not be softened: given a git
+  # checkout with no package.json it reports UNMEASURED, never "clean", and its own lane L4 pins
+  # exactly that. Applicability is the CALLER's judgment, and it is made mechanically here.
+  #
+  # A repo that ships no npm surface at all is not "unmeasured npm coverage" — it has no npm
+  # coverage to measure. Measured 2026-08-16 in a sibling harness that carries this suite verbatim
+  # and is not an npm package: this was a PERMANENT red, on every run forever. A gate that can
+  # never go green is not strict, it is a gate people learn to ignore — and this suite is the
+  # mandatory-pass surface, so that habit is expensive.
+  #
+  # Note the asymmetry, because it is the whole point: this repo HAS an npm surface, so if its
+  # package.json ever went missing the checker would fire and SHOULD — that is a real defect here.
+  # The guard below distinguishes "the surface is absent by nature" from "the surface is missing",
+  # which is the distinction `not found ≠ 0` exists to protect.
+  if [ -f package.json ] || [ -d bin ]; then
+    if ! bash scripts/package_coverage_check.sh; then
+      fail=1
+    fi
+  else
+    echo "SKIP  package-coverage — NOT APPLICABLE: this repo ships no npm surface"
+    echo "      (checked mechanically: package.json absent, bin/ absent — not a claim, a test)"
   fi
 else
   echo "FAIL  test_package_coverage_lanes.sh: package_coverage_check.sh present but its anchor is missing"

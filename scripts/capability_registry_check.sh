@@ -54,7 +54,7 @@ RC_OK=0; RC_REJECT=1; RC_HARNESS=10
 # `summary`/`tags` 는 **추천 전용**(2026-08-16, cluster-wizard). 판정에는 안 쓰이고
 # `cluster_capability_scan.sh recommend` 의 어휘 매칭에만 쓰인다. 닫힌 목록에 넣는 이유는
 # 이 목록의 목적이 «오타 축 무음 드롭 방지» 이기 때문이다 — 안 넣으면 정당한 키가 SCHEMA 로 막힌다.
-CLOSED_KEYS="id entry requires_cwd summary tags verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream approval reversibility residency degrade tier_floor writes judge verdict_binding calibration_positive_args calibration_positive_expect calibration_negative_args calibration_negative_expect"
+CLOSED_KEYS="id entry requires_cwd summary tags verdict_channel verdict_enum verdict_stdout_key upstream_argv echoes_upstream approval reversibility residency degrade tier_floor writes judge verdict_binding calibration_positive_args calibration_positive_expect calibration_negative_args calibration_negative_expect calibration_positive_stdin calibration_negative_stdin"
 
 # 「안 돌았다」를 뜻하는 이름들 — 추가조항(§ⓑ.4 B1)이 요구하는 구분항
 DIDNOTRUN_NAMES="DID_NOT_RUN DIDNOTRUN NOT_RUN NO_TARGET SKIPPED UNMEASURED NOT_CONFIGURED HARNESS_ERROR"
@@ -70,6 +70,9 @@ _parse() {
   CAP_id=""; CAP_entry=""; CAP_requires_cwd=""; CAP_verdict_channel=""
   CAP_verdict_enum=""; CAP_verdict_stdout_key=""; CAP_judge=""; CAP_writes=""
   CAP_cal_pos_args=""; CAP_cal_pos_expect=""; CAP_cal_neg_args=""; CAP_cal_neg_expect=""
+  # 다중 capfile 실행에서 앞 파일의 선언이 뒤 파일로 새지 않게 한다 — 초기화 누락은
+  # "뒤 파일이 선언하지 않은 stdin 으로 돌았다" 를 만들고, 그건 조용히 통과한다.
+  CAP_cal_pos_stdin=""; CAP_cal_neg_stdin=""
   UNKNOWN_KEYS=""; CAP_requires_cwd_was_self=0
   # 「선언했는데 값이 비었다」와 「선언 자체가 없다」는 다른 사실이다 — 관측 범위 블록이
   # 둘을 구분해 적으려면 파서가 그 구분을 보존해야 한다(빈 문자열 하나로는 못 나눈다).
@@ -93,6 +96,8 @@ _parse() {
       calibration_positive_args) CAP_cal_pos_args="$val"; CAP_cal_pos_args_seen=1 ;;
       calibration_positive_expect) CAP_cal_pos_expect="$val" ;;
       calibration_negative_args) CAP_cal_neg_args="$val"; CAP_cal_neg_args_seen=1 ;;
+      calibration_positive_stdin) CAP_cal_pos_stdin="$val" ;;
+      calibration_negative_stdin) CAP_cal_neg_stdin="$val" ;;
       calibration_negative_expect) CAP_cal_neg_expect="$val" ;;
     esac
   done < "$1"
@@ -119,10 +124,43 @@ _validate_arm_args() {   # $1=args → 셸 메타문자/상위경로 탈출을 �
   return 0
 }
 
-_run_arm() {   # $1=extra args → ARM_RC / ARM_NAME. 파이프로 읽지 않는다(PIPE-VERDICT).
+# stdin 파일 검증 — args 와 같은 규율(메타문자·상위경로 탈출 거부) + 실재 확인.
+_validate_arm_stdin() {   # $1=선언된 경로(빈 값 허용)
+  [ -n "$1" ] || return 0
+  case "$1" in
+    *'|'*|*';'*|*'&'*|*'>'*|*'<'*|*'`'*|*'$('*|*$'\n'*)
+      _fail "M4" "캘리브레이션 stdin 경로에 셸 메타문자가 있다: $1"; return 1 ;;
+    *'../'*|/*)
+      _fail "M4" "캘리브레이션 stdin 경로가 레포 밖을 가리킨다(상대경로만 허용): $1"; return 1 ;;
+  esac
+  [ -f "$CAP_requires_cwd/$1" ] || {
+    _fail "M4" "캘리브레이션 stdin 파일이 없다: $1 (선언은 실재하는 픽스처를 가리켜야 한다)"; return 1; }
+  return 0
+}
+
+_run_arm() {   # $1=extra args · $2=stdin 파일(선택) → ARM_RC / ARM_NAME. 파이프로 읽지 않는다(PIPE-VERDICT).
+  # ── STDIN 은 항상 정의된다. 상속하지 않는다. ────────────────────────────────
+  # 실측 2026-08-16 (자기선언 캠페인, the-bible arm): 이 함수는 `> /dev/null 2>&1` 로
+  # stdout/stderr 만 막고 **stdin 은 검사기의 것을 물려받았다.** 결과가 두 가지로 나빴다.
+  #   ⓐ **비결정**: 같은 선언이 터미널·파이프·CI 어디서 돌리느냐에 따라 arm 의 입력이 달라진다.
+  #      판정 계기 안의 비결정은 그 자체로 결함이다 — 초록의 이유가 실행 환경에 달리게 된다.
+  #   ⓑ **표현 불가**: 대상을 stdin 으로 받는 진입점(JSON 브리지 등)은 양·음 arm 이 **둘 다 빈
+  #      입력**으로 돌아 같은 코드를 내고, 판별 실패로 REJECT 된다. 능력이 없어서가 아니라
+  #      **스키마에 채널이 없어서** 막힌 것이다. 실제로 4방향으로 갈리는 게이트가 그렇게 막혔다.
+  # ⇒ 선언된 파일이 있으면 그걸 먹이고, 없으면 **명시적으로 /dev/null** 을 먹인다. 후자가
+  #    중요하다 — "선언 안 했으니 상속"이 아니라 "선언 안 했으면 빈 입력"이라고 **정해야** ⓐ 가 닫힌다.
+  # 🟥 `set --` 는 위치 인자를 **덮어쓴다** — 그 뒤의 `$2` 는 stdin 파일이 아니라 entry 의 두 번째
+  #    토큰이다. 초판이 그걸 밟았고, 그 결과 두 arm 이 **진입점 스크립트 자신을 stdin 으로 먹었다.**
+  #    발견 경위가 이 수정의 요점이다: 그때 **음성 arm 만 빨개졌고 양성 arm 은 통과했다** — 스크립트
+  #    소스에 마침 양성 픽스처와 같은 토큰이 들어 있어서다. 즉 **둘 다 틀린 입력을 먹었는데 하나가
+  #    우연히 기대값과 맞았다.** 한쪽만 보고 있었으면 «양성은 되는데 음성이 이상하다»로 오진했다.
+  #    ⇒ set -- 앞에서 이름 있는 변수로 잡는다.
+  local _stdin="${2:-}"
   ( cd "$CAP_requires_cwd" 2>/dev/null || exit 127
     # shellcheck disable=SC2086  # argv 토큰 분리는 의도 (noglob 로 확장은 막혀 있다)
-    set -- $CAP_entry $1; "$@" ) > /dev/null 2>&1
+    set -- $CAP_entry $1
+    if [ -n "$_stdin" ]; then "$@" < "$_stdin"; else "$@" < /dev/null; fi
+  ) > /dev/null 2>&1
   ARM_RC=$?
   ARM_NAME="$(_enum_name_of "$ARM_RC" "$CAP_verdict_enum")"
 }
@@ -256,11 +294,35 @@ _check_one() {
   # ── M3 모델 독립성 (선언 검사 + 명백한 모순만) ─────────────────────────────
   case "$CAP_judge" in
     mechanical)
-      case "$CAP_entry" in
-        *claude*|*codex*|*gemini*|*copilot*|*ollama*|*llm*)
-          _fail "M3" "judge: mechanical 선언인데 entry 가 모델 CLI 를 부른다: $CAP_entry" ;;
-        *) _ok "M3" "judge: mechanical (모델 미개입 선언)" ;;
-      esac ;;
+      # 토큰의 BASENAME 으로 본다 — 문자열 전체 부분매칭이 아니다.
+      #
+      # 실측 2026-08-16 (자기선언 캠페인, qasp-dev arm 이 지목): 이 검사는 `*claude*` 처럼
+      # entry **문자열 전체**에 부분매칭했다. 그래서 진입점이 모델을 전혀 안 부르는데도
+      # **경로에 그 단어가 있다는 이유만으로** REJECT 났다 — 실제 사례는 스크래치패드 경로
+      # `/private/tmp/claude-501/...` 였고, 경로만 바꾸니 같은 선언이 PASS 했다.
+      # 구조적으로 더 나쁜 경우가 둘 있다: ⓐ 진입점이 `.claude/` 아래 사는 하네스는 **전부**
+      # 막힌다(FH 자기 선언이 `.claude/capabilities/` 에 사는 걸 생각하면 남 얘기가 아니다)
+      # ⓑ `scripts/claude_md_lint.sh` 처럼 이름에 그 단어가 든 순수 기계 스크립트도 막힌다.
+      #
+      # 과차단은 «안전한 방향»이 아니다 — 정본이 명시하듯 override 를 습관화시켜 같은 훅의
+      # 다른 게이트까지 무장해제시킨다. 그리고 이 오탐은 **무음**이었다: 거부 사유가
+      # "모델 CLI 를 부른다" 로 찍히므로, 읽는 사람은 자기 진입점을 의심하지 경로를 의심하지 않는다.
+      #
+      # 이 검사가 실제로 답할 수 있는 질문은 «entry 줄이 모델 CLI 를 **직접 이름으로** 부르는가»
+      # 뿐이다. 래퍼 안에서 부르는 건 선언 층에서 원래 못 본다(M6 효과 프로브의 몫).
+      # 그러니 각 토큰의 basename 을 보고, 확장자를 떼고, **정확히 그 이름일 때만** 막는다.
+      _m3_bad=""
+      for _tok in $CAP_entry; do
+        _base="${_tok##*/}"; _base="${_base%.sh}"; _base="${_base%.js}"; _base="${_base%.py}"
+        case "$_base" in
+          claude|codex|gemini|copilot|ollama|llm) _m3_bad="$_base" ;;
+        esac
+      done
+      if [ -n "$_m3_bad" ]; then
+        _fail "M3" "judge: mechanical 선언인데 entry 가 모델 CLI 를 직접 부른다: $_m3_bad ($CAP_entry)"
+      else
+        _ok "M3" "judge: mechanical (entry 토큰에 모델 CLI 없음 — basename 기준)"
+      fi ;;
     model) _ok "M3" "judge: model — 선언됨(합법). 조합에서 이 PASS 는 NON_CLEARING 이다" ;;
     '') _fail "M3" "judge 축 미선언 — 모델 개입 여부가 불명이면 조합이 계산될 수 없다" ;;
     *) _fail "M3" "judge 값이 {mechanical|model} 밖: '$CAP_judge'" ;;
@@ -314,15 +376,16 @@ _check_one() {
   elif [ "$FILE_FAILED" -eq 1 ] && [ -z "${CRC_FORCE_M4:-}" ]; then
     printf '  ⏭  M4 — 앞선 축이 실패해 실행 생략(SKIPPED, PASS 아님)\n'
     OBS_WHY="앞선 축 실패로 M4 생략"
-  elif ! _validate_arm_args "$CAP_cal_pos_args" || ! _validate_arm_args "$CAP_cal_neg_args"; then
+  elif ! _validate_arm_args "$CAP_cal_pos_args" || ! _validate_arm_args "$CAP_cal_neg_args" \
+       || ! _validate_arm_stdin "${CAP_cal_pos_stdin:-}" || ! _validate_arm_stdin "${CAP_cal_neg_stdin:-}"; then
     printf '  ⏭  M4 — args 검문 실패로 arm 을 실행하지 않았다(SKIPPED, PASS 아님)\n'
     OBS_WHY="args 검문 실패"
   else
     local pos_name neg_name pos_rc neg_rc pos_name2 pos_rc2
-    _run_arm "$CAP_cal_pos_args"; pos_rc="$ARM_RC"; pos_name="$ARM_NAME"
+    _run_arm "$CAP_cal_pos_args" "${CAP_cal_pos_stdin:-}"; pos_rc="$ARM_RC"; pos_name="$ARM_NAME"
     [ "$pos_rc" = "127" ] && _fail "M4" "requires_cwd 로 진입 실패 — arm 을 돌릴 수 없다"
-    _run_arm "$CAP_cal_pos_args"; pos_name2="$ARM_NAME"; pos_rc2="$ARM_RC"   # reps=2 (M3 부분 방어)
-    _run_arm "$CAP_cal_neg_args"; neg_rc="$ARM_RC"; neg_name="$ARM_NAME"
+    _run_arm "$CAP_cal_pos_args" "${CAP_cal_pos_stdin:-}"; pos_name2="$ARM_NAME"; pos_rc2="$ARM_RC"   # reps=2 (M3 부분 방어)
+    _run_arm "$CAP_cal_neg_args" "${CAP_cal_neg_stdin:-}"; neg_rc="$ARM_RC"; neg_name="$ARM_NAME"
     # 관측 원장에 남긴다 — 판정과 무관하게, 이 실행이 **실제로 밟은 exit** 만 적는다.
     OBS_STATE=run; OBS_POS_RC="$pos_rc"; OBS_POS_RC2="$pos_rc2"; OBS_NEG_RC="$neg_rc"
     OBS_POS_NAME="$pos_name"; OBS_NEG_NAME="$neg_name"

@@ -345,6 +345,74 @@ the governor / mechanical-anchor doctrine, applied at registration instead of at
 
 ---
 
+## ⓒ Node Identity Declaration (operator-approved 2026-08-16)
+
+### ⓒ.1 The gap this closes
+
+The eight axes of §ⓐ.2 are properties **of a harness**, not of any one function — `residency`,
+`tier_floor`, `degrade`, `approval` describe what a node *is* and what it will not do. Yet today
+they are declarable only **attached to a callable**. A node with a real identity and no
+bar-clearing entry point therefore has no way to state what it is, and `cluster_capability_scan.sh`
+prints it as `NONE 0` — **byte-identical to an empty directory**. That is `not found ≠ 0` at the
+cluster layer: "has an identity, exposes no function" and "has nothing" are rendered as one value.
+
+**This does not reopen §ⓑ.** That section deliberately refuses to register *prose* as a
+capability, for a reason that still holds: prose does not fire without attention. An identity
+declaration is not prose. It is the **same enum'd 8-axis vocabulary**, machine-readable, and it
+merges under the §ⓐ operators exactly as a capability's `constraints:` block does. It fires by
+being merged, not by being read.
+
+### ⓒ.2 Refusal is the point, not a fallback
+
+The most valuable thing many nodes have to declare is what they **will not** do. A field harness
+whose canon says *"operates standalone — no external harness dependency"* is making a real claim,
+and today that claim is a sentence nothing enforces: any composition attempt sails past it.
+Declared as `approval: forbidden` / `residency: company`, the same claim **blocks the attempt
+mechanically**.
+
+So identity declaration is not a device for making every node joinable. It is a device for making
+a node's boundaries enforceable instead of merely written down. A node that declares itself
+uncomposable has declared successfully.
+
+### ⓒ.3 Form
+
+A node-level declaration carries `id`, `summary`, and the eight axes — and **no** `entry`,
+`verdict_enum`, or calibration pair, because it exposes no call. It is not registrable as a
+callable and must never be counted as one; the scan reports identity-declared and
+capability-declared **separately**, or it recreates the collapse this section exists to fix.
+
+`UNKNOWN` is a **first-class value and the required answer for any axis the declarer cannot
+ground in its own files.** A profile with five `UNKNOWN`s and three cited axes is worth more than
+eight plausible defaults, because the defaults are indistinguishable from measurements once
+written. The §ⓑ.5 worst-case substitution applies unchanged at composition time: unknown is not
+safe, and the runtime assumes the node can do the most and is allowed the least.
+
+### ⓒ.4 Evidence (2026-08-16 self-declaration campaign, n=4 nodes)
+
+Four peer harnesses were assessed from **their own** repositories, each asked to reach its own
+verdict and to prove it by running FH's real registration bar. Their four outcomes are four
+*different* failures, and the campaign's main result is that they are different:
+
+| Node | callable | somewhere to put it | outcome |
+|---|---|---|---|
+| forge-wiki | ✅ clears the bar, known-pair separates | ✅ | `SHIP-READY` |
+| the-bible | ✅ separates 4 ways live | ✅ | **bar cannot express it** — its entry takes stdin JSON; the schema drives calibration arms by argv only, so both arms ran empty and returned the same code |
+| qasp-dev | ✅ clears the bar | ❌ — declaration path is outside the mirror-protected set, so it would travel to an organization mirror | `BLOCKED(mirror boundary)` |
+| dashboard | — | — | identity resident; primary consumer is a different operator, so its exposure decision is not this operator's to make |
+
+Three FH-side defects fell out of running the bar for real rather than reasoning about it:
+the M3 model-independence test matched `*claude*` as a **substring**, so an entry whose *path*
+contained that word was silently rejected as "calls a model CLI" (fixed — basename tokens);
+the effect probe validates inside a `git clone --local`, so a declaration **cannot be validated
+until it is committed**; and the schema has **no stdin channel**, which excludes an entire class
+of callables from ever being declarable. The second and third are open.
+
+Note what did *not* happen: no arm wrote a shim into a peer repo to make a failing candidate pass.
+The stdin case was reported as an FH schema gap rather than patched at the field node — which is
+the correct direction, and the one that would have been easiest to get wrong.
+
+---
+
 ## 1. The two live constraints — answered, and what stays open
 
 ### Salience — does a reader meet these rules when they apply?
