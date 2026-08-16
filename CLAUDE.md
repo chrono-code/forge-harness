@@ -122,6 +122,130 @@ onto their single hardest sub-mechanism, and a failure from a **non-harness** ru
 metric — each read a live-but-incomplete thing as zero, each caught by the operator, not self-caught.
 Detail: `[[feedback_reinvention_reflex_normalization_counterweight]]`.)
 
+## Mechanization Boundary — machinery at irreversible edges and channels, judgment left to evolution
+
+**Operator thesis (2026-08-16, verbatim)**: *"기계는 비가역 경계와 채널에만 두고, 판단은 진화에
+맡긴다. 「한 모델로도 도달하지만 진화에 기대어 100%를 뽑는다」는 그 형태에서만 성립한다 — 판단을
+내가 코드로 굳혀두면 그게 바로 진화를 막는 천장이 되니까."*
+
+This is the standing answer to *"should this become a check?"*, and it is **not** "mechanize less":
+
+| Build machinery | Leave to judgment |
+|---|---|
+| **Irreversible boundaries** — publish · delete · history-rewrite · anything a stranger can observe | Whether a given review was deep enough |
+| **Channels** — that a typed field carries a value, that a verdict is typed not grepped, that grounds are attributable | What the right value *is* |
+
+The discriminator: does the check assert a **property of the record** (present · typed · attributable ·
+non-vacuous), or does it assert a **conclusion**? The first is a channel and ages well. The second
+freezes today's judgment into tomorrow's ceiling — and this repo's own thesis is that the model layer
+converges upward while the harness persists, so a frozen conclusion is a harness that gets *worse*
+relative to what it wraps.
+
+**Corollary — tier-visible behavior is not automatically a defect.** Some FH capability only becomes
+reachable at a higher tier. `sonnet_floor_doctrine.md` is unchanged and remains a floor: **base ops
+must run 100% at Sonnet, and a tier-gated *base op* is still a defect.** What this corollary adds is
+the other side — where the gap is in *judgment quality* rather than in whether the capability fires,
+the answer is not always to encode the judgment. Discipline and channel-typing are how Sonnet reaches
+it; a frozen rule is how nobody ever exceeds it.
+
+⚠️ **Applied honestly to this file's own machinery, same day**: the `declined`-grounds lane added to
+`templates/.git-hooks/pre-commit` is a **channel** check (a claim must name attributable grounds) —
+it does not judge whether decorrelation was warranted. But its grounds test is a *vocabulary grep*,
+and a vocabulary list is a small frozen judgment: a legitimately-phrased `declined` in unforeseen
+wording over-blocks. Accepted because the failure is **loud and cheap** (author rephrases) rather
+than silent, and because it mirrors the existing degrade-branch form — named here rather than
+claimed pure.
+
+## Local Execution First — CI is a backstop, never the discovery mechanism
+
+**Operator, 2026-08-16**: *"이 실패가 CI 확인 단계에서야 발견되는 건 매우 늦다 … 로컬에서 그
+[대상 레포]를 통해서 실제로 구동시켜 봤다면 안 발생했을까"* and *"CI 확인도 중요하지만 사실 이는
+**깃헙의 기능에 기대는 것**이라고 봐야 하려나."*
+
+Both halves are load-bearing. **Late**: a red CI check is discovery at the slowest, most expensive
+point in the loop, after push, after the PR, in front of an audience. **Borrowed**: CI is a
+*platform* feature, so a harness that only finds its own defects there has not built a gate — it has
+outsourced one, and it silently inherits that platform's coverage boundaries as its own.
+
+**The order**: run the target's own suite locally, **to completion**, before pushing. Then let CI
+confirm. A green CI on a change whose suite was never run locally is not a second opinion — it is the
+*first* one.
+
+**Why "to completion" is the operative phrase** (measured 2026-08-16, pmh-dev): that repo's
+`validate.yml` was wired the same day, so CI's first run was the suite's first real execution ever —
+there was no "previously known-good" for it to confirm. A partial local run would have missed it too:
+the suite printed `SELFCHECK: FAIL` while **neither `FAIL` nor `❌` appeared anywhere in its output**
+(the failing lane used its own vocabulary, `INSTRUMENT ERROR`), so locating it needed `bash -x` to
+the actual failing line. Reading the tail, grepping for the expected token, or trusting an exit code
+you did not trace are all forms of not-running-it.
+
+**Relationship to the standpoint axis**: this is that axis's execution half, applied to your own
+change rather than to a peer harness — see `field_verdict_crossfamily_gate.md §7`
+«execution is the load-bearing half». Same principle, two surfaces.
+
+## Skeleton, Not Muscle — a wiring change is DONE when the floor tier executes it
+
+**Operator, 2026-08-16, verbatim**: *"배선에 대한 건 소넷이 실제로 돌아갈 수 있는지 봐야 잘 된
+거니까. **근육이 아니라 뼈대 기준으로 돌아야 하는 거야.**"* — and, on having had to ask for it:
+*"초기라서 내가 계속 이렇게 해봐라고 메뉴얼로 요청하고 있는데 **알아서 해야 할 거야.**"*
+
+**근육(muscle)** = a strong model's raw capability carrying a rule that is not actually wired.
+**뼈대(skeleton)** = the harness itself — the structure that makes the rule fire regardless of who
+is running. A rule that only works because the session was smart enough is not wired; it is being
+*carried*. It fails silently the moment a Sonnet session, a fresh install, or a compacted context
+picks it up — which is every install that is not the author's.
+
+**So the definition of done changes.** For any salience-dependent change (a rule, a trigger, an
+enum value, an onboarding path, a doctrine line), "done" is **not** «the text is correct and a
+reviewer agrees». It is: **a blind session at the floor tier, given a realistic situation and not
+told which rule is being tested, actually fires it.** This upgrades `fh_4axis_gate.md`'s target-tier
+sim gate from a near-mandatory step into the completion criterion itself.
+
+**And it is self-dispatched.** Do not wait to be asked to run it. The operator asking *"소넷이 실제로
+돌아갈지 확인은 하겠지?"* is the failure — the sim is part of authoring the change, like the
+known-pair is part of authoring an instrument.
+
+**Why «reads correctly» is not evidence — measured the day this was written.** A `tier1b` rung was
+added to the `standpoint:` enum precisely so a static review would stop being recorded as `tier2`.
+The text was correct; a reader would agree. Two independent blind Sonnet sims then graded a pure
+cold-read as **`tier2`, 0/2**, both quoting the *unfixed adjacent gloss* ("ran the target's own
+repo") as their justification. The rung existed and was bypassed by an ambiguity one line above it.
+**A static read of my own fix would have scored it PASS.** Only running it found the hole — the
+same asymmetry `field_verdict_crossfamily_gate.md §7` records for standpoint review, now measured on
+the doctrine layer itself.
+
+**Corollary — what a sim failure means.** It is a defect in the *wiring*, not in the floor model.
+The response is to make the rule fire (disambiguate, give it a mechanical discriminator, move it to
+where the actor reads it) — never to conclude the tier is too weak and move on. That conclusion is
+how a harness quietly becomes tier-gated, which `sonnet_floor_doctrine.md` calls a defect of the
+same severity class as a phantom reference.
+
+### Scope, and the target state it exists for (operator, 2026-08-16)
+
+**Scope — not FH-only**: *"FH뿐만이 아니라 **기계화 뼈대를 통해서 돌아가는 것들은 다** 이러한 과정을
+거쳐야 제대로 돌아가는지 아닌지 파악할 수 있을 거니까."* Anything whose behavior depends on a
+mechanized skeleton is in scope: field harnesses, propagated `templates/`, a mapped project's own
+gates, **and code contributed upstream to someone else's repo**. The question «does this actually
+fire for a reader who is not me, at the floor tier?» does not become optional because the artifact
+lives outside this repo.
+
+**Target state**: *"나머지는 정말 **저자(인간 저자)의 취향만** PR에서 첨삭할 수 있도록 하는 게
+목표야."* A PR should arrive with every **mechanical** question already settled — does it fire ·
+does it degrade in the safe direction · does the floor tier execute it · is the claim reproducible —
+so that the only thing left for the human reviewer is **taste**: naming, framing, whether this is
+the change they want. Review time spent re-deriving whether the thing works is review time
+*taken from* the judgment only a human can supply.
+
+**Existence proof, ours, this session**: *"우리가 최근에 클로드온데스크에 기여한 것처럼."*
+`rullerzhou-afk/clawd-on-desk` PR #888 was merged **exactly as submitted, with no changes
+requested** — the owner's words: *"focused, technically sound, and well-tested … we merged it
+exactly as submitted, with no changes needed."* That is the shape: the mechanical case was closed
+before submission (a fixture whose potency was reasoned about in-comment, a lane that re-executes
+the real consumer path rather than asserting a flag), so nothing was left to negotiate but whether
+they wanted it. **This is the bar to hold ourselves to on every outbound PR**, and it is why the
+survivor-lane technique from that same PR is worth absorbing rather than admiring
+(`tracks/_meta/fh_signal_2026-08-16_clawd-survivor-lane-air.md`).
+
 ## Instrument Calibration — before you trust a number, prove the instrument works *here*
 
 An instrument (a scan, a grep, a checker, a diagnostic row, a metric) is a claim about the world only
@@ -387,12 +511,26 @@ raises resolution *within* one standpoint (the author's own repo, the author's o
 target's rules); it does not decorrelate the review's ground-truth source. For a **shared-body /
 cross-harness-boundary** change — scoped by *effect* (alters another harness's behavior, gate
 outcome, or interaction contract), not merely by touching a synced file path — the marker
-additionally carries `standpoint:` — a closed enum (`tier1` content-only · `tier2(<harness>)`
-peer-simulated, ran the target's own repo · `tier2b(<harness>)` same operator, target's real
+additionally carries `standpoint:` — a closed enum (`tier1` content-only · **`tier1b(<harness>)`
+STATIC read of the target's own files, executed nothing** · `tier2(<harness>)`
+peer-simulated, **EXECUTED CODE in** the target's own repo — 🟥 the discriminator is mechanical:
+*name the command you ran and the output you saw*; cannot name one → `tier1b`, always. Reading the
+target's real files, however cold, is `tier1b` (measured 2026-08-16: two blind Sonnet sims both
+graded a pure cold-read `tier2`, both citing an earlier gloss that said merely "ran the target's
+own repo") · `tier2b(<harness>)` same operator, target's real
 runtime (local wiring visible, not independent) · `tier3(<harness>)` a *different* operator of the
 target harness ran it · `not-applicable` · degrade triad `DEGRADED_NO_TARGET_ACCESS` could-not /
 `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same shape as `crossfamily:`'s triad,
-**distinct literal values**, do not reuse crossfamily's tokens). Naming note: this collides in
+**distinct literal values**, do not reuse crossfamily's tokens).
+🟥 **The execution is the load-bearing half** (operator decision 2026-08-16): a static standpoint
+read competes with cross-family review for the same defect classes and mostly loses — *running the
+target harness locally, to completion*, is the part with no substitute. Measured on one delta the
+same day: static read found 1, running the target's own suite found 2 more, one of which printed
+neither `FAIL` nor `❌` and was unreachable by any read. So **`tier2`+ asserts something was RUN** —
+if the review only read, it is `tier1b`, and `tier1b` is deliberately the weak rung so that
+recording it honestly surfaces that the execution arm is still owed. (Broken on the day it was
+written — a static read was recorded as `tier2` because `tier1b` did not yet exist; a missing rung
+gets filled by the next one up rather than staying empty.) Naming note: this collides in
 English with FH's own persona/viewpoint sense of "standpoint" (`fh-meta:beginner`/`main-player`/
 `expert`) — a different axis (which persona reviews, not whose repo is ground truth); kept as-is,
 not renamed, but do not conflate the two. **Prose-only today** — unlike `crossfamily:`, no
@@ -615,6 +753,7 @@ Proposal format: `"I see [X]. Want me to run /[skill] to [one-line description]?
 | **"이 절 잘라도 되나", "상주에서 빼자", "cut this section", "is this section load-bearing", "ablate this"** — a proposal to REMOVE resident text (the decision `/context-doctor` and `/salience-splitter` reach, not the routing to them) | **Ablation procedure — do not decide by eye.** Canon = `scripts/probe_scope_check.sh` header (arms · isolation · `reps>=3` · pre-registration · the two leak channels); runner precondition = `bash scripts/ablation_calibrate.sh` exits 0; verdicts land in `.claude/regression/ablation_verdicts.md`. **A section is CUT only on a pre-registered question set an isolated arm B answers correctly** — "I read it and it looks redundant" is not a measurement, and arm B answering *confidently wrong* is a KEEP, not a pass |
 | "wrap up this week", "review", "audit", "weekly", "retrospective" | `/harvest-loop` |
 | "pull this into FH", "reverse-harvest", "worth keeping", "harvest pattern", "field pattern" | `/field-harvest` |
+| **you installed or invoked an EXTERNAL asset (a tool, framework, or repo not ours) and ran it against something this hub owns** — `pip install`/`npm i` of an outside framework, cloning a peer repo to run it, adopting an upstream utility. Fires on the ACT, not on a keyword: the trigger is *"I reached outside because ours did not cover this"* | **Sister Asset Protocol** (`knowledge/shared/rules/sister_asset_protocol.md` §Active adoption) — record the resolution difference, list **items to import** AND **items the hub can propagate** (bidirectionality is a prohibition, not a nicety), and where there is no write access write a `tracks/_audit/proposal_*.md` so the operator can decide whether to contribute it upstream. 🟥 Missed 2026-08-16 on exactly this shape: an external red-team framework was installed, run against a field harness, found a real bypass — and was filed as a `type: reference` **tool pointer** with no sister audit at all |
 | "용광로모드", "crucible mode", "absorb this whole corpus", "throw everything in", "re-forge FH identity", "melt this down" (total-immersion absorption, not cherry-pick — esp. a whole corpus on a core FH axis, or a frontier showcase risking FOMO) | `knowledge/shared/harness-core/crucible_mode.md` (read it, run the chain: total-ingest → steel-quench/phantom-quench melt → governor identity-bonding → sim/persona reforge → field-harvest rebirth; the core invariants stay unmeltable) |
 | "review this PR", "check diff", "code review" | code diff → built-in `/code-review`·`/review` · FH-asset coherence → `/hub-cc-pr-reviewer` (role split) |
 | "keep watching X", "poll this", "check every N minutes", recurring WATCH item | built-in `/loop` (interval runner) — pair with the WATCH list, don't hand-poll |
@@ -1049,6 +1188,25 @@ Card update is NOT a sub-step of harvest-loop — even if harvest-loop is skippe
 **Card update obligation** (independent obligation — regardless of harvest-loop completion): Update `reference_next_session_starter.md`.  
 ① **Agent View pre-read** (see above) → ② Step 0-b cross-check generates removal list → ③ Remove completed items → ④ Add new priorities → ⑤ Fix stale paths/versions → ⑥ Overwrite → ⑦ Output "BEFORE N items → AFTER M items" diff.  
 "Delta update" not "snapshot" — completed items remaining in next session card is a bug.
+
+**Thread-continuation block (operator, 2026-08-16)**: *"특정 주제에 집중해서 진행한 세션이라면
+앞으로도 마감할 때 그 갈래로 이어갈 수 있게 알아서 정리해줘."* When a session ran predominantly on
+**one thread** (an incubation, one field harness, one doctrine arc) — as opposed to scattered
+maintenance — the card additionally carries a **named continuation block for that thread**, without
+being asked:
+
+```
+🧵 <thread name> — 이어가려면
+   지금 어디  : <state, with the artifact that proves it — a verdict line, a test count, a merged PR>
+   다음 한 걸음: <the single next action, concrete enough to start without re-deriving>
+   안 닫힌 것 : <what is open, stated as open — not omitted>
+   읽을 것    : <the 1-3 files that reconstitute context, in read order>
+```
+
+Not a second card and not a summary of the session — it is the **entry point for the next session
+that picks up this thread**, and it is written so that session does not have to re-derive where the
+thread stood. A scattered-maintenance session correctly writes none. Two or more threads → one block
+each, in priority order.
 
 ## Session Sync / Knowledge Push Protocol
 

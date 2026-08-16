@@ -221,13 +221,59 @@ marker, never replacing it. Closed enum, same discipline as `crossfamily:`'s thr
 not / did not / did not look* split (a free-prose field would let an unrun check read as a clean
 pass):
 
+**🟥 DECIDE IN THIS ORDER — first match wins. Do not pick by matching a description.**
+
+```
+Q1. Did anything EXECUTE in the target's repo — a command, a script, a suite?
+      NO, I only read files          → tier1b(<harness>)   STOP.
+      NO, I did not touch its repo   → tier1               STOP.
+      YES                            → continue to Q2
+    ⚠️ tier2 AND tier2b BOTH REQUIRE EXECUTION. This question is first precisely so the
+    next one cannot be used to reason backwards into "tier2 must be the non-executing rung."
+Q2. Was the target's own LOCAL / gitignored wiring visible (settings, consent bindings,
+    node-local state) — i.e. its real installed runtime, not a bare clone?
+      NO  (bare clone, tracked content only)   → tier2(<harness>)
+      YES (the target's real runtime)          → tier2b(<harness>)
+Q3. Was it run by a DIFFERENT operator of the target harness, not you?
+      YES → tier3(<harness>)   (supersedes Q2)
+```
+
+**Why the procedure exists rather than more definition.** `tier2` vs `tier2b` is **wiring
+visibility**, NOT execution-vs-reading — both execute. But `tier2b`'s gloss names "the target's
+real runtime," which reads as *"tier2b is the execution rung"*, and a reader then infers that
+`tier2` must therefore be the non-executing one. Measured 2026-08-17: after `§7`, `CLAUDE.md` AND
+`auto-decorrelation/SKILL.md` were all three corrected to say **EXECUTED CODE**, two independent
+blind Sonnet reps STILL graded a pure cold-read `tier2` — one of them stating the inference
+outright: *"'Ran' in this taxonomy means 'situated the review in the target's repo', not 'executed
+code' — the fact that nothing executed is why I ruled out tier2b, not why I'd fall back to tier1."*
+Three rounds of rewording lost to the enum's own internal logic. Ordering the questions removes the
+inference instead of arguing with it.
+
 ```
 tier1                        content-only review — no standpoint decorrelation (the default
                               unless upgraded; NOT itself a failure, most changes have no target
                               standpoint to borrow)
-tier2(<target-harness>)      peer-simulated — the reviewer instantiated/ran the TARGET's own repo
-                              (a local clone, real content) and executed the change from that
-                              standpoint. Closes shared-body-path defects; a BARE clone cannot see
+tier1b(<target-harness>)     STATIC standpoint read — the reviewer read the TARGET's own files
+                              (cold, from the target's repo, without the author's framing) and
+                              adjudicated the change against them, but executed NOTHING. Added
+                              2026-08-16 because its absence was actively harmful: a run of exactly
+                              this shape was recorded as `tier2`, since tier1 undersold it and no
+                              nearer value existed. A missing rung does not stay empty — it gets
+                              filled by the next one up. Real but weak: see «execution is the
+                              load-bearing half» below before crediting it.
+tier2(<target-harness>)      peer-simulated — the reviewer EXECUTED CODE in the TARGET's own repo
+                              (a local clone, real content) and observed the result.
+                              🟥 DISCRIMINATOR — «reading the target's real files is NOT this rung».
+                              Measured 2026-08-16: two independent blind Sonnet sims BOTH graded a
+                              pure cold-read as tier2, and BOTH quoted this line's earlier wording
+                              ("instantiated/ran the target's own repo") as their justification —
+                              «ran» was read as «operated within / engaged with», which a read
+                              satisfies. 0/2 on the fix that added tier1b, because the new rung was
+                              added without disambiguating the rung above it.
+                              THE TEST, and it is mechanical: **name the command you executed and
+                              the output you observed.** Cannot name one → `tier1b`, always. An
+                              agent that read files, however cold and however many, executed
+                              nothing. Closes shared-body-path defects; a BARE clone cannot see
                               the target's gitignored local wiring (settings, consent bindings,
                               node-local state) — that gap is inherent to a clone, not a defect in
                               a given run. Named exception, not a loophole: if the reviewer's own
@@ -258,6 +304,60 @@ DEGRADED_NO_TARGET_ACCESS     could not — applicable, but no local clone/acces
 DEGRADED_NOT_RUN              did not — target was accessible, standpoint review was skipped
 UNKNOWN                       did not look — applicability itself was never assessed
 ```
+
+**🟥 Execution is the load-bearing half — a static standpoint read is largely subsumed by the other
+axes (operator decision, 2026-08-16).** The reason to pay for a standpoint at all is not that
+someone re-read the diff from a different chair; it is that **the target harness was actually made
+to run.** Operator's framing, verbatim: *"그 하네스의 입장에서 정적리뷰하는 것만으로도 뭔가 잡을
+수야 있겠지만 그건 다른 검증축으로도 커버가 아마 가능하지 않을까. 진짜로 중요한 건, 그 하네스
+입장에서 돌려봐서 구동이 되는지를 로컬에서 완벽하게 확인하는 것."* A static read competes with
+cross-family review (§3) and isolated grounding for the same defect classes and mostly loses —
+those axes are cheaper and already routine. Execution has no substitute, because the class it
+catches is *unreachable by reading*: the target's own environment differs (absent files, different
+resolution order, a lane that has never once run there).
+
+**Measured the same day this was written, on one delta (pmh-dev PR #72)**:
+
+| Arm | Found |
+|---|---|
+| `tier1b` static standpoint read (isolated agent, target's own files, cold) | **1** — a 2-tier-vs-3-tier root-path resolution mismatch |
+| Running the target's own `selfcheck.sh` to completion, locally | **2 more**, both invisible to any read: a test fixture keying on a file that does not exist in that repo, and an npm-shipping check whose premise is inapplicable there. One of them printed **neither `FAIL` nor `❌`** anywhere in its output (it used its own vocabulary, `INSTRUMENT ERROR`) and needed a `bash -x` trace to locate — a defect that is *structurally* undiscoverable by reading, since the reader must already know which string to look for. |
+
+n=1 delta, same operator, same session — reported as a directional observation, not a rate. It is
+recorded because it is the first time the two arms were run *separately on the same change* and
+their yields could be attributed. ⚠️ **Do not read the table as "static review is worthless"** — it
+found a real defect that shipped a fix. Read it as: *static is the half that has substitutes;
+execution is the half that does not.*
+
+**🟥 What dynamic standpoint review DOES and DOES NOT subsume (operator + governor, agreed
+2026-08-16 after both arms were measured).** Operator's proposal: *"FH가 기여하는 다른 레포들도 다
+마찬가지일 테니, 그쪽 입장에서의 동적 리뷰는 소넷을 상주시켜 돌려보는 거지. 이건 굳이 짓지 않아도
+동적 입장리뷰만 잘 시킨다면 알아서 커버될 거라고 생각해."* Agreed, with one boundary — and the
+agreement is evidenced, not deferential:
+
+- **SUBSUMES: building per-target instruments.** Do not write a new scanner for each contributed
+  repo, language, or defect class. Execution is **stack-agnostic**; an instrument is not. Measured
+  the same day: `degrade_direction_scan.sh` is bound to shell/python *and* to verdict vocabulary —
+  a faithful Python port of a real upstream defect scores CLEAN, because the fail-open value was
+  ordinary *data*, not a verdict token. An instrument carries a scope boundary into every repo it
+  visits; running the target's own suite does not.
+- **DOES NOT SUBSUME: adversarial reading.** **Execution is a detector, not a generator.** It
+  answers *does this break · does it fire · does the environment differ*; it cannot answer *is
+  there a defect class nobody has instrumented yet*. The upstream `clawd-on-desk` PR #888 defect
+  was **not** found by running that repo's tests — it was found by reading and conceiving the
+  unreadable-file case, after which a test was written. And where the target ships no runnable
+  suite, execution has nothing to run at all.
+
+**The measured split, same delta, same day**: static read → **1** finding · execution → **2** more.
+Neither arm was zero, which is the whole result. So both run: reading generates the hypothesis,
+execution confirms or refutes it, **and the hypothesis that survives becomes a test left behind in
+the target** — which is exactly what our own upstream contribution did (the survivor-lane pattern,
+`tracks/_meta/fh_signal_2026-08-16_clawd-survivor-lane-air.md`).
+
+**Consequence for the marker**: a `tier2`/`tier2b`/`tier3` claim asserts that something was RUN. If
+the review only read, the honest value is `tier1b` — and since `tier1b` is explicitly the weak rung,
+recording it truthfully is what surfaces that the execution arm is still owed. (This rule exists
+because it was broken on the day it was written: see the `tier1b` entry above.)
 
 **Residual this enum split names rather than hides**: for a harness pair with one shared human
 operator (this repo and a sibling field harness the same operator also runs), `tier3` is either

@@ -569,7 +569,61 @@ validate_crossfamily_leg() { # $1 = marker path
 
   case "$val" in
     declined)
-      echo "  ✅ cross-family leg: declined (operator-chosen floor, first-class — not a degrade)" ;;
+      # `declined` means ONE thing: the OPERATOR declined sidecars (UAP), a chosen floor. It was
+      # the only value in this enum with no grounds requirement, and that made it the enum's soft
+      # spot: an author who judged decorrelation unnecessary reached for the nearest permissive
+      # token and it passed clean. Measured 2026-08-16, in this repo, by the session that had
+      # CORRECTED a different marker's crossfamily value earlier the same day and had the correct
+      # semantics printed to it in this hook's own error text — i.e. neither ignorance of the enum
+      # nor of the file. Form was satisfied, so the question stopped.
+      #
+      # A closed enum stops free prose from collapsing distinct states; it does NOT stop a wrong
+      # token from being a valid one. This lane is the difference. The grounds bar is deliberately
+      # the same shape as the degrade branch below (substance + a token naming WHO/WHERE), because
+      # the claim being made is factual and attributable: an operator decision has a record.
+      # 🟥 THE TEST IS A RESOLVABLE RECORD, NOT VOCABULARY. The first version of this lane grepped
+      # for words (operator|uap|consent|…). A cross-family review (codex/gpt-5.6-terra) attacked it
+      # and all three findings reproduced on the spot:
+      #   · SELF-VALIDATING  `declined — declined because I judged it unnecessary` PASSED, because
+      #                      `declin` was in the keyword list and the author had echoed the value.
+      #   · VACUOUS PASS     `declined — operator documentation says authors may choose` PASSED
+      #                      while describing no declination at all.
+      #   · OVER-BLOCK       `declined — the person who runs this harness asked us not to use
+      #                      external reviewers here` was BLOCKED — a real operator declination,
+      #                      in natural prose, carrying none of the listed tokens.
+      # Adding patterns is the Grep-Collision Treadmill (P10): each new word relocates the evasion.
+      # So the check changed KIND. Per CLAUDE.md §Mechanization Boundary a channel check asserts a
+      # property OF THE RECORD, never a conclusion — and the honest record property here is:
+      # **the claim names a file that exists.** Vocabulary cannot be stuffed into it, a fabricated
+      # path fails, and a legitimate declination just cites where it lives.
+      # HONEST RESIDUAL, stated rather than implied: this proves a cited record EXISTS, not that it
+      # SAYS what is claimed. That is the marker's own declared scope (form + non-vacuity +
+      # auditability, NOT provenance) — identical ceiling, not a new gap.
+      _cf_cited=""
+      for _tok in $reason; do
+        _tok=${_tok%%,}; _tok=${_tok%%\)}; _tok=${_tok##\(}
+        case "$_tok" in
+          */*|*.md|*.yaml|*.yml|*.json)
+            if [ -e "$REPO_ROOT/$_tok" ] || [ -e "$_tok" ] || [ -e "$HOME/$_tok" ]; then
+              _cf_cited="$_tok"; break
+            fi ;;
+        esac
+      done
+      if [ "${#reason}" -lt 20 ] || [ -z "$_cf_cited" ]; then
+        echo "  ❌ FAIL — 'declined' must cite a record that EXISTS on disk."
+        echo "     declined = the OPERATOR declined sidecars, a chosen floor. It does NOT mean"
+        echo "     'I judged decorrelation unnecessary here' — that is a CHOICE the author made"
+        echo "     with a panel reachable, and its honest value is DEGRADED_PANEL_UNUSED."
+        echo "     An operator decision has a record. Name its path on this same line:"
+        echo "       crossfamily: declined — operator declined sidecars, tracks/_meta/user_adaptation_profile.md"
+        echo "       crossfamily: declined — chosen floor per CLAUDE.local.md §sidecar"
+        echo "     No such record → you are not describing an operator declination:"
+        echo "       crossfamily: DEGRADED_PANEL_UNUSED — codex+agy reachable, not recruited (<why>)"
+        [ "${#reason}" -ge 20 ] && echo "     (grounds were substantive but named no resolvable path)"
+        return 1
+      fi
+      echo "  ✅ cross-family leg: declined (operator-chosen floor, first-class — not a degrade)"
+      echo "     $(printf '%s' "$reason" | cut -c1-80)" ;;
     panel*)
       if ! printf '%s' "$val" | grep -qE '^panel\([^)]+\)$'; then
         echo "  ❌ FAIL — panel claim without a family list: '$val'"
