@@ -10,6 +10,51 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [2.2.0] — 2026-08-17
+
+🟥 **BREAKING (gate)**: chamber step 6 now reads `ACTUAL.md`, **not `BUDGET.md`**. An in-flight
+chamber run whose actual cost was written into `BUDGET.md` will **block at step 6** until the value
+moves to a new `ACTUAL.md` in the same workspace.
+- **Remedy**: the runner prints the exact path when it blocks — move the `ACTUAL:` line to
+  `tracks/_chamber/<slug>/ACTUAL.md`. `BUDGET.md` keeps `ESTIMATE:` only.
+- **Why**: `BUDGET.md`'s pre-verdict hash IS the ordering witness (`ship_readiness_gate §② P1`), and
+  step 6 was hard-blocking until that same file changed. So **every run that reached COMPLETE
+  necessarily mutated a witnessed artifact** and `verify` returned `TAMPERED` — identity ②'s only
+  promotion condition was unsatisfiable by construction, not by strictness. Measured on chamber run
+  #11, the first run ever taken through step 7. Two roles (immutable witness / post-verdict
+  calibration sink) had collided in one file; each was correct alone, so neither side's code showed
+  the conflict.
+
+**Added**
+- `scripts/ko_tech_writer_calibrate.py` + `scripts/test_ko_tech_writer_lanes.sh` + two known-pair
+  fixtures — the discrimination of `ko-tech-writer` Step 2 (five translationese classes) and
+  Step 4-b (universal-claim candidates) is now **reproducible**: positive ≥1 / negative 0 per class,
+  plus two META controls. Wired into `selfcheck.sh` and shipped in `files[]`.
+  🟥 **What this does NOT prove**: "zero residue" in any real document. Discrimination and residue
+  are different propositions; the suite prints that warning itself.
+- Chamber lane suite **12 → 33 lanes**, including the **runner × witness seam** that no test covered
+  (the runner's lanes excluded the witness by design; the witness self-test ran it standalone).
+
+**Changed**
+- `chamber_run.sh` now teaches the **two-commit discipline** where the actor reads it: gate hashes
+  and the verdict hash must land in **separate commits** (and, for a squash-merge repo, **separate
+  PRs**). Committing them together yields `UNORDERED` — the runner previously advised the opposite.
+- `chamber_witness.sh do_record` skips a byte-identical re-record of the same
+  `(run, artifact, sha)` triple. A **changed** artifact still appends — that is the tamper evidence.
+
+**Fixed**
+- `harness_terminal_correlation_and_recommendations.md` Appendix: Step 2 / Step 4 rows move from
+  🟥 `UNCALIBRATED` to 🟡 **partially resolved**, with the reproduction command recorded. The
+  original claims ("zero residue" in that document; Step 4's numeric extraction half) remain
+  **unverified and are labelled as such**.
+
+**Known residual (not closed)**
+- Identity ② stays **RC**. No run has yet been `WITNESSED` on `main`; the two-PR prescription is
+  reasoned from the verify logic, and its efficacy is provable only by the next EMIT run.
+- `--delete-branch` still orphans ordering evidence — warned in prose, not blocked.
+- Of Step 2's five "machine-detectable" classes, only two ship an actual grep in `SKILL.md`; the
+  calibration surfaced that the doc over-claims. C4's pattern is a closed noun list with **low recall**.
+
 ### [2.1.0] — 2026-08-17
 
 🟥 **BREAKING (gate)**: `crossfamily: declined` in an Axes 2-3 marker now requires grounds naming a
