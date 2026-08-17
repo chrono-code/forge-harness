@@ -205,14 +205,26 @@ sim gate from a near-mandatory step into the completion criterion itself.
 돌아갈지 확인은 하겠지?"* is the failure — the sim is part of authoring the change, like the
 known-pair is part of authoring an instrument.
 
-**Why «reads correctly» is not evidence — measured the day this was written.** A `tier1b` rung was
-added to the `standpoint:` enum precisely so a static review would stop being recorded as `tier2`.
-The text was correct; a reader would agree. Two independent blind Sonnet sims then graded a pure
-cold-read as **`tier2`, 0/2**, both quoting the *unfixed adjacent gloss* ("ran the target's own
-repo") as their justification. The rung existed and was bypassed by an ambiguity one line above it.
-**A static read of my own fix would have scored it PASS.** Only running it found the hole — the
-same asymmetry `field_verdict_crossfamily_gate.md §7` records for standpoint review, now measured on
-the doctrine layer itself.
+**Why «reads correctly» is not evidence.** A `tier1b` rung was added to the `standpoint:` enum
+precisely so a static review would stop being recorded as `tier2`. The text was correct; a reader
+would agree — and a reader agreeing is not a measurement, which is this paragraph's whole point.
+
+🟥 **RETRACTED (2026-08-17) — the numbers this paragraph used to cite are withdrawn, in BOTH
+directions.** It read: *"Two independent blind Sonnet sims then graded a pure cold-read as `tier2`,
+**0/2** … A static read of my own fix would have scored it PASS. Only running it found the hole."*
+That sim set was **8 runs at `tool_uses: 0`** — the agents never opened a file, so the instrument
+was dead and the grades measure nothing (`tracks/_meta/fh_completed_2026-08-16.md:690`, retracted
+the same day the doctrine was written and **before** this paragraph's own commit). The re-run with a
+live instrument then landed the **opposite** result — the rung was graded correctly — at **reps=1**,
+below this repo's own `reps>=3` bar. **So neither «it failed» nor «it worked» is established.** Do
+not restore either number, and do not read the retraction as proof of the inverse.
+
+**The claim that survives is narrower and does not need those numbers**: a static read cannot
+establish that a rule *fires*, because the thing being tested is whether a reader who is not the
+author lands on the right rung — and the author reading their own text is the one reader guaranteed
+to. That is an argument about what a read can measure, not a measurement. The general principle
+(`field_verdict_crossfamily_gate.md §7`'s execution-over-static asymmetry) rests on its own separate
+field evidence; **this paragraph is no longer one of its data points.**
 
 **Corollary — what a sim failure means.** It is a defect in the *wiring*, not in the floor model.
 The response is to make the rule fire (disambiguate, give it a mechanical discriminator, move it to
@@ -515,9 +527,10 @@ additionally carries `standpoint:` — a closed enum (`tier1` content-only · **
 STATIC read of the target's own files, executed nothing** · `tier2(<harness>)`
 peer-simulated, **EXECUTED CODE in** the target's own repo — 🟥 the discriminator is mechanical:
 *name the command you ran and the output you saw*; cannot name one → `tier1b`, always. Reading the
-target's real files, however cold, is `tier1b` (measured 2026-08-16: two blind Sonnet sims both
-graded a pure cold-read `tier2`, both citing an earlier gloss that said merely "ran the target's
-own repo") · `tier2b(<harness>)` same operator, target's real
+target's real files, however cold, is `tier1b` (🟥 the "two blind Sonnet sims graded a cold-read
+`tier2`" citation that stood here is **RETRACTED** — dead instrument, `tool_uses: 0`; the live re-run
+inverted it at reps=1, below bar. The **rule** stands on its own wording, not on that sim) ·
+`tier2b(<harness>)` same operator, target's real
 runtime (local wiring visible, not independent) · `tier3(<harness>)` a *different* operator of the
 target harness ran it · `not-applicable` · degrade triad `DEGRADED_NO_TARGET_ACCESS` could-not /
 `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same shape as `crossfamily:`'s triad,
