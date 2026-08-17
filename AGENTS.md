@@ -121,15 +121,22 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    `ⓐ=… ⓑ=→standpoint ⓒ=… ⓓ=… ⓔ=… ⓕ=…`; markers dated earlier keep the old **ASCII four**
    (`a b c d`) and are not retroactively blocked. 🟥 **The two arrays are not the same letters —
    old `b` (first real use) is now `ⓔ`, old `d` (revert probe) is now `ⓕ`.** Copying an old line
-   forward silently swaps two axes and raises no error, which is why the *notation itself* declares
-   which array a marker used. `standpoint:` remains the canonical field for ⓑ (the `axes-run` entry
+   forward silently swaps two axes and raises no error. **Which array a marker used is decided by
+   the date in its filename** (`< 2026-08-17` = old four). ⚠️ The notation is NOT the discriminator
+   — that claim stood in this file for part of 2026-08-17 and a hand-count of the corpus refuted it:
+   2 of the 4 circled-key markers on disk are dated 2026-08-10 and carry the OLD meanings. Aligning
+   the notation still helps going forward; it does not work backwards.
+   `standpoint:` remains the canonical field for ⓑ (the `axes-run` entry
    is only a pointer to it, and a pointer at an empty field is blocked); **its value enum is still
    validated by nothing** — that is the one remaining gap, and it is not the same thing as the axis
    being unmechanized. Format spec: `.claude/rules/fh_4axis_gate.md §Marker axis fields`.
    (Two drift corrections landed here on 2026-08-17: first this sentence said "four" while its own
    next clause described the +1 — caught by the session-close ④-b CC↔Codex parity check — and then
    the machine layer moved to six the same day.)
-   **ⓓ has no field at all** — record it in prose and do not read a silent ⓓ as a run one.
+   ⚠️ Until 2026-08-17 this entry point added "**ⓓ has no field at all** — record it in prose".
+   That is now **false**: `ⓓ=` is a required key like the rest. The retraction is kept visible
+   rather than deleted, because a Codex-side reader who memorised the old line would otherwise
+   keep writing markers without ⓓ and see them blocked with no idea why.
    🟥 ⓑ **standpoint is itself split** (2026-08-17): a STATIC read of the target's own files is
    `tier1b` and **executes nothing**; `tier2`+ asserts that something was RUN — the discriminator is
    mechanical, *name the command you ran and the output you saw*. Measured on one delta: the static
