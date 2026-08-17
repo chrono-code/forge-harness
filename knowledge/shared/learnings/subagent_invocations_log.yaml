@@ -2080,3 +2080,33 @@
   outcome: accepted
   evidence: "1M/4S/2R. 챌린저와 중첩 2건뿐(rc=10 fail-open · 사전순 정렬) — 렌즈가 계열보다 갈랐다. 단독 적발 3건: package.json files[] 누락 · 비UTF8 바이트에서 grep 무매치하는 로케일 fail-open(양쪽 로케일 직접 실행) · 파일스코프 set -e 판별. 그리고 의심 하나를 기각(§ 구분자는 두 로케일에서 실측 통과)"
   cost: 105k tokens
+- date: 2026-08-17
+  agent: fh-meta:beginner (isolated) — 챔버 런 #11 step-4 블라인드 페르소나 1/3
+  purpose: "인물 시뮬레이터 하네스 후보에 대한 냉담 첫 접촉 — 첫 실패 지점·믿을 이유·이해 불가 지점"
+  outcome: accepted
+  evidence: "tool_uses 8(실독 확인 — 어제 sim 8회 tool_uses:0 죽은 컨트롤의 반대). 최대 소득 = 첫 기계적 실패가 크래시가 아니라 무음 통과라는 지목: grounding_gate_v3.py:88-93 _KNOWN_BOOKS 가 'Book Ch:Vs' 주소 문법에 하드코딩이라 임의 인물 코퍼스에선 빈 셋 → 오귀속 검출 b1/b2 가 초록으로 통째 우회. 🟥 최강 발견 1건은 VOID(stale 체크아웃에 조준한 내 계기 결함 — personas_dialogue.json 이 반증). 부재를 0으로 안 렌더한 덕에 그 결함이 드러났다"
+  cost: 102k tokens
+- date: 2026-08-17
+  agent: fh-meta:main-player (isolated) — 챔버 런 #11 step-4 블라인드 페르소나 2/3
+  purpose: "실사용자 일상 가치 — 티어 선정 후 매일 쓸 값어치가 있는지, 게이트가 값인지 방해인지"
+  outcome: accepted
+  evidence: "tool_uses 9. 핵심 숫자 = 사용 장면 0/3 생존(2 기존수단 대체 · 1 자기 게이트가 금지). 그리고 Light↔Heavy 구조적 상충(게이트 ON→Light 사망 / OFF→Heavy 유일 값 소멸)이 튜닝으로 못 푸는 것임을 코드 주석(v3:233-234 'PARAPHRASE over-blocks … err-safe direction')으로 근거화. Midcore 스킵을 자백하고 '이 스킵이 판정의 최약 고리'라고 스스로 적음. 결론 'KILL the simulator · EMIT the attribution gate'"
+  cost: 102k tokens
+- date: 2026-08-17
+  agent: fh-meta:challenger (isolated) — 챔버 런 #11 step-4 블라인드 페르소나 3/3
+  purpose: "배출 후보 적대 심사 — 핵심 술어 성립성·재발명·배출가치·실패비용·안 보이는 것"
+  outcome: accepted
+  evidence: "tool_uses 22, 자체 컨트롤 부착(같은 Glob 이 battery4.py·normalization.py 는 잡음 → 계기 생존 증명). 🟥 거버너 사각 2건 적발: EMIT 이 이미 내려진 운영자 결정(출하 없음)과 정면 충돌 · Delphi 가 미승인 Peter Attia 클론을 실제 테이크다운(카파시와 동일 프로파일). 최대 기여 = 술어가 '더 어렵다'가 아니라 '목적과 상충'임을 코드로(grounding_gate.py:317-332). 팬텀 4건은 VOID(stale 체크아웃)이나 본인이 '원인 MED, stale 가능성 배제 못 함'이라고 선제 자백 — 등급 자기하향이 판정 신뢰도를 올렸다"
+  cost: 117k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — 챔버 런 #11 조건 1(net-new) measured 스캔
+  purpose: "외부 생태계 + FH 내부 자산 전수 스캔으로 재발명 여부를 측정. '없는 것 같다'는 결과가 아니라고 명시 지시"
+  outcome: accepted
+  evidence: "tool_uses 28(WebSearch 12 · WebFetch 3 · 로컬 SKILL 4종 정독). 🟥 이 런의 KILL 을 가른 계기이고, 유일하게 stale-체크아웃 결함의 영향 밖이다(the-bible 은 '안 열었다'고 자백). ⓐ=Delphi.ai 상용 + verbatimeter(--fail 비영종료 CI 게이트) + 내부 corpus-grounding-expander · ⓒ=NeMo Guardrails + 내부 persona_container_schema.md 4그룹 tier-floor · ⓑ만 빈칸인데 그건 배출물이 아니라 업계 미해결 난제. 선행연구 PersonaCite(CHI 2026 EA) 가 후보 루프와 동형. 미탐 자백 6종(영어 전량·Delphi 실계정 미검증·GitHub code search 미실시 등)을 스스로 열거"
+  cost: 157k tokens
+- date: 2026-08-17
+  agent: codex/gpt-5.5 (cross-family, headless) — 챔버 P1 증인 수리 델타 Axis 2 탈상관
+  purpose: "chamber_run.sh/chamber_witness.sh/test_chamber_run_lanes.sh 197줄 diff 를 다른 계열로 공격. crossfamily 마커 값 확보(하중 변경 — 게이트 exit 동작 + 증인 판정)"
+  outcome: accepted
+  evidence: "7건(A급3·B급4) · **자력 적발 0/7**. A급 전부 손 재현 후 수리 — ⓐ 멱등 가드 `substr($0,9)` 오프셋(`- run: `는 7자, 값은 8부터): 슬러그 첫 글자가 잘려 **어떤 정상 엔트리와도 매칭 안 됨** = 가드가 조용히 무력인데 30레인 전부 초록이었다(재현: `printf -- '- run: g2\\n' | awk '{print substr($0,9)}'` → `2`) ⓑ L11 이 «멱등»을 잰다면서 증인 원장이 아니라 G4 INDEX.md 를 셌다 → L14 신설(증인 실제 복사 후 2회 기록) ⓒ L13-b 가 `step 6 BLOCKED` 한 줄만 grep 해 뒤에 한 줄 더 붙이면 게임 가능 → 차단 블록 전체로 확대. B급 4 중 3 채택(인접성 상태기계 · 리터럴→호출 인자 **집합 대조** · 거짓 주석 정정), 1건 수용(레거시 런이 시끄럽게 막히는 건 안전 방향). 🟥 그리고 **내 주석 하나가 거짓임을 지적**했다(레인이 증인을 복사한다고 적었는데 `grep -c 'cp .*chamber_witness'`=0). 미탐 자백: bash 3.2/BSD·GNU 이식성 구체 결함 0건 — 공백 아티팩트명은 상류에서 이미 거부되어 도달 불가라고 근거까지 댔다"
+  cost: 50k tokens

@@ -140,6 +140,31 @@ HDR
       echo "❌ 원장 헤더 쓰기 실패: $LEDGER" >&2; return 10
     fi
   fi
+  # ── 멱등: 같은 (run, artifact, sha) 삼중항이 이미 있으면 다시 안 적는다 ──────────
+  # 기원 2026-08-17 런 #11(첫 형식 완주): 이 함수가 **무조건 append** 라서 러너를 advance
+  # 할 때마다 step 2~5 가 재실행되며 같은 해시가 다시 쌓였다 — 4스텝 런에 **엔트리 11개**.
+  # 증인 판정 자체는 안 틀리지만(같은 해시는 같은 결론) 공개 tracked 파일이 부풀고,
+  # verify 출력이 같은 줄을 여러 번 뱉어 **읽는 사람이 「몇 건이 문제인가」를 오독**한다.
+  # 🟥 내용이 바뀐 경우는 **여전히 새 엔트리로 남는다** — 그게 TAMPERED 를 성립시키는
+  # 증거이므로 여기서 접으면 안 된다. 접는 것은 «완전히 동일한 재기록»뿐이다.
+  # 🟥 오프셋 주의 — `- run: ` 는 **7자**라 값은 8부터다. 초판이 9로 썼고(cross-family
+  # gpt-5.5 적발, A급) 그러면 슬러그 첫 글자가 잘려 **어떤 정상 엔트리와도 매칭되지 않는다**
+  # → 가드가 조용히 무력화되고 append 가 계속된다. 재현: `printf -- '- run: g2\n' |
+  # awk '{print substr($0,9)}'` → `2`. **레인이 이걸 못 잡았다**(아래 L14 신설로 닫음).
+  # 인접성도 강제한다: run → artifact → sha256 이 **연속**일 때만 인정. 안 그러면 깨진
+  # YAML 에서 stale run/art 가 무관한 sha 와 짝지어 **필요한 append 를 눌러버린다**(같은 리뷰 B급).
+  if awk -v r="$slug" -v a="$base" -v s="$h" '
+        /^- run: /      { run=substr($0,8); art=""; prev="run"; next }
+        /^  artifact: / { if (prev=="run") { art=substr($0,13); prev="art" }
+                          else { art=""; prev="" } ; next }
+        /^  sha256: /   { if (prev=="art" && run==r && art==a && substr($0,11)==s) { found=1; exit }
+                          prev=""; next }
+                        { prev="" }
+        END { exit(found?0:1) }
+      ' "$LEDGER" 2>/dev/null; then
+    echo "witnessed(already): $slug/$base — 동일 해시가 이미 원장에 있다(재기록 안 함)"
+    return 0
+  fi
   if ! printf -- '- run: %s\n  artifact: %s\n  sha256: %s\n  recorded: %s\n' \
        "$slug" "$base" "$h" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LEDGER" 2>/dev/null; then
     echo "❌ 원장 append 실패: $LEDGER" >&2; return 10

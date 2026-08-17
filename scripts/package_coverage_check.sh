@@ -51,6 +51,16 @@ ACCEPTED_ABSENT=(
   # read as claims about THEIR file. The shipped docs name it as the place verdicts live in the
   # harness repo, which is a pointer for contributors, not a promise of a shipped artifact.
   ".claude/regression/ablation_verdicts.md"
+  # 챔버 **순서 증인 원장**(ship_readiness_gate §② P1). 바로 위 ablation_verdicts 와 **같은
+  # 논거**다: 이건 THIS repo 의 챔버 런이 언제 무엇을 고정했는지에 대한 기록이고, 소비자의
+  # 챔버 런은 그들 것이다 — 출하 문서에서 인용된 채로 딸려가면 소비자가 **자기 런에 대한
+  # 주장**으로 읽는다. 게다가 이 원장은 우리 런 slug·시각을 담은 공개 표면이라 소비자에게
+  # 보내는 것은 정보 유출 방향으로도 틀렸다.
+  # 🟥 **부재가 소비자 쪽 기능을 깨지 않는다** — `chamber_witness.sh do_record` 는 원장이
+  # 없으면 헤더를 만들어 생성한다(같은 파일의 `[ ! -f "$LEDGER" ]` 분기). 즉 스크립트는
+  # 출하되고 원장은 소비자 머신에서 처음 쓸 때 생긴다. 「없으면 죽는다」가 아니라
+  # 「없는 게 정상 초기 상태」다.
+  "knowledge/shared/learnings/chamber_ordering_witness.yaml"
   "scripts/sync-to-be.sh"
   "scripts/sync_guard_check.sh"
   # Return path (companion store → hub) and its anchor. Same reason as the forward path above: the
