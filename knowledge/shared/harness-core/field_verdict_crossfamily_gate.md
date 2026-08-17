@@ -300,6 +300,24 @@ tier1b(<target-harness>)     STATIC standpoint read — the reviewer read the TA
                               nearer value existed. A missing rung does not stay empty — it gets
                               filled by the next one up. Real but weak: see «execution is the
                               load-bearing half» below before crediting it.
+                              🟥 «FROM THE TARGET'S REPO» IS LOAD-BEARING, and a field case the
+                              day this rung shipped shows why. A session changed FH code that would
+                              make two peer harnesses' capability declarations start being REJECTED
+                              — genuinely applicable — and reached for `tier1b` because it had
+                              *read files*. The files it read were FH-local records ABOUT those
+                              peers (`tracks/_meta/relay/*.cap`), not the peers' own files. Reading
+                              your own repo's description of a peer is NOT a standpoint read; the
+                              whole point of the axis is whose ground truth the review was checked
+                              against, and that was still your own. The honest value there is
+                              `DEGRADED_NOT_RUN(<peers>)` — applicable, target reachable, nothing
+                              done at the target. Note the direction of the risk has INVERTED since
+                              this rung was added: tier1b was created because a real static read had
+                              no home and got recorded one rung too high; the new failure mode is
+                              local reading being recorded as tier1b because "I read something"
+                              feels the same. 🟥 Two different questions get merged here and must
+                              not be: *does a target exist and is it affected* is **Q0**; *what did
+                              you actually do at that target* is the **tier**. "The impact is real"
+                              answers the first and says nothing about the second.
 tier2(<target-harness>)      peer-simulated — the reviewer EXECUTED CODE in the TARGET's own repo
                               (a local clone, real content) and observed the result.
                               🟥 DISCRIMINATOR — «reading the target's real files is NOT this rung».
