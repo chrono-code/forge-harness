@@ -10,6 +10,59 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [2.3.0] — 2026-08-17
+
+🟥 **BREAKING (gate) ①**: the capability effect-probe (`M6`) now watches **directory existence and
+non-regular nodes**, not files only. A `.cap` declaring `writes: read-only` whose entry point
+creates an **empty directory**, a **symlink**, or a **fifo/socket/device node** now returns
+`VIOLATION` where it previously returned `✅ VERIFIED`. Registration of such a capability
+**blocks**.
+- **Remedy**: declare the real value (`write-local` / `write-remote`), or stop creating the node.
+  The probe prints which surface changed.
+- **Why**: `_snapshot()` used `find -type f`, so **empty directories were invisible** — git does not
+  track them, so they are absent from the isolated-clone sandbox too. Measured with a 3-arm
+  known-pair: write-file-to-new-path → 1, write-file-to-existing-dir → 1, **empty-dirs-only → 0**
+  (the false green). A cross-family review then found the same class still open one layer down:
+  `ln -sf /etc/passwd link` and `mkfifo pipe` **also passed** after the directory axis was added.
+  Both are now caught; symlinks are compared **by target**, since existence alone makes
+  `ln -sf other link` look like no change.
+- ⚠️ **Named residual, unchanged**: metadata-only writes (`chmod`, xattr, hardlink topology) and
+  empty directories **under `.git`** remain invisible. And the probe **still cannot discriminate an
+  adapter-class capability** — its outside-watch is a temp canary plus `$HOME`, while an adapter by
+  definition runs in the peer tree. That value stands on hand measurement, not on the probe.
+
+🟥 **BREAKING (gate) ②**: writing `ⓓ=→thirdparty` in the Axes 2–3 marker now **requires a non-empty
+`thirdparty:` line**. A marker with the pointer but no target **blocks the commit**.
+- **Remedy**: the hook prints the accepted forms —
+  `checked(<what was surveyed>)` · `none-found(<what was searched>)` · `UNKNOWN` · `not-applicable`.
+- **Why**: a pointer at nothing is not a record. Same failure the `ⓑ=→standpoint` guard closed.
+
+**Added**
+- `adapter/qasp-web-rules` — a cluster node wrapping a peer harness's web selector-stability rule
+  set. Enum `0=CLEAN 1=FINDINGS 2=ARGS 3=ENGINE_ERROR 10=HARNESS_ERROR 20=PEER_ABSENT`, calibration
+  pair from **FH-owned fixtures** (offline, deterministic), `writes: write-local` established by
+  cold-clone measurement. Registration bar M1–M6: **REGISTRABLE**.
+  🟥 **Consumer 0** — declared and callable, nothing calls it yet. Do not round that to "wired".
+  🟥 The declared enum is **wider than the peer's documented contract** (`0/1/3`): the underlying
+  CLI uses `parser.error()`, argparse exits **2**, and the shell wrapper propagates it verbatim.
+  The adapter declares the **real** contract, or an argument mistake renders as "the instrument broke".
+
+**Fixed**
+- The adapter's argument validation now runs **before** peer resolution. Previously the **same bad
+  call returned different values on different machines** — `ARGS(2)` where the peer was installed,
+  `HARNESS_ERROR(10)` where it was not — i.e. the check measured **what is installed on this box**
+  rather than **how it was called**. `ARGS` is a statement about the call; `PEER_ABSENT` is a
+  statement about the cluster; the two are independent facts.
+- Capability entry points and their calibration fixtures are now in `files[]`. Consumers previously
+  received the **declaration without the instrument** — a `.cap` that passes the registration bar
+  and then returns `HARNESS_ERROR` inside the tarball.
+
+**Note for consumers of the effect-probe**
+If you hold `.cap` files, re-run the probe **before** upgrading: this release changes verdicts for
+the three shapes above. A green result under 2.2.0 is not evidence under 2.3.0.
+
+---
+
 ### [2.2.0] — 2026-08-17
 
 🟥 **BREAKING (gate)**: chamber step 6 now reads `ACTUAL.md`, **not `BUDGET.md`**. An in-flight
