@@ -467,7 +467,62 @@ unreachable condition, which is the shape that trains people to delete the thing
 
 | | Condition | Check class | Status |
 |---|---|---|---|
-| **P1** | An EMIT run leaves an ordering record that does not depend on trusting the author — the intent/budget/sim record committed, hashed, or otherwise witnessed **outside** the gitignored workspace, before the verdict | mandatory-pass | **channel now exists (2026-08-08)** — `scripts/chamber_witness.sh`, wired into `chamber_run.sh` steps 2–5. **Still unsatisfied**: no run holds a witness yet |
+| **P1** | An EMIT run leaves an ordering record that does not depend on trusting the author — the intent/budget/sim record committed, hashed, or otherwise witnessed **outside** the gitignored workspace, before the verdict | mandatory-pass | **channel exists (2026-08-08)** — `scripts/chamber_witness.sh`, wired into `chamber_run.sh` steps 2–5. 🟥 **and it was UNSATISFIABLE until 2026-08-17 — by construction, not by strictness.** See §P1-2026-08-17 below. **Still unsatisfied**: no run holds a witness yet |
+
+<a name="p1-20260817"></a>
+**§P1-2026-08-17 — 첫 형식 완주가 이 조건이 «도달 불가능»이었음을 실측했다. 수리했고, 그 사실을 남긴다.**
+
+챔버 런 **#11**(`persona-simulator-harness`, KILL)은 이 채널을 **처음으로 끝까지** 태운 런이다.
+그리고 완주하자마자 `verify` 가 **`TAMPERED — 증인 무효`** 를 냈다. 기전은 추측이 아니라 코드다:
+
+```
+step 3   BUDGET.md(ESTIMATE)의 해시를 증인 원장에 기록          ← 사전등록 증인
+step 5   verdict 기록
+step 6   BUDGET.md 에 ^ACTUAL: 을 요구하며 하드 차단(exit 1)    ← 그 파일을 변경하도록 강제
+verify   기록된 해시 ≠ 현재 파일  →  TAMPERED
+```
+
+⇒ **COMPLETE 에 도달하려면 반드시 증인 아티팩트를 사후 변경해야 했다. 우회로가 없었다.**
+즉 P1 은 «완주한 런»으로 만족이 불가능했고, 그것이 ②가 🔵 였던 **기계적** 이유다 — 후보가
+부족해서가 아니다. 이 절이 2026-08-08 에 *"unreachable condition … trains people to delete the
+thing being counted"* 라고 경고한 그 형태가, **그 경고를 적은 채널 자신에서** 재발했다.
+
+**대상 선정 실수가 아니다.** P1 문언이 *"the **intent/budget**/sim record"* 로 BUDGET 을 증인
+대상으로 **명시 지목**한다. 결함은 **한 파일에 두 역할이 겹친 것**이다 — ①불변을 요구하는 증인 ·
+②변경을 요구하는 사후 캘리브레이션. **개별로는 둘 다 옳고, 충돌은 아무도 소유하지 않는다.**
+그래서 어느 쪽 코드를 읽어도 안 보였고, 정적 판독은 양쪽 다 초록으로 읽힌다.
+
+**왜 기존 검증이 다 놓쳤나 — 이게 남길 값의 본체다.**
+- `test_chamber_run_lanes.sh` 는 헤더에 *"순서 증인은 이 테스트의 대상이 아니다 — 부수 효과가
+  섞이므로 복사하지 않는다"* 라고 **명시적으로 증인을 제외**했다.
+- `chamber_witness.sh --self-test` 16레인은 증인을 **단독으로** 시험했다(cross-family 가 fail-open
+  7건을 잡은 그 레인들이다).
+- ⇒ **러너 × 증인의 이음매를 어느 쪽도 안 봤다.** 두 테스트 다 자기 범위에선 옳았다.
+- 그리고 러너 픽스처 `_mk_budget()` 이 `ESTIMATE:\nACTUAL: -` 를 **한 번에** 써서, 12레인 어디에도
+  «추정→실행→실비용» 이라는 **실제 순서가 존재하지 않았다.** 픽스처가 *상태*를 모델링했고 결함은
+  *과정*에 있었다. `[[feedback_adversarial_review_not_substitute_for_first_use]]` 의 교과서 사례다.
+
+**수리(2026-08-17)** — 스펙은 안 건드리고 **변경 요구만** 빼낸다:
+- `chamber_run.sh` step 6 → **별도 `ACTUAL.md`**. 정의상 판정 후 산물이므로 **증인에 기록하지 않는다.**
+- `chamber_witness.sh do_record` → 동일 `(run, artifact, sha)` 삼중항 재기록 스킵. 종전엔 무조건
+  append 라 4스텝 런에 엔트리 **11개**가 쌓였다(판정은 안 틀리나 공개 tracked 파일이 부풀고 verify
+  출력이 같은 줄을 반복해 **읽는 사람이 「몇 건이 문제인가」를 오독**한다). 🟥 **내용이 바뀐 경우는
+  여전히 새 엔트리로 남는다** — 그게 TAMPERED 를 성립시키는 증거다.
+- `test_chamber_run_lanes.sh` **12 → 26레인**. 신설 축은 **이음매**이고, 어서션이 두 겹이다:
+  **L13-a**(완주 후 BUDGET.md 해시 불변) + 🟥 **L13-b**(step 6 이 **지목하는 파일**이 증인 대상이
+  아닐 것). L13-b 가 본체다 — **러너는 BUDGET.md 를 직접 고치지 않고 사람에게 고치라고 시키므로**,
+  파일 해시만 보는 L13-a 는 되돌림 프로브에서 **초록으로 남았다**(즉 그것만으로는 장식이었다).
+  잴 것은 파일이 아니라 **지시**였다. 되돌림 실측: `git show HEAD:` 판으로 되돌리면 L13-b 가
+  적색(`step6 이 증인 아티팩트를 고치라고 시킨다`), 컨트롤은 초록 유지.
+
+⚠️ **런 #11 자신은 TAMPERED 로 남는다. 소급 수리하지 않는다** — 과거 9런을 back-fill 하지 않는 것과
+같은 이유다(사후에 쓴 기록은 증명하지 않는다). **P1 은 이 수리 이후의 EMIT 런에서 처음 만족 가능하다.**
+🟥 그리고 이 수리는 **P1 을 만족시키지 않는다** — 만족을 *가능하게* 만들 뿐이다. ②는 🔵 유지.
+
+⚠️ **되돌림 프로브 자체에서 실책 1건(기록)**: 첫 시도가 `sed` 로 따옴표 포함 패턴만 바꿔 **검사는
+BUDGET, 메시지는 ACTUAL 인 잡종**을 만들었고, 그 상태에서 L13-b 가 초록이라 하마터면 «레인이
+장식이다»로 결론 낼 뻔했다. 되돌림은 **`git show HEAD:` 로 통째 복원**해야 한다 — 부분 되돌림은
+되돌림이 아니다.
 
 **P1's channel was built, and that is not the same as P1 passing.** The row above said *not buildable
 today*; that is no longer true, and the reason it was true is worth keeping because it names the shape of

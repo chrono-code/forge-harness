@@ -125,8 +125,11 @@ if [ ! -f "$WS/BUDGET.md" ]; then
 
 # Route through goal-quench's budget gate for an expensive run, then record here.
 # Demo-scale runs may self-cap — but an ESTIMATE line is mandatory (this is the entry cap).
+#
+# 🟥 ACTUAL 은 이 파일에 적지 마라 — step 6 이 별도 ACTUAL.md 를 쓴다.
+# 이유: 이 파일의 판정-전 해시가 순서 증인(ship_readiness_gate §② P1)이다. 사후에
+# 이 파일을 고치면 증인이 TAMPERED 로 죽는다 (2026-08-17 런 #11 실측).
 ESTIMATE: <e.g. ~3 persona dispatches, demo-scale, self-capped  |  or a token budget>
-ACTUAL:   <filled at step 6>
 EOF
   echo "  ⛔ step 3 BLOCKED: record an ESTIMATE in $WS/BUDGET.md (budget-entry gate G2), then re-run."; exit 1
 fi
@@ -203,8 +206,26 @@ if [ -f "$_WITNESS" ]; then
 fi
 
 # STEP 6 — actual cost / carry-forward record.
-if grep -qE '^ACTUAL:[[:space:]]*<' "$WS/BUDGET.md" || ! grep -qE '^ACTUAL:[[:space:]]*\S' "$WS/BUDGET.md"; then
-  echo "  ⛔ step 6 BLOCKED: record ACTUAL cost in $WS/BUDGET.md (actual-vs-estimate calibration)."
+# 🟥 별도 파일이다. BUDGET.md 가 아니다 — 그리고 그 분리가 이 게이트의 핵심이다.
+# 2026-08-17 런 #11(첫 형식 완주)이 실측한 결함: step 3 이 BUDGET.md 의 해시를 순서 증인으로
+# 기록하는데 step 6 이 같은 파일에 ACTUAL 을 요구하며 하드 차단했다 → 완주하면 반드시
+# 증인 아티팩트가 사후 변경되고 verify 가 TAMPERED 를 낸다 → **완주한 런은 구조적으로
+# ② 승급 근거가 될 수 없었다.** 대상 선정 실수가 아니라 한 파일에 두 역할(①불변 요구 =
+# 증인 · ②변경 요구 = 사후 캘리브레이션)이 겹친 것이고, 개별로는 둘 다 옳아서 어느 쪽
+# 코드를 읽어도 안 보였다. 그래서 스펙(P1 이 BUDGET 을 증인으로 지목)은 안 건드리고
+# **변경 요구만** 빼낸다. ACTUAL.md 는 정의상 판정 후 산물이므로 **증인에 기록하지 않는다.**
+if [ ! -f "$WS/ACTUAL.md" ]; then
+  cat > "$WS/ACTUAL.md" <<EOF
+# ACTUAL — $SLUG (chamber run, 판정 후 기록)
+#
+# 이 파일은 **순서 증인 대상이 아니다** — 판정 후에 쓰이는 것이 정상이므로 해시를 걸지 않는다.
+# ESTIMATE 는 BUDGET.md 에 있고 그 파일은 판정 전에 얼어 있다. 대조는 사람이 한다.
+ACTUAL: <number/summary — dispatch 수 · 토큰 · 예산 대비 편차>
+EOF
+fi
+if grep -qE '^ACTUAL:[[:space:]]*<' "$WS/ACTUAL.md" || ! grep -qE '^ACTUAL:[[:space:]]*\S' "$WS/ACTUAL.md"; then
+  echo "  ⛔ step 6 BLOCKED: record ACTUAL cost in $WS/ACTUAL.md (actual-vs-estimate calibration)."
+  echo "     🟥 BUDGET.md 가 아니다 — 그 파일은 판정 전 증인이라 사후 변경하면 증인이 죽는다."
   echo "     Expected — a LINE PREFIX, not a heading:"
   echo "       ACTUAL: <number/summary>        ← this form is checked"
   echo "       ## ACTUAL                       ← a heading does NOT satisfy it"
