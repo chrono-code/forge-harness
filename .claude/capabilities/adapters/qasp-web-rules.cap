@@ -46,12 +46,21 @@ verdict_channel: exit
 #      ENGINE_ERROR(3)  하네스는 있는데 못 쟀다    (계기에 대한 진술)
 #                       도달 경로(peer 실측): python 인터프리터 부재 · diff-json 읽기 실패 ·
 #                       `gh api` 실패 · **스캔 대상 0개**(peer 가 fail-closed 로 못 박았다)
+#      HARNESS_ERROR(10) 계기 자신이 전제를 잃었다  (어댑터에 대한 진술)
+#                       도달 경로: `peer_resolve.sh` 부재 · peer 진입점 부재 ·
+#                       peer 별칭 다중 히트(모호 — 고르지 않는다) · 캘리브레이션 픽스처 부재 ·
+#                       peer 가 자기 계약 {0,1,2,3} 밖의 값 반환
 #      PEER_ABSENT(20)  그 노드가 이 머신에 없다   (클러스터에 대한 진술)
+#
+# 🟥 **`10` 은 초판 선언에서 빠져 있었다 — 스크립트는 내던 값인데 선언이 좁았다.**
+#    등록 바(`capability_registry_check.sh` M2+)가 잡았다: *"enum 에 「안 돌았다」를 뜻하는
+#    값이 없다"*. 자기 레인(W6)이 `rc=10` 을 이미 단언하고 있었는데도 선언에는 없었다 —
+#    **[[feedback_unedited_parts_of_my_own_file]]** 의 형태다(내 편집 범위 안, 자력 적발 0).
 #    ★peer 자신의 규율: *"exit 3 을 0 으로 뭉개지 않는다 — 못 잰 것을 깨끗하다고 보고하는
 #     순간 게이트가 장식이 된다."* 어댑터는 하위 exit 을 전파하지 않고 **명시 case 로 재매핑**한다.
 #    ★등록 바는 아래 두 arm 만 돌린다 — ARGS·ENGINE_ERROR·PEER_ABSENT 는 선언돼 있으나
 #     그 판정에서 **관측되지 않는다**. 셋은 `scripts/test_adapter_lanes.sh` 가 덮는다.
-verdict_enum: 0=CLEAN 1=FINDINGS 2=ARGS 3=ENGINE_ERROR 20=PEER_ABSENT
+verdict_enum: 0=CLEAN 1=FINDINGS 2=ARGS 3=ENGINE_ERROR 10=HARNESS_ERROR 20=PEER_ABSENT
 approval: auto
 #
 # `reversibility: reversible` — 이 계기는 **읽고 보고할 뿐** 아무것도 되돌릴 수 없게 만들지
@@ -104,7 +113,7 @@ tier_floor: none
 writes: write-local
 judge: mechanical
 # CLEAN 만 clearing. FINDINGS 는 위반, 나머지 셋은 「안 쟀다」의 서로 다른 얼굴 — 전부 막는다.
-verdict_binding: FINDINGS ARGS ENGINE_ERROR PEER_ABSENT
+verdict_binding: FINDINGS ARGS ENGINE_ERROR HARNESS_ERROR PEER_ABSENT
 #
 # known-pair — **FH 소유 픽스처**(`scripts/adapters/fixtures/`), 오프라인·결정적.
 #   양성: `page.wait_for_timeout(3000)` → `web-wait-for-timeout` 발화 → 실측 rc=1
