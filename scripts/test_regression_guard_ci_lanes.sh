@@ -99,25 +99,48 @@ if git -C "$REPO_ROOT" clone -q --no-local "$REPO_ROOT" "$CL" 2>/dev/null; then
   done
   _left=$(git -C "$CL" for-each-ref --format='%(refname:short)' refs/heads | wc -l | tr -d ' ')
   cp "$GUARD" "$CL/templates/regression_guard.sh"
-  BR=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)
-  SHA=$(git -C "$REPO_ROOT" rev-parse HEAD)
+  # The head fixture is the VULNERABILITY ITSELF, not an arbitrary name: `main`. In this clone
+  # `origin/main` exists and local `main` does not — exactly a fork PR whose branch is called
+  # `main`. The old resolver guessed `main -> origin/main` and compared the base repo to itself.
+  # (An earlier fixture used `rev-parse --abbrev-ref HEAD`, which returns the literal string
+  # "HEAD" on a detached checkout — a ref that DOES resolve, so the lane asserted nothing. Caught
+  # by reproducing the CI shape locally rather than trusting the developer-machine green.)
+  BR=main
+  # Take every SHA from INSIDE the clone. A SHA read from the source repo is not guaranteed to
+  # exist in the clone: when the source is a detached checkout with no local branches (which is
+  # exactly what actions/checkout leaves), `git clone` has few refs to transfer from, so an
+  # arbitrary source SHA may simply be absent. Reading from the clone removes that assumption
+  # instead of hoping it holds — the previous version of this lane hoped, and CI disagreed.
+  SHA=$(git -C "$CL" rev-parse HEAD)
+  # 🟥 The BASE side must be a SHA too, and this cost a red CI to learn.
+  # The first version passed `origin/main` as the base. That resolves on a developer machine and
+  # NOT in CI: a GitHub Actions checkout is detached with no local `main`, so a clone of it has no
+  # `origin/main` either. Consequences, both measured on the same run:
+  #   L8b failed  — base unresolvable, so the SHA lane could never reach its assertion
+  #   L8a "passed" FOR THE WRONG REASON — it expects exit 3, and got exit 3 from the BASE failing,
+  #                 not from the head NAME being refused. A green lane measuring something else.
+  # This file's own header warns that asserting only BLOCK cannot tell "blocked" from "blocked for
+  # the wrong reason". Holding exactly one variable is the fix: base is always a resolvable SHA,
+  # so any refusal is attributable to the head, and the assertion checks the head half by name.
+  BASE_SHA=$(git -C "$CL" rev-parse HEAD~1 2>/dev/null || git -C "$CL" rev-parse HEAD)
 
-  # L8a — a bare NAME must now be REFUSED. Name-guessing is what let a fork PR branch called
-  # `main` resolve to this repo's main and compare it to itself.
-  out=$(cd "$CL" && bash templates/regression_guard.sh --pr "$BR" "origin/main" 2>&1); rc=$?
-  if [ "$rc" -eq 3 ] && printf '%s' "$out" | grep -q 'does not resolve'; then
-    printf '  ✅ %-30s bare name refused (local refs left: %s)\n' "L8a-name-refused" "$_left"
+  # L8a — a bare NAME must be REFUSED. Name-guessing is what let a fork PR branch called `main`
+  # resolve to this repo's main and compare it to itself.
+  out=$(cd "$CL" && bash templates/regression_guard.sh --pr "$BR" "$BASE_SHA" 2>&1); rc=$?
+  if [ "$rc" -eq 3 ] && printf '%s' "$out" | grep -q "head='$BR'->'<none>'"; then
+    printf '  ✅ %-30s fork-collision name '"'"'%s'"'"' refused, attributed to HEAD (local refs: %s)\n' "L8a-name-refused" "$BR" "$_left"
   else
-    printf '  ❌ %-30s expected exit 3 refusal, got rc=%s: %s\n' "L8a-name-refused" "$rc" "$(printf '%s' "$out" | head -1)"; FAIL=1
+    printf '  ❌ %-30s expected exit 3 naming head=%s, got rc=%s: %s\n' "L8a-name-refused" "$BR" "$rc" "$(printf '%s' "$out" | head -1)"; FAIL=1
   fi
 
-  # L8b — an unambiguous SHA must resolve and actually compute a merge-base.
-  out=$(cd "$CL" && bash templates/regression_guard.sh --pr "$SHA" "origin/main" 2>&1); rc=$?
+  # L8b — unambiguous SHAs on both sides must resolve and compute a merge-base.
+  out=$(cd "$CL" && bash templates/regression_guard.sh --pr "$SHA" "$BASE_SHA" 2>&1); rc=$?
   if printf '%s' "$out" | grep -q 'PR MODE: merge-base='; then
     printf '  ✅ %-30s %s\n' "L8b-sha-resolves" "$(printf '%s' "$out" | grep -o 'merge-base=[^ ]*')"
   else
     printf '  ❌ %-30s SHA did not resolve (rc=%s): %s\n' "L8b-sha-resolves" "$rc" "$(printf '%s' "$out" | head -1)"; FAIL=1
   fi
+
 else
   printf '  ⚠️  %-30s clone unavailable — lanes SKIPPED (not passed)\n' "L8-ci-shape"
 fi
