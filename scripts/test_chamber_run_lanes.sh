@@ -316,8 +316,49 @@ else
   echo "❌ L14 — chamber_witness.sh 를 복사하지 못했다(미측정, 0 아님)"; FAIL=$((FAIL+1))
 fi
 
+# ── L15 ★ 러너가 «두 커밋 규율»을 가르치는가 (2026-08-17 신설) ────────────────
+# 🟥 이 레인이 없어서 러너가 **틀린 처방을 가르치고 있었다**: "원장 해시를 커밋한 뒤
+# 재실행하면 증인이 성립한다". 실측 반증 — 런 #12 가 네 해시를 한 커밋에 배치했더니
+# 브랜치에서부터 UNORDERED(`verdict_ts == pre_max_ts`, 동일 타임스탬프). verify 는
+# `-le` 로 판정하므로 **같은 커밋 = 같은 초 = 실패**다. 게이트 문구는 «막는가»만이
+# 아니라 «옳은 것을 가르치는가»도 재야 한다 — 처방도 검증 대상이다
+# ([[feedback_gate_prescription_is_unverified]], 오늘 3번째 사례).
+if [ -f "$T/scripts/chamber_witness.sh" ]; then
+  mkdir -p "$(_ws g5)"; ( cd "$T" && env -u CLAUDE_PROJECT_DIR bash "$T/scripts/chamber_run.sh" g5 >/dev/null 2>&1 )
+  _mk_intent g5; _mk_budget g5; _mk_sim3 g5; _mk_verdict g5 KILL
+  _l15="$( cd "$T" && env -u CLAUDE_PROJECT_DIR bash "$T/scripts/chamber_run.sh" g5 2>&1 )"
+  # 🟥 틀린 처방이 살아 있으면 적색 (known-positive: 그 문자열이 검출 가능한지 컨트롤로 확인)
+  if printf '%s\n' "$_l15" | grep -q '커밋한 뒤 재실행하면 증인이 성립한다'; then
+    echo "❌ L15 ★ 러너가 틀린 처방을 가르친다 — 「커밋하면 성립」은 반증됐다(한 커밋=UNORDERED)"
+    FAIL=$((FAIL+1))
+  elif printf '%s\n' "$_l15" | grep -q '별도 커밋'; then
+    _t "L15 ★ 게이트 기록 문구가 «verdict 보다 먼저, 별도 커밋» 을 지시한다" 0 0
+  else
+    echo "❌ L15 — 게이트 기록 문구에 두 커밋 규율이 없다(무음). 출력:"
+    printf '%s\n' "$_l15" | grep '순서 증인' | sed 's/^/   /'; FAIL=$((FAIL+1))
+  fi
+  # verdict 쪽은 더 강하게 — «다른 커밋» 을 명시해야 한다
+  if printf '%s\n' "$_l15" | grep -q 'EMISSION_VERDICT.md 해시 기록됨'; then
+    if printf '%s\n' "$_l15" | grep -q '다른 커밋'; then
+      _t "L15b ★ verdict 기록 문구가 «게이트 해시들과 다른 커밋» 을 명시한다" 0 0
+    else
+      echo "❌ L15b — verdict 기록 문구가 분리 요구를 안 한다"; FAIL=$((FAIL+1))
+    fi
+  else
+    echo "❌ L15b 계기 실패 — verdict 기록 줄 자체를 못 잡았다(known-positive 부재)"; FAIL=$((FAIL+1))
+  fi
+  # 컨트롤: 이 레인의 grep 이 살아 있는가(늘 «없다» 를 내는 죽은 계기 배제)
+  if printf '%s\n' "$_l15" | grep -q '순서 증인'; then
+    _t "L15c 컨트롤 — 증인 출력 자체는 잡힌다(grep 생존)" 0 0
+  else
+    echo "❌ L15c 컨트롤 — 증인 출력을 아예 못 잡는다. 이 레인 전체가 무의미"; FAIL=$((FAIL+1))
+  fi
+else
+  echo "❌ L15 — chamber_witness.sh 미복사(미측정, 0 아님)"; FAIL=$((FAIL+1))
+fi
+
 # ── L12 컨트롤: 이 테스트가 실물 tracks/_chamber 를 건드리지 않았는가 ─────────
-if [ -d "$SRC/../tracks/_chamber/g1" ] || [ -d "$SRC/../tracks/_chamber/g2" ] || [ -d "$SRC/../tracks/_chamber/g3" ] || [ -d "$SRC/../tracks/_chamber/g4" ]; then
+if [ -d "$SRC/../tracks/_chamber/g1" ] || [ -d "$SRC/../tracks/_chamber/g2" ] || [ -d "$SRC/../tracks/_chamber/g3" ] || [ -d "$SRC/../tracks/_chamber/g4" ] || [ -d "$SRC/../tracks/_chamber/g5" ]; then
   echo "❌ L12 격리 실패 — 실제 워크스페이스가 오염됐다"; FAIL=$((FAIL+1))
 else
   _t "L12 컨트롤 — 실물 워크스페이스 무오염" 0 0

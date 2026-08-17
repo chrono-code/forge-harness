@@ -56,7 +56,15 @@ _witness_record() { # $1 = artifact path
     return 0
   fi
   if bash "$_WITNESS" record "$SLUG" "$1" >/dev/null 2>&1; then
-    echo "    ↳ 순서 증인: $(basename "$1") 해시 기록됨 — **커밋해야** 증인이 된다"
+    # 🟥 «커밋해야 된다» 로만 적으면 **틀린 처방을 가르친다**(2026-08-17 런 #12 실측:
+    # 네 해시를 한 커밋에 배치했더니 브랜치에서부터 UNORDERED). verify 는
+    # `[ verdict_ts -le pre_max_ts ]` 로 판정하므로 **같은 커밋 = 같은 초 = 실패**다.
+    if [ "$(basename "$1")" = "EMISSION_VERDICT.md" ]; then
+      echo "    ↳ 순서 증인: EMISSION_VERDICT.md 해시 기록됨"
+      echo "       🟥 이 해시는 **게이트 해시들과 다른 커밋**으로 올려야 한다. 같이 커밋하면 UNORDERED 다."
+    else
+      echo "    ↳ 순서 증인: $(basename "$1") 해시 기록됨 — **verdict 보다 먼저, 별도 커밋으로** 올려라"
+    fi
   else
     echo "    ⚠️ 순서 증인 기록 실패: $(basename "$1") (증인 없음 — 미측정이지 0이 아니다)"
   fi
@@ -197,7 +205,12 @@ if [ -f "$_WITNESS" ]; then
       echo "    ✅ 이 EMIT 은 순서 증인을 가진다 — identity ② 승격 근거로 사용 가능"
     else
       echo "    🟥 이 EMIT 에는 순서 증인이 없다(rc=${_wrc:-?}) — identity ② 승격 근거로 쓰지 마라."
-      echo "       (원장 해시를 커밋한 뒤 재실행하면 증인이 성립한다)"
+      echo "       처방 — 커밋을 **합치지 마라**. 세 경로가 각각 증인을 죽인다(2026-08-17 실측):"
+      echo "         ① 한 커밋에 배치        → 같은 초라 UNORDERED (런 #12 에서 재현)"
+      echo "         ② --squash 머지          → 게이트+verdict 가 main 에서 한 커밋으로 접힌다 (런 #11)"
+      echo "         ③ --delete-branch        → 순서를 담은 커밋이 도달 불가가 된다"
+      echo "       올바른 형태: 게이트 해시 커밋 → (별도) verdict 해시 커밋, **두 PR 로 분리해 각각 머지**."
+      echo "       그러면 squash 해도 main 에 2커밋이 남아 순서가 보존된다."
       # ★ 출력만 하고 exit 0 으로 끝내면, stdout 을 안 읽는 호출자에게는 증인 없는 EMIT 도
       # **성공**이다(cross-family F8). EMIT 은 승격 주장이므로 기계적으로 구분되어야 한다.
       WITNESS_EMIT_FAIL=1
