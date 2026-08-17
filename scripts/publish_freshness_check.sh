@@ -46,8 +46,27 @@ run_checks() {
   # ── ① 워킹트리가 깨끗한가 ────────────────────────────────────────────────
   # `--porcelain` 은 추적 파일의 수정·스테이징·미추적을 전부 낸다. 미추적까지 세는 것은
   # 의도적이다 — 2026-08-13 사고는 **남의 미커밋 파일**이 팩된 것이었다.
-  local dirty
-  dirty=$(git status --porcelain 2>/dev/null | grep -vE '^\?\? tracks/' || true)
+  # 🟥 cross-family(codex/gpt-5.5, 2026-08-17) 가 이 한 줄에서 S급 3건을 냈고 S1 은 재현됐다.
+  #   S1 초판 `git status --porcelain 2>/dev/null` 는 stderr 를 버리고 rc 를 안 봐서,
+  #      **git 이 실패하면 빈 문자열이 「깨끗함」으로 읽혔다.** 비가역 게이트의 fail-open.
+  #      재현: printf x >/tmp/badindex; GIT_INDEX_FILE=/tmp/badindex bash <이 파일>
+  #   S3 `status.showUntrackedFiles=no` 로 untracked 이 은폐된다 → -c 로 덮고 -uall 강제
+  #   A4 `assume-unchanged`/`skip-worktree` 비트로 tracked 변경이 은폐된다 → ls-files -v 로 검사
+  local dirty status_out status_rc
+  status_out=$(git -c status.showUntrackedFiles=normal status --porcelain --untracked-files=all 2>&1)
+  status_rc=$?
+  if [ "$status_rc" -ne 0 ]; then
+    bad "git status 가 rc=$status_rc 로 실패했다 — **미측정은 통과가 아니다**:"
+    printf '%s\n' "$status_out" | head -5 | sed 's/^/      /'
+    return 1
+  fi
+  local hidden
+  hidden=$(git ls-files -v 2>/dev/null | grep -E '^[hS]' || true)
+  if [ -n "$hidden" ]; then
+    bad "assume-unchanged / skip-worktree 비트가 걸린 tracked 파일 — status 엔 안 보이지만 npm 은 팩한다:"
+    printf '%s\n' "$hidden" | head -5 | sed 's/^/      /'
+  fi
+  dirty=$(printf '%s\n' "$status_out" | grep -vE '^\?\? tracks/' || true)
   if [ -n "$dirty" ]; then
     bad "워킹트리가 깨끗하지 않다 — publish 는 커밋이 아니라 이 트리를 팩한다:"
     printf '%s\n' "$dirty" | head -10 | sed 's/^/      /'
