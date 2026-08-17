@@ -614,10 +614,46 @@ it), while an ordinary commit touching a shipped script correctly stays `not-app
 the definitional hole*, never as three confirmations
 (`[[feedback_decorrelation_axis_is_what_you_send]]`).
 
-**Still open, and not closed by this edit**: 177 of the 200 corpus markers carry no `standpoint:`
-line at all, and an absent field cannot be read as either *not-applicable* or *not-looked-at* — that
-pool is larger than the one measured and remains unexamined. `thirdparty:` has exactly one instance
-in the corpus (added 2026-08-17), so it is unmeasured, not clean.
+**Measured after this edit shipped, and it REFUTES the residual this paragraph first carried.** The
+original text read: *"177 of the 200 corpus markers carry no `standpoint:` line at all … that pool is
+larger than the one measured and remains unexamined."* It has now been examined, and the pool is not
+larger — it barely exists:
+
+```
+201 markers · 24 carry `standpoint:` · 177 do not
+  172   predate the field itself (born 2026-08-14, PR #370 landed 14:13) — structural, not a miss
+    2   written the same day but BEFORE 14:13 (12:29 · 12:39) — also structural
+    3   written after the field existed (16:41 · 19:10 · 21:06)   ← the entire real pool
+    0   absences dated 2026-08-15 or later — adoption is 100% from day two onward
+```
+
+🟥 **The first step was decomposition, not adjudication.** Counting "no field" as "not recorded"
+folds *the field did not exist yet* into *the author skipped it* — the same `not-found ≠ 0` collapse
+this session hit three separate times (`[[feedback_not_found_is_not_zero_family]]`). Splitting by the
+field's own birth timestamp is what turned 177 into 3.
+
+**Hand-check of all 3, judged from the real diffs** (their markers use the pre-2026-08-17 four-letter
+`axes-run` notation, where `b` means first-real-use and NOT standpoint — reading the marker's own
+self-description instead of the diff would have inverted two axes):
+
+| commit | delta | verdict under Q0 |
+|---|---|---|
+| #375 `cedd8ac` | `version_lockstep_check.sh` +11 lines, **all comment** | `not-applicable` would have been correct — a **missing line**, not a wrong judgment |
+| #374 `0690ba7` | 7 files, +409 — shipped gate scripts plus `templates/degrade_direction_scan.sh` | 🟥 **genuinely under-recorded** (Q0-ⓑ, and `templates/` propagates to field harnesses) |
+| #373 `549a4bc` | `ko-tech-writer/SKILL.md` +63/−12 (shipped plugin) | 🟥 **genuinely under-recorded** (Q0-ⓑ) |
+
+**The direction matches §6's earlier finding: over-claiming 0, under-recording only.** A gate that
+tightens *"were you really tier2?"* cannot catch this direction by construction.
+
+⚠️ **Retroactive-application caveat**: Q0 was written 2026-08-17 and these three are 2026-08-14, so
+their authors could not have applied it. What survives the caveat is narrower and still real — the
+**field existed** by then, so the absent line is a gap independent of Q0.
+
+**Consequence for sequencing**: the argument for postponing mechanization was *"absence is the
+dominant reality, so validating values would only tighten a recording minority."* That premise is
+**dead** — recording is 100% from 2026-08-15 onward. ⚠️ The refutation does **not** travel to peers:
+pmh-dev's 42 markers carry the field 0 times, and whether that is late arrival or non-adoption is
+**unmeasured** there. `thirdparty:` likewise stands at 2 corpus instances — unmeasured, not clean.
 
 **Relationship to `harness_verification_core_extended.md`'s core/extended axis**: tier2 and tier3
 are both "extended" in that document's sense (they require a cluster member's engine or repo to
