@@ -122,7 +122,14 @@ if git -C "$REPO_ROOT" clone -q --no-local "$REPO_ROOT" "$CL" 2>/dev/null; then
   # This file's own header warns that asserting only BLOCK cannot tell "blocked" from "blocked for
   # the wrong reason". Holding exactly one variable is the fix: base is always a resolvable SHA,
   # so any refusal is attributable to the head, and the assertion checks the head half by name.
-  BASE_SHA=$(git -C "$CL" rev-parse HEAD~1 2>/dev/null || git -C "$CL" rev-parse HEAD)
+  # 🟥 `git rev-parse HEAD~1` prints the literal string "HEAD~1" ON STDOUT when it fails, so
+  # `$(... || fallback)` captures that string alongside the fallback. Measured in CI: the clone of
+  # a detached, branchless checkout has a single reachable commit, HEAD~1 does not exist, and
+  # BASE_SHA became the literal "HEAD~1" — which then failed to resolve and turned this lane red
+  # for a reason unrelated to what it tests. Same family as `|| echo 0` emitting "0\n0".
+  # Use --verify --quiet (silent on failure) and branch on emptiness.
+  BASE_SHA=$(git -C "$CL" rev-parse --verify --quiet 'HEAD~1^{commit}') || BASE_SHA=""
+  [ -n "$BASE_SHA" ] || BASE_SHA=$(git -C "$CL" rev-parse HEAD)
 
   # L8a — a bare NAME must be REFUSED. Name-guessing is what let a fork PR branch called `main`
   # resolve to this repo's main and compare it to itself.
