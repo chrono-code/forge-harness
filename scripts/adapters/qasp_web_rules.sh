@@ -97,6 +97,46 @@ _LIB="$SELF_DIR/peer_resolve.sh"
 # shellcheck source=/dev/null
 . "$_LIB"
 
+# ── ① 인자 먼저 검문한다 — peer 해석보다 **앞**이다 ─────────────────────────
+# 🟥 순서가 뒤집혀 있었다(2026-08-17 CI 실측). 초판은 peer 를 먼저 풀었고, 그래서
+#    **같은 잘못된 호출이 머신마다 다른 값**을 냈다:
+#      peer 있는 머신(내 로컬) : `qasp_web_rules.sh` (모드 없음) → ARGS(2)
+#      peer 없는 머신(CI)      : 같은 호출              → HARNESS_ERROR(10)
+#    즉 검정이 «어떻게 불렀나» 가 아니라 **«이 머신에 뭐가 깔렸나»** 를 재고 있었다.
+#    이 레포가 오늘 출하 레인에서 이미 데인 클래스와 같다.
+#
+# ★원리: 이 파일 헤더가 스스로 갈라 놓은 대로 **ARGS 는 «호출에 대한 진술»** 이고
+#   **PEER_ABSENT 는 «클러스터에 대한 진술»** 이다. 두 사실은 독립이고, 호출이 틀렸다는
+#   것은 클러스터를 보지 않고도 안다. 오타를 낸 사람에게 «qasp 를 깔아라» 라고 말하면
+#   진짜 문제에서 멀어진다.
+# ⚠️ 자매 어댑터(`qasp_new_code_anchor.sh`)는 아직 **peer-first** 다 — 그쪽 enum 레인이
+#    `_lane_peer` 로 가려져 있어서 이 어긋남이 안 보였다. 여기서만 고쳤고, 그쪽 정렬은
+#    별건으로 남긴다(고치면 그쪽 레인의 SKIP 가드도 같이 걷어야 한다).
+#
+# ★경계는 «호출 + FH 로컬 파일» 이다. peer 를 봐야만 알 수 있는 것만 ② 로 내린다.
+#   픽스처도 여기다 — `$SELF_DIR/fixtures/` 는 **우리 소유**라 peer 유무와 무관하다.
+MODE="${1:-}"
+DIFF_JSON=""
+case "$MODE" in
+  --known-positive) DIFF_JSON="$SELF_DIR/fixtures/qasp_web_rules_known_positive.json" ;;
+  --known-negative) DIFF_JSON="$SELF_DIR/fixtures/qasp_web_rules_known_negative.json" ;;
+  --diff-json)
+    DIFF_JSON="${2:-}"
+    [ -n "$DIFF_JSON" ] || _args_error "--diff-json 뒤에 경로가 필요하다"
+    # 읽을 수 없는 입력은 **호출 오류**다 — peer 가 있든 없든 같은 값이어야 한다.
+    [ -r "$DIFF_JSON" ] || _args_error "읽을 수 없는 diff-json: $DIFF_JSON" ;;
+  '') _args_error "모드 미지정 — 돌지 않은 실행을 판정으로 렌더하지 않는다" ;;
+  *)  _args_error "알 수 없는 모드 '$MODE'" ;;
+esac
+
+# 픽스처 부재는 **ARGS 가 아니라 HARNESS_ERROR** 다 — 캘리브레이션 쌍이 사라진 것은
+# 「호출을 잘못했다」가 아니라 **「이 계기가 자기 판별력을 증명할 수 없다」**는 뜻이다.
+case "$MODE" in
+  --known-positive|--known-negative)
+    [ -r "$DIFF_JSON" ] || _harness_error "캘리브레이션 픽스처 부재: $DIFF_JSON" ;;
+esac
+
+# ── ② peer 해석 ─────────────────────────────────────────────────────────────
 PEER_ROOT="$(fh_peer_resolve "$PEER_NAME")"; _rrc=$?
 case "$_rrc" in
   0) ;;
@@ -107,27 +147,6 @@ esac
 
 ENTRY="$PEER_ROOT/scripts/web_rules_pr_scan.sh"
 [ -r "$ENTRY" ] || _harness_error "peer 진입점 부재: $ENTRY (하네스는 있으나 계기가 없다)"
-
-DIFF_JSON=""
-case "${1:-}" in
-  --known-positive) DIFF_JSON="$SELF_DIR/fixtures/qasp_web_rules_known_positive.json" ;;
-  --known-negative) DIFF_JSON="$SELF_DIR/fixtures/qasp_web_rules_known_negative.json" ;;
-  --diff-json)
-    DIFF_JSON="${2:-}"
-    [ -n "$DIFF_JSON" ] || _args_error "--diff-json 뒤에 경로가 필요하다"
-    ;;
-  '') _args_error "모드 미지정 — 돌지 않은 실행을 판정으로 렌더하지 않는다" ;;
-  *)  _args_error "알 수 없는 모드 '$1'" ;;
-esac
-
-# 픽스처 부재는 **ARGS 가 아니라 HARNESS_ERROR** 다 — 캘리브레이션 쌍이 사라진 것은
-# 「호출을 잘못했다」가 아니라 「이 계기가 자기 판별력을 증명할 수 없다」는 뜻이다.
-case "${1:-}" in
-  --known-positive|--known-negative)
-    [ -r "$DIFF_JSON" ] || _harness_error "캘리브레이션 픽스처 부재: $DIFF_JSON" ;;
-  *)
-    [ -r "$DIFF_JSON" ] || _args_error "읽을 수 없는 diff-json: $DIFF_JSON" ;;
-esac
 
 # peer 의 진입점은 `git rev-parse --show-toplevel` 로 자기 루트를 잡으므로 **cwd 가 peer 여야**
 # 한다. 판정은 파이프를 통과시키지 않는다(PIPE-VERDICT).
