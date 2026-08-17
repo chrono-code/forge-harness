@@ -73,6 +73,7 @@
     "scripts/test_version_lockstep_lanes.sh",
     "scripts/package_coverage_check.sh",
     "scripts/publish_freshness_check.sh",
+    "scripts/prepublish_scope_note.sh",
     "scripts/lane_runner_check.sh",
     "scripts/test_package_coverage_lanes.sh",
     "scripts/adapters/peer_resolve.sh",
