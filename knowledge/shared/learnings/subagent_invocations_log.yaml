@@ -2170,3 +2170,15 @@
   outcome: accepted
   evidence: "tool_uses 27(WebSearch 12 중 **한국어 7** · GitHub API 15 · WebFetch 4 · 로컬 정독). 이 런의 KILL 을 가른 계기이고 **거버너의 프레이밍 오류 영향을 가장 덜 받았다**. ⓑ번역투 **포화** — 2026-06~08 3개월간 한국어 번역투 제거 스킬 **10+ 신설**(humanizer-ko 35패턴 등) · ⓒ처방형식은 이 분야 **기본값** · ⓐ운율만 외부 공백(GitHub 전체 `낭독` SKILL.md **1건=우리 미러**). 🟥 **결정적 근거를 찾았다** — harness_terminal_correlation:235-236 이 ko-tech-writer Step 2·4 를 이미 `UNCALIBRATED` 로 강등(Step 4 는 자기반증까지). 미탐 자백 7종을 스스로 열거(GitHub API 403 4쿼리 미실행 · 국립국어원 규칙목록 미개봉 · description 기준 판정 등)"
   cost: 152k tokens
+- date: 2026-08-17
+  agent: codex/gpt-5.5 (cross-family sidecar) — qasp-dev #174 load-bearing 게이트 리뷰
+  purpose: "게이트 exit enum·면제 경로 변경의 degrade-direction / bypass / 테스트 판별력 적대검증"
+  outcome: partial
+  evidence: "5건 지목, 전부 diff 인용 동반. **실행으로 갈랐다 — 2 반증 · 3 확인.** 🟥 반증 둘(깊은 `src/**/*.py`·중첩 `scripts/ci/*.sh` 가 샌다)의 근거 오류가 같다: **bash `case` 의 `*` 는 `/` 를 먹는다**(경로 글롭 semantics 로 읽음) — 실측 rc=1 로 둘 다 정상 차단. 확인 셋 중 **이 PR 이 새로 만든 것은 S1-c 하나**(sandbox 제외가 침묵, 종전 rc=4→rc=0 무흔적)이고 그것만 수리. 나머지 둘은 기존 결함·재발 0건이라 미착수. 테스트 판별력에서 되돌림 에이전트와 **갈렸고 코덱스가 옳았다**(파일명 substring 은 그 이름이 위반 목록에 실려도 참 → 보고 형태로 조임). ⇒ 사이드카 발견은 소스로 닫히기 전엔 판정이 아니다 — 이번엔 40% 가 틀렸다"
+  cost: 68k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated, sonnet) — qasp-dev #174 되돌림 프로브 ⓕ축
+  purpose: "PR 이 추가한 테스트가 장식인지 실측 — 수리 4건 개별 되돌림 3단(적용확인→실행→복원) + substring 8행 판별력"
+  outcome: accepted
+  evidence: "tool_uses 25(계기 생존 — 카드가 경고한 `tool_uses: 0` 아님). **4/4 앵커 생존**, 매번 대응 레인만 적색(S1→2건·S2→1건·S3→2건·B1→known-pair 2건), 무관 25~28개는 통과 → 과결합 0. 복원 후 29 passed 재확인, 트리 clean. 🟥 substring 8행은 **전부 ✅ 로 판정했는데 코덱스와 갈렸고 이쪽이 졌다** — 「뚫리는 입력을 제시 못 함」을 판별력 있음으로 읽었으나, 그 단언이 *주장*하는 것(«범위 밖 보고가 났다»)은 파일명만으로 증명되지 않는다. **없음을 증명 못 함 ≠ 판별력 있음**"
+  cost: 135k tokens
