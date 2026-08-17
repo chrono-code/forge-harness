@@ -2110,3 +2110,39 @@
   outcome: accepted
   evidence: "7건(A급3·B급4) · **자력 적발 0/7**. A급 전부 손 재현 후 수리 — ⓐ 멱등 가드 `substr($0,9)` 오프셋(`- run: `는 7자, 값은 8부터): 슬러그 첫 글자가 잘려 **어떤 정상 엔트리와도 매칭 안 됨** = 가드가 조용히 무력인데 30레인 전부 초록이었다(재현: `printf -- '- run: g2\\n' | awk '{print substr($0,9)}'` → `2`) ⓑ L11 이 «멱등»을 잰다면서 증인 원장이 아니라 G4 INDEX.md 를 셌다 → L14 신설(증인 실제 복사 후 2회 기록) ⓒ L13-b 가 `step 6 BLOCKED` 한 줄만 grep 해 뒤에 한 줄 더 붙이면 게임 가능 → 차단 블록 전체로 확대. B급 4 중 3 채택(인접성 상태기계 · 리터럴→호출 인자 **집합 대조** · 거짓 주석 정정), 1건 수용(레거시 런이 시끄럽게 막히는 건 안전 방향). 🟥 그리고 **내 주석 하나가 거짓임을 지적**했다(레인이 증인을 복사한다고 적었는데 `grep -c 'cp .*chamber_witness'`=0). 미탐 자백: bash 3.2/BSD·GNU 이식성 구체 결함 0건 — 공백 아티팩트명은 상류에서 이미 거부되어 도달 불가라고 근거까지 댔다"
   cost: 50k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — axes-run 4축→6축 조사·설계안
+  purpose: "마커 스펙 정본 위치 · 훅이 실제로 강제하는 것 · 6축 대응표 · 기존 마커 실측 · 마이그레이션 설계안 3개. 파일 수정 금지(read-only)"
+  outcome: accepted
+  evidence: "tool_uses 21. 🟥 승인의 전제를 반증한 것이 최대 기여 — 「기존 마커 전량 무효화」가 거짓이고 훅은 `.axes_23_passed_{branch}_{TODAY}.marker` 한 개만 검증한다(pre-commit:906 인용). 실측 190건 중 차단 0 · 재해석 51. 그리고 스펙 정본이 **어느 rule 파일에도 없다**는 것(grep 0건)을 지목해 §Marker axis fields 신설로 이어졌다. 자기 미확인 3건을 스스로 열거(08-10 자 기호 마커 2건이 어떻게 통과했는지 · 기호 grep 이식성 · 다른 소비자 영향)"
+  cost: 168k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — deepteam 업스트림 이슈 준비
+  purpose: "전달본 §DELIVERABLE 정리 + 채널 기계 확인 + 이슈 템플릿/라벨 조사 + 사생활 스캔. 게시 금지(read-only)"
+  outcome: partial
+  evidence: "tool_uses 14. 채널을 기계로 확정(hasDiscussionsEnabled=false / hasIssuesEnabled=true, 출력 인용) — 운영자 서술을 맞춰준 게 아니라 확인했다. 전달본이 `sentry_sdk` 누락을 「the one genuinely actionable thing」으로 단정한 것을 코드검색 hit 0 근거로 격하 권고. 🟥 **그 권고가 뒤집혔다** — 검색 대상이 `main` 이었고 설치되는 건 릴리스 1.0.9 다. 깨끗한 venv 실측에서 `import deepteam` 이 실제로 죽었고(telemetry.py:7), 이슈는 사용노트가 아니라 **버그 리포트**로 게시됐다(#263). 정적 검색이 「없다」고 하고 실행이 「있다」고 한 형태 — partial 로 기록"
+  cost: 107k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — ⓓ 3자대면(날짜 컷오프 마이그레이션 선례 대조)
+  purpose: "「날짜 컷오프 + 표기법이 스키마 버전을 나른다」가 남의 코드베이스에 알려진 패턴인가 안티패턴인가. 반증 기회로 돌릴 것을 명시 지시"
+  outcome: accepted
+  evidence: "tool_uses 2(WebSearch/WebFetch 중심). 🟥 **내 명제 2건을 반증했다** — ⓐ 「표기법이 배열을 선언한다」가 거짓(코퍼스 손 카운트: axes-run 53건 중 기호 4·혼용 1, 기호 4 중 2건이 08-10 자 옛 4축 의미) ⓑ 날짜 컷오프가 프로덕션 도달 불가 분기(호출부가 ${TODAY} 로 경로 구성). 둘 다 내가 재현 확인. 선례 3계열을 URL 근거로 제시(SonarQube new-code-period · PNG 청크 암묵버전 + 그 전제 문장 · git repositoryFormatVersion 3단 롤아웃 · protobuf 필드번호 재사용금지). 「찾지 못함 ≠ 없다」를 스스로 구분해 적음"
+  cost: 136k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — qasp-dev 입장리뷰(정적+동적)
+  purpose: "전파 자산(pre-commit) 변경에 대한 standpoint 축. 훅 부재 가설을 실행으로 검증 + qasp 자기 정본 독해. 실물 레포 불변"
+  outcome: accepted
+  evidence: "tool_uses 19. 임시 클론에서 git commit 8회, **양방향 컨트롤**(스텁 훅 rc=1 / 실구성 rc=0 · hooksPath unset 시 폴백 rc=1)로 pre-commit 부재 확정. 🟥 **내 프레이밍을 규범적으로 반증** — 「게이트 부재 = S급 결함」이 아니다(qasp 정본 «4축 비적용» + FH 정본 «NEVER installed into field projects», 양쪽 일치). 내가 세운 「.new.NNNNN = 설치 중단 흔적」 가설도 반증(rename 단계 부재, mv 는 폐기된 옛 설계). 부산물로 FH 자기 기록 2건 오진 발견(08-03 철회 후 08-10 재발). 등급 tier2(qasp-dev)"
+  cost: 146k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — pmh-dev 동적 입장리뷰(tier2)
+  purpose: "6축 전파가 pmh-dev 에서 무엇을 깨는가. 임시 클론에 이식 후 실제 커밋 양팔. 실물 레포 불변"
+  outcome: accepted
+  evidence: "tool_uses 43. 🟥 **자기 방법론 사고를 자백하고 전량 재실행** — 1차가 움직이는 FH 워킹트리를 소스로 써서 중간 측정이 설명 불가능한 값을 냈다(훅 1414줄). `git show a15e384:<path>` 로 동결 후 재실행하고 매 실행마다 계기 적재를 diff 로 대조(IDENTICAL). 커밋 4팔 exit 1/1/0/0 + 되돌림 컨트롤로 귀속 확인. 신규 FAIL 0(기준선 35=전파 후 35) · 기존 마커 42건 재판정 0 · LC_ALL=C sed remap 유니코드 무손상(바이트 IDENTICAL). **내 델타 안의 결함 2건 적발** — 픽스처 헤더가 기호 표기로 옛 4축 의미를 가르침 + selfcheck 주석 stale. 범위 밖 관측 2건을 미확인으로 분리 기재"
+  cost: 180k tokens
+- date: 2026-08-17
+  agent: codex/gpt-5.5 (cross-family sidecar, headless)
+  purpose: "출하 배선 + axes-run 6축 델타 309줄에 대한 적대 리뷰. 공격 지점 6개를 명시 지정"
+  outcome: accepted
+  evidence: "8건 지적(S2·A3·B3). 그중 2건(혼용 오탐 · 화살표 fail-open)은 내가 투입 전 자력 수리했고 codex 가 독립으로 같은 지점을 지목해 수렴 확인 — 그 둘은 「둘 다 봤다」. **나머지 5건 자력 적발 0**: grep 이 주석 처리된 호출에 매칭(S) · if:false 로 꺼진 잡(S) · 트리거 미검사(A) · 잡 신원 미검사(A) · 마커 파일명 날짜 추출 fail-open(B, 선재). 각 지적에 깨뜨리는 입력을 구체적으로 제시해 손 재현이 즉시 가능했다"
+  cost: 85k tokens
