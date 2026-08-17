@@ -731,31 +731,121 @@ validate_crossfamily_leg() { # $1 = marker path
 # 브랜치가 전부 막히고, 그 과차단이 `--no-verify` 를 습관화시켜 같은 훅 안의 Destructive-Op
 # 게이트까지 무장해제한다(오늘 실측된 트레이드오프).
 AXES_RUN_GRACE_DATE="2026-08-10"
+# ── 6축 확장 (2026-08-17) ────────────────────────────────────────────────────────
+# 산문 정본은 6축(`fh_three_layer_canon.md` §1-a-2)인데 이 훅은 네 글자만 봤다. 확장하면서
+# **키 표기를 산문과 1:1 로 정렬**한다 — 그 이유가 「예쁘게」가 아니라 아래 실측이다.
+#
+# 🟥 옛 배열과 새 배열은 **같은 글자가 다른 축을 가리킨다**:
+#      문자   §1-a (옛 4축, 마커가 쓰던 것)   §1-a-2 (현 6축, 산문이 쓰는 것)
+#       ⓐ     다른 계열                       다른 계열        (동일)
+#       ⓑ     첫 실사용                       **입장**         ← 옛 ⓑ 는 현 ⓔ 로 밀렸다
+#       ⓒ     기록 그라운딩                   격리 그라운딩    (대응)
+#       ⓓ     되돌림 실측                     **3자 대면**     ← 옛 ⓓ 는 현 ⓕ 로 밀렸다
+#    그래서 `b=`/`d=` 를 그대로 쓰면서 의미만 바꾸면 **훅이 조용히 다른 축으로 읽으며
+#    오류를 내지 않는다.** 무음 재해석은 이 레포가 `not found ≠ 0` 라 부르는 것의 형제다.
+#
+# 실측(2026-08-17): 디스크 마커 190개 중 유예일 이후 51개. 훅은 «오늘·이 브랜치» 마커
+# **한 개만** 검증하므로(아래 호출부) 확장으로 **커밋이 막히는 기존 마커는 0건**이다.
+# 실제 비용은 그 51건이 «옛 배열인지 새 배열인지 읽을 수 없다» 는 것 — 파손이 아니라
+# **미측정**이다. 그래서 처방이 「고친다」가 아니라 **「어느 배열인지 말하게 만든다」**:
+#      ASCII 키 (a=…d=)     → 옛 4축 배열
+#      기호 키 (ⓐ=…ⓕ=)      → 신 6축 배열
+# 표기법 자체가 배열을 선언하므로 훗날 감사자가 grep 한 방으로 판별한다. 그래서 **혼용은
+# 차단**한다 — 혼용을 허용하면 이 판별 가능성이 통째로 사라진다.
+#
+# 이식성: bash 3.2 + BSD grep, LC_ALL={C, POSIX, en_US.UTF-8, ko_KR.UTF-8} 4개 arm 에서
+# 6/6 HIT · known-negative(ⓖ) 0건으로 실측했다. ⚠️ Linux/GNU grep 은 **미측정** — CI(ubuntu)
+# 가 첫 측정이고, 깨지면 아래 픽스처 레인이 빨개진다(무음 아님).
+#
+# ⓑ입장은 값을 여기 적지 않는다 — 이미 `standpoint:` 자기 필드가 정본이라 이중 기록이 된다.
+# 대신 `ⓑ=→standpoint` 포인터를 요구하고, 그 경우 `standpoint:` 줄의 **존재**를 확인한다.
+# (`standpoint:` 값 자체의 enum 검증은 별건이고 정본이 명시적으로 유보해 뒀다.)
+SIX_AXES_GRACE_DATE="2026-08-17"
 validate_marker_axes_run() { # $1 = marker path
-  local m="$1" mdate line ax miss=""
+  local m="$1" mdate line ax miss="" nlines axkeys six=0
   mdate=$(basename "$m" | sed -nE 's/.*_([0-9]{4}-[0-9]{2}-[0-9]{2})\.marker$/\1/p')
   # 날짜를 못 읽으면 요구하지 않는다 — 파일명 규약 밖의 마커를 이 검사가 판정할 근거가 없다.
   [ -n "$mdate" ] || return 0
   [ "$mdate" \< "$AXES_RUN_GRACE_DATE" ] && return 0
+  [ "$mdate" \< "$SIX_AXES_GRACE_DATE" ] || six=1
+
+  # 다중 `axes-run:` 줄 차단. `crossfamily:` 는 예전부터 이걸 막는데 `axes-run` 은 안 막아서,
+  # 둘째 줄이 **없다고 판정되는 게 아니라 안 보인다**(아래 grep -m1). 실측: 디스크에 2줄짜리
+  # 마커 1건 존재(2026-08-15). 같은 얼굴이므로 같은 자리에서 닫는다.
+  nlines=$(grep -c -E '^[[:space:]]*axes-run:' "$m" 2>/dev/null)
+  if [ "${nlines:-0}" -gt 1 ]; then
+    echo "  ❌ MARKER FORMAT — 'axes-run:' 줄이 ${nlines}개다 (하나여야 한다)"
+    echo "     이 검사는 첫 줄만 읽는다. 둘째 줄은 «없다고 판정»되는 게 아니라 **안 보인다** —"
+    echo "     즉 거기 적은 축은 검사를 통째로 우회한다. 한 줄로 합쳐라."
+    return 1
+  fi
 
   line=$(grep -m1 -E '^[[:space:]]*axes-run:' "$m" 2>/dev/null)
   if [ -z "$line" ]; then
-    echo "  ❌ MARKER FORMAT — missing 'axes-run:' line (4축 자기 대조)"
+    echo "  ❌ MARKER FORMAT — missing 'axes-run:' line (축 자기 대조)"
     echo "     CLAUDE.md §3층 자기 대조: **돌린 축과 안 돌린 축을 각각 이름으로** 적는다."
     echo "     안 돈 축은 침묵이 아니라 'none' 이다 — 미측정을 0으로 렌더하지 않는다."
-    echo "       axes-run: a=codex(4건) b=CI배선 c=none d=되돌림(국소성 확인)"
-    echo "     (a=다른계열 · b=첫실사용 · c=기록그라운딩 · d=되돌림)"
+    if [ "$six" -eq 1 ]; then
+      echo "       axes-run: ⓐ=codex(4건) ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=CI배선 ⓕ=되돌림(국소성)"
+      echo "     (ⓐ다른계열 · ⓑ입장 · ⓒ격리그라운딩 · ⓓ3자대면 · ⓔ첫실사용 · ⓕ되돌림실측)"
+    else
+      echo "       axes-run: a=codex(4건) b=CI배선 c=none d=되돌림(국소성 확인)"
+      echo "     (a=다른계열 · b=첫실사용 · c=기록그라운딩 · d=되돌림)"
+    fi
     return 1
   fi
-  for ax in a b c d; do
+  if [ "$six" -eq 1 ]; then axkeys="ⓐ ⓑ ⓒ ⓓ ⓔ ⓕ"; else axkeys="a b c d"; fi
+  for ax in $axkeys; do
     echo "$line" | grep -qE "(^|[[:space:]])${ax}=[^[:space:]]" || miss="$miss $ax"
   done
   if [ -n "$miss" ]; then
-    echo "  ❌ MARKER — 'axes-run:' 에 빠진 축:$miss"
-    echo "     네 축을 **전부** 적는다. 안 돌린 축은 'none' 으로 명시한다 — 빠뜨리는 것과"
-    echo "     안 돌렸다고 적는 것은 다른 명제이고, 빠뜨리면 읽는 쪽이 전자를 후자로 읽는다."
-    echo "       axes-run: a=codex(4건) b=CI배선 c=none d=되돌림(국소성 확인)"
+    if [ "$six" -eq 1 ]; then
+      echo "  ❌ MARKER — 'axes-run:' 에 빠진 축:$miss"
+      echo "     여섯 축을 **전부** 적는다. 안 돌린 축은 'none' 으로 명시한다 — 빠뜨리는 것과"
+      echo "     안 돌렸다고 적는 것은 다른 명제이고, 빠뜨리면 읽는 쪽이 전자를 후자로 읽는다."
+      echo "       axes-run: ⓐ=codex(4건) ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=CI배선 ⓕ=되돌림(국소성)"
+      echo "     (ⓐ다른계열 · ⓑ입장 · ⓒ격리그라운딩 · ⓓ3자대면 · ⓔ첫실사용 · ⓕ되돌림실측)"
+      echo "     🟥 옛 ASCII 배열(a=…d=)과 **글자 의미가 다르다** — 옛 b=첫실사용은 지금 ⓔ,"
+      echo "        옛 d=되돌림은 지금 ⓕ 다. 옛 표기를 그대로 옮기면 축이 뒤바뀐다."
+    else
+      echo "  ❌ MARKER — 'axes-run:' 에 빠진 축:$miss"
+      echo "     네 축을 **전부** 적는다. 안 돌린 축은 'none' 으로 명시한다 — 빠뜨리는 것과"
+      echo "     안 돌렸다고 적는 것은 다른 명제이고, 빠뜨리면 읽는 쪽이 전자를 후자로 읽는다."
+      echo "       axes-run: a=codex(4건) b=CI배선 c=none d=되돌림(국소성 확인)"
+    fi
     return 1
+  fi
+
+  if [ "$six" -eq 1 ]; then
+    # ── 혼용 가드는 **짓지 않는다**. 지었다가 실측으로 지웠다 ────────────────────
+    # 초판은 `grep -qE "(^|[[:space:]])[a-f]=[^[:space:]]"` 로 옛 ASCII 키 잔존을 차단했다.
+    # 자기 프로브에서 두 가지가 드러났다:
+    #   ⓐ **오탐이 실재한다** — 값이 자유 산문이라 `ⓔ=실사용 ⓕ=되돌림 f=0.9 상승` 이나
+    #      `ⓔ=arm a=제어 b=처리 비교` 가 «혼용» 으로 차단됐다. 과차단은 `--no-verify` 를
+    #      훈련시키고, 그건 같은 훅 안의 Destructive-Op 게이트까지 무장해제한다.
+    #   ⓑ **그리고 애초에 불필요하다** — 「어느 배열인가」는 **여섯 기호가 다 있는가**로
+    #      이미 판별된다. 옛 ASCII 키가 기호 키를 *대신하는* 경우는 그 기호가 빠졌다는
+    #      뜻이므로 바로 위 missing-key 검사가 이미 차단한다. 여섯이 다 있는 줄에 남은
+    #      ASCII 조각은 값의 일부일 뿐 배열 선언을 흐리지 않는다.
+    # ⇒ 오탐만 만들고 아무것도 더 막지 않는 필터였다. **삭제가 수리보다 낫다**
+    #   ([[feedback_deletion_beats_repair_dead_filter]]). 픽스처는 남긴다 — 그 케이스는
+    #   여전히 차단돼야 하고, 이제 *다른 사유로* 차단된다는 사실 자체가 고정할 값어치가 있다.
+
+    # ⓑ입장은 값을 여기 적지 않는다 — `standpoint:` 자기 필드가 정본이라 이중 기록이 된다.
+    # 포인터를 쓴 경우 그 필드의 **존재**만 확인한다(값 enum 검증은 별건, 정본이 유보).
+    # 🟥 화살표를 필수로 보면 **fail-open** 이다 — 자기 프로브 실측: `ⓑ=standpoint` (화살표
+    #    없음)는 검사를 통째로 비껴가서 죽은 포인터가 그대로 통과했다. 그래서 «ⓑ 값이
+    #    standpoint 를 참조하는가» 로 넓힌다. **명시 잔여**: `ⓑ=입장리뷰 standpoint 참조`
+    #    처럼 참조어가 **다른 토큰**에 있으면 여전히 안 잡힌다(값에 공백이 허용되므로
+    #    토큰 경계를 알 수 없다). 넓히려면 값 문법을 조여야 하고 그건 별건이다.
+    if echo "$line" | grep -qE "(^|[[:space:]])ⓑ=[^[:space:]]*standpoint" \
+       && ! grep -qE '^[[:space:]]*standpoint:[[:space:]]*[^[:space:]]' "$m" 2>/dev/null; then
+      echo "  ❌ MARKER — 'ⓑ=→standpoint' 라고 적었는데 'standpoint:' 줄이 없다"
+      echo "     포인터가 가리키는 곳이 비어 있으면 그건 기록이 아니라 죽은 포인터다."
+      echo "       standpoint: tier1        (내용만 — 남의 하네스 정본을 안 읽었다)"
+      echo "       standpoint: not-applicable"
+      return 1
+    fi
   fi
 
   line=$(grep -m1 -E '^[[:space:]]*controls:' "$m" 2>/dev/null \

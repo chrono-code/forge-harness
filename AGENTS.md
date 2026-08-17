@@ -116,12 +116,19 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    (2026-08-09) and §1-a-2 expanded them to six (2026-08-16)**: ⓐ different family · ⓑ standpoint ·
    ⓒ isolated grounding · ⓓ third-party encounter · ⓔ first real use · ⓕ revert-and-observe.
    Axes are separated by **what they received**, not by how adversarial they are — same input,
-   same blind spot, however many reviewers you add. ⚠️ The machine layer is **4+1, not four**:
-   `axes-run` requires four letters AND ⓑ is separately mechanized as its own `standpoint:` marker
-   field — that field is the +1, so counting it as "four" erases a mechanized axis. (This sentence
-   said "four" until 2026-08-17 while describing the +1 in its own next clause; the canon was
-   corrected in `fh_three_layer_canon.md` and this entry point was not, which is precisely the
-   CC↔Codex drift the session-close ④-b parity check exists to catch — found by that check.)
+   same blind spot, however many reviewers you add. ✅ **The machine layer now carries all six**
+   (2026-08-17): a marker dated on/after that day must write `axes-run:` with the **circled keys**
+   `ⓐ=… ⓑ=→standpoint ⓒ=… ⓓ=… ⓔ=… ⓕ=…`; markers dated earlier keep the old **ASCII four**
+   (`a b c d`) and are not retroactively blocked. 🟥 **The two arrays are not the same letters —
+   old `b` (first real use) is now `ⓔ`, old `d` (revert probe) is now `ⓕ`.** Copying an old line
+   forward silently swaps two axes and raises no error, which is why the *notation itself* declares
+   which array a marker used. `standpoint:` remains the canonical field for ⓑ (the `axes-run` entry
+   is only a pointer to it, and a pointer at an empty field is blocked); **its value enum is still
+   validated by nothing** — that is the one remaining gap, and it is not the same thing as the axis
+   being unmechanized. Format spec: `.claude/rules/fh_4axis_gate.md §Marker axis fields`.
+   (Two drift corrections landed here on 2026-08-17: first this sentence said "four" while its own
+   next clause described the +1 — caught by the session-close ④-b CC↔Codex parity check — and then
+   the machine layer moved to six the same day.)
    **ⓓ has no field at all** — record it in prose and do not read a silent ⓓ as a run one.
    🟥 ⓑ **standpoint is itself split** (2026-08-17): a STATIC read of the target's own files is
    `tier1b` and **executes nothing**; `tier2`+ asserts that something was RUN — the discriminator is
