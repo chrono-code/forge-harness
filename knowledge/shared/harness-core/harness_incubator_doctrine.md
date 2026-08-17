@@ -110,6 +110,11 @@ this chamber's field emit terminus); an **FH-internal utility** (a skill/script/
 field harness) instead routes through the **New-Skill Pre-Commit gate + `asset-placement-gate`** (the
 same gate every FH asset passes). KILL emits nothing — the workspace stays as the evidence record.
 
+> 🟥 **2026-08-17 이후 이 문단은 단독으로 읽으면 틀린다.** 아래 «clears **all four**» 중
+> **(1) net-new 는 더 이상 KILL 사유가 아니다**(→ `CURATED` 라우팅) — §3-SCREEN-2026-08-17 로
+> 대체됐고, (2) 는 `NOT-APPLICABLE` 라우팅이다. **(3)·(4) 는 KILL 로 그대로 유효하다.**
+> 아래 본문은 그 정정 이전의 원문이며 이력으로 보존한다.
+
 **EMIT-worthiness — the measured screening criterion (runs #5–#6, 2026-07-14)**: six chamber runs, EMIT
 0/6, all KILL. A candidate is emit-worthy only if it clears **all four** of — (1) **net-new** (not a
 reinvention of an existing FH/official asset, nor a cosmetic re-wrap of code that already ships — runs
@@ -131,6 +136,90 @@ value to date remains *screening* — preventing reinventions, low-precision bir
 standalone graduations — not yet *birthing*. **Graduation order** (run #6's positive finding): a
 hub-state-dependent capability graduates hub-internal → proven in use → THEN extracted portable, never
 speculated standalone-first — the only path every successfully-portable FH asset actually took.
+
+---
+
+### 🟢 §3-SCREEN-2026-08-17 — **(1) net-new 는 더 이상 KILL 사유가 아니다** (운영자 결정)
+
+> *"사람들이 자신이 구상한 하네스를 인큐베이팅으로 해서 출하하려는데, 그럴 때마다 항상
+> **«이미 있는 기능이야»라고 리젝시키면 쓰고 싶은 생각이 들까?** 그것보다는 «이미 이러한
+> 레퍼런스가 있는데 **너만의 방법으로 커스터마이징하고 싶다면 여기서 출발해보자**»가 되어야 할
+> 것 같아. **인큐베이팅이 필요없다면 큐레이팅으로 가면 되는 거고.**"*
+> · *"**그 사람이 만들려는 걸 인큐베이터가 막을 필요가 있을까. 그냥 만들게 두면 되지.**"*
+> · *"인큐베이터는 **훈수를 놓게 하기 위한 장치가 아니라**, 원하는 프로젝트나 하네스를
+> **출하 전부터 미리 굴려보고 사용해보게 하는 에뮬레이션**과 그로 인해 자신만의 것을
+> **성숙하게 출하시키기 위한 장치**"*
+
+**바뀌는 것 — 기준은 남고, 그 기준의 «판정 결과»가 바뀐다:**
+```
+전       net-new 미달  →  KILL          (후보가 회수된다. 사용자는 빈손으로 돌아간다)
+후       net-new 미달  →  **CURATED**    (선행 목록 + 가장 가까운 것 + 그것이 안 덮는 델타를 준다)
+                          → 사용자가 «그거 쓸게» 면 거기서 끝(큐레이팅 종료)
+                          → 사용자가 «내 걸 만들래» 면 **인큐베이터로 들어간다**
+```
+🟥 **전환점은 판정이 아니라 의사다.** 인큐베이터는 「이게 새로운가」를 묻지 않고 「너 만들 거냐」를
+묻는다. 그리고 선행 목록은 **회수 통보가 아니라 재료 목록**이다 — 아래 §3-SCREEN-b.
+
+🟥 **초판이 여기서 게이트를 무력화했고, 적대검증이 커밋 전에 잡았다. 그 정정을 남긴다.**
+초판은 «진짜 KILL» 을 셋으로 줄이며 **(3) 을 「precision 을 만들 수 없음(원리적 불가)」으로
+바꾸고 (4) 를 「형태 라우팅」으로 격하**했다. 둘 다 틀렸다:
+- **(3) 의 원문은 «원리적 불가» 가 아니라 «실측 미달» 이다** — *"run #5's rule scored **5/5
+  false-positive** on 111 real files; run #6's heuristic scored **14/22 false-fire**"*.
+  초판 문장대로면 **런 #5·#6 이 KILL 이 아니게 된다**(둘 다 precision 을 *만들 수는* 있었다).
+- **합산이 진짜 문제였다**: 이 절이 챔버의 실증된 값어치를 셋으로 적는데
+  (*"preventing **reinventions** · **low-precision births** · **premature standalone
+  graduations**"*), 초판이 재발명→CURATE · (3)→원리적불가 · (4)→형태라우팅 으로
+  **셋 다 뺐다.** 남는 entry 스크린이 「사용자가 만들겠다고 하나」 하나뿐이 됐다.
+
+**그래서 이렇게 정리한다 — entry 와 exit 를 섞지 않는다** (§3-c 가 *"two different questions,
+**do not merge them**"* 이라고 명시한 그 분리):
+
+```
+── ENTRY (들어갈 때, 이 절) ──────────────────────────────────────────────
+ (1) net-new 미달        → **CURATED**  라우팅. KILL 아님 (§3-SCREEN-2026-08-17)
+ (2) artifact-shaped 미달 → **NOT-APPLICABLE**. 판단-방법은 이 인큐베이터의 산출 형태가 아니다
+ (3) precision **실측 미달** → **KILL 유지** 🟥 «못 만든다» 가 아니라 «돌려봤더니 나빴다» 다
+ (4) hub-state 의존       → **KILL 유지** 🟥 premature standalone graduation 방지가 이 축의 일이고,
+                            §3 말미의 Graduation order(hub-internal → proven → extract)가 그 처방이다
+ ★ 사용자가 «안 만들래»    → **종료**(큐레이팅으로 끝. KILL 원장에 세지 않는다)
+
+── EXIT (나올 때, §3-c) ──────────────────────────────────────────────────
+ «설 수 없다»(inability-to-run) → **KILL**.  약함은 KILL 아님(§3-c ④)
+```
+🟥 **원리적으로 precision 을 만들 수 없는 대상**(판별 쌍을 구성할 수 없는 것)은 KILL 이 아니라
+**`NOT-APPLICABLE`** 이다 — 후보의 실패가 아니라 **이 인큐베이터의 바가 안 맞는 것**이다.
+
+⚠️ **§3-c 의 한 문장이 이 정정으로 갱신된다**: *"clear this one and fail the first
+(**alive, but a reinvention**)"* — 그 분기는 이제 KILL 이 아니라 **CURATED 로 라우팅**된다.
+
+**⚠️ 경계가 사라지는 것은 아니다.** 재발명이라는 *사실*은 여전히 측정하고 기록한다. 바뀐 것은
+그 사실을 **누구에게 무엇으로 주느냐**다: 게이트의 판정 근거 → 제작자의 출발점.
+
+### §3-SCREEN-b — **선행은 재료다** (인큐베이팅 가속화, 운영자)
+
+> *"앞서 찾았거나 정말 새로운 거라면 검색한 레포 중에서 **배워올 만한 것들을 일부만 빌려와서
+> 개발해 나가는 것**이 곧 인큐베이팅 **가속화**의 방법이 되기도 하겠지. 제로부터 자신만의
+> 아이디어만으로 하는 게 아니라 **프런티어에서 배워옴으로서 시작점부터 프런티어급 가능성을
+> 품은 채 태어나게 하는 것.** 개발자들이 코드를 다 새로 짜는 게 아니라 **구글링하는 전통**이
+> 있던 것처럼."*
+
+🟥 **가장 날카로운 형태**: **재발명 위험이 높다는 것은, 그만큼 빌려올 선행이 많다는 뜻이다.**
+옛 taxonomy 는 이것을 **거꾸로** 읽었다 — 재료가 풍부할수록 죽였다.
+```
+전    레퍼런스 발견 → KILL 근거   → 배출 확률 0 · 사용자는 빈손
+후    레퍼런스 발견 → 빌드 재료   → 시작점부터 프런티어급 · 사용자는 목록을 들고 간다
+```
+**같은 정보, 소비처만 바꾸면 정반대로 작동한다.** 그리고 이건 §3-c 의 EMIT 바(«설 수 있나»)를
+**더 쉽게 넘게 만든다** — 즉 큐레이팅은 인큐베이팅의 **관문이 아니라 성공률을 올리는 장치**다.
+
+**실물 대조(챔버 런 #13 `n-eff-probe`, 2026-08-17)**: K1(재발명)으로 KILL 됐고, 그 근거였던
+선행 5건(capture-recapture · double-fault measure · Snyk VulnBench · BenchGuard · SAST overlap)은
+새 taxonomy 에서 **부품 목록**이다 — 통계량은 기성품을 쓰고 새로 만들 것이 「크로스-노드 배선 +
+픽스처」 하나로 줄어든다. **판정을 소급해 무르지는 않는다**(사전등록 원칙). 바뀐 것은
+**다음 후보가 같은 자리에서 어떻게 처리되는가**다.
+
+> **정본**: `tracks/_meta/fh_signal_2026-08-17_incubator-is-not-a-gate.md`
+> — 흐름 전체 · 큐레이팅의 자리(⑤ 증폭자) · 진입로 B(축적 기반 제안) · 원장 과소계상 실측.
 
 **Chamber scope — what belongs in the chamber at all (run #7, 2026-07-14)**: run #7 tested a hub-internal
 reactivation of the cluster-wizard signal and KILLed it — decisively on its own merits (its "narrow
@@ -218,7 +307,89 @@ meta harness    easy to birth (a declaration starts one) │ needs endless tendi
 
 A meta-harness cannot clear a bar that reads *"walks on day one"* — not because it is worse, but
 because unbounded growth is its point. FH itself is the standing evidence: it is tended continuously,
-by design. **Therefore a meta-harness candidate is not a chamber candidate.**
+by design. ~~**Therefore a meta-harness candidate is not a chamber candidate.**~~
+
+### 🟥 §3-a-1-2026-08-17 — 위 결론 문장은 **폐기한다. 범위가 과했다** (운영자 결정)
+
+**폐기 사유 ① — 아래쪽 범위는 이미 넓혀져 있었고, 이 파일이 그 확장을 반영하지 않았다.**
+`ship_readiness_gate.md §Ⓑ-layering`(2026-08-16, 운영자 발화 기반)이 ② 의 범위를 이렇게 적는다:
+> *"② 프로젝트 인큐베이터 | **유닛을 낳는다 — 하네스만이 아니다.** … 범위가 **하네스 · 스킬 ·
+> 에이전트** · 하네스 형태가 아닌 일반 레포까지다"*
+
+🟥 **초판은 이걸 «8일 전에 뒤집혔는데 안 고쳐졌다 = half-fix 전파 결함» 이라고 적었다. 틀렸고,
+적대검증이 잡았다** — 그 줄이 넓힌 것은 사다리의 **아래쪽**(스킬·에이전트·일반 레포)이고,
+폐기 대상 문장은 **위쪽**(meta-**harness**)에 대한 진술이라 **둘은 논리적으로 양립한다**
+(하위를 포함한다고 상위가 포함되지 않는다). 게다가 그 줄에 **「md 규율」은 없다** — 그건
+2026-08-17 운영자 발화에서만 나온다. **결함 귀속을 철회하고 사유를 약화한다**: 뒤집힌 게
+아니라 **범위 확장이 이 파일에 반영되지 않은 것**이다. (그리고 폐기 자체는 사유 ③ 으로 선다.)
+
+**폐기 사유 ② — 논거가 실제로 덮는 범위는 «하네스 급» 뿐이다.**
+위 논거는 *"unbounded growth 가 본질이라 day-one walk 를 못 넘는다"* 인데, 그건 **meta-harness**
+에 대한 진술이다. 스킬 · 에이전트 · md 규율은 **day-one walk 가 가능하다 — 🟥 단 미검증이다.**
+
+⚠️ **초판은 «실제로 넘고 있다» 고 적었는데 근거가 없었고, 반례가 같은 레포에 있다.**
+day-one walk 의 정의는 *"on the first run, with the user adding nothing, the thing produces
+something useful"* 이고 반대말이 `built-but-not-wired`, 그리고 *"**wiring is part of the birth**"*
+다. **md 규율은 구조적으로 호출부가 없다**(살리언스). 실제 반례:
+`.claude/rules/fh_4axis_gate.md` 의 `standpoint:` 필드 — *"Still validated by nothing — zero hook
+lines, no fixture suite"* 였고, `tier1b` 등급이 **없어서 정적 리뷰가 tier2 로 기록**됐다.
+`axes-run` 기호 키도 53건 중 2건이 옛 의미로 쓰였다. **태어났고 안 걸은 md 규율들**이다.
+
+⇒ **유닛 클래스별 day-one walk 판정자를 따로 건다**:
+```
+스킬 · 에이전트   첫 런에서 사용자가 아무것도 안 더하고 쓸 만한 산출이 나오는가
+md 규율          🟥 **블라인드 floor-tier sim 이 실제로 그 규율을 발화하는가**
+                 (CLAUDE.md §Skeleton, Not Muscle — "done 은 블라인드 세션이 실제로 발화하는 것")
+```
+
+**폐기 사유 ③ — 그 셋이 이 인큐베이터의 최대 산출이다** (운영자, 2026-08-17):
+> *"**FH 의 스킬 상당수는 후자식(축적 기반)으로 만들어졌고** 전자도 거기에 해당하지.
+> FH 스킬은 **내 아이디어로 발명**한 거니까."* ·
+> *"인큐베이터의 **최대 레버는 하네스**이지만 그 **하위의 것들은 다 포함**된다.
+> 스킬 · 에이전트 · **md 규율** 등…"* ·
+> *"인큐베이션 대상은 마감시점 정리 시 **FH 자체가 될 수도 있다.**"*
+
+### 🟥 그러면 경계가 필요하다 — 판별 기준 (운영자)
+
+경계 없이 폐기만 하면 인큐베이터 정의가 **«FH 가 한 모든 것»**이 되어 계상이 무한대가 되고,
+그건 1건만 세는 것과 똑같이 못 쓴다. 기준은 이것이다:
+
+> *"**스킬 없이도 FH 는 동작하지만, 그걸 단축시킬 유닛을 낳은 것까지는 인큐베이팅으로 봐야
+> 한다.**"*
+
+```
+❌ 「FH 가 그 일을 했나」          — 이러면 전부가 인큐베이팅이라 측정 불능
+⭕ 조건 1  「그 일을 **단축시키는 유닛을 낳았나**」
+⭕ 조건 2  「그 유닛이 **자기 소비처를 새로 갖는가**」 ← 🟥 **크기 축. 둘 다 필요하다**
+           (별도 레포 · 플러그인 엔트리 · 독립 호출면 — «호출부가 새로 생겼나»)
+
+범위   하네스 ← 최대 레버
+         ⊃ 스킬 · 에이전트 · **md 규율**
+         ⊃ 하네스 형태가 아닌 일반 레포
+```
+🟥 **조건 1 만으로는 계상이 무한대가 된다 — 적대검증이 반례를 냈다.**
+> `templates/.git-hooks/pre-commit` 에 필드 검사 한 줄 추가 → ⓐ md 규율이고 ⓑ 그 일을 단축시키고
+> ⓒ 「유닛」으로 셀 수 있다 = **세 조건 충족.** 그런데 그건 평범한 Mode D 자기개발이고
+> **4축 게이트가 이미 관할한다.** 여기에 «대상이 FH 자체일 수 있다» 가 붙으면
+> **모든 FH 세션의 대부분 커밋이 인큐베이팅**이 된다.
+
+**조건 2 가 그걸 자른다**: 기존 훅에 줄을 더하는 것은 **소비처가 이미 있던 것**이라 탈락하고,
+`dashboard-dev`·`ko-tech-writer`(플러그인 엔트리 신설)·`the-bible`(별도 레포)은 통과한다.
+**「일을 했다」와 「유닛이 태어났다」를 가르는 것이 조건 1, 「유닛」과 「기존 것의 확장」을
+가르는 것이 조건 2** 다.
+
+⚠️ **그래도 남는 잔여**: 조건 2 는 「소비처가 새로 생겼나」라는 **사후 관측**이라, 만드는 중에는
+판정이 유보된다. 사전 판정이 필요하면 «이것이 태어나면 어디서 불리는가» 를 INTENT 에 적게 하는
+것이 대응이지만 **미구축**이다.
+
+### 위 ⚠️ 회고 관찰은 어떻게 되나 — **재분류하되 폐기하지 않는다**
+
+아래 회고 관찰(«KILL 된 것 중 chamber-internal metering · hub-internal orchestration ·
+cluster wizardry · org relay 는 meta-shaped 였다»)은 **여전히 유효한 관찰**이다. 다만 그
+처분이 바뀐다: **「스코프 밖이라 KILL」이 아니라 「meta-*harness* 급이라 day-one walk 바를
+다르게 받아야 한다」**이다. `NOT-APPLICABLE` 분리(아래 문단)는 그대로 필요하고, 오히려
+이 정정으로 **더 필요해진다** — 이제 통이 셋이다: `KILL`(못 선다) · `CURATED`(선행이 있다,
+§3-SCREEN-2026-08-17) · `NOT-APPLICABLE`(meta-harness 급이라 이 바가 안 맞는다).
 
 ⚠️ **Retrospective observation, not a finding.** Re-reading the run ledger along this axis: of the
 KILLed candidates, those aimed at chamber-internal metering, hub-internal orchestration, cluster

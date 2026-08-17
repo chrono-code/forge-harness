@@ -609,14 +609,28 @@ installed **FH assets** run the **4-axis gate**; **field scaffolds** run **`asse
 `steel-quench`** (the FH pre-commit hook is repo-local and does **not** reach a scaffold installed into another
 repo, so this routing is not redundant with it) · **autonomy floor** — discover/rank trusted at opus-tier+;
 below-floor, present the raw recommend and ask · **HITL per item**, and `"끝까지 해줘 / 자율로 완주"` → full-autonomy under the `/goal-quench`
-gate: autonomy removes the per-item *prompt*, **never the gate**. Honesty boundary that must not soften in
-summary: the chamber **overwhelmingly screens** — hand-counted 2026-08-08 from the run ledger:
-9 full runs, **8 KILL, 1 EMIT**. It has birthed **once** (run #9 `forge-wiki`, shipped publicly), so
+gate: autonomy removes the per-item *prompt*, **never the gate**.
+
+🟥 **Chamber outcome vocabulary changed 2026-08-17 (operator decision) — the old count below is a
+snapshot of a *different instrument*, not a current rate.** Re-routing, not softening:
+`net-new` failure is no longer a KILL — it routes to **`CURATED`** (hand the maker the prior-art list
+and the delta it does not cover; *"그 사람이 만들려는 걸 인큐베이터가 막을 필요가 있을까"*), and a
+judgment-shaped candidate routes to **`NOT-APPLICABLE`**. **KILL survives for measured
+precision-shortfall, hub-state dependence, and inability-to-run** — the screening that was actually
+load-bearing is intact. Detail + the frozen known-pair that keeps the old instrument measurable:
+`harness_incubator_doctrine.md §3-SCREEN-2026-08-17` · `tracks/_meta/chamber_taxonomy_knownpair_PREREG_2026-08-17.md`.
+
+Honesty boundary that must not soften in summary — **under the old vocabulary**, hand-counted
+2026-08-08 from the run ledger: 9 full runs, **8 KILL, 1 EMIT** (13 runs · 11 KILL · 1 EMIT as of
+2026-08-17). It has birthed **once** (run #9 `forge-wiki`, shipped publicly), so
 "it has not birthed" — the earlier wording here — is no longer true. But do not upgrade the claim
 either: that run's workspace carries only a verdict file, with no intent/budget/blind-persona
 artifacts, so the **formal flow** is not what produced it. The first end-to-end formal run is #10 and
 it KILLed. Either way simulate-first stays a one-line HITL recommendation, never a push-button
 autonomous emit.
+⚠️ **Do not cite that ratio as "the chamber screens well" or "over-screens" going forward** — the
+counts were produced by a rule set that no longer runs, and whether it over-screened is **exactly
+what the frozen known-pair exists to measure and has not measured yet.**
 
 > **Detail**: See `knowledge/shared/harness-core/onboarding_acceleration_autopilot.md` — full Phase-0 branch
 > logic + `chamber_run.sh` scope, the per-phase skill composition, the remaining guards (no-reinvention
