@@ -270,10 +270,14 @@ does not substitute for it. Values: `tier1` (content-only, the default) · **`ti
 🟥 **Reading the target's real files, however cold, is `tier1b`, not this.** The discriminator is
 mechanical: *name the command you ran and the output you saw*; cannot name one → `tier1b`, always.
 This line said **"ran the target's own repo, content only"** until 2026-08-17 — actively teaching
-the opposite of the canon it summarizes — and it is the copy blind Sonnet sims actually reached
-for: after `field_verdict_crossfamily_gate.md §7` and `CLAUDE.md` were both corrected, two
-independent reps STILL graded a pure cold-read `tier2`, both quoting this phrasing. Two of three
-copies fixed is a fix that does not exist; see `§7` for the canon) · `tier2b(<harness>)` (same operator,
+the opposite of the canon it summarizes. 🟥 **RETRACTED (2026-08-17)**: this passage used to add
+that blind Sonnet sims *"STILL graded a pure cold-read `tier2`, both quoting this phrasing"* after
+the other two copies were fixed. Those runs had **`tool_uses: 0`** — nothing was read, so nothing
+was measured, and the claim that the sims "reached for this copy" was itself unfounded
+(`tracks/_meta/fh_completed_2026-08-16.md:690`; the live re-run inverted the grade at reps=1, below
+bar). **The reason to fix this copy needs no sim**: a summary that states the opposite of its canon
+teaches the opposite to whoever reads only the summary, and **two of three copies fixed is a fix
+that does not exist** — that is gate-locality, not a measurement. See `§7` for the canon) · `tier2b(<harness>)` (same operator,
 target's real runtime — local wiring visible, but not an independent reviewer) · `tier3(<harness>)`
 (a *different* operator of the target harness ran it — the only fully independent + local-wiring
 rung) · `not-applicable` (no target-harness standpoint exists — most same-repo dispatches) ·

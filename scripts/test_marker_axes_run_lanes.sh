@@ -2,8 +2,16 @@
 # test_marker_axes_run_lanes.sh — regression fixtures for pre-commit validate_marker_axes_run.
 #
 # 대상: CLAUDE.md §3층 자기 대조가 요구하는 마커 3줄 중 **기계로 볼 수 있는 두 줄** —
-#   axes-run:  네 축(ⓐ다른계열 ⓑ첫실사용 ⓒ기록그라운딩 ⓓ되돌림) 각각의 실행 여부
+#   axes-run:  각 축의 실행 여부. 마커 날짜에 따라 **배열이 둘**이다:
+#                >= 2026-08-17  ⓐ계열 · ⓑ입장 · ⓒ격리그라운딩 · ⓓ3자대면 · ⓔ첫실사용 · ⓕ되돌림
+#                <  2026-08-17  a=계열 · b=첫실사용 · c=기록그라운딩 · d=되돌림  (옛 ASCII 4축)
 #   controls:  각 축 컨트롤의 **생사**
+#
+# 🟥 이 헤더 자신이 2026-08-17 까지 그 충돌을 저지르고 있었다 — «네 축(ⓐ다른계열 ⓑ첫실사용
+#    ⓒ기록그라운딩 ⓓ되돌림)» 이라고, **기호 표기로 옛 4축 의미**를 가르쳤다. 훅 본문이
+#    「옛 b=첫실사용은 지금 ⓔ」 라고 경고하는 파일의 짝인데 정작 짝이 반대를 가르쳤고,
+#    같은 세션이 이 파일을 11→25레인으로 늘리면서 **헤더는 안 봤다**. 잡은 것은 pmh-dev
+#    입장리뷰(tier2)이고, 이 파일은 전파 자산이라 그 오류가 하류로 배송되던 중이었다.
 #
 # 🟥 이 스위트가 증명하지 않는 것 (계약을 픽스처로 못박는다):
 #   「a=codex」 라고 적혀 있을 때 codex 가 **실제로 돌았는지**는 검사하지 않는다.
@@ -25,12 +33,19 @@ T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 # 훅에서 함수 + 유예 상수를 그대로 뽑아 쓴다. 복제하면 드리프트하므로 **소스가 하나**다.
 {
   grep -E '^AXES_RUN_GRACE_DATE=' "$HOOK"
+  grep -E '^SIX_AXES_GRACE_DATE=' "$HOOK"
   sed -n '/^validate_marker_axes_run()/,/^}/p' "$HOOK"
 } > "$T/fn.sh"
 
 # 계기 자체가 살아있는지 먼저 본다 — 추출이 실패하면 모든 레인이 «통과»로 초록이 된다.
-if ! grep -q 'validate_marker_axes_run()' "$T/fn.sh" || ! grep -q '^AXES_RUN_GRACE_DATE=' "$T/fn.sh"; then
-  echo "❌ 계기 사망: 훅에서 함수/상수 추출 실패 — 레인 결과를 신뢰하지 마라"
+# 🟥 상수를 **각각** 확인한다. 하나로 뭉뚱그리면 새 상수가 추출에서 빠져도 초록이고,
+#    그 경우 함수는 unbound 로 죽으며 모든 레인이 BLOCK 으로 몰려 «6축이 잘 막는다» 로
+#    오독된다 — 계기 고장이 판정으로 렌더되는 형태다.
+for _c in AXES_RUN_GRACE_DATE SIX_AXES_GRACE_DATE; do
+  grep -q "^${_c}=" "$T/fn.sh" || { echo "❌ 계기 사망: 훅에서 ${_c} 추출 실패 — 레인 결과를 신뢰하지 마라"; exit 1; }
+done
+if ! grep -q 'validate_marker_axes_run()' "$T/fn.sh"; then
+  echo "❌ 계기 사망: 훅에서 함수 추출 실패 — 레인 결과를 신뢰하지 마라"
   exit 1
 fi
 
@@ -89,6 +104,75 @@ check "$G2" PASS "파일명에 날짜가 없으면 판정 근거가 없다 → �
 # ── 유예 경계 자체를 고정 (상수를 바꾸면 이 레인이 빨개진다) ─────────────────
 B6=$(mk 2026-08-10 'axis2-evidence: PASS')
 check "$B6" BLOCK "★유예일 **당일**은 요구한다 (경계가 < 이지 <= 가 아님을 고정)"
+
+# ── 6축 확장 (2026-08-17) ───────────────────────────────────────────────────
+# 표기법이 배열을 선언한다: ASCII(a=…d=)=옛 4축 · 기호(ⓐ=…ⓕ=)=현 6축.
+# 그래서 여기서 고정할 것이 셋이다 — ⓐ 새 날짜는 기호 여섯을 요구하나 ⓑ 옛 날짜는
+# 건드리지 않나(소급 차단 금지) ⓒ **혼용이 막히나**(혼용을 허용하면 판별 가능성이
+# 통째로 사라지고, 옛 b=/d= 는 새 배열에서 다른 축이라 무음 오독이 된다).
+D_SIX=2026-08-18        # 6축 유예일 이후
+SIX_OK='axes-run: ⓐ=codex(4건) ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=CI배선 ⓕ=되돌림(국소성)
+controls: alive — known-positive 3히트 · known-negative 0
+standpoint: not-applicable'
+
+S1=$(mk "$D_SIX" "$SIX_OK")
+check "$S1" PASS "6축: 기호 여섯 + 컨트롤 + standpoint → 통과"
+
+S2=$(mk "$D_SIX" 'axes-run: ⓐ=codex ⓑ=→standpoint ⓒ=none ⓓ=none ⓕ=되돌림
+controls: alive — ok
+standpoint: tier1')
+check "$S2" BLOCK "6축: ⓔ 가 빠짐 → 차단"
+
+S3=$(mk "$D_SIX" 'axes-run: ⓐ=codex b=CI배선 ⓒ=none ⓓ=none ⓔ=실사용 ⓕ=되돌림
+controls: alive — ok')
+check "$S3" BLOCK "★6축: ASCII 키가 기호 키를 대신함 → 차단 (ⓑ 가 빠졌다는 뜻이므로 missing-key 가 잡는다)"
+
+# ★ 오탐 컨트롤 — 전용 혼용 가드를 지었다가 **실측 오탐 때문에 지웠다**. 값이 자유 산문이라
+# `f=0.9` 나 `a=제어 b=처리` 가 값 안에 정당하게 들어온다. 과차단은 `--no-verify` 를 훈련시키고
+# 그건 같은 훅의 Destructive-Op 게이트까지 무장해제한다. 이 두 레인이 그 삭제를 고정한다 —
+# 누가 «안전하게» 혼용 가드를 되살리면 여기서 빨개진다.
+S3b=$(mk "$D_SIX" 'axes-run: ⓐ=codex ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=실사용 ⓕ=되돌림 f=0.9 상승
+controls: alive — ok
+standpoint: tier1')
+check "$S3b" PASS "★오탐 컨트롤: 값 안의 f=0.9 는 혼용이 아니다 → 통과"
+
+S3c=$(mk "$D_SIX" 'axes-run: ⓐ=codex ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=arm a=제어 b=처리 비교 ⓕ=되돌림
+controls: alive — ok
+standpoint: tier1')
+check "$S3c" PASS "★오탐 컨트롤: 값 안의 a=제어 b=처리 는 혼용이 아니다 → 통과"
+
+S4=$(mk "$D_SIX" 'axes-run: a=codex b=CI배선 c=none d=되돌림
+controls: alive — ok')
+check "$S4" BLOCK "★6축 유예 후 옛 ASCII 넷만 → 차단 (같은 글자가 다른 축을 가리키므로 그대로 두면 무음 재해석)"
+
+S5=$(mk "$D_NEW" 'axes-run: a=codex b=CI배선 c=none d=되돌림
+controls: alive — ok')
+check "$S5" PASS "★컨트롤: 6축 유예 **이전** 마커는 옛 ASCII 넷으로 그대로 통과 (소급 차단 없음)"
+
+S6=$(mk 2026-08-17 'axes-run: a=codex b=CI c=none d=되돌림
+controls: alive — ok')
+check "$S6" BLOCK "★6축 유예일 **당일**은 요구한다 (경계가 < 임을 고정 — 상수를 바꾸면 빨개진다)"
+
+S7=$(mk "$D_SIX" 'axes-run: ⓐ=none ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=none ⓕ=none
+controls: n/a — 이번 델타에 측정이 없다')
+check "$S7" BLOCK "★ⓑ=→standpoint 인데 standpoint: 줄이 없음 → 차단 (죽은 포인터)"
+
+# ★ fail-open 컨트롤 — 초판은 화살표(→)를 필수로 봤고, 자기 프로브가 `ⓑ=standpoint`(화살표 없음)이
+# 검사를 통째로 비껴가는 것을 실측했다. 죽은 포인터가 표기 하나로 통과하면 그건 fail-open 이다.
+S7b=$(mk "$D_SIX" 'axes-run: ⓐ=none ⓑ=standpoint ⓒ=none ⓓ=none ⓔ=none ⓕ=none
+controls: n/a — 측정 없음')
+check "$S7b" BLOCK "★화살표 없는 ⓑ=standpoint 도 차단 (표기 하나로 검사를 비껴가면 fail-open)"
+
+S7c=$(mk "$D_SIX" 'axes-run: ⓐ=none ⓑ=→standpoint(qasp) ⓒ=none ⓓ=none ⓔ=none ⓕ=none
+controls: n/a — 측정 없음
+standpoint: tier1b(qasp)')
+check "$S7c" PASS "★컨트롤: 포인터에 대상이 붙어도 standpoint: 줄이 있으면 통과 (과차단 방지)"
+
+S8=$(mk "$D_SIX" 'axes-run: ⓐ=codex ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=실사용 ⓕ=되돌림
+axes-run: ⓐ=거짓말 ⓑ=x ⓒ=x ⓓ=x ⓔ=x ⓕ=x
+controls: alive — ok
+standpoint: tier1')
+check "$S8" BLOCK "★axes-run 줄이 둘 → 차단 (첫 줄만 읽히므로 둘째 줄은 «없다»가 아니라 «안 보인다»)"
 
 # ── ★ 배선 판별자 — 위 레인들은 **함수만** 본다 ──────────────────────────────
 # 실측 2026-08-09: 훅의 호출부에서 `&& validate_marker_axes_run "$MARKER"` 를 떼고

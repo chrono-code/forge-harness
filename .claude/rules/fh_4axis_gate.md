@@ -67,7 +67,11 @@ No user request is needed — this is a mandatory autonomous step, not a proposa
 FH asset modified → Axis 1 (templates/regression_guard.sh --pr {BRANCH})
   → Axis 2 (/steel-quench) → Axis 3 (/phantom-quench)
   → marker: tracks/_meta/.axes_23_passed_{branch}_{date}.marker
-     (required fields: axis2-engine / axis2-model / floor-status / axis2-evidence;
+     (required fields: axis2-engine / axis2-model / floor-status / axis2-evidence /
+      **`axes-run:`** + **`controls:`** (see §Marker axis fields below — these were enforced by the
+      hook since 2026-08-10 and listed in NO rule file until 2026-08-17; the spec lived only in the
+      hook and in two CLAUDE.md/AGENTS.md one-liners, so an author reading the rules could not learn
+      the format that blocks their commit);
       + **`crossfamily:`** — required on LOAD-BEARING changes only, and TYPED since 2026-08-08:
       `panel(<families>)` | `declined` | `DEGRADED_SINGLE_FAMILY` | `DEGRADED_PANEL_UNUSED` |
       `UNKNOWN`, the three degrade values requiring substantive grounds on the same line.
@@ -125,6 +129,78 @@ its default is to RUN the sim (the conservative branch needs no trust); it asks 
 no runnable path exists (run-first, ask-last — sonnet_floor_doctrine.md §Autonomy at Sonnet).
 
 Record sim results in the Axes 2–3 marker + sub-agent invocation log.
+
+### Marker axis fields — `axes-run:` · `controls:` · `standpoint:`
+
+These are enforced (the first two) or expected (the third) on the Axes 2–3 marker. Until 2026-08-17
+**none of the three appeared in any rule file** — the format that hard-blocks the commit was legible
+only from `templates/.git-hooks/pre-commit` itself. That is a gate-locality defect on the *spec*
+side: the rule the author reads did not describe the check the author must pass.
+
+**`axes-run:` — one line, all keys present, `none` for axes not run.** Silence is not zero: an axis
+you skipped is written `none`, never omitted. Omitting it makes the reader parse an absence as a
+decision.
+
+```
+# markers dated BEFORE 2026-08-17 — old 4-axis array, ASCII keys
+axes-run: a=<다른 계열> b=<첫 실사용> c=<기록 그라운딩> d=<되돌림 실측>
+
+# markers dated 2026-08-17 OR LATER — 6-axis array, circled keys
+axes-run: ⓐ=<다른 계열> ⓑ=→standpoint ⓒ=<격리 그라운딩> ⓓ=<3자 대면> ⓔ=<첫 실사용> ⓕ=<되돌림 실측>
+```
+
+🟥 **The two arrays are not the same letters shifted — `b` and `d` mean different axes in each.**
+Old `b`=첫 실사용 is now **ⓔ**; old `d`=되돌림 is now **ⓕ**. Copying an old line forward silently
+swaps two axes, and no error fires.
+
+**Which array a marker used is decided by the date in its filename** (`< 2026-08-17` = old 4-axis).
+⚠️ **The notation is NOT the discriminator** — the first version of this section said it was
+("circled keys = 6-axis, so an auditor can grep"), and a hand-count of the corpus refuted it: of 53
+markers carrying `axes-run`, 4 use circled keys and 1 mixes, and **2 of those 4 are dated 2026-08-10
+while meaning the OLD axes** (`ⓑ 첫실사용` · `ⓓ 되돌림` — ⓔ and ⓕ in the current array). The hook
+never reads those markers so no commit is affected; the party that gets a wrong answer is the
+**auditor**. Aligning the notation is still worth it going forward — it stops the next author from
+copying an old line — but it does not work backwards.
+
+⚠️ **The grace-date comparison is an unreachable branch in production, and saying so is the point.**
+The call site builds the marker path from `${TODAY}`, so `mdate` is always today; no real commit
+after 2026-08-17 takes the `six=0` path, and the only live consumer is the fixture suite. **What
+protected the existing markers was the path construction, not the constant** — the same reason
+`crossfamily:` could go from free prose to a closed enum eight days earlier with no cutoff at all.
+
+- **ⓑ입장 carries a pointer, not a value** — `standpoint:` is its canonical field, so writing the
+  value in both places would be a double record. `ⓑ=→standpoint` requires a non-empty `standpoint:`
+  line to exist (a pointer at nothing is not a record). Enforced on any ⓑ value *referencing*
+  standpoint, arrow or not — requiring the arrow was fail-open and was measured as such.
+- **Multiple `axes-run:` lines block.** Only the first is read, so a second line is not *rejected*,
+  it is **invisible** — anything written there bypasses the check entirely.
+- **Grace dates are deliberate**: `AXES_RUN_GRACE_DATE=2026-08-10`, `SIX_AXES_GRACE_DATE=2026-08-17`,
+  compared against the date in the marker's **filename**, boundary `<` (the grace day itself is
+  required). Retroactive enforcement would block every in-flight branch, and that over-block trains
+  `--no-verify`, which disarms the Destructive-Op gate living in the same hook.
+
+**`controls:` — the liveness of the controls, not their existence.** An axis is «run» only with an
+execution output in which a control was alive; "붙였다" without a life/death token is vacuous and
+blocks. Note the asymmetry this field exists for: *having* a control is not *having discrimination*
+— a known-negative only tells you whether false positives exist at all.
+
+```
+controls: alive — known-positive 'X' 3 hits · known-negative 0
+controls: n/a — no measurement in this delta (<reason>)
+```
+
+**`standpoint:`** — closed enum, canonical spec in
+`knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §7`. **Still validated by nothing**
+— zero hook lines, no fixture suite. Recorded here so the gap is visible from the rules side rather
+than only from the hook's absence.
+
+**Scope, unchanged**: form + non-vacuity + auditability, **never provenance**. A marker claiming
+`ⓐ=codex` when codex never ran passes — deliberately. Catching that is cross-family review *reading*
+the marker, which is not this hook's job.
+
+> Fixtures: `scripts/test_marker_axes_run_lanes.sh` (25 lanes, incl. wiring anchor + over-block
+> controls). Extending the format means adding lanes there, and running the **revert probe** — a
+> lane that stays green when you disable the branch it claims to anchor is decoration.
 
 ### Reviewer-visible evidence — the marker is not readable from the other side
 

@@ -241,13 +241,21 @@ Q3. Was it run by a DIFFERENT operator of the target harness, not you?
 **Why the procedure exists rather than more definition.** `tier2` vs `tier2b` is **wiring
 visibility**, NOT execution-vs-reading — both execute. But `tier2b`'s gloss names "the target's
 real runtime," which reads as *"tier2b is the execution rung"*, and a reader then infers that
-`tier2` must therefore be the non-executing one. Measured 2026-08-17: after `§7`, `CLAUDE.md` AND
-`auto-decorrelation/SKILL.md` were all three corrected to say **EXECUTED CODE**, two independent
-blind Sonnet reps STILL graded a pure cold-read `tier2` — one of them stating the inference
-outright: *"'Ran' in this taxonomy means 'situated the review in the target's repo', not 'executed
-code' — the fact that nothing executed is why I ruled out tier2b, not why I'd fall back to tier1."*
-Three rounds of rewording lost to the enum's own internal logic. Ordering the questions removes the
-inference instead of arguing with it.
+`tier2` must therefore be the non-executing one.
+
+🟥 **RETRACTED (2026-08-17) — the sim evidence formerly cited here is withdrawn.** This paragraph
+read: *"after all three were corrected to say EXECUTED CODE, two independent blind Sonnet reps STILL
+graded a pure cold-read `tier2`"*, and quoted one rep's reasoning verbatim. Those runs had
+**`tool_uses: 0`** — the agents never opened a file, so the quoted reasoning is a cold guess about
+text it did not read, and the grades measure nothing
+(`tracks/_meta/fh_completed_2026-08-16.md:690`). The live re-run **inverted** the result at
+**reps=1**, below this repo's `reps>=3` bar. **Neither direction is established**; do not restore
+the numbers and do not cite the inversion either.
+
+What remains, and it is enough to justify ordering the questions: the enum's *wording* really does
+place the execution claim on `tier2b`'s line, so a reader can reach "then `tier2` is the
+non-executing one" **by the text alone** — that is a property of the text, checkable by reading it,
+and it needs no sim. Ordering the questions removes the inference instead of arguing with it.
 
 ```
 tier1                        content-only review — no standpoint decorrelation (the default
@@ -264,12 +272,16 @@ tier1b(<target-harness>)     STATIC standpoint read — the reviewer read the TA
 tier2(<target-harness>)      peer-simulated — the reviewer EXECUTED CODE in the TARGET's own repo
                               (a local clone, real content) and observed the result.
                               🟥 DISCRIMINATOR — «reading the target's real files is NOT this rung».
-                              Measured 2026-08-16: two independent blind Sonnet sims BOTH graded a
-                              pure cold-read as tier2, and BOTH quoted this line's earlier wording
-                              ("instantiated/ran the target's own repo") as their justification —
-                              «ran» was read as «operated within / engaged with», which a read
-                              satisfies. 0/2 on the fix that added tier1b, because the new rung was
-                              added without disambiguating the rung above it.
+                              🟥 RETRACTED (2026-08-17): the «two blind Sonnet sims both graded a
+                              cold-read tier2 … 0/2» measurement that stood here is WITHDRAWN —
+                              tool_uses: 0, the agents never opened a file, so the grades and the
+                              quoted reasoning measure nothing (fh_completed_2026-08-16.md:690).
+                              The live re-run INVERTED it at reps=1, below this repo's reps>=3 bar.
+                              Neither direction is established; restore no number here.
+                              The AMBIGUITY it was cited for is still checkable WITHOUT a sim: the
+                              earlier wording said «instantiated/ran the target's own repo», and
+                              «ran» admits «operated within / engaged with», which a read satisfies.
+                              That is a property of the text — read the two lines and see it.
                               THE TEST, and it is mechanical: **name the command you executed and
                               the output you observed.** Cannot name one → `tier1b`, always. An
                               agent that read files, however cold and however many, executed

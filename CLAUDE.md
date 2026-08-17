@@ -50,7 +50,7 @@ core invariants never melt). The nursery also **verifies what it births**: harne
 > 4-Axis Auto-Gate 와 **같은 트리거**이므로 새 트리거도 새 파일도 만들지 않는다 — 기록 자리는
 > **4축 마커의 기존 필드**(`axis2-*` · `axis3-*` · `residual`)다.
 > **마커에 반드시 남는 3줄** ① **①영혼** — 설계 *전에* 쓴 «성공 정의 / 절대 안 함»(없으면 `없음`)
-> · ② **돌린 축과 안 돌린 축을 각각 이름으로.** 마커 `axes-run` 이 기계적으로 요구하는 것은 **네 글자**(a=계열 · b=첫실사용 · c=격리 그라운딩 · d=되돌림)이고, ⓑ**입장**은 마커의 **`standpoint:` 자기 필드**로, ⓓ**3자대면**은 **아직 기록할 필드가 없다**(명시된 잔여). 즉 산문 정본은 6축인데 기계는 4+1축이다 — 이 어긋남을 알고 쓴다
+> · ② **돌린 축과 안 돌린 축을 각각 이름으로.** 마커 `axes-run` 은 **2026-08-17 부로 여섯 글자**를 요구한다 — **기호 키**(ⓐ계열 · ⓑ입장 · ⓒ격리 그라운딩 · ⓓ3자대면 · ⓔ첫실사용 · ⓕ되돌림). 그 전 날짜의 마커는 옛 **ASCII 네 글자**(a·b·c·d) 그대로다. 🟥 **두 배열은 같은 글자가 다른 축을 가리킨다** — 옛 `b`=첫실사용은 지금 **ⓔ**, 옛 `d`=되돌림은 지금 **ⓕ** 라서, 옛 줄을 그대로 옮기면 축 둘이 조용히 뒤바뀌고 아무 오류도 안 난다. **어느 배열인지는 마커 파일명의 날짜로 판별한다**(`< 2026-08-17` = 옛 4축). ⚠️ **표기법은 판별자가 아니다** — 초판이 «기호 키를 보면 6축인 줄 안다» 고 적었는데 **코퍼스 실측이 반증했다**: axes-run 보유 53건 중 기호 키가 4건인데 그중 **2건이 2026-08-10 자이면서 옛 4축 의미로 기호를 쓴다**(`ⓑ 첫실사용` · `ⓓ 되돌림` — 현 배열에선 각각 ⓔ·ⓕ), 혼용도 1건 있다. 훅은 그 셋을 안 읽으므로 커밋은 안 막지만 **감사자의 grep 은 거기서 틀린 답을 낸다**. ⓑ입장은 값을 여기 적지 않고 **`standpoint:` 자기 필드**를 가리킨다(`ⓑ=→standpoint`, 그 줄이 비면 죽은 포인터라 차단). 즉 산문 정본과 기계가 **축 개수로는 맞았고**, 남은 어긋남은 `standpoint:` 값을 **검증하는 코드가 아직 0줄**이라는 것 하나다(명시된 잔여). 형식 정본 = `.claude/rules/fh_4axis_gate.md §Marker axis fields`
 > · ③ **각 축의 컨트롤과 그 생사**. 축을 «돌렸다»의 **최소 증거 = 컨트롤이 살아 있는 실행 출력**
 > 이다 — 안 고른 이유만 적은 것은 준수가 아니다.
 > **비용 경계**: 넷을 매번 다 돌리지 않는다. 실패 모드에 맞춰 **고른다**.
@@ -205,14 +205,26 @@ sim gate from a near-mandatory step into the completion criterion itself.
 돌아갈지 확인은 하겠지?"* is the failure — the sim is part of authoring the change, like the
 known-pair is part of authoring an instrument.
 
-**Why «reads correctly» is not evidence — measured the day this was written.** A `tier1b` rung was
-added to the `standpoint:` enum precisely so a static review would stop being recorded as `tier2`.
-The text was correct; a reader would agree. Two independent blind Sonnet sims then graded a pure
-cold-read as **`tier2`, 0/2**, both quoting the *unfixed adjacent gloss* ("ran the target's own
-repo") as their justification. The rung existed and was bypassed by an ambiguity one line above it.
-**A static read of my own fix would have scored it PASS.** Only running it found the hole — the
-same asymmetry `field_verdict_crossfamily_gate.md §7` records for standpoint review, now measured on
-the doctrine layer itself.
+**Why «reads correctly» is not evidence.** A `tier1b` rung was added to the `standpoint:` enum
+precisely so a static review would stop being recorded as `tier2`. The text was correct; a reader
+would agree — and a reader agreeing is not a measurement, which is this paragraph's whole point.
+
+🟥 **RETRACTED (2026-08-17) — the numbers this paragraph used to cite are withdrawn, in BOTH
+directions.** It read: *"Two independent blind Sonnet sims then graded a pure cold-read as `tier2`,
+**0/2** … A static read of my own fix would have scored it PASS. Only running it found the hole."*
+That sim set was **8 runs at `tool_uses: 0`** — the agents never opened a file, so the instrument
+was dead and the grades measure nothing (`tracks/_meta/fh_completed_2026-08-16.md:690`, retracted
+the same day the doctrine was written and **before** this paragraph's own commit). The re-run with a
+live instrument then landed the **opposite** result — the rung was graded correctly — at **reps=1**,
+below this repo's own `reps>=3` bar. **So neither «it failed» nor «it worked» is established.** Do
+not restore either number, and do not read the retraction as proof of the inverse.
+
+**The claim that survives is narrower and does not need those numbers**: a static read cannot
+establish that a rule *fires*, because the thing being tested is whether a reader who is not the
+author lands on the right rung — and the author reading their own text is the one reader guaranteed
+to. That is an argument about what a read can measure, not a measurement. The general principle
+(`field_verdict_crossfamily_gate.md §7`'s execution-over-static asymmetry) rests on its own separate
+field evidence; **this paragraph is no longer one of its data points.**
 
 **Corollary — what a sim failure means.** It is a defect in the *wiring*, not in the floor model.
 The response is to make the rule fire (disambiguate, give it a mechanical discriminator, move it to
@@ -515,9 +527,10 @@ additionally carries `standpoint:` — a closed enum (`tier1` content-only · **
 STATIC read of the target's own files, executed nothing** · `tier2(<harness>)`
 peer-simulated, **EXECUTED CODE in** the target's own repo — 🟥 the discriminator is mechanical:
 *name the command you ran and the output you saw*; cannot name one → `tier1b`, always. Reading the
-target's real files, however cold, is `tier1b` (measured 2026-08-16: two blind Sonnet sims both
-graded a pure cold-read `tier2`, both citing an earlier gloss that said merely "ran the target's
-own repo") · `tier2b(<harness>)` same operator, target's real
+target's real files, however cold, is `tier1b` (🟥 the "two blind Sonnet sims graded a cold-read
+`tier2`" citation that stood here is **RETRACTED** — dead instrument, `tool_uses: 0`; the live re-run
+inverted it at reps=1, below bar. The **rule** stands on its own wording, not on that sim) ·
+`tier2b(<harness>)` same operator, target's real
 runtime (local wiring visible, not independent) · `tier3(<harness>)` a *different* operator of the
 target harness ran it · `not-applicable` · degrade triad `DEGRADED_NO_TARGET_ACCESS` could-not /
 `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same shape as `crossfamily:`'s triad,
