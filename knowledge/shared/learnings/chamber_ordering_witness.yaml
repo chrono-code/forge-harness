@@ -79,3 +79,7 @@
   artifact: SIM_NOTES.md
   sha256: 780bd19b5d4a79d5b8f1138db0946a5d5b245ef3d1b52d08a4f3c67b3017fd6d
   recorded: 2026-08-17T09:35:29Z
+- run: n-eff-probe
+  artifact: EMISSION_VERDICT.md
+  sha256: 5250bbe764ae3e77bedc96893816e8cac224f7743fc57c1299f3e46933ec0d50
+  recorded: 2026-08-17T09:41:36Z
