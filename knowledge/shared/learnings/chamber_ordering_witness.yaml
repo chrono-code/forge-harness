@@ -51,3 +51,19 @@
   artifact: EMISSION_VERDICT.md
   sha256: e55ecbacbc244eb17ce39a9211d1b25525d60697e25f32066983025e566e9cd6
   recorded: 2026-08-17T01:46:38Z
+- run: prosody-lens
+  artifact: INTENT.md
+  sha256: 1ad270d6ebf20483283a99cc0bcd6d68c8773e73c9d84ed7360a22ba237a7f00
+  recorded: 2026-08-17T02:53:46Z
+- run: prosody-lens
+  artifact: BUDGET.md
+  sha256: 92715babe765ce00fbd9e56b73fc1577b865adab8cee0b303b91fbde2673440e
+  recorded: 2026-08-17T02:53:46Z
+- run: prosody-lens
+  artifact: SIM_NOTES.md
+  sha256: 00002ba358224a4321b1f7f89695904eb5d8d4ac7d2a4e13e8fcc371e2c9af1e
+  recorded: 2026-08-17T02:53:46Z
+- run: prosody-lens
+  artifact: EMISSION_VERDICT.md
+  sha256: 3758aa63dbe0667b9f450c9af24520f478757c6db8e6fe556ffd864f1696dc95
+  recorded: 2026-08-17T02:53:46Z
