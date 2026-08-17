@@ -67,13 +67,14 @@ _lane() {   # $1=id $2=class $3=설명 $4=expected_rc $5=actual_rc
 
 # 계기 전제 — 어댑터 3종이 **실제로 거기 있는지** 먼저 본다. 없으면 이 레인 묶음은
 # «전부 초록» 이 아니라 하네스 오류다(빈 대상에 대고 초록을 내는 것이 여기서 막으려는 형태).
-for a in gstack_content_safety mate_agent_boundary qasp_new_code_anchor peer_resolve; do
+for a in gstack_content_safety mate_agent_boundary qasp_new_code_anchor qasp_web_rules peer_resolve; do
   [ -r "$ADAPTER_DIR/$a.sh" ] || { echo "❌ HARNESS-ERROR — $ADAPTER_DIR/$a.sh 부재. 빈 대상에 초록을 내지 않는다"; exit 10; }
 done
 
 G="$ADAPTER_DIR/gstack_content_safety.sh"
 M="$ADAPTER_DIR/mate_agent_boundary.sh"
 Q="$ADAPTER_DIR/qasp_new_code_anchor.sh"
+W="$ADAPTER_DIR/qasp_web_rules.sh"
 
 # 「peer 가 안 보이는 세계」 = 잘 형성된 루트 목록인데 그 안에 이 peer 가 없는 것.
 # (빈 **문자열**이 아니다 — 그건 「어디를 볼지 자체가 없다」는 다른 명제이고 전제 파손이다.)
@@ -193,6 +194,41 @@ if [ -n "$QS_ROOT" ] && [ -r "$QS_ROOT/scripts/new_code_anchor_scan.sh" ]; then
     "$(FH_CLUSTER_ROOTS="$SYN" _rc bash "$Q" --range no-such-ref-xyz HEAD)"
 else
   echo "  ⏭  Q7/Q8 [enum         ] qasp 진입점 도달 불가 — SKIP (통과 아님)"
+fi
+echo
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ④ qasp-web-rules  (자매 노드 — 같은 peer, 다른 능력)
+# ═══════════════════════════════════════════════════════════════════════════
+# 🟥 ③ 과 **같은 peer 인데 다른 enum 이다**. 값을 옮겨 쓰면 안 된다 —
+#    ③ 의 `3=HARNESS_ERROR`·`4=OUT_OF_SCOPE` 와 여기의 `3=ENGINE_ERROR` 는 다른 사건이고,
+#    여기엔 `4` 가 아예 없다. 두 노드를 한 눈에 보는 이 파일이 그 혼동의 1순위 발생지다.
+echo "── qasp-web-rules (enum 0=CLEAN 1=FINDINGS 2=ARGS 3=ENGINE_ERROR 20=PEER_ABSENT)"
+_lane W1 resolve-absent "peer 불가시 → 전용값 PEER_ABSENT(CLEAN 으로도 ENGINE_ERROR 로도 안 접힌다)" 20 \
+  "$(FH_CLUSTER_ROOTS="$EMPTY_WORLD" _rc bash "$W" --known-positive)"
+_lane_peer "$QS_ROOT" W2 control "peer 가시 → 양성 arm 은 FINDINGS" 1 "$(_rc bash "$W" --known-positive)"
+_lane_peer "$QS_ROOT" W3 control "peer 가시 → 음성 arm 은 CLEAN (판별력의 증거)" 0 "$(_rc bash "$W" --known-negative)"
+_lane W4 enum "모드 미지정 → ARGS(2). 안 돈 실행을 판정으로 렌더하지 않는다" 2 "$(_rc bash "$W")"
+_lane W5 enum "없는 diff-json → ARGS(2). 호출 오류지 계기 고장이 아니다" 2 \
+  "$(_rc bash "$W" --diff-json /nonexistent/nope.json)"
+# 🟥 W6 — 픽스처 부재는 **ARGS 가 아니라 HARNESS_ERROR** 다. 캘리브레이션 쌍이 사라진 것은
+#    「호출을 잘못했다」가 아니라 **「이 계기가 자기 판별력을 증명할 수 없다」**는 뜻이고,
+#    그 둘을 같은 값으로 접으면 «쌍이 없는 계기»가 «인자 실수»로 보고된다.
+if [ -n "$QS_ROOT" ]; then
+  FIXBK="$T/fixbk"; mkdir -p "$FIXBK"
+  FIXPOS="$ADAPTER_DIR/fixtures/qasp_web_rules_known_positive.json"
+  if [ -r "$FIXPOS" ]; then
+    mv "$FIXPOS" "$FIXBK/pos.json"
+    _lane W6 enum "캘리브레이션 픽스처 부재 → HARNESS_ERROR(10), ARGS 아님" 10 \
+      "$(_rc bash "$W" --known-positive)"
+    mv "$FIXBK/pos.json" "$FIXPOS"
+    # 복원 확인 — 레인이 자기가 옮긴 것을 되돌렸는지 **잰다**(안 하면 다음 레인이 거짓 적색)
+    [ -r "$FIXPOS" ] || { echo "❌ HARNESS-ERROR — W6 가 픽스처를 복원하지 못했다"; exit 10; }
+  else
+    echo "  ⏭  W6     [enum         ] 양성 픽스처 부재 — SKIP (통과 아님)"
+  fi
+else
+  echo "  ⏭  W6     [enum         ] qasp 실물 루트 없음 — SKIP (통과 아님)"
 fi
 echo
 
