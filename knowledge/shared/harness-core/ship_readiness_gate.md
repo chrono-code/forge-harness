@@ -157,8 +157,12 @@ engine under the other — and the two candidates for "④" are **context-contin
 external-grounding**, which currently hold different grades, so the ambiguity is not cosmetic.
 The collision is worse than one file's internal disagreement: **the identities are numbered ①–⑤ and the
 engines are not numbered at all**, so a bare ① in any record is undecidable without its sentence. This
-file shows it — a paragraph enumerating engines sits four lines above `③⑤ are 🟢, ①②④ are 🔵 RC`,
+file shows it — a paragraph enumerating engines sits four lines above `①③⑤ are 🟢, ②④ are 🔵 RC`,
 where those numerals mean *identities*.
+(🟥 That example string was itself stale until 2026-08-17: it still read `③⑤ are 🟢, ①②④ are 🔵 RC`,
+which 632 had already superseded — so the illustration pointed at text no longer in the file.
+Same **in-file half-fix propagation** this document names elsewhere; fixed here, and the grade
+values in an *example* must be re-checked whenever the table moves.)
 
 > **Legacy decode (do not delete — session records already use numbers).** Records written before
 > 2026-08-13 say 엔진 ①~④. They decode by the **engine table order above**:
@@ -671,6 +675,169 @@ Each remedy is a run that leaves an artifact, tracked in `tracks/_meta/identity_
 > target") and the live reality (routing runs; **stockbattle is being incubated now**; qasp/pmh spun out).
 > An identity whose broad path *runs* is not 🔴 ideal-only. Both are 🟡: running, not yet closed. Lesson:
 > do not score an identity by its hardest sub-mechanism — that reads a live-but-incomplete path as zero.
+
+### ④ promotion criteria — 이 절이 **없었다는 것** 자체가 첫 발견 (2026-08-17)
+
+②(438줄)와 Ⓑ(421줄)는 전용 승급 기준 절을 갖고, ①은 행 안에 인라인으로 갖는다.
+**④만 없었다.** 그리고 이 파일이 ② 절 첫머리에 그 절이 왜 필요한지 이미 적어놨다 —
+*"매 라운드가 바닥부터 기준을 재도출하지 않도록"*. **그 처방이 ④에만 적용되지 않았다.**
+
+#### 1. 🟥 유일하게 명시돼 있던 조건은 **다른 명제를 잰다**
+
+지금까지 ④에 대해 조건처럼 읽힌 문장은 하나뿐이었다:
+> *"④ file-change ≠ token-introduction — the instrument is a screener, not an adjudicator"*
+
+그런데 그 계기(`scripts/digest_landing_check.sh`)가 **자기 헤더에서 스코프를 자백한다**:
+> *"착지 대상 = 공개 FH 자산 + `tracks/`. 비공개 companion store 는 **보지 않는다** …
+> 따라서 **이 계기가 재는 것은 «조직 전체 전파»가 아니라 «허브 내부 착지»다**"*
+
+반면 ④가 주장하는 명제는 `fh_three_layer_canon.md` — *"바깥에서 온 것이 **조직 안까지** 착지한다"*.
+⇒ **그 조건을 100% 닫아도 ④의 명제는 한 글자도 안 재진다.** ①이 dominance 를 두 번 측정하고
+«겨냥이 틀렸다»로 판정한 것과 같은 형태이고, ④는 그 판정을 **한 번도 받은 적이 없다**.
+
+#### 2. 🟥 그리고 구조적으로 도달 불가다 — P1 과 같은 형태 (**이 파일 안에서는** 지목된 적 없다)
+
+이 파일의 residency 규율(§Ⓑ promotion criteria 3)이 못 박는다:
+> *"조직 환경 실적은 **증언으로 남고 측정으로 세지 않는다.** residency 때문에 이 파일에서
+> 검증할 수 없고, 검증 못 하는 것을 숫자에 넣으면 그 숫자 전체가 못 쓰게 된다"*
+
+그런데 **④는 대상이 조직인 유일한 행**이다. ⇒ 🟢가 요구하는 «구체적 실적 아티팩트»를
+**이 파일 안에서는 원리적으로 만들 수 없다.** ②의 P1이 «mtime은 위조 가능 → 어떤 런도 만족
+불가»였던 것과 정확히 같은 구조이며, P1 은 지목되어 수리됐고 **이 파일 안에서는** ④ 에 대한
+같은 지목이 없다. ⚠️ **범위 제한이다** — 이 파일을 읽어서 내린 판단이고, 전 코퍼스 부재 스캔
+(검색어·컨트롤 동반)은 **안 돌렸다**. 「아무도 지목한 적 없다」로 넓혀 읽지 마라.
+
+#### 3. 이미 충족돼 있을 가능성 — 못 읽는 지점이 한 단어로 특정된다
+
+조직 착지는 **운영자 증언으로 존재한다 — 이 세션이 검증한 것이 아니고, §2 대로 이 파일에서는
+검증 불가다**(전부 residency 경계 안이라 종류만 적는다): 정기 조직 보고 채널로의 상시 착지 ·
+외부 발표 채택과 그 산출이 다시 FH 기계의 근거로 인용됨(**증언 — 「관통」으로 단정하지 않는다**) ·
+조직 내 정식 공개 1건.
+
+🟥 **라벨을 반드시 붙인다.** Ⓑ 행이 같은 처리를 한다 — *"실적 열거는 **운영자 증언** + 실측
+2건이고 … **증언으로 표기하고 측정으로 세지 않는다**"*. 증인이 없는 관통을 「관통」으로 적으면
+다음 라운드가 이 절을 «④는 사실상 충족» 의 근거로 인용한다. 그게 이 파일이 반복해 자책한
+인용 훼손 경로다.
+
+> **못 읽는 지점 = «as ONE pipeline».** 조건이 「착지했나」가 아니라
+> **「하나의 계기로 관통을 증인할 수 있나」**를 요구하는데, 그 증인 계기가 스스로 조직을
+> 스코프 밖으로 선언했다. 계기 헤더도 절반 자백해뒀다 — *"«안 닫힌다»가 아니라
+> **«닫히는데 증인이 없다»**"*, *"**파이프라인은 그날 실제로 관통했다**"*.
+
+#### 4. 제안하는 기준 — 막힌 것은 측정이 아니라 **측정의 위치**다
+
+```
+지금   조직 데이터를 공개 레포로 가져와 재려 한다   → residency 가 막는다 (정당하게)
+대안   계기를 데이터가 있는 쪽으로 옮긴다          → 조직 밖으로 나오는 것을 최소화한다
+```
+
+🟥 **초판이 여기서 두 번 틀렸고, 적대검증이 커밋 전에 잡았다. 그 정정을 남긴다.**
+
+**틀린 것 ①** — 초판은 *"**판정만** 넘어오므로 residency 를 안 깬다"* 고 적었다. 그런데 §2 가
+도달 불가의 **근거로** 인용한 것이 Ⓑ-3 의 *"조직 실적은 … 이 파일에서 **검증할 수 없다**"* 다.
+**조직에서 나온 판정을 이 파일 계열의 공개 기록에 넣는 것**이 곧 그 규칙이 금지한 행위다 —
+블로커로 인용한 규칙을 처방이 우회했다. 순환이 아니라 **자기무효화**다.
+
+**틀린 것 ②** — 초판은 챔버 순서 증인(*"해시만 적는다, 본문 유출 0"*)을 유비로 들었다.
+**성립하지 않는다**:
+```
+챔버 증인이 넘기는 것   해시        → 원문 N 개 중 무엇인지에 대해 **0 비트**
+초판의 P4-1 이 넘기는 것 후보별 PASS/FAIL → 후보 N 개에 대해 **N 비트**
+```
+「조직이 이 프런티어 항목을 도입했다/안 했다」는 **그 자체가 조직 정보**다.
+*"원본은 한 바이트도 안 나온다"* 는 **바이트 수를 정보량과 혼동한 문장**이었다. 유비를 철회한다.
+
+**그래서 좁힌다.** 조직 밖으로 나오는 것은 **집계된 단일 verdict 하나**뿐이다:
+
+**P4-1 (mandatory-pass)** — 조직 환경 클론에서 착지 계기가 실행되고, 공개 쪽으로는
+**집계된 단일 verdict(PASS/FAIL 하나)** 만 기록된다.
+🟥 **후보별 판정·건수·비율을 공개 쪽에 쓰는 것은 금지한다** — N 비트가 새는 경로다.
+🟥 그리고 residency 예외 절차를 그대로 탄다(`CLAUDE.md §Field-Harness Diagnostic`):
+**명시적 운영자 승인 + gitignored 감사노트**. *"«이게 충분히 sanitize 됐나»는 세션이 혼자
+내리는 판단이 아니다"* — 이 조건이 없으면 P4-1 은 미충족이다.
+
+**P4-1 의 선행조건 — 지금 둘 다 미충족이고, 그걸 적는 것이 이 절의 값이다**
+1. 🟥 **잴 대상이 조직 클론에 존재해야 한다.** 계기 인터페이스는
+   `digest_landing_check.sh <digest.md> [target ...]` 인데, digest 산출물은
+   `tracks/_meta/frontier_digest_<날짜>.md` 이고 **`tracks/**` 는 gitignored**, 생성은
+   **이 머신의 launchd 매일 09:00** 이다. ⇒ **조직 클론에는 잴 digest 가 구조적으로 없다.**
+   조직 쪽 생성 경로가 생기거나 공개 digest 를 반입할 수 있어야 한다.
+2. 🟥 **실행 주체를 이름으로 적어야 한다.** 없으면 P4-1 은 **「미도달」로 표기하고 승급 기준으로
+   세지 않는다** — 이름 없는 실행 주체는 P1 이 «어떤 런도 만족 불가» 였던 것과 같은 형태다.
+
+**P4-2 (measured)**: 그 verdict 가 known-pair 를 가른다 — 착지한 건과 착지 안 한 건을 실제로
+구분. 컨트롤 없는 PASS 는 이 조건을 만족시키지 않는다.
+
+#### 5. 🟥 남는 잔여 — 닫는 게 아니라 한 칸 올리는 것이다
+
+그 판정은 **비저자가 볼 수 없는 환경에서 나온 자기신고**다. 챔버 증인이 «저자를 신뢰하지 않는
+기록»을 요구한 것과 **같은 문제가 조직 경계에서 재발한다**. 그래서 이 기준은 ④를 «완전히
+닫는다»가 아니라 **«증언 → 측정으로 한 칸 올린다»**이고, 그 한계를 조건에 같이 적는다.
+비저자 실증이 가능해지는 시점(조직 내 다른 운영자가 그 계기를 돌리는 것)이 다음 칸이다.
+
+**강등 조건 — 이 절이 승급만 적고 강등을 안 적으면 Ⓑ 절의 목적을 못 따른다**
+(Ⓑ 절 자기 규정: *"«어떻게 올라가나»가 아니라 «**무엇이 이 행을 내릴 수 있나**»"*):
+- **D4-1**: P4-1 의 verdict 가 **known-pair 를 못 가르면**(착지한 건과 안 한 건이 같은 값을 받으면)
+  ④는 **🔵 로 되돌린다.** 판별력 없는 PASS 는 측정이 아니다
+- **D4-2**: 선행조건 1·2 중 하나라도 **다시 미충족이 되면**(조직 쪽 digest 경로가 사라지거나
+  실행 주체가 없어지면) ④는 **「미도달」로 되돌아간다** — 한 번 통과한 것으로 고정되지 않는다
+- **D4-3**: residency 예외 절차(운영자 승인 + 감사노트) 없이 조직 판정이 공개 쪽에 기록되면
+  그 기록은 **무효이고 ④는 강등된다.** 이건 등급 문제가 아니라 규율 위반이다
+
+#### 6. 부수 — 이 절을 쓰면서 확인된 stale 2건
+
+- 🟥 **207·238줄의 «zero callers» 처방은 stale 이 아니다 — 초판이 그렇게 적었고 틀렸다.**
+  `scripts/selfcheck.sh:617` 앵커 루프에 들어간 것은 **`--self-test` 레인뿐**이고, 레포 전체에서
+  `digest_landing_check.sh <digest.md>` 를 **인자와 함께 부르는 프로덕션 호출부는 0개**다.
+  selfcheck 주석 자신이 그렇게 말한다 — *"lanes existed and ran only when a human typed the
+  command"*. ⇒ **「배선됐다」가 다른 배선이었다**: 계기의 self-test 는 도는데 계기 자체는 아무도
+  안 부른다. **그리고 이 0 은 §4 P4-1 의 미충족 선행조건이다** — 공개 레포에서조차 실행 경로가
+  없는 계기를 조직 클론에서 돌린다고 쓸 수 없다. (나머지 절반 «네 분기 앵커링»은 **미확인**.)
+- **160줄**이 옛 등급(`③⑤ are 🟢, ①②④ are 🔵`)을 **현재형 예시**로 인용한다. 632줄이 이미
+  갱신했다. 이 파일이 스스로 이름 붙인 **파일 내부 half-fix 전파 결함**의 재발이다.
+
+### §Gate-consequence 의 일관성 — 자백은 적혀 있고 처분은 안 됐다 (2026-08-17)
+
+607–614줄이 **스스로** 이렇게 적어놨다:
+> *"⑤ 는 🟢 on `intent-routing probe 94%` — **a self-measurement, not a head-to-head** …
+> The inconsistency is real and it is **the gate's, not ②'s** … Resolving that is a **separate
+> change** to the status definitions — flagged here, **not silently settled**."*
+
+**그 «separate change» 가 오지 않았다.** 실측하면 **6행 중 4행이 비일관**이다:
+```
+Ⓑ  일관 적용  만족 — 282줄이 "§Gate consequence 를 **면제 없이 그대로 만족**한다" 고 명시
+③  일관 적용  보유 (moat 3–4 family blind · HITL 8/8)
+─────────────────────────────────────────────────
+①  비일관     예외를 정식 취득 (92-99줄 — 사전등록 2회 측정 후 미성립. 절차는 밟았다)
+②  비일관     **미결** — 607-614 자백이 "②를 면제할지 ⑤를 재측정할지" 를 안 정했다
+⑤  비일관     미보유인 채 🟢   ← 자백의 대상
+④  비일관     언급조차 없음
+```
+🟥 **초판이 여기서 «6행 중 일관 적용된 행이 없다» 고 적었는데, 바로 아래 자기 표가 그걸
+반증했다**(Ⓑ 만족 · ③ 보유). 적대검증이 잡았고 정정한다. 그리고 초판은 ②를 **「면제」로 확정
+표기**했는데, 자백 원문은 **미결**이다 — 절의 결론(«아무것도 정하지 않는다»)과 표가 어긋나 있었다.
+🟥 **이건 오늘 이 저장소가 반복해 만난 «미측정을 0으로 접었다»와 다른 형태다** — 접힘이 아니라
+**적용 누락**이다. 그리고 자백이 문서에 적혀 있는데 안 고쳐진 것은 「몰랐다」가 아니라
+**「알고 미뤘다」**라서, 다음 라운드가 그 자백을 「이미 인지된 사항」으로 읽고 또 넘길 위험이 크다.
+
+**처분(운영자 결정 필요, 여기서 확정하지 않음)** — 둘 중 하나여야 하고 셋째는 없다:
+- **(A) §Gate-consequence 가 모든 🟢 를 구속한다** ⇒ ⑤ 는 과대 채점이고 재측정 대상이다
+- **(B) advisory 다** ⇒ ②·④ 를 거기에 묶어서는 안 되고, ① 이 받은 «예외»는 애초에 필요 없었다
+
+⚠️ 이 절은 **자백을 결정으로 바꾸지 않는다.** 지금 하는 것은 「미뤄졌다는 사실 자체를 기록해서
+다음 라운드가 그것을 인지된 사항으로 소비하지 못하게」 하는 것뿐이다.
+
+🟥 **그런데 그것만으로는 이 절이 자기가 진단한 실패를 반복한다 — 적대검증 지적, 수용한다.**
+607-614줄의 자백도 **이 파일의 산문**이었고, 그 매체로 **이미 한 번 실패했다**(그래서 이 절이
+있다). 같은 매체에 한 번 더 적으면서 앵커·기한·소유자를 안 붙이면 결과가 같다.
+`CLAUDE.md §Mechanization Boundary` 가 **채널(«기록이 있는가»)은 기계화 대상**이라고 정한다.
+
+⇒ **파일 밖 앵커를 건다**: 세션 카드(`tracks/_meta/reference_next_session_starter.md`)의
+🧵 블록에 **«⑤ dominance 일관성 — 운영자 결정 대기 (제기 2026-08-17)»** 를 등재한다.
+카드는 매 세션 시작에 읽히고 이 파일은 안 읽힌다 — 그게 차이다.
+🟥 **이 등재가 없으면 이 절은 자백의 재생산일 뿐이다.**
+
+---
 
 ## For a field harness (e.g. pmh, qasp)
 Same gate, its own identities. A field harness ships to its team when its identity checklist is all-green,
