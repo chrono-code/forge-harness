@@ -1,0 +1,21 @@
+# Chamber ordering witness — HASHES ONLY, never content.
+#
+# 이 파일은 챔버 런 아티팩트의 **순서 증인**이다. 내용은 gitignored
+# `tracks/_chamber/<slug>/` 에 남고 여기에는 SHA-256 만 들어온다.
+# 커밋 그래프가 "무엇이 verdict 보다 먼저 고정됐는가" 를 증언한다.
+#
+# 생성/검증: scripts/chamber_witness.sh (record | verify | --self-test)
+# ⚠️ 손으로 고치지 마라 — 손편집은 증인을 무효화한다(해시 불일치 = TAMPERED).
+# ⚠️ 비공개 후보는 slug 을 익명화해서 넣어라. 이 파일은 공개 표면이다.
+- run: persona-simulator-harness
+  artifact: INTENT.md
+  sha256: 97ec34e59a18d08e3f09344f7486956cc5df87379de55b1913b297f78a869cfb
+  recorded: 2026-08-17T01:28:56Z
+- run: persona-simulator-harness
+  artifact: INTENT.md
+  sha256: 97ec34e59a18d08e3f09344f7486956cc5df87379de55b1913b297f78a869cfb
+  recorded: 2026-08-17T01:29:17Z
+- run: persona-simulator-harness
+  artifact: BUDGET.md
+  sha256: 2882868ef27b58ca8546eabe95ed4cbe597d78ef457e1feda4070493e1baded2
+  recorded: 2026-08-17T01:29:17Z
