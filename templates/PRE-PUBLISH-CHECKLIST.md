@@ -83,3 +83,25 @@ A pre-publish catch is a process win worth logging:
 
 **Done when**: Step 0 pre-flags clean (or escalated to full scan) · Step 1 both gates non-LEAK ·
 publish executed *after* the gates passed, never before.
+
+## Read it as a reader, once, before it goes out
+
+Not a correctness check — the code can be right and this still fails. Open the thing a **reader**
+opens and look at what they see:
+
+- [ ] Is the **conclusion in the first ~8 lines**, or is it buried under banners, metadata and
+      "how to read this table"?
+- [ ] Does the **body survive the template**? (measured case: 3 lines of content under 21 lines of
+      fixed boilerplate)
+- [ ] What is the **last impression**? (measured case: the final line told the reader they could
+      skip it)
+- [ ] Does it say **what the reader should do next**?
+
+A lens already exists — `/sim-conductor` A-1 (`beginner` cold-read) — or just render it and read it.
+
+🟥 **Why this is a human step and not a scan**: a static check catches what is ABSENT, never what is
+UNREADABLE. Two independent measurements arrived here the same day (2026-08-17): one harness axis
+found 12 readability defects with **0** caught by static scanners; a third-harness review
+(`harness_incubator_doctrine.md` §4-c) found a shipped report whose answer to "did it pass?" sat in
+the fourth bullet. The pre-commit hook prints an advisory reminder when a reader-facing surface is
+staged — it reminds, it does not certify.
