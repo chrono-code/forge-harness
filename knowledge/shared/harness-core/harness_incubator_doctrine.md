@@ -558,6 +558,49 @@ one harness sees runtime behaviour and not source structure, another sees source
 runtime. **The meta-harness's job is not to dig a deeper well; it is to make outputs flow across the
 boundary between wells.**
 
+### 4-c. The return leg, and why the cluster exists at all (operator, 2026-08-17)
+
+§4-b says outputs **flow across** the boundary. It does not say what happens to what flows *in*,
+nor why FH pays for the crossing. Both were load-bearing and neither was written down. Operator's
+formulation, in three parts — and the third is the one that makes the first two a strategy rather
+than a nice habit:
+
+```
+1  BORROW-EXECUTE (standing)   FH does not endlessly BUILD the capability it lacks.
+                               It reaches into a cluster harness and RUNS theirs.
+2  INTERNALIZE (selective)     Of the insight that comes back, only what is genuinely worth
+                               adopting is PROPOSED and absorbed. Never automatic.
+3  THE POINT IS TIME           Not capability breadth. What FH buys by not-building is time to
+                               sharpen its OWN edge — and that is what lets it keep pace with a
+                               fast-moving model layer instead of being outrun by it.
+```
+
+🟥 **Without (3), (1) inverts on reading.** "We borrow instead of building" reads as *"FH need not
+have capabilities"* — which turns the cluster into dependency. The operator's claim is the opposite:
+**borrowing is how FH protects its own sharpness.** State (3) whenever (1) is cited.
+
+**The asymmetry in (2) is the whole filter.** Borrowing is constant; absorbing is rare and gated by
+a proposal. Automatic absorption produces a collage of other harnesses' capabilities wearing FH's
+name — the exact opposite of (3), because a collage has no edge to sharpen.
+
+**First recorded run of the full loop (2026-08-17, gstack → qasp, FH as governor).** FH did not
+build a DX/product lens; it stood up the gstack persona (`/plan-devex-review`, `/qa-only`) against a
+qasp change and observed. The review returned three findings FH's and qasp's lenses structurally do
+not ask (guide-promises-vs-delivered-bundle · the shipped document's readability · release-doc
+drift). Then the filter ran, and **it rejected more than it accepted**:
+
+| finding | disposition |
+|---|---|
+| anchor should be *discovery-based*, not a hand-kept list | **rejected** — measured against FH and the transfer did not hold; a control showed the suites believed unwired do run by another path |
+| guide promises ≠ delivered bundle | **rejected** — `package_coverage_check.sh` already covers it |
+| release docs did not follow | **rejected** — §④-b entry-point drift covers half; not enough delta |
+| **a shipped document is never read as a reader before it ships** | **accepted** — and NOT because gstack said so: FH reached the same place independently the same day from a different axis, recording that *"readability is measured only by rendering it or by a person; a static scan catches what is ABSENT, never what is UNREADABLE"* with 12 findings and **0** caught by static scanners. **Two independent arrivals is the internalization signal.** One source alone leaves it a candidate. |
+
+⚠️ **Honest scope**: one run, one target, one third harness. This is an existence proof that the
+loop closes, not a rate. And the filter rejecting 3 of 4 is the expected shape — if it accepted
+everything it would not be a filter, it would be a funnel.
+
+
 Three rules, in falling order of how easily they are broken:
 
 1. **Crossing must not overwrite the receiving harness's identity.** If harness B is deliberately
