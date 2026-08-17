@@ -64,13 +64,41 @@ if [ "${1:-}" = "--pr" ]; then
   fi
   PR_BRANCH="$2"
   BASE_BRANCH="${3:-main}"
-  BASE_REF=$(git merge-base "$BASE_BRANCH" "$PR_BRANCH" 2>/dev/null)
-  if [ -z "$BASE_REF" ]; then
-    echo "ERROR: cannot compute merge-base for $PR_BRANCH vs $BASE_BRANCH" >&2
+  # Resolve each side to a ref that actually EXISTS in this checkout.
+  #
+  # WHY (measured 2026-08-17, 5 of 5 SAMPLED CI runs — not an exhaustive audit): a bare branch
+  # NAME does not resolve in a GitHub Actions PR checkout. actions/checkout lands on a DETACHED
+  # HEAD and creates refs/remotes/origin/*, not local branches — so `git merge-base main <branch>`
+  # found neither side, returned empty, and this block exited 3. `fetch-depth: 0` was already set
+  # and is NOT the cause; the history was present, the NAMES were not. The workflow then rendered
+  # that instrument error as a green PASS (fixed in the same commit).
+  #
+  # 🟥 THE FIRST FIX FOR THIS INTRODUCED A WORSE HOLE, caught by cross-family review before it
+  # shipped. It resolved `ref -> origin/ref -> refs/remotes/origin/ref` and fell back to HEAD.
+  # `github.head_ref` is only a branch NAME, not owner-qualified, so a **fork PR whose branch is
+  # named `main`** resolved the PR side to the BASE repo's `main` — merge-base(main, main) = main,
+  # empty diff, SKIP, green. A guard silently comparing a branch to itself is worse than one that
+  # errors. So: NO name-guessing and NO silent HEAD fallback. Callers pass something
+  # unambiguous (a SHA, or an explicit `origin/<ref>`); anything that does not resolve EXACTLY
+  # is an instrument error, and the workflow now fails closed on that.
+  _rg_resolve_ref() { # $1 = ref-ish; echoes it iff it resolves EXACTLY as given (rc=1 otherwise)
+    git rev-parse --verify --quiet "${1}^{commit}" >/dev/null 2>&1 && printf '%s' "$1"
+  }
+  _BASE_RESOLVED=$(_rg_resolve_ref "$BASE_BRANCH") || _BASE_RESOLVED=""
+  _HEAD_RESOLVED=$(_rg_resolve_ref "$PR_BRANCH")  || _HEAD_RESOLVED=""
+  if [ -z "$_BASE_RESOLVED" ] || [ -z "$_HEAD_RESOLVED" ]; then
+    echo "ERROR: ref does not resolve — base='$BASE_BRANCH'->'${_BASE_RESOLVED:-<none>}' head='$PR_BRANCH'->'${_HEAD_RESOLVED:-<none>}'" >&2
+    echo "       Pass an unambiguous ref (a SHA, or origin/<branch>). Guessing is how a fork PR" >&2
+    echo "       branch named 'main' silently compared the base repo's main to itself." >&2
     exit 3
   fi
-  HEAD_REF="$PR_BRANCH"
-  echo "PR MODE: merge-base=$(git rev-parse --short "$BASE_REF") branch=$PR_BRANCH"
+  BASE_REF=$(git merge-base "$_BASE_RESOLVED" "$_HEAD_RESOLVED" 2>/dev/null)
+  if [ -z "$BASE_REF" ]; then
+    echo "ERROR: cannot compute merge-base for $_HEAD_RESOLVED vs $_BASE_RESOLVED" >&2
+    exit 3
+  fi
+  HEAD_REF="$_HEAD_RESOLVED"
+  echo "PR MODE: merge-base=$(git rev-parse --short "$BASE_REF") base=$_BASE_RESOLVED head=$_HEAD_RESOLVED"
 elif [ "${1:-}" = "--staged" ]; then
   # Pre-commit context: evaluate the staged index against HEAD. On a direct-to-main
   # workflow, --pr's merge-base(main,main)=HEAD yields an empty diff, so staged changes

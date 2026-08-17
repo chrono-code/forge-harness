@@ -22,21 +22,76 @@ jobs:
       - name: Run regression_guard (--pr mode)
         id: guard
         run: |
+          # Pass UNAMBIGUOUS refs, never branch names. `github.head_ref` is a bare branch name and
+          # is not owner-qualified, so a fork PR whose branch is called `main` would have the guard
+          # resolve the PR side to THIS repo's main and compare it to itself (empty diff -> skip ->
+          # green). The head SHA cannot collide; the base is explicitly remote-qualified.
+          export REGRESSION_GUARD_RESULT_FILE="$RUNNER_TEMP/rg_result"
           set +e
-          bash templates/regression_guard.sh --pr "${{ github.head_ref }}"
+          bash templates/regression_guard.sh --pr \
+            "${{ github.event.pull_request.head.sha }}" \
+            "origin/${{ github.base_ref }}"
           EXIT=$?
-          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
           set -e
-          exit 0  # capture exit code; handle below
+          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
+          # Read the verdict from the script's TYPED channel, not by grepping its prose. The file
+          # already existed and this step was grepping stdout anyway — the exact grep-collision
+          # treadmill this repo has a memory about. A missing file is UNKNOWN, never "scanned".
+          if [ -f "$REGRESSION_GUARD_RESULT_FILE" ] \
+             && grep -qx 'result=skip' "$REGRESSION_GUARD_RESULT_FILE"; then
+            echo "scanned=no" >> "$GITHUB_OUTPUT"
+          elif [ -f "$REGRESSION_GUARD_RESULT_FILE" ]; then
+            echo "scanned=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "scanned=unknown" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0  # verdict travels on the outputs above; handled in the next step
 
       - name: Evaluate result
         run: |
           EXIT="${{ steps.guard.outputs.exit_code }}"
-          if [ "$EXIT" = "2" ]; then
-            echo "::error::Regression Guard BLOCK — M-tier issues found. Fix before merge."
-            exit 2
-          elif [ "$EXIT" = "1" ]; then
-            echo "::warning::Regression Guard S-tier warnings present. Review intent before merge."
-          else
-            echo "Regression Guard PASS"
-          fi
+          # 🟥 FAIL-CLOSED ON ANYTHING UNRECOGNISED. The previous form was
+          #   2 -> block · 1 -> warn · else -> "PASS"
+          # and that `else` swallowed EVERY other exit code, including 3 = "the guard could not
+          # run at all". Measured 2026-08-17: 5 of 5 sampled runs exited 3 (unresolvable refs) and
+          # this step printed a green PASS. A gate that renders "could not measure" as "clean" is
+          # not a gate. Enumerate the passing codes; treat the rest as failure.
+          # Anchor: scripts/test_regression_guard_ci_lanes.sh (includes a revert probe).
+          case "$EXIT" in
+            0)
+              if [ "${{ steps.guard.outputs.scanned }}" = "unknown" ]; then
+                echo "::error::Regression Guard exited 0 but wrote no typed result — cannot tell scanned from skipped. Not a pass."
+                exit 1
+              elif [ "${{ steps.guard.outputs.scanned }}" = "no" ]; then
+                # NOT a pass, and deliberately NOT a failure either.
+                #
+                # 🟥 The first draft of this comment justified the branch with a FALSE claim —
+                # that `templates/regression_guard.sh` triggers this workflow without being in
+                # GUARD_PATHSPEC. It IS in it (`templates/*.sh`). The error came from reading
+                # only the first 12 lines of that array; the truncation, not the repo, produced
+                # the finding. Recorded rather than quietly deleted, because the same
+                # read-truncation produced a second wrong claim the same session.
+                #
+                # The real relation, measured: this workflow's `paths:` is a SUBSET of
+                # GUARD_PATHSPEC (the script also gates knowledge/**, AGENTS.md, docs/*.md,
+                # scripts/*.sh, templates/.git-hooks/*, agent definitions — none of which
+                # trigger this workflow at all; that direction is a separate, already-recorded
+                # gap in CLAUDE.md). So a SKIP here should be RARE: if the workflow triggered,
+                # a gated file changed. That is exactly why it must not print "PASS" — a skip
+                # in CI means the run compared nothing, and the honest reading of "compared
+                # nothing" is not "clean". Surfaced rather than blocked: the state is unproven
+                # in the field (0 observed CI skips so far), and blocking on an unproven state
+                # trains the override that would disarm the rest of this gate.
+                echo "::notice::Regression Guard SKIPPED — no changed file matched GUARD_PATHSPEC. This is NOT a pass; nothing was compared."
+              else
+                echo "Regression Guard PASS — scanned, no regression."
+              fi ;;
+            1)
+              echo "::warning::Regression Guard S-tier warnings present. Review intent before merge." ;;
+            2)
+              echo "::error::Regression Guard BLOCK — M-tier issues found. Fix before merge."
+              exit 2 ;;
+            *)
+              echo "::error::Regression Guard could NOT RUN (exit '$EXIT'). An instrument error is not a pass — see the step log above."
+              exit 1 ;;
+          esac

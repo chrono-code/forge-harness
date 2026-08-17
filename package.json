@@ -138,6 +138,7 @@
     "templates/degrade_direction_scan.sh",
     "templates/.git-hooks",
     "templates/regression_guard.sh",
+    "scripts/test_regression_guard_ci_lanes.sh",
     "templates/predelete_check.sh",
     "templates/PRE-PUBLISH-CHECKLIST.md",
     "scripts/degrade_direction_scan.sh",
