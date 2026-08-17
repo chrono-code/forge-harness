@@ -95,8 +95,11 @@ judge: mechanical
 verdict_binding: VIOLATION ARGS HARNESS_ERROR OUT_OF_SCOPE PEER_ABSENT
 #
 # known-pair — **합성 레포**에서 실행시점에 세운다. peer 히스토리를 안 쓰는 이유 셋:
-#   ① peer 의 이 진입점은 **수리 중**이다(qasp PR #174, 브랜치
-#      `fix/anchor-scan-out-of-scope-repairs` — 이 쌍을 고른 시점의 체크아웃 상태다).
+#   ① peer 의 이 진입점은 **움직인다**. 2026-08-16 이 줄을 쓸 때는 qasp PR #174 가 열려
+#      있었고(브랜치 `fix/anchor-scan-out-of-scope-repairs`), 그 PR 은 **2026-08-17 머지됐다**
+#      (qasp-dev main `cfd0e77`, 브랜치 삭제). 즉 이유는 살아 있고 사례만 닫혔다 —
+#      그 브랜치를 고정 SHA 로 박았으면 squash 로 커밋이 orphan 이 되어 쌍이 지금 죽어 있다.
+#      ★머지 후 known-pair 재실행으로 확인: `--known-positive` rc=1 · `--known-negative` rc=0.
 #      고정 SHA 를 박으면 그 브랜치가 squash 머지되는 순간 커밋이 orphan 이 되어 쌍이 죽는다.
 #   ② 상대 ref(`HEAD~N`)는 커밋이 쌓이면 가리키는 구간이 조용히 움직인다 — 같은 선언이
 #      다른 것을 재게 된다.
