@@ -67,3 +67,15 @@
   artifact: EMISSION_VERDICT.md
   sha256: 3758aa63dbe0667b9f450c9af24520f478757c6db8e6fe556ffd864f1696dc95
   recorded: 2026-08-17T02:53:46Z
+- run: n-eff-probe
+  artifact: INTENT.md
+  sha256: 64b92b55ca00a4371a27f4ee09121260e89fb7538eaef963dfd5796a932d04c4
+  recorded: 2026-08-17T09:26:15Z
+- run: n-eff-probe
+  artifact: BUDGET.md
+  sha256: f02549be0e1ecf93fdf8131c66884181f01ac1d45c7ef37035f5729774e6fe80
+  recorded: 2026-08-17T09:27:34Z
+- run: n-eff-probe
+  artifact: SIM_NOTES.md
+  sha256: 780bd19b5d4a79d5b8f1138db0946a5d5b245ef3d1b52d08a4f3c67b3017fd6d
+  recorded: 2026-08-17T09:35:29Z
