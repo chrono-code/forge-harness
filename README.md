@@ -223,8 +223,9 @@ tracked per identity on a four-step scale — `aspirational → partial → RC (
 here: a grade kept in two files goes stale in one, and this page exists in four languages, so a copy here
 would be four copies. Before you rely on any row above, read the current grades — that is one file:
 [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md). The short version if you
-only want one sentence, as of **2026-08-15**: **③ and ⑤ are graded green — demonstrated outside the lab;
-①, ② and ④ are release candidates — built and calibrated, not yet shown to walk in someone else's hands.**
+only want one sentence, as of **2026-08-17**: **①, ③, ⑤ and Ⓑ are graded green — demonstrated outside
+the lab; ② and ④ are release candidates — built and calibrated, not yet shown to walk in someone
+else's hands.**
 If that sentence and the gate file disagree, the gate file is right and this line is stale.
 
 Two properties cut across all five, and neither is a feature you switch on:
