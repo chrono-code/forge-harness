@@ -2146,3 +2146,27 @@
   outcome: accepted
   evidence: "8건 지적(S2·A3·B3). 그중 2건(혼용 오탐 · 화살표 fail-open)은 내가 투입 전 자력 수리했고 codex 가 독립으로 같은 지점을 지목해 수렴 확인 — 그 둘은 「둘 다 봤다」. **나머지 5건 자력 적발 0**: grep 이 주석 처리된 호출에 매칭(S) · if:false 로 꺼진 잡(S) · 트리거 미검사(A) · 잡 신원 미검사(A) · 마커 파일명 날짜 추출 fail-open(B, 선재). 각 지적에 깨뜨리는 입력을 구체적으로 제시해 손 재현이 즉시 가능했다"
   cost: 85k tokens
+- date: 2026-08-17
+  agent: fh-meta:beginner (isolated) — 챔버 런 #12 step-4 블라인드 1/3 (낭독 렌즈)
+  purpose: "「소리 내어 읽히는가」 계기 후보의 냉담 첫 접촉 — 정의가 서는가, 첫 실패 지점, ko-tech-writer 와의 겹침"
+  outcome: accepted
+  evidence: "tool_uses 3(실독). HARD 4/SOFT 2 · **첫 산출물 도달 실패**. 최대 소득 = *「소리 내어 읽힌다」의 예시 셋이 서로 다른 층이라 정의를 역추정하는 것조차 안 된다* — 번역투=어법층(소리 무관) · 호흡=글자수 · 운율만 소리. 🟥 **그 결함은 후보가 아니라 내 한 줄 요약이 갖고 있었다**(정본은 A~F 로 층을 갈라놨다). ko-tech-writer 대조로 Step 2(번역투 7클래스)·Step 2-b(리듬 수치 대조)를 줄번호로 짚음"
+  cost: 112k tokens
+- date: 2026-08-17
+  agent: fh-meta:main-player (isolated) — 챔버 런 #12 step-4 블라인드 2/3
+  purpose: "실사용자 일상 가치 — 매일 쓸 층이 있는가, 별도 계기인가 한 스텝인가"
+  outcome: accepted
+  evidence: "tool_uses 4. 판정 **NO** — 장면 3/3 대체, 증명된 사용자 **n=1·월 3회**. 🟥 결정적 한 줄: *「후보의 known-positive 가 이미 남의 집에 있다」*(ko-tech-writer:84-90 의 124자 문장·어간 4연속 실측) — **픽스처가 남의 집에 있는 계기는 별도 계기가 아니다.** 그리고 한국어 기술문서 인구를 *「못 잡는다 — UNMEASURED 이지 크다도 작다도 아니다」* 로 **스스로 자백**해 판정 신뢰도를 올렸다. 진짜 구멍 지목: 낭독 대본 레지스터의 Step 5 N/A"
+  cost: 106k tokens
+- date: 2026-08-17
+  agent: fh-meta:challenger (isolated) — 챔버 런 #12 step-4 블라인드 3/3
+  purpose: "배출 후보 적대 심사 — 술어 성립성·재발명·정답라벨·보이지 않는 것"
+  outcome: partial
+  evidence: "tool_uses 12, S 4건. **VALID**: S3(기계화 가능분은 이미 있는 스텝) · S4(표면지표 환원 시 **양방향 오탐**, known-negative 3건을 손으로 제작해 시연) · A3(정답 라벨 주체 부재, SKILL.md:235 «생성자=평가자 금지»). 🟥 **S2 는 거버너가 반증**: *「산출물 회수 불가, rg 낭독 tracks/ → no matches」* 의 repro 가 **재현 안 된다**(실측 12파일, 정본 신호 272줄 실재). S1(«양식 미도달»)은 과장 — 음절수·동음이의는 텍스트에서 계산되는 소리 속성. ⇒ **사이드카 발견은 소스로 닫히기 전엔 판정이 아니다**(오늘 2번째). 본인이 *「나도 스캐너를 안 돌렸고 나 역시 소리를 못 낸다」* 로 등급을 스스로 깎은 것은 신뢰도를 올렸다"
+  cost: 131k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — 챔버 런 #12 조건 1(net-new) measured 스캔
+  purpose: "외부 생태계(한국어권 1순위) + 로컬 전수 스캔으로 재발명 여부 측정. 런 #11 의 자백된 사각(영어 전량)을 INTENT 가 필수 조건으로 박았다"
+  outcome: accepted
+  evidence: "tool_uses 27(WebSearch 12 중 **한국어 7** · GitHub API 15 · WebFetch 4 · 로컬 정독). 이 런의 KILL 을 가른 계기이고 **거버너의 프레이밍 오류 영향을 가장 덜 받았다**. ⓑ번역투 **포화** — 2026-06~08 3개월간 한국어 번역투 제거 스킬 **10+ 신설**(humanizer-ko 35패턴 등) · ⓒ처방형식은 이 분야 **기본값** · ⓐ운율만 외부 공백(GitHub 전체 `낭독` SKILL.md **1건=우리 미러**). 🟥 **결정적 근거를 찾았다** — harness_terminal_correlation:235-236 이 ko-tech-writer Step 2·4 를 이미 `UNCALIBRATED` 로 강등(Step 4 는 자기반증까지). 미탐 자백 7종을 스스로 열거(GitHub API 403 4쿼리 미실행 · 국립국어원 규칙목록 미개봉 · description 기준 판정 등)"
+  cost: 152k tokens
