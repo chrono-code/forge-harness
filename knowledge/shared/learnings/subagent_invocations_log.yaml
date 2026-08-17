@@ -2206,3 +2206,50 @@
   outcome: accepted
   evidence: "**6건 · codex 와 겹친 지적 0.** 최상위는 `GIT_DIR`/`GIT_WORK_TREE` 가 `git -C` 를 이긴다 — **엉뚱한 레포를 재고도 «동결했다» 고 보고**한다(계기가 대상을 틀리는 형태). 그 외 untracked **실행 비트** 미검출(이 레포가 이미 데인 축) · TOCTOU «유령 지문» · 미초기화 서브모듈은 `foreach` 가 건너뜀 · `---` 구분자 경계 · `foreach` 의 `;` rc 소실. 전부 수리, 레인 11→28. ⇒ **계열 분리가 값을 냈다** — 이 6건은 codex 를 한 번 더 돌려서는 안 나온다"
   cost: ~35k tokens
+  agent: general-purpose (isolated) ×3 — 원정 1차 정찰 (qasp rule 세트 · FH 등록 바 · clawd 후보 A)
+  purpose: "원정 착수 전 3면 동시 정찰. 노드 선언 성립성 / 등록 바가 기계로 강제하는 것 / 외부 기여 후보 실태"
+  outcome: accepted
+  evidence: "3팔 전부 근거명령 동반. ⓐ qasp: 진입점 실재(python -m 게이트 CLI 3종)·exit 이미 typed(0/1/2/3, 3=스캔0개 fail-closed)·known-pair 가 peer 테스트에 대조군 형태로 존재·FH grep 0히트 net-new. ⓑ FH 등록 바: .cap 파서 «네 벌» 헤더 주장을 실측 확인(6파일 언급 중 실제 파싱 4) · M1~M6 각 검사 내용 · test_adapter_lanes.sh 는 **하드코딩**(자동발견 없음) · cluster_capability_scan 은 재귀 find 라 자동. 🟥 여기서 부수로 «.cap 이 pre-commit HEAVY/CARVEOUT/LIGHT 어디에도 없다»가 나왔고 그게 이 세션 최대 FH 발견의 실마리였다. ⓒ clawd 후보 A: **반증** — 이미 호출부 12곳 + 전용 테스트 766줄, 「앵커 갭」 아님. 카드 등재 후보가 미조사였음이 드러남"
+  cost: 405k tokens (3팔 합)
+- date: 2026-08-17
+  agent: general-purpose (isolated) ×3 — clawd 기여 후보 평가 → 레인 구축 → 리베이스/재측정
+  purpose: "후보 A 기각 후 대체 후보(fix/validate-theme-*) 를 #888 바에 맞추기. 로컬 완주·되돌림 프로브·upstream 기준선 재측정"
+  outcome: accepted
+  evidence: "평가팔: 컨트롤 붙여 «main 도 동일 실패» 확인 → 이 diff 가 깬 것 0. 되돌림으로 «앵커가 장식이 아니라 **부재**» 확정(test/ 에 validate-theme 0건). 판정 «지금은 못 보낸다». 구축팔: spawnSync 실 CLI 기동 레인 5케이스 + 픽스처 근거 in-comment, 되돌림 3단 통과. 재측정팔: 🟥 **리베이스 전 수치가 PR 트리의 수치가 아니었다** — fork main(7커밋 뒤처짐) 59건 → upstream/main 30건. 운영자 지적(«리베이스부터 하고 재봐야») 이 없었으면 틀린 숫자가 PR 본문에 박힐 뻔했다. 리베이스 충돌 0, 차집합 양방향 공집합, upstream 파일 md5 일치로 선행수정 없음 확인"
+  cost: 420k tokens (3팔 합)
+- date: 2026-08-17
+  agent: general-purpose (isolated) ×2 — 입장 리뷰 정적 + 동적 (upstream 유지관리자 시점)
+  purpose: "운영자 지시 «입장리뷰는 정적 동적 모두». 정적=관례·호출부·문서·기존 테스트 관용구 / 동적=소비자 경로 실행·CI 로컬 재현·5입력 대조·재현성"
+  outcome: accepted
+  evidence: "🟥 **둘의 발견이 거의 안 겹쳤다** — 같은 축인데 정적/동적으로 갈리자 다른 것을 잡았다. 정적: exit 2 가 이 레포 다른 스크립트와 충돌 안 함을 grep 으로 확인 · 호출부 실측 · **문서 갭**(계약이 스크립트 헤더에만, README/가이드 없음) · 임시디렉토리 미정리. 판정 «수정 요청». 동적: 프로그램적 소비자 **0건** 실증 · 5입력 기준선 vs 브랜치 rc 대조표 · 3회반복/다른 cwd/TZ·LANG arm 전부 통과 · **누수 수치 실측 63→66(런당 +3)**. 정적이 «정리 안 함»을 지적하고 동적이 그 수치를 냈다"
+  cost: 250k tokens (2팔 합)
+- date: 2026-08-17
+  agent: general-purpose (isolated) — 3자대면 (스펙 ↔ 구현 ↔ TC)
+  purpose: "우리가 TC 를 새로 썼으므로 출제자=응시자. 구현의 process.exit 전수 열거로 «TC 가 안 덮는 종료 경로»를 강제 탐색"
+  outcome: accepted
+  evidence: "🟥 **이 세션 최대 발견 — 다른 세 축이 전부 놓쳤다.** theme.json 이 파싱되지만 객체가 아닌 값(null/숫자/문자열/불리언)이면 130줄에서 uncaught TypeError → **Node 기본 종료 exit 1**. 1 은 이 PR 이 방금 「검증했고 오류 있음」이라 정의한 값인데 검증을 한 줄도 못 돌렸다 — **PR 이 자기 목적을 무효화한다**. 경계까지 실측: `[]` 는 객체라 크래시 안 하고 정상 exit 1(→ 가드는 isPlainObject 여야지 truthy 가 아니다). 추가로 catch 가 읽기실패를 「파싱 실패」로 오라벨(EISDIR 실측). 판정 «구조적 불일치», 수리는 3면 동시여야 한다고 지정"
+  cost: 125k tokens
+- date: 2026-08-17
+  agent: codex/gpt-5.5 (cross-family, headless) — clawd exit enum 변경 적대 리뷰
+  purpose: "exit code 계약 변경 = Load-Bearing 트리거. 「반증하라」로 발주 — exit 2 안전성·파괴성·테스트 트리비얼 만족 가능성·미재분류 경로·픽스처 취약성"
+  outcome: accepted
+  evidence: "다른 셋이 못 잡은 것 2건: 인자 파서가 값 없는 `--assets` 를 조용히 무시 → **exit 0 가능**(헤더의 「bad usage=2」와 정면 충돌) · `--assets /오타` 가 exit 1 로 렌더(검증이 의도한 애셋에 안 돌았는데). 그리고 유일하게 **위험을 해소**한 축 — exit 2 안전성을 1차 출처 3개(nodejs.org process exit codes · docs.npmjs.com scripts exiting · GH Actions exit codes)로 확인. 내가 「아마 괜찮겠지」로 넘어간 자리였다"
+  cost: 68k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — clawd 통합 수리 (결함 5종 3면 동시)
+  purpose: "네 리뷰의 findings 를 한 번에 수리. 결함별로 구현+스펙헤더+TC 를 같은 커밋에"
+  outcome: accepted
+  evidence: "6커밋. 되돌림 프로브 4개 전부 «정확히 그것만» 확인 — 객체 가드 되돌리자 null/숫자/문자열/불리언 4케이스만 적색이고 **`[]` 컨트롤은 초록 유지**(가드가 과하게 안 넓다는 증거). 기존 관용구 준수(isPlainObject 재사용·install.test.js 의 afterEach 정리 패턴). 누수 재측정 96→96(순증 0, 이전 +3/런). 🟡 팔의 차집합 보고가 33 이었는데 거버너 재측정은 37 — **또 숫자가 갈렸다**. 판정에 쓰는 건 차집합(양방향 공집합)이라 영향 없었고, 그래서 PR 본문에 건수를 안 썼다"
+  cost: 216k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — 축 선언 원장 부착점 3후보 known-pair 측정
+  purpose: "이 세션 자신의 축 누락(ⓐⓑⓓ 미실행)에 대한 처방의 **전제 측정**. 짓지 않는 것이 명시 지시"
+  outcome: accepted
+  evidence: "🟥 **결론이 «셋 다 이 사건 모양을 못 잡는다»** — 그리고 그게 이 측정의 값이다(안 재고 지었으면 못 막는 게이트를 얹고 닫았다고 적었을 것). ⓐ close-check: `gh pr list --author @me` 가 **cwd remote 스코프**라 외부 레포 미조회 · ⓑ gh 래퍼: known-pair 는 갈리나(BLOCK exit1 / 통과 exit0) 미설치 + **절대경로 호출로 무음 우회** 실측 · ⓒ pre-commit: **구조적 불가** — clawd-on-desk 는 core.hooksPath 미설정·.git/hooks/pre-commit 부재라 FH 훅이 볼 수 없다. 부수 발견: **CLAUDE.md ①-b 가 `gh search prs` cross-repo 를 배선된 것처럼 서술하는데 스크립트엔 0히트**(문서-코드 드리프트)"
+  cost: 131k tokens
+- date: 2026-08-17
+  agent: general-purpose (isolated) — qasp 노드 M6 `writes:` 실행 관측
+  purpose: "소스 grep 이 write 0히트였으나 거버너 실행에서 import 부작용(기동 시 경고 출력)이 드러남. 선언이 아니라 실측으로 정해야 함"
+  outcome: accepted
+  evidence: "🟥 **warm-cache 아티팩트를 잡았다.** peer 실제 트리 5축 diff 는 전부 공집합 → 이 머신에서 M6 돌렸으면 거짓 `read-only` 가 통과했을 것. cold checkout 격리 클론에서: arm A `바이트코드 캐시 0→5 디렉토리 · 0→18 파일 · 런타임 디렉토리 3개 생성` / arm B(PYTHONDONTWRITEBYTECODE=1) `바이트코드는 0→0 이지만 런타임 디렉토리 3개는 여전히 생성`. 기전 = peer 의 설정 모듈이 import 시점에 «필요 디렉토리 보장» 루틴을 무조건 실행(감사 모듈 import 체인 경유). known-positive 컨트롤로 계기 생존 확인. 문제의 기동 경고는 소스 직독으로 in-memory 전용 확인(grep 부재 아님). ⇒ 정직한 선언은 `write-local`(닫힌 enum: read-only|write-local|write-remote — 팔이 제안한 산문은 HARNESS_ERROR 로 떨어졌을 것, 거버너가 확인)"
+  cost: 144k tokens
