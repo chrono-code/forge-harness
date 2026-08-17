@@ -2182,3 +2182,27 @@
   outcome: accepted
   evidence: "tool_uses 25(계기 생존 — 카드가 경고한 `tool_uses: 0` 아님). **4/4 앵커 생존**, 매번 대응 레인만 적색(S1→2건·S2→1건·S3→2건·B1→known-pair 2건), 무관 25~28개는 통과 → 과결합 0. 복원 후 29 passed 재확인, 트리 clean. 🟥 substring 8행은 **전부 ✅ 로 판정했는데 코덱스와 갈렸고 이쪽이 졌다** — 「뚫리는 입력을 제시 못 함」을 판별력 있음으로 읽었으나, 그 단언이 *주장*하는 것(«범위 밖 보고가 났다»)은 파일명만으로 증명되지 않는다. **없음을 증명 못 함 ≠ 판별력 있음**"
   cost: 135k tokens
+- date: 2026-08-18
+  agent: Explore ×4 (isolated) — AX-레디 착수 전 정찰(FH 대상동결 선행자산 · qasp 해석기 어휘 · D2 스캐너 배선 · D3ⓑ 용어 채널 · B5 상태 어휘 · 호출부 0 좌표)
+  purpose: "재발명 방지 + 좌표 확정. 착수 전 «이미 있나» 를 기계로 먼저 묻는다(오늘 이 레포에서 재발명이 한 번 났었다)"
+  outcome: partial
+  evidence: "6축 정찰을 4발주로 묶음(각 대상 지문 `target_freeze.sh verify` 로 시작). **정확했던 것**: 대상동결 선행자산 스캔이 «기계 없음 + 실패 2종 문서화» 를 짚어 3번째 시도의 설계를 결정 · D2 가 `bug_report.py` 호출부 0을 컨트롤 동반으로 확정 · B5 가 `rer_from_act2` 를 «어휘 매핑 어댑터 레퍼런스» 로 지목(재발명 회피) · 근거표 A3 의 팬텀 인용 `PEER_ABSENT` 발견. 🟥 **틀린 것 2건, 둘 다 내가 직접 재현해서 걸렀다**: ⓐ 「`_CAUSE_PLAIN` 커버리지 게이트가 FAIL 레인 4종을 놓친다」 → 그 4종은 `StepEvidence.triage` 가 아니라 이슈-후보 dict 로 가고 소스 주석이 이미 그렇게 갈라놨다(오탐) ⓑ 「`env_cols_source` 가 존재하지 않는다」 → 7히트 실재(주석이 말한 건 *다른 모듈*). ⇒ 정찰 산출은 소스로 닫히기 전엔 좌표가 아니다"
+  cost: ~309k tokens (4건 합)
+- date: 2026-08-18
+  agent: general-purpose (isolated) — qasp 호출부 0/불일치 스캐너 제작
+  purpose: "«완성된 층 + 호출자 없음» 이 하루 4회 났다 — stdlib ast 기반 계기를 known-pair 로 세우고 전수 1회"
+  outcome: accepted
+  evidence: "**known-pair 양성 2/2 · 음성 5/5**(음성은 호출자 *경로까지* 대조). 전수 1024심볼 · ⓐ162(엄격 32)·ⓑ207·UNDECIDABLE 73. 🟥 **자기 오탐 2계열을 스스로 잡아 고쳤다**: `same_module_refs` 가 import 링크를 요구해 구조적으로 항상 0(→엄격 ⓐ 162→32) · `DeviceAdapter` 덕타이핑 미검출. 진양성 손검증 1건(`RuleAutoExpansionGate` — 외부 참조가 주석 2줄, 그 이름은 **존재하지 않는 철자**). ★ **`target_freeze.sh` 의 첫 실사용이 여기서 났다** — 회수 시 `WRONG-TARGET`(발주 중 내가 커밋 3건 투입), 위임분이 stale 판정을 안 들고 오고 현재 트리에서 전량 재실행. 미해결 자백: 손검증 1건뿐 · 미검출 미측정 · CI 미배선"
+  cost: 167k tokens
+- date: 2026-08-18
+  agent: codex/gpt-5.5 (cross-family sidecar) — FH `target_freeze.sh` 게이트 적대검증
+  purpose: "감사 대상 동결 게이트의 fail-open / 오탐 / 셸 이식성 — 재현 명령 필수"
+  outcome: accepted
+  evidence: "**6건, 전부 재현 명령 동반, 내가 직접 재현해 6/6 확인.** S급 3건이 **fail-open**(`_sha` 가 `|awk` 로 rc 소실 · `ls-files -o` 실패가 파이프에 먹힘 · 라벨 문자치환 충돌로 **핀한 적 없는 라벨이 MATCH**) + A급 2(서브모듈·심볼릭링크 미검출) + 과탐 1(빈 커밋). 🟥 **레인 11/11 초록인 상태에서 전부 뚫렸다** — 컨트롤 있음 ≠ 판별력 있음. 전부 수리 + 레인 고정"
+  cost: ~40k tokens
+- date: 2026-08-18
+  agent: agy/gemini (cross-family sidecar, 2번째 계열) — 같은 게이트, **다른 축** 요구
+  purpose: "codex 지적 목록을 먼저 주고 «그 밖의 축»(동시성·env·거짓 안심·인코딩)을 요구 — 한 계열에 몰면 같은 사각이 남는다"
+  outcome: accepted
+  evidence: "**6건 · codex 와 겹친 지적 0.** 최상위는 `GIT_DIR`/`GIT_WORK_TREE` 가 `git -C` 를 이긴다 — **엉뚱한 레포를 재고도 «동결했다» 고 보고**한다(계기가 대상을 틀리는 형태). 그 외 untracked **실행 비트** 미검출(이 레포가 이미 데인 축) · TOCTOU «유령 지문» · 미초기화 서브모듈은 `foreach` 가 건너뜀 · `---` 구분자 경계 · `foreach` 의 `;` rc 소실. 전부 수리, 레인 11→28. ⇒ **계열 분리가 값을 냈다** — 이 6건은 codex 를 한 번 더 돌려서는 안 나온다"
+  cost: ~35k tokens
