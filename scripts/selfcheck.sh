@@ -530,7 +530,8 @@ for _pair in \
   "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \
   "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
   "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \
-  "scripts/stale_clone_guard.sh|scripts/test_stale_clone_guard_lanes.sh"
+  "scripts/stale_clone_guard.sh|scripts/test_stale_clone_guard_lanes.sh" \
+  "plugins/fh-commons/skills/ko-tech-writer/SKILL.md|scripts/test_ko_tech_writer_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then
