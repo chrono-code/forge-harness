@@ -224,6 +224,37 @@ pass):
 **🟥 DECIDE IN THIS ORDER — first match wins. Do not pick by matching a description.**
 
 ```
+Q0. WHICH TARGETS? — settle the target CLASS(es) before reaching for a tier.
+    🟥 NOT first-match. Q0 can return MORE THAN ONE target, and each one owes its own tier.
+    A release that also alters a named peer's contract owes both arms; recording only the
+    first shadows the second (caught by cross-family review, 2026-08-17).
+
+      ⓐ Does a NAMED PEER HARNESS carry this surface?
+         Mechanical test, in this order — do not decide from memory or from a name list:
+           · a local repo of a cluster peer carries the file this delta changes
+             (`for d in ~/projects/*; do test -f "$d/<changed-path>"; done`), OR
+           · the peer is declared in `.claude/capabilities` / the cluster registry, OR
+             the change edits an adapter under `scripts/adapters/` naming it
+         YES → target = that repo (one per peer)              → run Q1 for each
+      ⓑ Does this delta change CONSUMER-VISIBLE BEHAVIOR — what a consumer's gate blocks or
+         passes, what a consumer's session is instructed to do, what an install receives?
+         YES → target = a CLEAN INSTALL of the packed artifact → run Q1
+               🟥 This binds NOW, at the change, pre-push (§Sequencing) — NOT deferred to
+               the eventual release. Deferral was the first draft's hole: "not a release
+               yet" would have let a behavior change ship unexamined and left the releaser
+               holding a delta they did not write.
+      ⓒ Neither ⓐ nor ⓑ → `not-applicable`   STOP.
+
+    🟥 A consumer install IS another harness — settled, not open. What Q0 scopes is not WHO
+    RECEIVES the change but WHERE IT HAS TO BE EXECUTED, and 🟥 **not «is this file shipped»**:
+    almost everything here is shipped, so shipped-ness cannot be the discriminator (see
+    «Target class» below). The discriminator is ⓑ's *behavior* clause — the same effect-based
+    trigger this section already uses, applied to the consumer as a target rather than as an
+    audience.
+    Reading Q1/Q2 when the target is an install tree rather than a repo: Q1's "executed in the
+    target's repo" = "executed inside the extracted/installed tree"; Q2's local-wiring question
+    is answered NO for a bare extraction (`tier2`), YES only if a real consumer node's own
+    settings/state were in play (`tier2b`).
 Q1. Did anything EXECUTE in the target's repo — a command, a script, a suite?
       NO, I only read files          → tier1b(<harness>)   STOP.
       NO, I did not touch its repo   → tier1               STOP.
@@ -305,8 +336,18 @@ tier2b(<target-harness>)     same operator, target's real runtime — the SAME h
 tier3(<target-harness>)      actual peer — a DIFFERENT human operator of the target harness ran
                               the change in their real runtime. The only tier with both local
                               wiring AND reviewer independence from the author.
-not-applicable                the change has no target-harness standpoint to borrow (no
-                              shared-body surface, no cross-repo consumer contract) — distinct
+not-applicable                the change has no target-harness standpoint to borrow — Q0 found
+                              neither a named peer harness NOR a release/publish surface, so there
+                              is no repo and no install to run this from. 🟥 Read the second half
+                              literally: «no cross-repo consumer contract» does NOT mean «this file
+                              is never shipped». Almost everything here is shipped (measured
+                              2026-08-17: 192/200 recent commits touch an npm-shipped path, and that
+                              96% is a LOWER bound — `package.json` is packed without appearing in
+                              `files[]`). Reading shipped-ness as the trigger makes this value
+                              reachable in under 4% of commits, i.e. effectively unreachable, and an
+                              unreachable value teaches authors to delete what they are counting
+                              (`[[feedback_unreachable_done_when_trains_evasion]]`). The trigger is
+                              the RELEASE, not the path — distinct
                               from a degrade value; this is a scoping fact, not a miss. Carries the
                               same substantive-grounds-on-the-same-line discipline as a degrade
                               value below — asserting non-applicability without naming what was
@@ -382,11 +423,22 @@ data point.
 **Mechanization status — `standpoint:` is prose-only today, and this must not be read as more than
 that.** `crossfamily:`'s degrade triad is hard-blocked at commit (`templates/.git-hooks/pre-commit`,
 `scripts/test_marker_crossfamily_lanes.sh` — grep-verified: ~20 crossfamily references in the hook,
-validated fixtures). `standpoint:` has **zero** matches in that hook and no fixture suite — nothing
-stops an author from writing `not-applicable` with a thin justification, or omitting the field
-entirely, and no marker-shape check catches it. §Marker required fields in
-`.claude/rules/fh_4axis_gate.md` does not yet list `standpoint:` either (add it there when this
-mechanizes). This is the honest current state, not a placeholder apology: the field exists so a
+validated fixtures). `standpoint:` has **no value-enum validation and no fixture suite** — nothing stops an author from
+writing `not-applicable` with a thin justification, and no marker-shape check catches a wrong value.
+
+🟥 **Two sentences that stood here were STALE and are corrected (2026-08-17, re-measured — a
+cross-family reviewer flagged the second, the first fell out of checking it).** They read
+*"`standpoint:` has **zero** matches in that hook"* and *"§Marker required fields in
+`.claude/rules/fh_4axis_gate.md` does not yet list `standpoint:` either"*. Both are false as of this
+date: `grep -c standpoint templates/.git-hooks/pre-commit` → **15**, and the hook *does* enforce one
+property (when `axes-run` carries `ⓑ=→standpoint`, the `standpoint:` line must exist and be non-empty
+— `pre-commit:780-782`); `.claude/rules/fh_4axis_gate.md` lists the field at **§133 and §192**.
+**What is still true is the narrower claim**: the *value* is unvalidated — «the line exists» is
+enforced, «the value is right» is deliberately reserved (§Mechanization Boundary). Do not read the
+corrected sentence as "now mechanized"; read it as "the channel is checked, the judgment is not".
+The distinction this stale text destroyed is exactly the one that matters here, and it destroyed it
+in the *pessimistic* direction — under-claiming coverage is not a safe error either, because it
+invites someone to rebuild a lane that already exists. This is the honest current state, not a placeholder apology: the field exists so a
 human reader can ask for it and so the *next* occurrence of a false `not-applicable` has something
 concrete to point at — mechanize on that first recorded false value
 (`[[feedback_mechanize_at_repetition_prose_before]]`), not before. **Ownership**: this field lives
@@ -448,6 +500,124 @@ proposal (pmh-dev issue #68, verified verbatim in that thread: *"대상 후보�
 컴패니언·같은 스크립트를 공유하는 경로. 전면 도입이 아니라 이 클래스만"*) — narrowed here to the
 behavioral reading after that same review found the file-class reading false for at least one real
 pair.
+
+**Target class — «누가 받나» is not the question; «어디서 돌려야 하나» is (operator decision,
+2026-08-17).** The trigger above says *effect, not file-class*, and that was still not enough: three
+independent marker-audit legs, run the same day against three different markers, all failed at the
+same place — each reasoned *"it ships, therefore there are consumers, therefore a cross-repo consumer
+contract exists, therefore applicable"*. That reading is not obviously wrong; the enum's own words
+(*"no cross-repo consumer contract"*) invite it. What kills it is the size: **192 of the last 200
+commits touch an npm-shipped path (96%, a lower bound — `package.json` ships without being listed in
+`files[]`, so at least one of the 8 remaining is a false negative too)**. A value reachable in under
+4% of commits is not a scoping value — it prices the axis at a rate this section's own **Trigger**
+paragraph already rejects as over-triggering (*"almost every commit would qualify, which is the
+over-pricing this trigger is trying to avoid, not invoke"*). That is the argument, and it was
+already in this document.
+
+⚠️ **A citation is withdrawn here.** The first draft justified this with
+`[[feedback_unreachable_done_when_trains_evasion]]` — *"an unreachable condition teaches people to
+delete what they are counting"*. An adversarial round showed the direction is **inverted**: that
+memory is about an unreachable **pass condition** a person must reach, whereas `not-applicable` is an
+**exemption**. An unreachable exemption does not make anyone delete anything; it makes the obligation
+fire almost always, and the failure mode is over-pricing and formality, not evasion. Same discomfort,
+different mechanism — do not re-import the citation.
+
+🟥 **State precisely what that 96% does and does not establish — it is narrower than it looks, and a
+cross-family reviewer caught the first draft overreaching on exactly this.** It is a *file-class*
+count, which this very section rejects as a trigger. It is admissible for **one** claim: the legs'
+argument *was* the file-class argument (*"it ships, therefore consumers, therefore applicable"*), so
+the number measures **that argument's reach**, and shows that adopting it collapses `not-applicable`
+to under 4%. It does **NOT** establish how often the *behavioral* trigger (Q0-ⓑ) actually fires —
+that number is **unmeasured**, and the step from "touched a shipped path" to "a consumer standpoint
+obligation arose" is precisely the step Q0-ⓑ exists to make someone take by hand. Anyone citing 96%
+as the applicability rate is citing it wrong.
+
+**Corrected figure, and the instrument defect behind it — surfaced only because an adversarial round
+demanded the hand-check.** The first pass reported **192/200 (96%)** with 8 non-touching commits. Two
+faults, in opposite directions:
+- **Instrument**: the scan ran `--first-parent` *including merge commits*, and `--name-only` emits no
+  file list for a merge — so merges were silently scored *non-touching*. Re-run with `--no-merges`:
+  the ratio held at 192/200, but the non-touching set collapsed to **6 real cases** (2 commits
+  legitimately carry no files).
+- **Hand-check of all 6** (this repo's own publish-a-number rule; N=6 made it trivially cheap):
+  **2 are `package.json`-only**, which npm packs regardless of `files[]` — they *are* shipped. The
+  other 4 are genuinely unshipped (`.gitignore` · `knowledge/shared/learnings/…` · two `scripts/`
+  paths absent from `files[]`).
+
+⇒ **Measured: 194/200 = 97%, every exception hand-verified.** ⚠️ One direction stays unexamined: the
+scan applies **today's** `files[]` to **past** commits, and that manifest has only grown, so older
+commits are over-counted as shipped. That FP direction is **unmeasured** — read 97% as *"under the
+current manifest"*, never as a historical claim.
+
+🟥 **And read the reachability argument in BOTH directions, which the first draft did not.** It
+measured only what the *rejected* reading does to `not-applicable` (collapses it to <4%). It never
+measured what the *adopted* reading does — Q0-ⓑ is a judged behavioral test, so no scan settles it,
+and the honest statement is that **the new rate is unknown in both tails**: the value could stay rare
+(if most shipped-path commits do change consumer-visible behavior) or become near-universal (if most
+do not), and a near-universal exemption is a rubber stamp, which is its own failure — not the one
+this edit was fixing. Watch the next 20 markers rather than assuming this landed in the middle.
+⚠️ **The «unreachable ⇒ trap» premise is also weaker here than the first draft implied**: `tier1` is
+explicitly *"NOT itself a failure"*, so even under the rejected reading an author had a cheap honest
+value to write and was not cornered into deleting anything.
+
+⚠️ **Two different denominators, both of which happen to be 200 — do not merge them.** The 192/200 is
+over the **last 200 commits**. The 177/200 below is over the **200 markers in
+`tracks/_meta/.axes_23_passed_*.marker`**. Commits and markers are different populations (a marker
+covers a delta, not a commit; unmarked commits exist), and their coincident size is an accident of
+this corpus. No ratio may be carried from one to the other.
+
+So the split is by **execution site**:
+
+| Q0 target class | What discharges the standpoint arm | Binds at |
+|---|---|---|
+| named peer harness (qasp · pmh · mate · gstack · sibling hub) | the enum as written — `tier1b`/`tier2`/`tier2b`/`tier3` against that repo | the change, pre-push |
+| generic consumer install | run the **packed artifact in a clean install** — see the split below; the *presence* half already runs at ship time, the *execution* half does not exist yet | the **release/publish** delta |
+| neither | `not-applicable` | — |
+
+**🟥 What that arm is actually covered by today — corrected in the same session that wrote it, by
+reading the lanes instead of naming them.** The first draft of this table said the consumer-install
+arm was *"already mechanized"* by `publish_freshness_check.sh` · `package_coverage_check.sh
+--vs-tarball` · `test_capability_entrypoint_shipping.sh`. Reading those three shows they answer a
+narrower question than the arm asks:
+
+```
+covered, AT PUBLISH   `prepublishOnly` = prepublish_scope_note · publish_freshness_check ·
+                      version_lockstep_check · package_coverage_check --vs-tarball ·
+                      public_surface_scan_files          ← read from package.json, not recalled
+covered, BUT IN CI    test_capability_entrypoint_shipping.sh is NOT in that chain — it runs under
+                      the selfcheck anchor loop (`npm test`/CI). Naming it as a ship-time lane was
+                      wrong; a green CI is not a publish gate (§Local Execution First).
+NOT covered (exec)    extract the tarball into a clean directory, run the gate as a consumer would,
+                      observe it behaves as intended. Measured 2026-08-17: of the lanes that invoke
+                      `npm pack`, ZERO extract or execute the result — `--vs-tarball` compares a
+                      FILE LIST (`npm pack --dry-run --json`), it never unpacks.
+```
+
+This matters because it is the same asymmetry this section already argues for: *"execution is the
+load-bearing half"*. An arm discharged by presence checks alone is a `tier1b`-shaped arm wearing a
+`tier2` label — the exact substitution the `tier1b` rung was added to stop. **So: the presence half
+is mechanized and free; the execution half is a named residual, discharged by hand
+(`npm pack` → extract to a clean dir → run the gate → record the command and the output, per the
+`tier2` discriminator) until a lane exists.** Do not cite this arm as fully mechanized. The
+decision's «no new machinery» framing was correct about the *presence* half and overstated about
+the whole — recorded here rather than quietly narrowed, because a reader reaching for this table
+mid-release is exactly the reader who would otherwise skip the half that has no lane.
+
+**What this decision costs, stated rather than hidden.** Of the three legs, **leg B was right and
+the other two were wrong to generalize it**: the `release_2.3.0` marker's `not-applicable` IS a
+defect under this closure (a release delta whose own grounds line concede *"소비자 install 의 게이트
+수용은 바뀐다 (BREAKING 2건)"* — that is the trigger being met, written out in the field that denies
+it), while an ordinary commit touching a shipped script correctly stays `not-applicable`. Row 1
+(PR #368) needs no reclassification: its target was a sibling hub with its own repo, a named peer.
+⚠️ Those three legs were **not decorrelated** — same family, same prompt shape, same canon — so their
+3/3 agreement is closer to one observation than three; it is cited here as *the pattern that exposed
+the definitional hole*, never as three confirmations
+(`[[feedback_decorrelation_axis_is_what_you_send]]`).
+
+**Still open, and not closed by this edit**: 177 of the 200 corpus markers carry no `standpoint:`
+line at all, and an absent field cannot be read as either *not-applicable* or *not-looked-at* — that
+pool is larger than the one measured and remains unexamined. `thirdparty:` has exactly one instance
+in the corpus (added 2026-08-17), so it is unmeasured, not clean.
 
 **Relationship to `harness_verification_core_extended.md`'s core/extended axis**: tier2 and tier3
 are both "extended" in that document's sense (they require a cluster member's engine or repo to

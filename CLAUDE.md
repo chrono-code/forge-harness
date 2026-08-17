@@ -535,6 +535,27 @@ runtime (local wiring visible, not independent) · `tier3(<harness>)` a *differe
 target harness ran it · `not-applicable` · degrade triad `DEGRADED_NO_TARGET_ACCESS` could-not /
 `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same shape as `crossfamily:`'s triad,
 **distinct literal values**, do not reuse crossfamily's tokens).
+🟥 **Settle the TARGET CLASS(es) before the tier — §7's `Q0`, added 2026-08-17 (operator decision).**
+A consumer install **is** another harness; what the enum scopes is not who *receives* the change but
+where it has to be **executed**. Q0 is **not first-match — it can return more than one target, and
+each owes its own tier**: ⓐ a **named peer** whose local repo carries the changed surface, or which
+the cluster registry / a `scripts/adapters/` entry names (decide by that test, not from a name list)
+→ the enum as written · ⓑ the delta changes **consumer-visible behavior** (what a consumer's gate
+blocks or passes, what their session is told to do, what an install receives) → target = a *clean
+install of the packed artifact*, and it binds **now, pre-push — never deferred to the eventual
+release** · ⓒ neither → `not-applicable`. 🟥 Do **not** read «no cross-repo consumer contract» as
+«this file is not shipped» — measured, **194/200 recent non-merge commits touch a shipped path (97%,
+all 6 exceptions hand-verified)**, so shipped-ness cannot be the discriminator; the behavior clause
+is. Pricing the axis at that rate is the **over-triggering** §7's own Trigger paragraph rejects.
+⚠️ 97% measures **the reach of the discarded shipped-path argument**, not the applicability rate —
+how often ⓑ actually fires is **unmeasured in both tails** (it could also land near-universal, which
+would be a rubber stamp — watch the next 20 markers). 🟥 Do **not** cite
+`[[feedback_unreachable_done_when_trains_evasion]]` here: that memory concerns an unreachable *pass
+condition*, and `not-applicable` is an *exemption* — the direction inverts. Three marker-audit legs all failed at that reading;
+they were **not** decorrelated (same family · same prompt · same canon) so that is one observation,
+not three. ⚠️ The consumer-install arm's *presence* half is mechanized at ship time; its
+**execution** half (extract the tarball, run the gate, record command + output) has **no lane** —
+do it by hand, and do not cite that arm as mechanized.
 🟥 **The execution is the load-bearing half** (operator decision 2026-08-16): a static standpoint
 read competes with cross-family review for the same defect classes and mostly loses — *running the
 target harness locally, to completion*, is the part with no substitute. Measured on one delta the
