@@ -115,6 +115,7 @@
     "scripts/test_marker_floor_lanes.sh",
     "scripts/test_marker_crossfamily_lanes.sh",
     "scripts/test_marker_standpoint_lanes.sh",
+    "scripts/test_marker_thirdparty_lanes.sh",
     "scripts/test_marker_axes_run_lanes.sh",
     "scripts/test_env_purity_lanes.sh",
     "scripts/.env_purity_tokens.defaults",

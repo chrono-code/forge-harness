@@ -837,6 +837,96 @@ validate_standpoint_leg() { # $1 = marker path
   return 0
 }
 
+# ── thirdparty: typed value lane (2026-08-17) ────────────────────────────────
+# Grammar:  thirdparty: <VALUE>(<grounds>)      ·  UNKNOWN takes no parenthetical
+#
+# WHAT THIS AXIS IS — and it has TWO halves, which is what made getting it wrong so easy.
+# The 6-axis canon (fh_three_layer_canon.md:243) defines ⓓ by what it RECEIVES: «문제 + 남의
+# 코드베이스», and it asks two questions:
+#   ① prior art        — has this claimed-new thing already been solved outside?   checked/none-found
+#   ② harness-level     — how does my change look from ANOTHER HARNESS's repo and   peer-review
+#      adversarial        persona? (operator: put Sonnet in gstack, wear the gstack
+#                         persona, review the qasp change — a cross-FAMILY, harness-scoped
+#                         adversarial review. FH is the GOVERNOR: it creates the situation,
+#                         observes, and judges. What the 4-axis gate verifies is the OPINION
+#                         that third harness produced, judged LOCALLY — it does not put a gate
+#                         on someone else's repo.)
+# It is NOT "I talked to another session". The canonical spec
+# (`.claude/rules/fh_4axis_gate.md`) has said so since the field shipped, and the evidence that
+# created it was 6 presentation claims that turned out to have prior art (mutation testing,
+# promptfoo/DeepEval, an official cross-family plugin, …).
+#
+# WHY NOW — the first recorded false values exist, and they are the author's own. Measured across
+# the marker corpus 2026-08-17: 4 markers used the enum correctly; **2 wrote free prose about
+# peer-session contact** and matched no enum member at all. That is the field-canon failure this
+# repo already names — normalizing a harness term into a general concept ("third party" → "another
+# session"). Presence was checked; the value was not; nothing caught it.
+#
+# SCOPE — channel, not judgment (CLAUDE.md §Mechanization Boundary). This asserts the RECORD is a
+# member of the closed enum and names non-vacuous grounds. It never asserts the prior-art search
+# was thorough, nor that what a third party told you is TRUE — 🟥 that second one is deliberate and
+# load-bearing: the axis exists to surface information you could not predict, and the truth of what
+# comes back is adjudicated by the OTHER axes (adversarial · grounding · first-real-use), which is
+# what the 4-axis gate is for. A wrong answer from a third party is that party's defect, possibly
+# one to go fix; it is not something this field should be asked to certify.
+#
+# TRIGGER — validate IF PRESENT. Presence stays pointer-driven (`ⓓ=→thirdparty`), deliberately:
+# requiring the field on every load-bearing change would force a prior-art search per commit, and
+# over-blocking trains the override that disarms the Destructive-Op gate in this same hook.
+#
+# Calibration before wiring: the corpus supplied BOTH arms — peer-authored markers 4/4 PASS,
+# author's own malformed 2/2 BLOCK, plus 6 synthetic shapes, 0 over-blocks. An earlier draft DID
+# over-block 3 legitimate markers by looking for the closing paren on the first line when the
+# grounds wrap across lines; the corpus caught it. Anchor: scripts/test_marker_thirdparty_lanes.sh
+validate_thirdparty_leg() { # $1 = marker path
+  local m="$1" line val reason n
+  n=$(grep -cE '^[[:space:]]*thirdparty:' "$m" 2>/dev/null); n=${n:-0}
+  [ "$n" -eq 0 ] && return 0   # absent is governed by the ⓓ pointer check above, not here
+  if [ "$n" -gt 1 ]; then
+    echo "  ❌ FAIL — marker carries MORE THAN ONE 'thirdparty:' line."
+    grep -nE '^[[:space:]]*thirdparty:' "$m" | sed 's/^/       /'
+    echo "     Readers take the first, so an appended correction is silently shadowed."
+    return 1
+  fi
+  line=$(grep -m1 -E '^[[:space:]]*thirdparty:' "$m" | sed -E 's/^[[:space:]]*thirdparty:[[:space:]]*//')
+  val=$(printf '%s' "$line" | sed -E 's/\(.*$//' | sed -E 's/[[:space:]]*(—|--).*$//' | sed -E 's/[[:space:]]+$//')
+  # Cross-axis contamination — standpoint's tiers and crossfamily's tokens are different axes.
+  case "$val" in
+    tier1|tier1b|tier2|tier2b|tier3|panel|declined|DEGRADED_SINGLE_FAMILY|DEGRADED_PANEL_UNUSED|DEGRADED_NO_TARGET_ACCESS)
+      echo "  ❌ FAIL — '$val' belongs to another axis, not thirdparty:."
+      echo "     standpoint = whose repo was ground truth · crossfamily = which model family reviewed"
+      echo "     thirdparty = was this claimed-new thing already done OUTSIDE this repo."
+      return 1 ;;
+  esac
+  case "$val" in
+    UNKNOWN)
+      echo "  ⚠️  thirdparty leg: UNKNOWN — 안 봤다. Recorded, not silent." ;;
+    peer-review|checked|none-found|not-applicable|DEGRADED_NO_ACCESS|DEGRADED_NOT_RUN)
+      # The parenthetical may wrap across lines; only require that it OPENS with content after it.
+      case "$line" in *\(*) ;; *)
+        echo "  ❌ FAIL — '$val' without a (<grounds>) parenthetical."
+        echo "     none-found without naming WHAT you searched is indistinguishable from not looking."
+        return 1 ;;
+      esac
+      reason=$(printf '%s' "$line" | sed -E 's/^[^(]*\(//')
+      if [ "${#reason}" -lt 12 ]; then
+        echo "  ❌ FAIL — '$val(...)' grounds are vacuous. Name what was searched and what came back."
+        return 1
+      fi
+      echo "  ✅ thirdparty leg: $val" ;;
+    *)
+      echo "  ❌ FAIL — '$val' is not a member of the thirdparty: enum."
+      echo "     Closed enum: peer-review(<harness>/<persona> -> <target>, <what came back>) ·"
+      echo "     checked(<searched/found>) · none-found(<searched>) ·"
+      echo "     DEGRADED_NO_ACCESS(<why>) · DEGRADED_NOT_RUN(<why>) · UNKNOWN · not-applicable(<why>)"
+      echo "     🟥 ⓓ3자대면 = third-party PRIOR ART, not 'I talked to another session'. The two"
+      echo "     markers that made this lane necessary both made exactly that substitution."
+      return 1 ;;
+  esac
+  return 0
+}
+
+
 
 # ── 4축 자기 대조 — «어느 축을 돌렸고 어느 축을 안 돌렸나» 형식 검사 ────────────
 # CLAUDE.md §3층 자기 대조가 마커에 3줄을 요구한다. 그중 **기계로 볼 수 있는 두 줄**만 여기서
@@ -1425,6 +1515,7 @@ if [ -n "$LOADBEARING" ]; then
   MARKER_LB="$REPO_ROOT/tracks/_meta/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
   if validate_crossfamily_leg "$MARKER_LB"; then :; else FAILED=1; fi
   if validate_standpoint_leg "$MARKER_LB"; then :; else FAILED=1; fi
+  if validate_thirdparty_leg "$MARKER_LB"; then :; else FAILED=1; fi
 fi
 
 # ── staged-blob materializer (advisory linters) ───────────────────────────────

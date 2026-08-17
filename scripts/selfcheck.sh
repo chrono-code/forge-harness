@@ -529,6 +529,7 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_floor_lanes.sh" \
   ".github/workflows/regression-guard.yml|scripts/test_regression_guard_ci_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_standpoint_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_marker_thirdparty_lanes.sh" \
   "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \
   "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
   "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \
