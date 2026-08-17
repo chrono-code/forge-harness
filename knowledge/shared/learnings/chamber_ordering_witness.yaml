@@ -19,3 +19,35 @@
   artifact: SIM_NOTES.md
   sha256: 218330727a69dbf1d8a9215edf29ed4e0c2d0638fcf178eb6ddf50ffc56313fb
   recorded: 2026-08-17T01:39:52Z
+- run: persona-simulator-harness
+  artifact: INTENT.md
+  sha256: 97ec34e59a18d08e3f09344f7486956cc5df87379de55b1913b297f78a869cfb
+  recorded: 2026-08-17T01:46:04Z
+- run: persona-simulator-harness
+  artifact: BUDGET.md
+  sha256: 2882868ef27b58ca8546eabe95ed4cbe597d78ef457e1feda4070493e1baded2
+  recorded: 2026-08-17T01:46:04Z
+- run: persona-simulator-harness
+  artifact: SIM_NOTES.md
+  sha256: 218330727a69dbf1d8a9215edf29ed4e0c2d0638fcf178eb6ddf50ffc56313fb
+  recorded: 2026-08-17T01:46:04Z
+- run: persona-simulator-harness
+  artifact: EMISSION_VERDICT.md
+  sha256: e55ecbacbc244eb17ce39a9211d1b25525d60697e25f32066983025e566e9cd6
+  recorded: 2026-08-17T01:46:04Z
+- run: persona-simulator-harness
+  artifact: INTENT.md
+  sha256: 97ec34e59a18d08e3f09344f7486956cc5df87379de55b1913b297f78a869cfb
+  recorded: 2026-08-17T01:46:38Z
+- run: persona-simulator-harness
+  artifact: BUDGET.md
+  sha256: 9fb41797ea24c917ca97fe1b887ab0922413b13cdfc3b62de24db203dbe70acc
+  recorded: 2026-08-17T01:46:38Z
+- run: persona-simulator-harness
+  artifact: SIM_NOTES.md
+  sha256: 218330727a69dbf1d8a9215edf29ed4e0c2d0638fcf178eb6ddf50ffc56313fb
+  recorded: 2026-08-17T01:46:38Z
+- run: persona-simulator-harness
+  artifact: EMISSION_VERDICT.md
+  sha256: e55ecbacbc244eb17ce39a9211d1b25525d60697e25f32066983025e566e9cd6
+  recorded: 2026-08-17T01:46:38Z
