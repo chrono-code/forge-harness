@@ -1624,6 +1624,35 @@ if [ -f "$PL_LINT" ]; then
   fi
 fi
 
+# ── Pre-ship read reminder (advisory) ─────────────────────────────────────────
+# WHY (2026-08-17, ⓓ3자대면 첫 실사용의 답습분). A third harness (gstack), wearing its own
+# `/plan-devex-review` persona, reviewed a peer harness's change and asked a question neither FH
+# nor that harness asks: **who opens this file, and what do they see in the first eight lines?**
+# Its finding: a human-facing report had been shipped to three surfaces where the body was 3 lines
+# under 21 lines of fixed template, the answer to "did it pass?" was buried in the 4th bullet, and
+# the last impression was "readers may skip this". The delta that shipped it was correct code.
+#
+# FH reached the same place independently the same day from a different axis — "readability is
+# measured only by rendering it or by a person; a static scan catches what is ABSENT, never what is
+# UNREADABLE", with 12 findings and 0 caught by static scanners. **Two independent arrivals** is
+# why this was the one item the internalization filter accepted out of four
+# (`harness_incubator_doctrine.md` §4-c).
+#
+# 🟥 WHAT THIS IS NOT. It does not judge readability, and it never blocks. Judging "is this
+# readable" is exactly the frozen-judgment class §Mechanization Boundary reserves for people, and a
+# vocabulary test for "human-facing document" over-blocked a legitimate case the same day it was
+# first tried. The trigger is therefore a PATH SET (what actually ships to readers), not a
+# vocabulary guess, and its whole output is one line of salience.
+_PRESHIP=$(printf '%s\n' "$STAGED" | grep -E '^(README([._a-z]*)?\.md|CHEATSHEET\.md|CATALOG\.md|docs/[^/]*\.md|templates/[^/]*\.md)$' || true)
+if [ -n "$_PRESHIP" ]; then
+  echo "[Gate] reader-facing surface staged — pre-ship read reminder (advisory)..."
+  printf '%s\n' "$_PRESHIP" | sed 's/^/       /'
+  echo "  ⚠️  이 파일들은 «사람이 연다». 나가기 전에 한 번 «독자로서» 읽었나?"
+  echo "     첫 8줄에 결론이 있나 · 본문이 템플릿에 안 덮이나 · 마지막 인상이 무엇인가"
+  echo "     렌즈가 이미 있다: /sim-conductor A-1 (beginner cold-read) 또는 직접 렌더해서 읽기"
+  echo "  (advisory — 막지 않는다. 「읽었는가」는 이 훅이 보증할 수 없고 보증하려 들지도 않는다.)"
+fi
+
 # ── Novelty-claim ledger (advisory) ───────────────────────────────────────────
 # "Ask the world before asserting novelty" is an INTENT trigger — un-hookable, like the
 # repo-go-public surface. So this does not force the asking; it makes NOT having asked visible
