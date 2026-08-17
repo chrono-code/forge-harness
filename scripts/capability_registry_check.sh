@@ -373,6 +373,13 @@ _check_one() {
   if [ -z "$CAP_cal_pos_expect" ] || [ -z "$CAP_cal_neg_expect" ]; then
     _fail "M4" "캘리브레이션 쌍 미선언(양성·음성 expect 둘 다 필요) — 답을 아는 케이스를 못 가르는 계기는 재는 게 아니다"
     OBS_WHY="캘리브레이션 쌍 미선언"
+  # 🟥 위 «쌍 미선언» 검사는 **선언층**이므로 --declaration-only 에서도 돈다. 아래부터가
+  #   **실행**이고, 그것만 건너뛴다. 둘을 한 덩어리로 스킵하면 «쌍을 아예 선언 안 한»
+  #   capfile 이 선언층 검사를 통과해버린다 — 2026-08-17 실측에서 relay 가 삼킨
+  #   `qasp_clean.cap` 이 정확히 그 값으로 걸렸다(M4 쌍 미선언).
+  elif [ "${DECL_ONLY:-0}" -eq 1 ]; then
+    printf '  ⏭  M4 — --declaration-only: 쌍 선언은 확인했고 **arm 은 실행하지 않았다**(SKIPPED, PASS 아님)\n'
+    OBS_WHY="--declaration-only 로 arm 미실행"
   elif [ "$FILE_FAILED" -eq 1 ] && [ -z "${CRC_FORCE_M4:-}" ]; then
     printf '  ⏭  M4 — 앞선 축이 실패해 실행 생략(SKIPPED, PASS 아님)\n'
     OBS_WHY="앞선 축 실패로 M4 생략"
@@ -417,6 +424,11 @@ _check_one() {
   #   «못 쟀다» 를 출력에 남긴다. 미측정을 0 으로 렌더하지 않는다.
   if [ -z "$CAP_writes" ]; then
     :   # writes 미선언은 M2 가 이미 처리한다
+  elif [ "${DECL_ONLY:-0}" -eq 1 ]; then
+    # 🟥 M6 는 통째로 실행 기반이다(effect probe 가 entry 를 실제로 돌린다). 선언층에
+    #   남길 것이 없으므로 전부 건너뛴다 — 그래서 이 모드의 출력이 REGISTRABLE 이 아니라
+    #   DECLARATION_VALID 다. `writes:` 의 진위는 이 모드에서 **등록자 주장**으로 남는다.
+    printf '  ⏭  M6 — --declaration-only: 진입점을 실행하지 않았다. `writes:` 는 미검증 주장이다(SKIPPED, PASS 아님)\n'
   elif [ "$FILE_FAILED" -eq 1 ] && [ -z "${CRC_FORCE_M6:-}" ]; then
     # ★앞선 축이 실패했으면 **진입점을 실행하지 않는다**(2026-08-16 cross-family 지목).
     #   M6 는 `eval` 로 entry 를 돌리므로, «등록 거부될 capfile» 의 진입점을 굳이 실행하는
@@ -619,6 +631,30 @@ LIAR
   _tg "관측범위: 미선언 args 를 미선언이라 적는다" 1 "$T/nocal.cap" \
       "실행된 arm: 양성 «<미선언>» / 음성 «<미선언>»"
 
+  # ── D1–D4 --declaration-only (2026-08-17, relay 배선용) ─────────────────────
+  # 이 모드는 `relay_channel.sh` 가 **호출 시점**에 부르는 경로다. 전량 호출하면 M4/M6 이
+  # 매 relay 실행마다 노드를 다시 돌리므로 선언층만 본다 — 그 대가를 레인으로 고정한다.
+  local dout drc
+  # D1 선언층 결함은 이 모드에서도 잡힌다(잡히는 게 요점이다 — 안 잡히면 배선이 무의미)
+  dout=$(bash "$0" --declaration-only "$T/nocal.cap" 2>&1); drc=$?
+  if [ "$drc" -eq 1 ]; then pass=$((pass+1)); printf '  ✅ %-40s\n' "D1: 선언층 결함은 --declaration-only 도 잡는다"
+  else fail=$((fail+1)); printf '  ❌ %-40s — rc=%s (기대 1)\n' "D1: 선언층 결함" "$drc"; fi
+  # D2 ★컨트롤 — 정상 선언은 통과한다. D1 만 있으면 「전부 막는 모드」와 구별이 안 된다
+  dout=$(bash "$0" --declaration-only "$T/good.cap" 2>&1); drc=$?
+  if [ "$drc" -eq 0 ]; then pass=$((pass+1)); printf '  ✅ %-40s\n' "D2: 컨트롤 — 정상 선언은 통과(과차단 아님)"
+  else fail=$((fail+1)); printf '  ❌ %-40s — rc=%s (기대 0)\n' "D2: 컨트롤" "$drc"; fi
+  # D3 🟥 어휘 분리 — 부분 검사를 REGISTRABLE 로 찍으면 안 된다. 그게 이 모드의 최대 위험이다
+  case "$dout" in
+    *DECLARATION_VALID*) pass=$((pass+1)); printf '  ✅ %-40s\n' "D3: REGISTRABLE 이 아니라 DECLARATION_VALID" ;;
+    *) fail=$((fail+1)); printf '  ❌ %-40s — 부분 검사가 전체 통과 어휘로 찍힌다\n' "D3: 어휘 분리" ;;
+  esac
+  # D4 M4/M6 을 «안 돌렸다» 고 말한다. 침묵하면 읽는 사람이 PASS 로 읽는다(미측정≠0)
+  case "$dout" in
+    *"M4 — --declaration-only"*|*"M6 — --declaration-only"*)
+      pass=$((pass+1)); printf '  ✅ %-40s\n' "D4: 안 돌린 축을 안 돌렸다고 적는다" ;;
+    *) fail=$((fail+1)); printf '  ❌ %-40s — 생략을 침묵으로 처리한다\n' "D4: 미실행 표기" ;;
+  esac
+
   printf '\n  통과 %d · 실패 %d\n' "$pass" "$fail"
   rm -rf "$T"
   [ "$fail" -eq 0 ] || return 1
@@ -626,14 +662,44 @@ LIAR
 }
 
 [ "${1:-}" = "--self-test" ] && { _self_test; exit $?; }
-[ $# -ge 1 ] || _die "capfile 인자가 없다. 사용법: $0 <capfile> [<capfile>...]"
 
-printf 'capability_registry_check — M1–M5 + 추가조항 (등록 시점)\n'
+# ── --declaration-only (2026-08-17) ───────────────────────────────────────────
+# 🟥 **왜 이 모드가 있나 — 그리고 왜 「가벼운 등록검사」가 아닌가.**
+# `relay_channel.sh` 가 호출 시점에 이 검사기를 부르게 배선하면서 필요해졌다. 그냥 전량
+# 호출하면 **매 relay 실행마다 M4(known-pair arm 을 실제로 돌린다)와 M6(effect probe 가
+# entry 를 `eval` 로 실행한다)가 재실행된다** — 호출 한 번이 노드를 여러 번 더 돌리고,
+# M6 는 그 자체가 위험 노출이라 이 파일이 이미 «등록 거부될 capfile 의 진입점을 굳이
+# 실행하지 않는다» 는 가드를 갖고 있다. 그 판단을 호출 경로에도 그대로 적용한다.
+#
+# **대안을 안 고른 이유**: relay 안에 선언 검사를 새로 쓰는 것. 그러면 같은 스키마에 대해
+# 계기가 셋이 되고, 이 레포는 그 divergent-normalizer 함정을 **이미 두 번 밟았다**
+# (relay 헤더 §META_KEYS — 2026-08-11 · 2026-08-16, 둘 다 «등록되는데 부를 수 없는» 선언).
+# 스키마의 단일 소스는 이 파일이어야 한다.
+#
+# 🟥 **이 모드는 REGISTRABLE 을 말하지 않는다.** 출력 어휘를 일부러 분리한다 —
+# `DECLARATION_VALID` 는 «선언층이 유효하다» 이지 «등록 가능하다» 가 아니다. 둘을 같은
+# 단어로 찍으면 부분 검사가 전체 통과로 읽힌다(`[[feedback_not_found_is_not_zero_family]]`).
+DECL_ONLY=0
+if [ "${1:-}" = "--declaration-only" ]; then DECL_ONLY=1; shift; fi
+export DECL_ONLY
+
+[ $# -ge 1 ] || _die "capfile 인자가 없다. 사용법: $0 [--declaration-only] <capfile> [<capfile>...]"
+
+if [ "$DECL_ONLY" -eq 1 ]; then
+  printf 'capability_registry_check — **선언층만** (M1·M2·M3·M5 + 추가조항 · M4/M6 미실행)\n'
+else
+  printf 'capability_registry_check — M1–M6 + 추가조항 (등록 시점)\n'
+fi
 for f in "$@"; do _check_one "$f"; done
 
 printf '\n'
 if [ "$FAILED" -eq 0 ]; then
-  printf '✅ REGISTRABLE — 전 capfile 이 M1–M5 + 추가조항 통과\n'; exit "$RC_OK"
+  if [ "$DECL_ONLY" -eq 1 ]; then
+    printf '✅ DECLARATION_VALID — 선언층 통과. 🟥 REGISTRABLE 이 아니다: M4(known-pair 실행)·M6(선언 진위)는 **안 돌렸다**\n'
+  else
+    printf '✅ REGISTRABLE — 전 capfile 이 M1–M6 + 추가조항 통과\n'
+  fi
+  exit "$RC_OK"
 else
   printf '❌ REJECTED — 등록 불가. 그 표면은 오늘 있던 자리(dispatch 엔트리)에 그대로 남는다 — 손실이 아니다\n'
   exit "$RC_REJECT"
