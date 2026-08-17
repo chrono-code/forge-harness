@@ -717,6 +717,127 @@ validate_crossfamily_leg() { # $1 = marker path
   return 0
 }
 
+# ── standpoint: typed value lane (2026-08-17) ────────────────────────────────
+# Grammar:  standpoint: <VALUE>[ — <reason>]
+#
+# WHY NOW. This field shipped 2026-08-14 with its value DELIBERATELY unvalidated — the doctrine
+# said "mechanize on the first recorded false value, not before". That value is now on record:
+# a `release_2.3.0` marker wrote `not-applicable` on a delta whose OWN grounds line concedes
+# "소비자 install 의 게이트 수용은 바뀐다 (BREAKING 2건)", and two 2026-08-14 deltas that changed
+# shipped gate scripts / a shipped SKILL.md carried no line at all. The threshold this field set
+# for itself is met.
+#
+# SCOPE — channel, not judgment (CLAUDE.md §Mechanization Boundary). This asserts properties of the
+# RECORD: present · single · a member of the closed enum · non-vacuous · not wearing the OTHER
+# axis's tokens. It never asserts the value is CORRECT — that stays with the reader, by design.
+#
+# 🟥 NAMED RESIDUAL — the EXECUTION claim warns, it does not block. tier2/tier2b/tier3 assert that
+# something was RUN in the target, which §7 calls "the load-bearing half". Blocking on that needs a
+# vocabulary grep, and on first contact with the real corpus that grep over-blocked a legitimate
+# marker whose grounds read "그 레포에서 실제로 호출해 양·음 arm 을 확인했다" — it did not know 「호출」.
+# Over-blocking trains `--no-verify`, which would disarm the Destructive-Op gate in this same hook.
+# So the cost is stated instead of hidden: a fabricated tier2 with a fluent reason PASSES this lane.
+# Closing that is §4-b's job (cross-family reads the marker), not this lane's.
+#
+# 🟥 DOGFOOD RESULT, STATED SO NOBODY READS THIS AS MORE THAN IT IS — the very marker whose false
+# value MET this field's mechanization threshold (`release_2.3.0`, which wrote `not-applicable` on a
+# release delta) **PASSES this lane**, because its grounds sentence is long and specific. That is not
+# a bug in the lane; it is the Mechanization Boundary holding: the channel is checked, the judgment
+# is not. Anyone reporting that this wiring "closed the self-report axis" is wrong. What closed is
+# the shape of the record; what remains open is whether the recorded answer is true.
+#
+# Calibration before wiring (2026-08-17): known-pair 12/12 both directions; run against all 24
+# corpus markers carrying the field → 7 blocked, every one a real defect (6 bare `not-applicable`,
+# independently matching a hand count, + 1 marker carrying TWO contradictory standpoint lines),
+# and 0 over-blocks. Anchor: scripts/test_marker_standpoint_lanes.sh
+validate_standpoint_leg() { # $1 = marker path
+  local m="$1" line val reason n quoted=""
+  n=$(grep -cE '^[[:space:]]*standpoint:' "$m" 2>/dev/null); n=${n:-0}
+  if [ "$n" -eq 0 ]; then
+    echo "  ❌ FAIL — load-bearing file staged with no 'standpoint:' line in the Axes 2-3 marker."
+    echo "     State the answer, whatever it is — the gate blocks silence, not a modest value."
+    echo "     Settle the TARGET CLASS first (§7 Q0), then the tier:"
+    echo "       standpoint: not-applicable — <what you checked to conclude no target exists>"
+    echo "       standpoint: tier1b(pmh-dev) — read the target's own files, executed nothing"
+    echo "       standpoint: tier2(qasp-dev) — ran <command> there, saw <output>"
+    echo "       standpoint: DEGRADED_NOT_RUN — target reachable, not run (<why>)"
+    echo "     Append one line to: $m"
+    return 1
+  fi
+  # Duplicate guard — same defect class the crossfamily lane closes: a marker is append-only in
+  # practice and readers take the FIRST match, so an appended correction is silently shadowed.
+  # Measured in this corpus: one marker carries `tier1` at :32 and `not-applicable` at :89.
+  if [ "$n" -gt 1 ]; then
+    echo "  ❌ FAIL — marker carries MORE THAN ONE 'standpoint:' line."
+    grep -nE '^[[:space:]]*standpoint:' "$m" | sed 's/^/       /'
+    echo "     A later line does not supersede an earlier one — the reader takes the first."
+    echo "     Delete the stale line and leave exactly one."
+    return 1
+  fi
+  line=$(grep -m1 -E '^[[:space:]]*standpoint:' "$m" | sed -E 's/^[[:space:]]*standpoint:[[:space:]]*//')
+  case "$line" in '"'*|"'"*) quoted=" [format: value wrapped in quotes — an auditor's grep for
+       'standpoint: tier2' misses it; drop the quotes next time]";; esac
+  line=$(printf '%s' "$line" | sed -E 's/^["'"'"']//; s/["'"'"']$//')
+  val=$(printf '%s' "$line" | sed -E 's/[[:space:]]*(—|--).*$//' | sed -E 's/[[:space:]]+$//')
+  reason=$(printf '%s' "$line" | sed -E 's/^[^—-]*((—|--)[[:space:]]*)?//')
+  # Cross-axis contamination. `crossfamily:` and `standpoint:` each carry a three-way degrade
+  # triad and the doctrine says the literals are DISTINCT ON PURPOSE. Borrowing the other axis's
+  # token records the wrong axis while looking well-formed.
+  case "$val" in
+    DEGRADED_SINGLE_FAMILY*|DEGRADED_PANEL_UNUSED*|panel\(*|declined)
+      echo "  ❌ FAIL — '$val' belongs to the crossfamily: axis, not standpoint:."
+      echo "     crossfamily = WHICH MODEL FAMILY reviewed. standpoint = WHOSE REPO was ground truth."
+      echo "     standpoint's own triad: DEGRADED_NO_TARGET_ACCESS (could not) /"
+      echo "     DEGRADED_NOT_RUN (did not) / UNKNOWN (did not look)."
+      return 1 ;;
+  esac
+  case "$val" in
+    tier1)
+      echo "  ✅ standpoint leg: tier1 (content-only — a scoping fact, not a failure)$quoted" ;;
+    tier1b\(*\)|tier2\(*\)|tier2b\(*\)|tier3\(*\))
+      case "$val" in
+        tier2\(*\)|tier2b\(*\)|tier3\(*\))
+          if [ "${#reason}" -lt 20 ] || ! printf '%s' "$reason" \
+              | grep -qiE 'ran |run |실행|돌렸|호출|invok|call|rc=|exit |output|출력|suite|스위트|test|bash |grep |npm |pytest|command|커맨드|arm'; then
+            echo "  ⚠️  standpoint leg: $val — recorded, but the grounds do not NAME an execution."
+            echo "     ${val%%(*} asserts code RAN in the target. The discriminator is mechanical:"
+            echo "     name the command you ran and the output you saw. If you only read files,"
+            echo "     the honest rung is tier1b — weaker on purpose, so the owed arm stays visible."
+            echo "     Advisory by design (see the named residual above this function)."
+          else
+            echo "  ✅ standpoint leg: $val$quoted"
+          fi ;;
+        *) echo "  ✅ standpoint leg: $val$quoted" ;;
+      esac ;;
+    not-applicable)
+      # §7: asserting non-applicability without naming what was checked is indistinguishable from
+      # UNKNOWN wearing a permissive label. Measured: 6 bare instances in this corpus.
+      if [ "${#reason}" -lt 20 ]; then
+        echo "  ❌ FAIL — bare 'not-applicable' with no grounds on the same line."
+        echo "     That is UNKNOWN wearing a permissive label. Name what you checked:"
+        echo "     no named peer carries this surface AND it changes no consumer-visible behavior."
+        return 1
+      fi
+      echo "  ✅ standpoint leg: not-applicable$quoted" ;;
+    DEGRADED_NO_TARGET_ACCESS*|DEGRADED_NOT_RUN*|UNKNOWN*)
+      if [ "${#reason}" -lt 20 ]; then
+        echo "  ❌ FAIL — $val without substantive grounds on the same line."
+        echo "     could-not / did-not / did-not-look are separate values on purpose; collapsing"
+        echo "     them renders an unrun probe as a zero finding. Name what you probed."
+        return 1
+      fi
+      echo "  ⚠️  standpoint leg: $val — recorded, not silent" ;;
+    *)
+      echo "  ❌ FAIL — '$val' is not a member of the standpoint: enum."
+      echo "     Closed enum: tier1 · tier1b(<h>) · tier2(<h>) · tier2b(<h>) · tier3(<h>) ·"
+      echo "     not-applicable · DEGRADED_NO_TARGET_ACCESS · DEGRADED_NOT_RUN · UNKNOWN"
+      echo "     Default-deny: an unrecognised value is UNDECIDABLE, never assumed benign."
+      return 1 ;;
+  esac
+  return 0
+}
+
+
 # ── 4축 자기 대조 — «어느 축을 돌렸고 어느 축을 안 돌렸나» 형식 검사 ────────────
 # CLAUDE.md §3층 자기 대조가 마커에 3줄을 요구한다. 그중 **기계로 볼 수 있는 두 줄**만 여기서
 # 강제한다. 나머지(①영혼을 «설계 전에» 썼는가)는 **원리적으로 확인 불가**라 안 넣는다 —
@@ -1303,6 +1424,7 @@ if [ -n "$LOADBEARING" ]; then
   fi
   MARKER_LB="$REPO_ROOT/tracks/_meta/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
   if validate_crossfamily_leg "$MARKER_LB"; then :; else FAILED=1; fi
+  if validate_standpoint_leg "$MARKER_LB"; then :; else FAILED=1; fi
 fi
 
 # ── staged-blob materializer (advisory linters) ───────────────────────────────
