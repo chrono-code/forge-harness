@@ -194,6 +194,36 @@ controls: n/a — no measurement in this delta (<reason>)
 — zero hook lines, no fixture suite. Recorded here so the gap is visible from the rules side rather
 than only from the hook's absence.
 
+**`thirdparty:` — ⓓ3자 대면의 자기 필드 (2026-08-17 신설).** ⓑ가 `standpoint:` 를 갖는 것과
+같은 형태다: `axes-run` 에는 포인터(`ⓓ=→thirdparty`)만 두고 값은 이 필드가 나른다.
+
+```
+thirdparty: checked(<무엇을 검색했고 무엇을 찾았나>)
+thirdparty: none-found(<무엇을 검색했나>)   ← 찾았는데 선행 없음. «안 봤다»와 다른 명제다
+thirdparty: DEGRADED_NO_ACCESS(<사유>)      ← 못 봤다 (검색 수단 부재)
+thirdparty: DEGRADED_NOT_RUN(<사유>)        ← 안 돌렸다
+thirdparty: UNKNOWN                         ← 안 봤다
+thirdparty: not-applicable(<사유>)
+```
+
+🟥 **왜 `axes-run` 한 칸으로 부족한가.** 그 칸은 **토큰**을 담는데, 이 축이 실제로 내는 것은
+«무엇을 검색해서 무엇을 찾았나» 라 한 토큰에 안 들어간다. **자리가 없으면 안 적히고, 안 적히면
+다음 세션이 «이 축을 돌렸나»를 물을 수도 확인할 수도 없다.**
+실측 근거(2026-08-17): 이 축을 처음 제대로 돌린 세션에서 **발표 주장 6건이 선행자산에 걸렸다**
+(mutation testing · Anthropic skill-creator 블라인드 · Claude Code auto mode · Self-Harness ·
+공식 cross-family 플러그인 · constrained decoding). 그 전까지 이 레포 전체 마크다운에서
+`promptfoo|DeepEval|Inspect|garak|PyRIT|mutation testing` grep 히트는 **1줄**이었다 —
+축은 정본화돼 있었는데 **기록면이 없어서 습관이 안 생겼다.**
+
+**degrade 3값 분리는 `crossfamily:` 를 그대로 상속한다** — 못 봤다 / 안 돌렸다 / 안 봤다는
+서로 다른 명제이고, 자유 산문은 그 셋을 접는다. 접히면 «안 돌린 축»이 «선행 없음»으로 읽힌다.
+
+**검증 범위(오늘 기준)**: 훅은 ⓑ와 동일하게 **포인터가 가리키는 필드의 존재**만 본다.
+enum 값 검증은 안 한다 — `standpoint:` 와 같은 유보이고, 같은 이유다(첫 거짓 값이 기록되면
+그때 기계화한다). ⚠️ ⓑ가 겪은 **화살표 fail-open 도 같이 상속해 미리 막았다**: 화살표를
+필수로 보지 않고 «ⓓ 값이 thirdparty 를 참조하는가»로 본다. 같은 명시 잔여(참조어가 다른
+토큰에 있으면 미검출)도 그대로 남는다.
+
 **Scope, unchanged**: form + non-vacuity + auditability, **never provenance**. A marker claiming
 `ⓐ=codex` when codex never ran passes — deliberately. Catching that is cross-family review *reading*
 the marker, which is not this hook's job.

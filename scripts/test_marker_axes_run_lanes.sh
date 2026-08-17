@@ -168,6 +168,25 @@ controls: n/a — 측정 없음
 standpoint: tier1b(qasp)')
 check "$S7c" PASS "★컨트롤: 포인터에 대상이 붙어도 standpoint: 줄이 있으면 통과 (과차단 방지)"
 
+# ── ⓓ3자대면 자기 필드 `thirdparty:` (2026-08-17 신설) ─────────────────────────
+# ⓑ 와 같은 형태이므로 **ⓑ가 실측으로 겪은 fail-open 을 미리 막았는지**를 같이 고정한다.
+S7d=$(mk "$D_SIX" 'axes-run: ⓐ=none ⓑ=none ⓒ=none ⓓ=→thirdparty ⓔ=none ⓕ=none
+controls: n/a — 측정 없음')
+check "$S7d" BLOCK "★ⓓ=→thirdparty 인데 thirdparty: 줄이 없음 → 차단 (죽은 포인터)"
+
+S7e=$(mk "$D_SIX" 'axes-run: ⓐ=none ⓑ=none ⓒ=none ⓓ=thirdparty ⓔ=none ⓕ=none
+controls: n/a — 측정 없음')
+check "$S7e" BLOCK "★화살표 없는 ⓓ=thirdparty 도 차단 (ⓑ가 뚫렸던 그 표기 fail-open)"
+
+S7f=$(mk "$D_SIX" 'axes-run: ⓐ=none ⓑ=none ⓒ=none ⓓ=→thirdparty(promptfoo·DeepEval) ⓔ=none ⓕ=none
+controls: n/a — 측정 없음
+thirdparty: none-found(promptfoo·DeepEval·mutation testing 훑음)')
+check "$S7f" PASS "★컨트롤: 포인터에 대상이 붙어도 thirdparty: 줄이 있으면 통과 (과차단 방지)"
+
+S7g=$(mk "$D_SIX" 'axes-run: ⓐ=none ⓑ=none ⓒ=none ⓓ=none ⓔ=none ⓕ=none
+controls: n/a — 측정 없음')
+check "$S7g" PASS "★컨트롤: ⓓ=none 이면 thirdparty: 줄이 없어도 통과 (포인터를 안 쓴 경우)"
+
 S8=$(mk "$D_SIX" 'axes-run: ⓐ=codex ⓑ=→standpoint ⓒ=none ⓓ=none ⓔ=실사용 ⓕ=되돌림
 axes-run: ⓐ=거짓말 ⓑ=x ⓒ=x ⓓ=x ⓔ=x ⓕ=x
 controls: alive — ok
