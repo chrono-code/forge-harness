@@ -105,6 +105,33 @@ _snapshot() {  # $1=dir → "sha  path" 목록 (정렬)
     | tr '\n' '\0' \
     | xargs -0 -n 400 shasum -a 256 2>/dev/null \
     | LC_ALL=C sort
+  # 🟥 **디렉토리 존재 축** (2026-08-17). 위 블록은 `-type f` 라 **파일만** 센다 — 빈
+  #   디렉토리는 관측면에 아예 없었고, `mkdir -p uploads outputs tmp` 만 하는 capability 가
+  #   `writes: read-only` 선언으로 **✅ VERIFIED** 를 받았다(known-pair 3-arm 실측).
+  #   git 은 빈 디렉토리를 추적하지 않으므로 격리 클론 샌드박스에도 없다 — 즉 이건 warm
+  #   cache 가 아니라 **관측면의 구멍**이다(원정 §2 의 진단을 이 실측이 정정했다).
+  #   ★존재만 센다, mtime 은 안 센다 — 안쪽 파일이 바뀔 때마다 디렉토리 mtime 이 움직여
+  #    읽기전용 capability 가 거짓 VIOLATION 을 받는다.
+  #   ★`.git` 제외 경계는 위 파일 축과 **같다**. 갈라지면 한쪽만 고쳐지는 구조가 된다.
+  find "$1" -type d -not -path '*/.git/*' -not -path '*/.git' 2>/dev/null \
+    | LC_ALL=C sort | sed 's/^/dir  /'
+  # 🟥 **비정규 노드 축** (2026-08-17, cross-family codex/gpt-5.5 지목 → 실측 확인).
+  #   `-type f` 도 `-type d` 도 symlink·fifo·소켓·디바이스 노드를 안 센다. 실측:
+  #     entry `ln -sf /etc/passwd leaked_link` + writes: read-only  → ✅ VERIFIED
+  #     entry `mkfifo backdoor_pipe`          + writes: read-only  → ✅ VERIFIED
+  #   위 디렉토리 축을 더한 **뒤에도** 둘 다 통과했다 — 같은 결함 클래스가 남아 있었다.
+  #   ★symlink 는 **대상까지** 잰다. 존재만 세면 같은 경로를 다른 곳으로 다시 거는
+  #    `ln -sf other link` 가 무변화로 보인다 — 그게 이 축에서 가장 위험한 형태다.
+  #   ★`stat -f`/`-printf` 를 안 쓴다 — 전자는 BSD 전용, 후자는 GNU 전용이라 한쪽 CI 에서
+  #    조용히 죽는다([[feedback_wiring_surfaces_hidden_failures]] 의 실측 클래스).
+  #    `-type` 술어와 `readlink` 만 쓰면 양쪽에서 돈다.
+  find "$1" -type l -not -path '*/.git/*' 2>/dev/null | LC_ALL=C sort \
+    | while IFS= read -r _l; do
+        printf 'link  %s -> %s\n' "$_l" "$(readlink "$_l" 2>/dev/null)"
+      done
+  find "$1" -not -path '*/.git/*' -not -path '*/.git' \
+       ! -type f ! -type d ! -type l 2>/dev/null \
+    | LC_ALL=C sort | sed 's/^/node  /'
   # ⚠️ 명명된 한계: 개행이 든 파일명은 `find` 출력에서 쪼개진다. 이 프로브가 도입될 때부터
   #    있던 성질이고 이번에 안 고쳤다 — 고치려면 `find -print0` 로 전 구간을 널 구분해야 한다.
 }
@@ -681,6 +708,83 @@ EOF
     pass=$((pass+1)); echo "✅ L15b 컨트롤 — 선언된 enum 안의 비영은 정상 관측(과차단 아님)"
   else
     fails=$((fails+1)); echo "❌ L15b rc=$rc (0 기대) — 정당한 비영 verdict 를 막는다"
+  fi
+
+  # ── L16/L16b 빈 디렉토리 생성은 «쓰기» 다 ────────────────────────────────────
+  #   2026-08-17 known-pair 3-arm 실측: `_snapshot` 이 `-type f` 라 **파일만** 셌고,
+  #   `mkdir -p uploads outputs tmp` 만 하는 capability 가 `writes: read-only` 선언으로
+  #   ✅ VERIFIED 를 받았다. git 이 빈 디렉토리를 추적하지 않으니 격리 클론에도 없어서
+  #   before/after 어느 쪽에도 안 나타난다 — warm cache 가 아니라 관측면의 구멍이다.
+  #   과녁이 실물인 이유: qasp 의 static-review 진입점이 정확히 이 모양이다
+  #   (`settings.py` 가 import 시점에 `ensure_dirs()` 를 무조건 실행).
+  cat > "$d/emptydirs.cap" <<EOF
+id: t:emptydirs
+entry: bash -c 'mkdir -p uploads outputs tmp'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/emptydirs.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L16 빈 디렉토리 생성은 read-only 선언을 위반한다"
+  else
+    fails=$((fails+1)); echo "❌ L16 rc=$rc (1 기대) — 빈 디렉토리 생성이 «no-write» 로 렌더된다"
+  fi
+  # L16b 컨트롤(과차단 방지): 재는 것은 **상태**지 활동이 아니다. 만들었다가 지워
+  #      순증이 0 이면 위반이 아니다 — 여기서 빨개지면 mkdir 자체를 벌하는 것이고,
+  #      그러면 임시 작업공간을 쓰는 정당한 read-only capability 가 전부 막힌다.
+  cat > "$d/dir_net_zero.cap" <<EOF
+id: t:dirnetzero
+entry: bash -c 'mkdir -p scratch_tmp && rmdir scratch_tmp'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/dir_net_zero.cap" 2>&1); rc=$?
+  if [ "$rc" = "0" ]; then
+    pass=$((pass+1)); echo "✅ L16b 컨트롤 — 순증 0 인 디렉토리 왕복은 위반이 아니다(상태를 잰다)"
+  else
+    fails=$((fails+1)); echo "❌ L16b rc=$rc (0 기대) — 활동을 벌한다(상태가 아니라)"
+  fi
+
+  # ── L17/L17b/L18 비정규 노드도 «쓰기» 다 ────────────────────────────────────
+  #   L16 을 넣은 **뒤에도** 통과하던 형태다(실측): `-type f`·`-type d` 어느 쪽도 안 센다.
+  cat > "$d/symlink.cap" <<EOF
+id: t:symlink
+entry: bash -c 'ln -sf /etc/passwd leaked_link'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/symlink.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L17 symlink 생성은 read-only 선언을 위반한다"
+  else
+    fails=$((fails+1)); echo "❌ L17 rc=$rc (1 기대) — symlink 가 «no-write» 로 렌더된다"
+  fi
+  # L17b — **대상 재지정**. 존재만 세면 이게 무변화로 보인다: 경로도 타입도 그대로다.
+  #        이 축에서 가장 조용한 형태라 별도 레인으로 둔다.
+  mkdir -p "$_rs" 2>/dev/null; ln -sf /dev/null "$_rs/preexisting_link" 2>/dev/null
+  cat > "$d/relink.cap" <<EOF
+id: t:relink
+entry: bash -c 'ln -sf /etc/passwd preexisting_link'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/relink.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L17b 기존 symlink 의 **대상 재지정**도 위반이다(존재만 세지 않는다)"
+  else
+    fails=$((fails+1)); echo "❌ L17b rc=$rc (1 기대) — 대상을 안 재고 존재만 센다"
+  fi
+  cat > "$d/fifo.cap" <<EOF
+id: t:fifo
+entry: bash -c 'mkfifo backdoor_pipe'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/fifo.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L18 fifo/비정규 노드 생성도 위반이다"
+  else
+    fails=$((fails+1)); echo "❌ L18 rc=$rc (1 기대) — 비정규 노드가 감시면 밖이다"
   fi
 
   rm -rf "$d"
