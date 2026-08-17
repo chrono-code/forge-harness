@@ -912,7 +912,9 @@ else
   fail=1
 fi
 
-# marker axes-run lanes — 훅의 4축 자기대조 형식 검사(§CLAUDE.md 3층 자기 대조)의 앵커.
+# marker axes-run lanes — 훅의 축 자기대조 형식 검사(§CLAUDE.md 3층 자기 대조)의 앵커.
+# ⚠️ 「4축」이라고 적혀 있었는데 2026-08-17 부로 **6축 분기가 생겼다**(마커 날짜 >= 그 날이면
+#    기호 키 ⓐ~ⓕ 요구, 미만이면 옛 ASCII 넷). 산문 층이라 레인은 안 깨지고 조용히 stale 이었다.
 # subject 부재를 FAIL 로 두는 이유는 branch-claim 블록과 같다: 이 subject 는 pre-commit 훅
 # 자체이고 files[] 에 있으므로 «정당한 부재» 가 없다. 부재 = 삭제다.
 if [ ! -f templates/.git-hooks/pre-commit ]; then
