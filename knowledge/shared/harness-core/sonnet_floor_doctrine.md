@@ -40,6 +40,17 @@ markers) — never silently drop a capability.
   day. Structure-enforcing checks are tier-blind by construction — so the harness raises the floor
   for weak models *and* guards the ceiling for strong ones. Weak-model benefit is the larger term
   (H1), top-tier benefit is the existence proof that the harness is not scaffolding-only.
+- **External academic grounding (arXiv:2605.30621, "Harness Updating Is Not Harness Benefit,"
+  May 2026 — surfaced via issue #102 Frontier Digest, 2026-08-15)**: the paper separates the
+  *evolver* role (writes harness updates) from the *beneficiary* role (runs on the updated
+  harness) and finds harness-**updating** flat across model capability — a Qwen3.5-9B evolver
+  induces gains comparable to a Claude Opus 4.6 evolver, i.e. evolver strength does not predict
+  beneficiary gain. Harness-**benefit**, by contrast, is non-monotonic: the weakest tier gains
+  little, traced to failing to *activate* relevant harness artifacts or *follow* them faithfully
+  once activated — not to a stronger model extracting more value from an identical harness. This
+  is independent grounding for the floor split below: sub-Sonnet stays `below-floor` because
+  activation/faithful-following is where payoff collapses, while Sonnet is named the floor
+  precisely because it clears that bar.
 
 ## The defect class: tier-gated capability
 
