@@ -21,10 +21,20 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 이 계기가 증명하지 않는 것 (과잉주장 금지 — 명명된 잔여)
 # ─────────────────────────────────────────────────────────────────────────────
-# · **등록 시점은 여기서 안 막는다.** 스펙 §1 이 이름 붙인
-#   `scripts/capability_registry_check.sh`(M1–M5 + M4 쌍 실행)는 **여전히 없다.**
-#   여기는 *call moment* 만 본다 — 선언이 문법에 맞는지·enum 안인지는 런타임에
-#   다시 거부하지만(ⓑ.5), 그 선언이 **진실인지**는 검사하지 않는다.
+# · ✅ **등록 시점 선언층은 2026-08-17 부터 여기서 막는다(배선됨).** `do_run` 이
+#   `_registry_gate` 로 `scripts/capability_registry_check.sh --declaration-only` 를 부르고,
+#   REJECTED 면 조합을 열지 않는다(COMPOSITION_VIOLATION).
+#   🟥 **남은 잔여는 좁아졌을 뿐 사라지지 않았다**: 그 모드는 M4(known-pair 실행)·M6(선언
+#   진위)를 **안 돌린다**. 즉 여기서 닫히는 것은 «선언이 형식에 맞나»(M1·M2·M3·M5 +
+#   추가조항)이고, «선언이 **진실인지**»는 여전히 검사하지 않는다 — `writes: read-only`
+#   의 진위는 등록 시점 M6 의 몫이다. 왜 전량 호출을 안 했는지는 `_registry_gate` 헤더에.
+#
+# · (이력) 🟥 **이 자리에 이렇게 적혀 있었다 — 그리고 그 문장이 잔여를 은폐했다.**
+#   원문: *"`scripts/capability_registry_check.sh`(M1–M5 + M4 쌍 실행)는 **여전히 없다**."*
+#   2026-08-17 실측 시점에 그 파일은 **42KB 로 실재했고 정상 작동했다.** 낡은 서술이
+#   «없으니 안 부르는 게 당연하다» 를 정당화하는 형태로 남아 있었고, 그 사이 relay 는
+#   `❌ REJECTED` 판정을 받는 capfile 을 그냥 실행해 CLEAN 을 체인에 병합했다.
+#   **stale 한 잔여 서술은 잔여를 기록하는 게 아니라 은폐한다.**
 # · **호출 순간 자체엔 기계 floor 가 없다.** "지금 capability 를 조합하려 한다" 를
 #   관측하는 훅은 존재하지 않는다(트리거가 의도다). 이 스크립트는 *호출되면* 계산을
 #   강제하지만, **호출되도록 강제하지는 못한다.** 스펙 §1 이 이미 그렇게 적어놨고
@@ -507,6 +517,73 @@ _invoke_node() {
   return 0
 }
 
+# ── 등록 시점 게이트 ──────────────────────────────────────────────────────────
+# 호출 시점(여기)에서 **등록 시점 검사기를 그대로 부른다.** 선언 검사를 여기 새로 쓰지
+# 않는 것이 요점이다 — 같은 스키마에 계기가 둘이 되면 관대함이 갈리고, 이 파일은 그
+# divergent-normalizer 함정을 **이미 두 번 밟았다**(§META_KEYS 헤더: 2026-08-11 · 08-16,
+# 둘 다 «등록되는데 부를 수 없는» 선언을 만들었다). 스키마의 단일 소스는 검사기 쪽이다.
+#
+# 🟥 **`--declaration-only` 로 부르는 이유 — 그리고 그 대가를 명시한다.**
+# 전량 호출하면 M4(known-pair arm 실행)와 M6(effect probe 가 entry 를 실행)가 **매 relay
+# 호출마다 재실행된다.** 검사기 자신이 «등록 거부될 capfile 의 진입점을 굳이 실행하는 것은
+# 그 자체가 위험 노출» 이라는 가드를 갖고 있고, 그 판단은 호출 경로에서도 같다.
+# ⇒ **대가**: 이 게이트는 «선언이 형식에 맞나» 를 보지 «선언이 사실인가» 는 **안 본다.**
+#   `writes: read-only` 의 진위는 여기서 닫히지 않는다(그건 등록 시점 M6 의 몫이다).
+#   이 파일 헤더가 원래 적어둔 잔여 — «선언이 진실인지는 검사하지 않는다» — 는
+#   **좁아졌을 뿐 사라지지 않았다.** 좁아진 폭이 정확히 M1·M2·M3·M5 + 추가조항이다.
+#
+# **degrade 방향 = fail-closed.** 검사기 부재·실행 실패·알 수 없는 rc 는 전부 차단이다.
+# 이건 조합을 여는 게이트이고, 게이트의 도구가 없을 때 통과시키는 것은 게이트가 아니다
+# (CLAUDE.md §Surface-Class Degrade Invariant). 과차단 위험은 인정하되, 여기서 열면
+# 배선의 목적 자체가 사라진다 — 안 부르던 상태와 같아지기 때문이다.
+_registry_gate() {
+  # 심볼릭 링크 해석. `${0%/*}` 는 **호출에 쓰인 이름**의 디렉터리를 주므로, 이 파일로의
+  # 심링크가 있으면 링크 옆(아무것도 없는 곳)을 뒤지고 «검사기 부재» 로 fail-closed 한다.
+  # 자기 경로 버그를 남의 파일 탓으로 돌리는 게이트는 그냥 실패하는 것보다 나쁘다 —
+  # 읽는 사람을 틀린 수리로 보낸다(검사기 M6 이 2026-08-16 에 실제로 밟은 형태).
+  local _src="${BASH_SOURCE[0]}" _dir
+  while [ -L "$_src" ]; do
+    _dir=$(cd -P "$(dirname "$_src")" && pwd)
+    _src=$(readlink "$_src")
+    case "$_src" in /*) ;; *) _src="$_dir/$_src" ;; esac
+  done
+  _dir=$(cd -P "$(dirname "$_src")" && pwd)
+  local checker="$_dir/capability_registry_check.sh"
+
+  if [ ! -r "$checker" ]; then
+    _violation "등록 검사기에 도달할 수 없다: $checker — fail-closed(조합을 열지 않는다)"
+    return 1
+  fi
+
+  local f out rc bad=0
+  GATE_SHA=()   # 게이트가 «본» 바이트의 해시. 실행 직전에 대조한다(TOCTOU).
+  for f in "${CAPS[@]}"; do
+    # 🟥 rc 는 **직접** 취한다. 파이프로 읽으면 필터의 rc 가 잡혀 REJECTED 가 0 으로 읽힌다
+    #    — 이 레포가 이름 붙인 결함이고 D6(pipefail) 과 같은 뿌리다.
+    out=$(bash "$checker" --declaration-only "$f" 2>&1); rc=$?
+    case "$rc" in
+      # 🟥 **성공 출력을 버리지 않는다** (cross-family A급 수리). 초판은 `0) ;;` 로 통째로
+      #   폐기했고, 그 결과 `relay run` 출력에는 `FH_STATUS: SUCCESS` 만 남아 **호출자가
+      #   «전체 검사가 통과했다»로 읽었다.** 실제로는 M4(known-pair 실행)·M6(선언 진위)를
+      #   안 돌린 선언층 통과다. 침묵은 «다 봤다»로 읽힌다 — 안 본 축을 이름으로 찍는다.
+      0) printf 'FH_REGISTRY_GATE: DECLARATION_VALID %s\n' "$(basename "$f")"
+         printf 'FH_REGISTRY_GATE_SKIPPED: M4 M6 (%s — 선언 진위는 등록 시점 검사의 몫)\n' "$(basename "$f")"
+         # 🟥 **검사한 바이트를 실행할 바이트에 결박한다** (cross-family A급 — TOCTOU).
+         #   게이트는 capfile «경로» 를 검사하고, 그 뒤 `_merge_caps`·`_invoke_node` 가 같은
+         #   경로를 **다시 읽는다.** 그 사이 파일이 바뀌면 «검사된 선언» 과 «실행된 선언» 이
+         #   다르고, 초판엔 둘을 묶는 것이 없었다. 여기서 해시를 남기고 실행 직전에 대조한다.
+         GATE_SHA+=("$(_sha < "$f")") ;;
+      1) _violation "등록 시점 검사 REJECTED — 부를 수 없는 선언이다: $f"
+         printf '%s\n' "$out" | sed -n 's/^  ❌ /     ↳ /p' >&2
+         bad=1 ;;
+      *) _violation "등록 검사기가 비정상 종료(rc=$rc): $f — fail-closed"
+         printf '%s\n' "$out" | tail -3 >&2
+         bad=1 ;;
+    esac
+  done
+  [ "$bad" -eq 0 ]
+}
+
 # ── run ───────────────────────────────────────────────────────────────────────
 do_run() {
   local task="" recdir="" ack=0 n=0 upstream="" rc final=$RC_PASS _ci
@@ -572,6 +649,41 @@ do_run() {
   local ncap=${#CAPS[@]}
   [ "$ncap" -ge 2 ] || _die "relay 는 노드 2개 이상을 요구한다(받은 수: $ncap) — 1노드는 단순 호출이지 경유가 아니다"
 
+  # ── 등록 시점 게이트 배선 (2026-08-17) ──────────────────────────────────────
+  # 🟥 **왜 여기가 필요했나 — 이 파일이 게이트를 갖고도 안 불렀다.**
+  # 2026-08-17 실측: `capability_registry_check.sh qasp_clean.cap` → `❌ REJECTED`
+  # (M2+ enum 에 「안 돌았다」 없음 · M5 requires_cwd 미선언 · M4 캘리브레이션 쌍 미선언).
+  # **그런데 relay 는 그 cap 을 그냥 실행하고 CLEAN 을 체인에 병합했다** — grep 결과
+  # `capability_registry_check` 히트 3건이 **전부 주석**이고 실행문은 0줄이었다.
+  # 게이트는 42KB 로 실재하고 정상 작동하는데 **아무도 부르지 않는** 상태였다
+  # ([[feedback_built_but_not_wired]] — 「호출부 미배선이면 산문이 실행기」).
+  # 그 결과가 §2-b 의 «relay 3노드 CLEAN 동의»이고, 그 동의는 허상이었다.
+  # 🟥 **우회 채널이 있고, 왜 있는지 적는다 — 이걸 숨기면 그게 더 나쁘다.**
+  # 이 게이트를 켜자 relay 자신의 **런타임 심층 방어 4종**이 do_run 경로에서 도달 불가가 됐다
+  # (실측: L26b «126 이상» · L31b «중복 선언» · L36b 실행 불가 · N8 requires_cwd 부재).
+  # 구조적으로 배타적이다 — entry 가 실행 불가여야 126 이 나는데 그건 M1 이 먼저 잡고,
+  # requires_cwd 가 없어야 NOT_CALLABLE 인데 그건 M5 가 먼저 잡는다.
+  # 그 방어들은 **죽은 코드가 아니라 심층 방어**다: 게이트를 안 거치는 진입점, 게이트가
+  # fail-closed 로 죽은 뒤의 경로에서 여전히 마지막 벽이다. 시험할 수 없으면 썩는다
+  # ([[feedback_built_but_not_wired]] 의 거울상 — 배선했더니 아래층이 안 보이게 된 형태).
+  # ⇒ 끄는 길을 **하나만**, **시끄럽게** 둔다. 조용한 우회가 실사용으로 새는 것이지
+  #   존재 자체가 새는 게 아니다. 이 줄이 실사용 로그에 보이면 그게 결함 신호다.
+  if [ "${FH_RELAY_REGISTRY_GATE:-on}" = "off" ]; then
+    # 🟥 **우회는 실행을 막지 않지만 clearing PASS 는 구조적으로 막는다** (cross-family A급 수리).
+    #   초판은 경고만 stderr 로 찍었는데, 재현 결과 **REJECT capfile 이 실제로 실행되고
+    #   `FH_RELAY_VERDICT: PASS` 까지 갔다.** 경고는 텍스트일 뿐 게이트가 아니다.
+    #   ⇒ `DEGRADED_SEEN` 과 같은 형태로 **verdict 를 강등**한다. 심층 방어 레인들은 rc=2/4 를
+    #     기대하므로 안 깨지고, 실사용자가 이 스위치를 켜도 **게이트를 열지는 못한다.**
+    #   («이중 조건 env» 대신 이걸 고른 이유: 조건을 늘려도 둘 다 켜면 그만이고, 그건 여전히
+    #     PASS 를 낸다. 여기서 막아야 하는 것은 진입이 아니라 **통과**다.)
+    GATE_BYPASSED=1
+    printf '⚠️  등록 게이트 우회 중 (FH_RELAY_REGISTRY_GATE=off) — 심층 방어 시험용 경로다.\n' >&2
+    printf '⚠️  실사용에서 이 줄이 보이면 결함이다: 부를 수 없는 선언이 조합에 들어온다.\n' >&2
+    printf '⚠️  이 런은 clearing PASS 를 낼 수 없다(강등 고정).\n' >&2
+  else
+    _registry_gate || { printf 'FH_STATUS: ERROR\nFH_RELAY_VERDICT: COMPOSITION_VIOLATION\n'; return "$RC_VIOLATION"; }
+  fi
+
   _merge_caps || { printf 'FH_STATUS: ERROR\nFH_RELAY_VERDICT: COMPOSITION_VIOLATION\n'; return "$RC_VIOLATION"; }
   _run_checks || { printf 'FH_STATUS: ERROR\nFH_RELAY_VERDICT: COMPOSITION_VIOLATION\n'; return "$RC_VIOLATION"; }
 
@@ -599,6 +711,21 @@ do_run() {
   ( set +f; rm -f "$recdir"/node*.out 2>/dev/null )
   : > "$recdir/CHAIN.txt"
   printf 'task_sha: %s\n' "$(printf '%s' "$task" | _sha)" >> "$recdir/CHAIN.txt"
+
+  # 🟥 **TOCTOU 재확인** — 게이트가 검사한 바이트와 지금 실행할 바이트가 같은지 본다.
+  #   게이트를 우회한 런(GATE_SHA 비어 있음)은 대조할 기준이 없으므로 건너뛴다 — 그 런은
+  #   이미 clearing PASS 를 못 내도록 강등돼 있다.
+  if [ "${#GATE_SHA[@]}" -gt 0 ]; then
+    local _i=0 _now
+    for f in "${CAPS[@]}"; do
+      _now=$(_sha < "$f")
+      if [ "$_now" != "${GATE_SHA[$_i]}" ]; then
+        printf 'FH_STATUS: ERROR\nFH_RELAY_VERDICT: HARNESS_ERROR\n'
+        _die "capfile 이 검사 후 변경됐다: $f — 검사한 선언과 실행할 선언이 다르다(TOCTOU)"
+      fi
+      _i=$((_i+1))
+    done
+  fi
 
   for f in "${CAPS[@]}"; do
     n=$((n+1))
@@ -679,7 +806,14 @@ do_run() {
   # D2 — 체인에 judge:model 이 있으면 PASS 는 **단독으로 게이트를 열 수 없다.**
   # D4 연장 — advisory 로 넘긴 HARNESS_ERROR 도 clearing PASS 를 영구히 막는다.
   #   "안 재고 통과" 를 초록으로 렌더하지 않는다(미측정≠PASS).
-  if [ "${DEGRADED_SEEN:-0}" -eq 1 ]; then
+  if [ "${GATE_BYPASSED:-0}" -eq 1 ]; then
+    # 🟥 등록 게이트를 우회한 런은 **어떤 경우에도 clearing PASS 가 아니다.**
+    #   선언이 부를 수 있는 것인지 확인하지 않았으므로 «안 재고 통과» 이고, 이 파일의 D4 가
+    #   이미 그것을 PASS 로 렌더하지 않기로 정했다(미측정 ≠ PASS).
+    printf 'FH_RELAY_VERDICT: PENDING\n'
+    printf 'FH_RELAY_CLEARING: NON_CLEARING (등록 게이트 우회 — 선언 유효성을 안 쟀다. 미측정은 PASS 가 아니다)\n'
+    final=$RC_PENDING
+  elif [ "${DEGRADED_SEEN:-0}" -eq 1 ]; then
     printf 'FH_RELAY_VERDICT: PENDING\n'
     printf 'FH_RELAY_CLEARING: NON_CLEARING (HARNESS_ERROR 를 advisory 로 통과시켰다 — 미측정은 PASS 가 아니다)\n'
     final=$RC_PENDING
@@ -702,7 +836,18 @@ do_merge_only() {
   [ "${#CAPS[@]}" -gt 0 ] || _die "usage: merge --cap <capfile> [--cap ...]"
   _merge_caps || return "$RC_VIOLATION"
   _run_checks || return "$RC_VIOLATION"
-  printf 'FH_STATUS: SUCCESS\n'; _print_merge
+  # 🟥 **`merge` 는 등록 게이트를 부르지 않는다 — 그리고 그 사실을 출력이 말한다**
+  #   (cross-family A급 수리). 재현: 같은 capfile 이 `capability_registry_check --declaration-only`
+  #   에서 rc=1 인데 `relay merge` 에서는 rc=0 `FH_STATUS: SUCCESS` 였다. 실행은 아니지만
+  #   **preflight/조합 계산 표면으로 쓰이면 fail-open** 이다.
+  #   ⇒ 게이트를 강제하지 **않는** 이유: `merge` 는 «병합만 계산» 하는 조회 경로라 등록 전
+  #     선언을 실험하는 정당한 용도가 있다. 막을 곳은 진입이 아니라 **오독**이다.
+  #   ⇒ 그래서 `SUCCESS` 뒤에 **무엇을 안 봤는지**를 기계 필드로 찍는다. 침묵하면 호출자가
+  #     «조합이 유효하다»로 읽는다 — 이 파일이 D4 에서 이미 정한 «미측정 ≠ PASS» 와 같은 규율.
+  printf 'FH_STATUS: SUCCESS\n'
+  printf 'FH_MERGE_SCOPE: SCHEMA_ONLY (병합 계산만 — 등록 시점 검사 미실행)\n'
+  printf 'FH_REGISTRY_GATE: NOT_RUN (이 경로는 capability_registry_check 를 부르지 않는다. `run` 에서만 검사한다)\n'
+  _print_merge
 }
 
 case "${1:-}" in

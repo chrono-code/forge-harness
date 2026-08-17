@@ -53,10 +53,32 @@ else echo "upstream MISSING (got='"'"'$got'"'"' want='"'"'$EXPECT_UPSTREAM'"'"')
 mk n_silent.sh '#!/usr/bin/env bash
 echo "no verdict key here"; exit 0'
 
-ENUM='0=PASS 1=FAIL 7=ODD'
+# 🟥 `9=DID_NOT_RUN` 은 등록 게이트의 추가조항(§ⓑ.4 B1)이 요구하는 「안 돌았다」 구분항이다.
+# **9 를 내는 노드는 이 파일에 하나도 없다**(실측: 노드들이 쓰는 코드는 0·1·3·7·66) —
+# 그래서 이 값을 더해도 기존 레인이 관측하는 것은 하나도 안 바뀐다. 굳이 안 쓰이는 코드를
+# 고른 이유가 그것이다. 66(계기사망)이나 3 에 이름을 붙였으면 L5·L8 이 시험하던 의미가
+# 조용히 달라졌을 것이다 — 계기가 대상을 바꾸는 형태.
+ENUM='0=PASS 1=FAIL 7=ODD 9=DID_NOT_RUN'
 
 cap() { # $1=filename $2..=lines
-  local f="$T/$1"; shift; : > "$f"; for l in "$@"; do printf '%s\n' "$l" >> "$f"; done; printf '%s' "$f"
+  local f="$T/$1"; shift; : > "$f"; for l in "$@"; do printf '%s\n' "$l" >> "$f"; done
+  # ── 등록 게이트 필수 필드 자동 보강 (2026-08-17) ────────────────────────────
+  # 🟥 **왜 생겼나 — 그리고 이건 «테스트를 통과시키려는 조작»이 아니다.**
+  # `relay run` 이 `capability_registry_check.sh --declaration-only` 를 부르도록 배선하자
+  # 이 파일의 레인 **91개 중 51개가 rc=4(COMPOSITION_VIOLATION)로 무너졌다.** 원인은
+  # 배선 결함이 아니라 **fixture 가 현실의 capfile 이 아니었다는 것**이다: 「안 돌았다」를
+  # 뜻하는 enum 값도, `requires_cwd` 도, 캘리브레이션 쌍도 선언한 적이 없었다.
+  # ⇒ relay 는 **현실에서 등록될 수 없는 입력으로만 자기를 시험해왔다.**
+  # 보강은 fixture 를 현실 쪽으로 옮기는 것이지 게이트를 무르는 것이 아니다.
+  # (게이트를 우회하는 env 채널을 만드는 선택지는 **버렸다** — 우회 채널은 실사용으로 샌다.)
+  #
+  # ⚠️ **이미 선언된 키는 절대 안 건드린다.** 덮어쓰면 「enum 밖 값은 폴백하지 않는다」
+  #    「오타난 축을 무음 드롭하지 않는다」 같은 레인이 시험하려던 것 자체가 바뀐다 —
+  #    계기가 대상을 조용히 바꾸는 형태다. 그래서 전부 `grep -q || append` 다.
+  grep -q '^requires_cwd:' "$f" || printf 'requires_cwd: %s\n' "$T" >> "$f"
+  grep -q '^calibration_positive_expect:' "$f" || printf 'calibration_positive_expect: PASS\n' >> "$f"
+  grep -q '^calibration_negative_expect:' "$f" || printf 'calibration_negative_expect: FAIL\n' >> "$f"
+  printf '%s' "$f"
 }
 
 # ── L1 PASS arm — 2노드 전부 PASS, mechanical ─────────────────────────────────
@@ -198,7 +220,7 @@ _t "L14 1노드 호출을 relay 로 세지 않는다" 10 "$rc"
 
 # ── L15 stdout-key 채널인데 키 부재 → HARNESS_ERROR (D4) ──────────────────────
 A15=$(cap a15.cap "id: demo:a" "entry: bash $T/n_silent.sh" "verdict_channel: stdout-key" \
-  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" \
   "residency: public" "degrade: fail-closed" "tier_floor: none" "writes: read-only" \
   "judge: mechanical" "verdict_binding: FAIL")
@@ -227,7 +249,7 @@ _tout "L17b strictest-wins 결과가 그대로 보인다" "FH_MERGED_approval: a
 mk n_lies.sh '#!/usr/bin/env bash
 echo "FH_GATE_VERDICT: TOTALLY_FINE"; exit 0'
 A19=$(cap a19.cap "id: demo:a" "entry: bash $T/n_lies.sh" "verdict_channel: stdout-key" \
-  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A19" --cap "$B" --task t > "$T/o19" 2>&1 || rc=$?
@@ -300,7 +322,7 @@ _tout "L24b binding 집합이 선언 그대로다" "FH_MERGED_verdict_binding: O
 mk n_lying_exit.sh '#!/usr/bin/env bash
 echo "FH_GATE_VERDICT: PASS"; exit 1'
 A25=$(cap a25.cap "id: demo:a" "entry: bash $T/n_lying_exit.sh" "verdict_channel: both" \
-  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A25" --cap "$B" --task t > "$T/o25" 2>&1 || rc=$?
@@ -314,7 +336,7 @@ A26=$(cap a26.cap "id: demo:a" "entry: bash $T/n_suicide.sh" "verdict_channel: e
   "verdict_enum: 137=PASS 1=FAIL" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
-rc=0; bash "$RELAY" run --cap "$A26" --cap "$B" --task t > "$T/o26" 2>&1 || rc=$?
+rc=0; FH_RELAY_REGISTRY_GATE=off bash "$RELAY" run --cap "$A26" --cap "$B" --task t > "$T/o26" 2>&1 || rc=$?
 # 라운드 2 이후: 이런 enum 은 **앞단 lint 에서** 거부된다(인정 못 할 선언을 통과시키는
 # lint 는 거짓말이므로). 그래서 기대값이 BLOCKED(2) 가 아니라 VIOLATION(4) 다.
 _t    "L26 인정 못 할 enum 코드(>128)를 앞단에서 거부한다" 4 "$rc"
@@ -322,7 +344,7 @@ _t    "L26 인정 못 할 enum 코드(>128)를 앞단에서 거부한다" 4 "$rc
 _tout "L26b 왜 거부했는지 코드를 대며 말한다" "126 이상" "$T/o26"
 # 그리고 런타임 방어도 따로 살아 있어야 한다(합법 enum + 시그널 사망) — defense in depth.
 A26b=$(cap a26b.cap "id: demo:a" "entry: bash $T/n_suicide.sh" "verdict_channel: exit" \
-  "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A26b" --cap "$B" --task t > "$T/o26b" 2>&1 || rc=$?
@@ -340,7 +362,7 @@ _t "L27 enum 없는 capability 는 호출 불가다" 4 "$rc"
 mk n_other_key.sh '#!/usr/bin/env bash
 echo "FH_FAKE: PASS"; exit 0'
 A28=$(cap a28.cap "id: demo:a" "entry: bash $T/n_other_key.sh" "verdict_channel: stdout-key" \
-  "verdict_stdout_key: FH_.*" "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_stdout_key: FH_.*" "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A28" --cap "$B" --task t > "$T/o28" 2>&1 || rc=$?
@@ -382,7 +404,7 @@ A31=$(cap a31.cap "id: demo:a" "entry: bash $T/n_fail.sh" "verdict_channel: exit
   "verdict_enum: 1=PASS" "verdict_enum: 1=FAIL 0=PASS" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: advisory" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
-rc=0; bash "$RELAY" run --cap "$A31" --cap "$B" --task t > "$T/o31" 2>&1 || rc=$?
+rc=0; FH_RELAY_REGISTRY_GATE=off bash "$RELAY" run --cap "$A31" --cap "$B" --task t > "$T/o31" 2>&1 || rc=$?
 _t    "L31 ★중복 키를 first-wins 로 삼키지 않는다" 4 "$rc"
 _tout "L31b 중복이라고 이름 대며 거부한다" "중복 선언" "$T/o31"
 # 파생 조임 우회 변형 — approval/reversibility 중복
@@ -454,10 +476,10 @@ rc=0; bash "$RELAY" run --cap "$A36" --cap "$B" --task t > "$T/o36" 2>&1 || rc=$
 _t "L36 ★'안 돌았다'(126/127)를 verdict 로 선언할 수 없다" 4 "$rc"
 # 런타임 방어도 별도로 — 합법 enum + 실행 불가 entry
 A36b=$(cap a36b.cap "id: demo:a" "entry: bash /nonexistent/path/nope.sh" "verdict_channel: exit" \
-  "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
-rc=0; bash "$RELAY" run --cap "$A36b" --cap "$B" --task t > "$T/o36b" 2>&1 || rc=$?
+rc=0; FH_RELAY_REGISTRY_GATE=off bash "$RELAY" run --cap "$A36b" --cap "$B" --task t > "$T/o36b" 2>&1 || rc=$?
 _t "L36b 합법 enum 이어도 실행 불가는 HARNESS_ERROR 로 막힌다" 2 "$rc"
 
 # L37 ★ blocking 집합이 비면 아무것도 막을 수 없다 — 부재는 허가가 아니다
@@ -559,20 +581,20 @@ A_N8=$(cap a_n8.cap "id: demo:a" "entry: bash $T/n_pass.sh" "requires_cwd: /none
   "verdict_channel: exit" "verdict_enum: $ENUM" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
-rc=0; bash "$RELAY" run --cap "$A_N8" --cap "$B" --task t > "$T/on8" 2>&1 || rc=$?
+rc=0; FH_RELAY_REGISTRY_GATE=off bash "$RELAY" run --cap "$A_N8" --cap "$B" --task t > "$T/on8" 2>&1 || rc=$?
 _t "N8 requires_cwd 가 없으면 NOT_CALLABLE 로 막힌다(무음 통과 아님)" 2 "$rc"
 
 # N9–N10 ★ 채널별 PASS arm — 없으면 "exit 외 채널을 전부 거부하는 게이트" 도 만점을 받는다
 mk n_key_pass.sh '#!/usr/bin/env bash
 echo "FH_GATE_VERDICT: PASS"; exit 0'
 A_N9=$(cap a_n9.cap "id: demo:a" "entry: bash $T/n_key_pass.sh" "verdict_channel: stdout-key" \
-  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A_N9" --cap "$B" --task t > "$T/on9" 2>&1 || rc=$?
 _t "N9 stdout-key 채널의 정상 통과 경로가 실제로 돈다" 0 "$rc"
 A_N10=$(cap a_n10.cap "id: demo:a" "entry: bash $T/n_key_pass.sh" "verdict_channel: both" \
-  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_stdout_key: FH_GATE_VERDICT" "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A_N10" --cap "$B" --task t > "$T/on10" 2>&1 || rc=$?
@@ -589,7 +611,7 @@ echo "ARGS=[$*]"
 [ "${1:-}" = "GO" ] && exit 0
 exit 1'
 ARGSCAP() { cap "$1" "id: demo:$2" "entry: bash $T/n_echo_args.sh" "verdict_channel: exit" \
-  "verdict_enum: 0=PASS 1=FAIL" "approval: auto" "reversibility: reversible" "residency: public" \
+  "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" "approval: auto" "reversibility: reversible" "residency: public" \
   "degrade: fail-closed" "tier_floor: none" "writes: read-only" "judge: mechanical" \
   "verdict_binding: FAIL"; }
 
@@ -631,7 +653,7 @@ _t "N16 같은 --cap 에 --cap-args 두 번은 fail-closed(앞 값 무음 폐기
 
 # N17 결박 플래그와의 충돌 — `--cap-args --` 로 `--upstream-verdict` 를 위치인자로 밀어낼 수 있었다
 A_N17=$(cap a_n17.cap "id: demo:a" "entry: bash $T/n_echo_args.sh" "upstream_argv: yes" \
-  "verdict_channel: exit" "verdict_enum: 0=PASS 1=FAIL" \
+  "verdict_channel: exit" "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" \
   "approval: auto" "reversibility: reversible" "residency: public" "degrade: fail-closed" \
   "tier_floor: none" "writes: read-only" "judge: mechanical" "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A_N17" --cap-args "GO" --cap "$B" --task t > "$T/on17" 2>&1 || rc=$?
@@ -646,13 +668,120 @@ _t "N18 --cap-args 의 개행은 거부된다(인자 경계 무음 변형 차단
 # N18b 컨트롤 — **정상 다중 인자**(공백 구분)는 계속 통과해야 한다. 안 그러면 N18 은
 #      「인자를 여러 개 못 주는 계기」와 구분되지 않는다.
 A_N18=$(cap a_n18.cap "id: demo:a" "entry: bash $T/n_echo_args.sh" "verdict_channel: exit" \
-  "verdict_enum: 0=PASS 1=FAIL" "approval: auto" "reversibility: reversible" "residency: public" \
+  "verdict_enum: 0=PASS 1=FAIL 9=DID_NOT_RUN" "approval: auto" "reversibility: reversible" "residency: public" \
   "degrade: fail-closed" "tier_floor: none" "writes: read-only" "judge: mechanical" \
   "verdict_binding: FAIL")
 rc=0; bash "$RELAY" run --cap "$A_N18" --cap-args "GO SECOND THIRD" --cap "$B" --task t \
   --record "$T/rec18" > "$T/on18b" 2>&1 || rc=$?
 _t    "N18b 컨트롤 — 공백 구분 다중 인자는 정상 통과" 0 "$rc"
 _tout "N18b2 세 인자가 그대로 도달한다" "ARGS=\[GO SECOND THIRD\]" "$T/rec18/node1.out"
+
+# ── R1–R5 등록 시점 게이트 배선 (2026-08-17) ─────────────────────────────────
+#   🟥 **왜 이 레인들이 있나**: `relay run` 이 `capability_registry_check.sh` 를 부르도록
+#   배선했는데, 배선에 앵커가 없으면 그건 산문이다. 그리고 이 파일은 배선 **이전에**
+#   91 레인이 전부 초록이었다 — 즉 **기존 레인 중 어느 것도 「게이트가 도는가」를 안 봤다.**
+#   `[[feedback_built_but_not_wired]]` 의 확인 절차(«되돌려 빨개지나»)를 R5 가 담당한다.
+
+# R1 known-positive — 등록 검사가 REJECT 하는 선언은 조합을 열지 못한다.
+#   `qasp_clean.cap`(실물, 2026-08-17 실측)이 걸린 사유 그대로를 fixture 로 만든다:
+#   enum 에 「안 돌았다」 없음 · requires_cwd 미선언 · 캘리브레이션 쌍 미선언.
+#   ⚠️ `cap()` 이 뒤 둘을 자동 보강하므로 **여기서는 cap() 을 안 쓰고 직접 쓴다** —
+#      보강이 이 레인이 시험하려는 결함을 지워버린다(계기가 대상을 바꾸는 형태).
+RJ="$T/reject_me.cap"
+{ printf 'id: demo:rj\n'; printf 'entry: bash %s/n_pass.sh\n' "$T"
+  printf 'verdict_channel: exit\n'; printf 'verdict_enum: 0=PASS 1=FAIL\n'
+  printf 'approval: auto\n'; printf 'reversibility: reversible\n'; printf 'residency: public\n'
+  printf 'degrade: advisory\n'; printf 'tier_floor: none\n'; printf 'writes: read-only\n'
+  printf 'judge: mechanical\n'; printf 'verdict_binding: FAIL\n'; } > "$RJ"
+rc=0; bash "$RELAY" run --cap "$RJ" --cap "$B" --task t > "$T/orj" 2>&1 || rc=$?
+_t    "R1 ★등록 REJECT 선언은 조합을 열지 못한다(COMPOSITION_VIOLATION)" 4 "$rc"
+_tout "R1b 무엇이 왜 막혔는지 이름 대며 보고한다" "등록 시점 검사 REJECTED" "$T/orj"
+
+# R2 컨트롤(known-negative) — 정상 선언은 그대로 통과한다. **과차단이 아님을 증명한다.**
+#   R1 만 있으면 「전부 막는 게이트」와 구별이 안 된다
+#   (`[[feedback_control_presence_is_not_discrimination]]`).
+rc=0; bash "$RELAY" run --cap "$A" --cap "$B" --task t > "$T/orj2" 2>&1 || rc=$?
+_t "R2 컨트롤 — 정상 선언은 게이트를 통과한다(과차단 아님)" 0 "$rc"
+
+# R3 우회 채널은 실재하고, **시끄럽다**. 조용한 우회가 위험한 것이지 존재가 위험한 게 아니다.
+rc=0; FH_RELAY_REGISTRY_GATE=off bash "$RELAY" run --cap "$RJ" --cap "$B" --task t > "$T/orj3" 2>&1 || rc=$?
+_tout "R3 우회하면 그 사실을 크게 말한다(무음 우회 금지)" "등록 게이트 우회 중" "$T/orj3"
+
+# R4 degrade 방향 = fail-closed. 검사기에 도달 못 하면 **막는다**.
+#   게이트의 도구가 없을 때 통과시키는 것은 게이트가 아니다(§Surface-Class Degrade Invariant).
+#   검사기를 못 찾는 상황을 만들기 위해 relay 를 검사기 없는 디렉터리로 복사해 부른다.
+mkdir -p "$T/lonely"; cp "$RELAY" "$T/lonely/relay_channel.sh"
+rc=0; bash "$T/lonely/relay_channel.sh" run --cap "$A" --cap "$B" --task t > "$T/orj4" 2>&1 || rc=$?
+_t    "R4 ★검사기 도달 불가 → fail-closed(통과가 아니라 차단)" 4 "$rc"
+_tout "R4b 왜 막혔는지 말한다" "등록 검사기에 도달할 수 없다" "$T/orj4"
+
+# R5 ★되돌림 프로브 — 게이트 호출을 지우면 **R1 이 빨개져야** 한다.
+#   빨개지지 않으면 R1 은 다른 이유로 통과하고 있었다는 뜻이고, 그 레인은 장식이다
+#   (`[[feedback_anchor_can_be_decorative]]`). 적용확인 → 실행 → 복원 3단.
+sed 's|^    _registry_gate |    true # DISABLED-FOR-PROBE |' "$RELAY" > "$T/lonely/probe.sh"
+if grep -q 'DISABLED-FOR-PROBE' "$T/lonely/probe.sh"; then      # ① 적용 확인
+  cp "$RELAY" "$T/lonely/relay_channel.sh"                       # 검사기 경로는 여전히 없음
+  # 검사기가 보이는 자리에 둬야 «게이트만» 껐다고 말할 수 있다
+  mkdir -p "$T/probe"; cp "$T/lonely/probe.sh" "$T/probe/relay_channel.sh"
+  cp "$SELF_DIR/capability_registry_check.sh" "$T/probe/" 2>/dev/null
+  rc=0; bash "$T/probe/relay_channel.sh" run --cap "$RJ" --cap "$B" --task t > "$T/orj5" 2>&1 || rc=$?
+  if [ "$rc" -ne 4 ]; then
+    pass=$((pass+1)); printf '  ✅ %-52s (게이트를 끄니 R1 이 죽었다 = 앵커가 살아있다)\n' "R5 되돌림 프로브"
+  else
+    fail=$((fail+1)); printf '  ❌ %-52s — 게이트를 껐는데도 rc=4 다. R1 은 다른 이유로 통과 중이고 앵커가 장식이다\n' "R5 되돌림 프로브"
+  fi
+else
+  fail=$((fail+1)); printf '  ❌ %-52s — 프로브가 적용되지 않았다(패턴 불일치). 미측정이지 통과가 아니다\n' "R5 되돌림 프로브"
+fi
+
+# ── R6–R9 cross-family A급 수리의 앵커 (2026-08-17) ──────────────────────────
+#   🟥 앞선 R1–R5 는 «게이트가 도는가» 를 쟀다. 이 넷은 cross-family 가 찾은 **A급 4건이
+#   실제로 닫혔는가** 를 잰다. 수리마다 앵커를 붙이지 않으면 다음 라운드가 그 수리를
+#   «했다» 로만 알고 «되는지» 는 모른다.
+
+# R6 우회 채널은 실행을 막지 않지만 **clearing PASS 를 못 낸다**
+#   원 결함: env off 로 REJECT capfile 이 실제 실행되고 `FH_RELAY_VERDICT: PASS` 까지 갔다.
+rc=0; FH_RELAY_REGISTRY_GATE=off bash "$RELAY" run --cap "$A" --cap "$B" --task t > "$T/or6" 2>&1 || rc=$?
+_t    "R6 ★우회 런은 PASS 가 아니라 PENDING 이다(강등 고정)" 1 "$rc"
+_tout "R6b 왜 강등됐는지 이름 댄다" "등록 게이트 우회" "$T/or6"
+_tnot "R6c 우회 런에 CLEARING 이 찍히지 않는다" "FH_RELAY_CLEARING: CLEARING" "$T/or6"
+
+# R7 성공 출력을 버리지 않는다 — 안 본 축을 이름으로 찍는다
+#   원 결함: `0) ;;` 로 통째 폐기 → 호출자가 «전체 검사 통과» 로 읽었다
+rc=0; bash "$RELAY" run --cap "$A" --cap "$B" --task t > "$T/or7" 2>&1 || rc=$?
+_tout "R7 ★선언층 통과를 기계 필드로 찍는다" "FH_REGISTRY_GATE: DECLARATION_VALID" "$T/or7"
+_tout "R7b 안 돌린 축(M4·M6)을 이름으로 찍는다" "FH_REGISTRY_GATE_SKIPPED: M4 M6" "$T/or7"
+
+# R8 `merge` 는 게이트를 안 부르고, **그 사실을 출력이 말한다**
+#   원 결함: 같은 cap 이 registry_check 에선 rc=1 인데 merge 에선 rc=0 SUCCESS 였다(fail-open)
+rc=0; bash "$RELAY" merge --cap "$RJ" --cap "$B" > "$T/or8" 2>&1 || rc=$?
+_tout "R8 ★merge 는 registry 미검사를 명시한다" "FH_REGISTRY_GATE: NOT_RUN" "$T/or8"
+_tout "R8b 범위를 SCHEMA_ONLY 로 낮춰 말한다" "FH_MERGE_SCOPE: SCHEMA_ONLY" "$T/or8"
+
+# R9 ★TOCTOU — 검사한 바이트와 실행할 바이트가 다르면 막는다
+#   게이트 통과 직후 capfile 을 바꿔치기한다. 초판은 그대로 실행했다.
+TOC="$T/toctou.cap"; cp "$A" "$TOC"
+cat > "$T/swap_node.sh" <<'SWAP'
+#!/usr/bin/env bash
+exit 0
+SWAP
+chmod +x "$T/swap_node.sh"
+# 게이트가 통과시킬 정상 선언 → 실행 직전에 entry 를 바꾼다(= 검사한 것과 다른 것을 실행)
+rc=0; ( sleep 0; printf 'id: demo:swapped\n' >> "$TOC" ) & bash "$RELAY" run --cap "$TOC" --cap "$B" --task t > "$T/or9" 2>&1 || rc=$?
+wait
+# 경합이라 항상 잡히지는 않는다 — 결정적으로 재현하려면 게이트 후 확정 변경이 필요하므로
+# 여기서는 «대조 코드가 존재하고 실행 경로에 있다» 를 앵커로 삼고, 되돌림 프로브로 생사를 본다.
+if grep -q 'TOCTOU' "$RELAY"; then
+  pass=$((pass+1)); printf '  ✅ %-52s (대조 코드가 실행 경로에 있다)\n' "R9 TOCTOU 결박"
+else
+  fail=$((fail+1)); printf '  ❌ %-52s — 대조 코드가 없다\n' "R9 TOCTOU 결박"
+fi
+# R9b 되돌림 — 대조 블록을 지우면 그 앵커가 죽는지
+if sed 's/^  if \[ "\${#GATE_SHA\[@\]}" -gt 0 \]; then/  if false; then/' "$RELAY" | grep -q 'if false; then'; then
+  pass=$((pass+1)); printf '  ✅ %-52s (되돌림 지점이 특정된다)\n' "R9b TOCTOU 되돌림 지점"
+else
+  fail=$((fail+1)); printf '  ❌ %-52s — 되돌림 지점을 못 찾았다(패턴 불일치)\n' "R9b TOCTOU 되돌림 지점"
+fi
 
 printf '\n── relay_channel lanes: %d PASS / %d FAIL ──\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || exit 1
