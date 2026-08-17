@@ -151,9 +151,22 @@ axes-run: ⓐ=<다른 계열> ⓑ=→standpoint ⓒ=<격리 그라운딩> ⓓ=<3
 
 🟥 **The two arrays are not the same letters shifted — `b` and `d` mean different axes in each.**
 Old `b`=첫 실사용 is now **ⓔ**; old `d`=되돌림 is now **ⓕ**. Copying an old line forward silently
-swaps two axes, and no error fires. This is why the **notation itself declares the array**: ASCII
-keys = old 4-axis, circled keys = current 6-axis. A reader (or an auditor grepping 190 markers) can
-tell which array a marker used without asking its author.
+swaps two axes, and no error fires.
+
+**Which array a marker used is decided by the date in its filename** (`< 2026-08-17` = old 4-axis).
+⚠️ **The notation is NOT the discriminator** — the first version of this section said it was
+("circled keys = 6-axis, so an auditor can grep"), and a hand-count of the corpus refuted it: of 53
+markers carrying `axes-run`, 4 use circled keys and 1 mixes, and **2 of those 4 are dated 2026-08-10
+while meaning the OLD axes** (`ⓑ 첫실사용` · `ⓓ 되돌림` — ⓔ and ⓕ in the current array). The hook
+never reads those markers so no commit is affected; the party that gets a wrong answer is the
+**auditor**. Aligning the notation is still worth it going forward — it stops the next author from
+copying an old line — but it does not work backwards.
+
+⚠️ **The grace-date comparison is an unreachable branch in production, and saying so is the point.**
+The call site builds the marker path from `${TODAY}`, so `mdate` is always today; no real commit
+after 2026-08-17 takes the `six=0` path, and the only live consumer is the fixture suite. **What
+protected the existing markers was the path construction, not the constant** — the same reason
+`crossfamily:` could go from free prose to a closed enum eight days earlier with no cutoff at all.
 
 - **ⓑ입장 carries a pointer, not a value** — `standpoint:` is its canonical field, so writing the
   value in both places would be a double record. `ⓑ=→standpoint` requires a non-empty `standpoint:`
