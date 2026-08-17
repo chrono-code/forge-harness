@@ -202,6 +202,26 @@ re-checks** it against the artifact (phantom-quench back-trace) before accepting
 source-grounded is **dropped, not judged**. No sidecar-only verdict (no weak-local-judge regression).
 Local 4090 = **canary tier** (evidence-of, never terminal verdict).
 
+**Target freeze — a prior drop reason, checked before any of the above (2026-08-17).** Grounding a
+finding against *today's* tree proves nothing if the sidecar reviewed *yesterday's*. Pin before
+dispatch and verify on return:
+
+```bash
+bash scripts/target_freeze.sh pin    "$REPO" "$ROUND_LABEL"   # 발주 직전
+bash scripts/target_freeze.sh verify "$REPO" "$ROUND_LABEL"   # 회수 직후
+```
+
+`rc 1` = **WRONG-TARGET → drop the whole round's findings**, not individual ones — the round read a
+tree that moved under it, so which findings survive is not decidable from the output. `rc 10` =
+UNKNOWN (could not measure) — that is **not** a pass; re-pin and re-dispatch. Measured trigger: three
+occurrences in one day, one of which was sending a sidecar a **pre-repair diff** and then grounding
+its findings against the repaired tree — every finding "failed to ground", and the instrument, not
+the reviewer, was wrong.
+
+🟥 **What this does NOT cover**: §L191's inlined-file pattern. When the prompt carries file contents
+on stdin (the robust form for sidecars that have no file tools), the tree freeze says nothing about
+**what bytes you actually sent**. That binding is still owed and is not claimed here.
+
 ## Step 6 — Degrade ladder (the intelligent scale-down)
 
 **Consent branch first — declined ≠ degraded** (`[[capability_escalation_consent]]`): if the UAP has

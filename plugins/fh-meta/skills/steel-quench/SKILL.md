@@ -425,7 +425,8 @@ over **unchanged** code:
    `WRONG-TARGET` and stop on mismatch:
 
    ```bash
-   git rev-parse --short HEAD; git diff HEAD | wc -l; git status --porcelain | grep -c '^??'
+   bash scripts/target_freeze.sh pin    "$REPO" "$WAVE_LABEL"   # 발주 직전 — 토큰을 프롬프트에 박는다
+   bash scripts/target_freeze.sh verify "$REPO" "$WAVE_LABEL"   # 회수 직후 — rc 1 이면 WRONG-TARGET
    ```
 
    An audit that did not pin its target **cannot be counted as a terminating round** — it may have
@@ -435,7 +436,29 @@ over **unchanged** code:
    active — gate-locality on the very fix that was closing a gate-locality gap, caught by the round
    that audited it.
 
-   > **Named residual — the freeze claim is currently SELF-ATTESTED, and deliberately not
+   > ✅ **MECHANIZED 2026-08-17 — the residual below is the history, not the current state.**
+   > The recurrence condition this paragraph set ("mechanize on the first recurrence") fired **three
+   > times in one day**: a cross-family review was sent a **pre-repair** diff · a review's output was
+   > truncated with `tail`, losing findings and the pin itself · a scan was followed by an edit that
+   > shifted every line number. All three were "did I send / read the tree that is there now?", and
+   > the prose rule above was already in place and caught **none** of them (operator-approved as the
+   > next session's 1순위, 2026-08-17).
+   >
+   > `scripts/target_freeze.sh` (lanes: `scripts/test_target_freeze_lanes.sh`, **28/28**) takes the
+   > third attempt deliberately **through** the two failures recorded below: it content-addresses
+   > `git diff HEAD` (the **patch**, not its line count — so a same-line-count in-place edit is
+   > caught, lane A) and hashes untracked files separately (lane B), and it is **not a hook** —
+   > two explicit commands the dispatcher runs, so it cannot become the 100%-firing background noise
+   > of attempt ①. It refuses to answer at all when `assume-unchanged`/`skip-worktree` is set
+   > (exit 10 UNKNOWN, never MATCH), and a **restore-to-original lane returns MATCH** — that arm is
+   > the point: without it, "always reports WRONG" would pass every other lane.
+   > 🟥 **Scope, stated narrowly**: it freezes the *target tree*, **not the bytes you inlined into a
+   > sidecar prompt**. Where files are pasted into the prompt (`auto-decorrelation` §L191 — sidecars
+   > often cannot read a tree at all), the inlined content needs its own binding; this script does
+   > not provide it.
+   >
+   > **Named residual (HISTORICAL — superseded by the block above) — the freeze claim was
+   > SELF-ATTESTED, and deliberately not
    > mechanized.** Criterion 1 turns on "unmodified since the previous audit", and nothing checks
    > that. Two attempts to mechanize it on the day the rule was written were both wrong: a hook
    > advisory that fired on 100% of markers (noise, and its convergence detector could not match the
