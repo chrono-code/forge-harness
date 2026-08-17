@@ -204,14 +204,28 @@ this page: that table is *symptoms you might arrive with*, this is *what the hub
 | **④** | **Frontier → org propagation** | What arrives from outside lands all the way *inside* the organization |
 | **⑤** | **Amplifier** | A short intent gets forged all the way to the finished artifact |
 
+**A sixth row is deliberately absent from that table.** `Ⓑ` **Project Booster** — FH's machinery
+accelerating *another harness's own development* — is real and graded, and it is **not on the same
+layer as the five**. It carries a letter instead of a number for exactly that reason. Each of the
+five keeps scope that sits outside boosting: ⑤ covers human intent generally (including work where
+no harness is involved at all), ① runs in the opposite direction (FH is the beneficiary), and ②
+births units — boosting comes *after* birth. So the relation is not containment.
+
+🟥 **The canon stops there on purpose and does not draw an arrow.** Pinning a hierarchy makes the
+table drift from how the work actually runs, where one job rides ① and ⑤ together and the result
+flows into ②. Read "different scopes", not "one sits under another". Grades — Ⓑ's included — live
+in one file: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)
+§Ⓑ-layering.
+
 **They are not equally finished, and you should not read the table as five working features.** Maturity is
 tracked per identity on a four-step scale — `aspirational → partial → RC (stood up in the lab) → REALIZED
 (walked outside)` — with a dated line of evidence for each. Those grades are deliberately **not** copied
 here: a grade kept in two files goes stale in one, and this page exists in four languages, so a copy here
 would be four copies. Before you rely on any row above, read the current grades — that is one file:
 [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md). The short version if you
-only want one sentence, as of **2026-08-15**: **③ and ⑤ are graded green — demonstrated outside the lab;
-①, ② and ④ are release candidates — built and calibrated, not yet shown to walk in someone else's hands.**
+only want one sentence, as of **2026-08-17**: **①, ③, ⑤ and Ⓑ are graded green — demonstrated outside
+the lab; ② and ④ are release candidates — built and calibrated, not yet shown to walk in someone
+else's hands.**
 If that sentence and the gate file disagree, the gate file is right and this line is stale.
 
 Two properties cut across all five, and neither is a feature you switch on:
