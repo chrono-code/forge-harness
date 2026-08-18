@@ -10,6 +10,63 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [2.4.0] — 2026-08-18
+
+🟥 **BREAKING (gate) ①**: the Axes 2–3 marker's **`standpoint:` and `thirdparty:` fields are now
+validated by value**, not merely by presence (`validate_standpoint_leg` / `validate_thirdparty_leg`
+in `templates/.git-hooks/pre-commit`). A marker carrying free prose where the closed enum is
+required, a degrade value with **no substantive grounds on the same line**, or **more than one**
+line of either field, now **blocks the commit**.
+- **Remedy**: use the enum. `standpoint: tier1b(<harness>) — <what you read>` ·
+  `standpoint: not-applicable — <what you checked to conclude no target exists>` ·
+  `thirdparty: checked(<what prior art you searched>)`. The hook prints the accepted forms.
+- **Why**: presence-only checking catches silence but not a **confident wrong answer** — measured on
+  the marker corpus, 4 markers used the enum correctly while **2 wrote free prose about peer-session
+  contact** and matched no enum member at all (the field-canon failure this repo already names:
+  normalizing a harness term into a general concept).
+
+🟥 **BREAKING (gate) ②**: **Axis 1 (`regression-guard.yml`) had never actually run** — an
+instrument error was rendering **green**. It now runs, so a repo whose Axis 1 check was
+"passing" may go **red on its first real execution**.
+- **Remedy**: read the actual guard output; the failures it now reports were always there.
+- **Why**: the sample was 5/5 instrument-errors-as-green. A check that cannot fail is not a check.
+
+🟥 **BREAKING (gate) ③**: `scripts/selfcheck.sh` now executes **`test_target_freeze_lanes.sh`**
+(28 lanes) as part of the standard run. A consumer whose `selfcheck` was green may see new output,
+and a genuinely broken environment (no `shasum`/`sha256sum`) now surfaces there instead of silently.
+- **Remedy**: the lanes are self-contained (`mktemp` fixtures, no network). A missing hash tool is a
+  real finding, not a lane defect — the gate it anchors fails closed without one.
+- **Why**: `lane-runner` flagged the suite as having **no runner** — *"a suite nothing executes is
+  prose."* The author of the lanes had not wired them.
+
+**Added**
+- `scripts/target_freeze.sh` + `scripts/test_target_freeze_lanes.sh` — **audit target freeze**.
+  Pin a target repo's content-addressed fingerprint before dispatching an audit; verify on return;
+  `WRONG-TARGET` (rc 1) invalidates that round's verdict wholesale. Third mechanization attempt,
+  deliberately routed **around** the two failures recorded in `steel-quench/SKILL.md` (a hook
+  advisory that fired on 100% of markers; a `base-SHA + diff-line-count` fingerprint invariant under
+  in-place edits and blind to untracked files).
+  🟥 **Cross-family review found 3 fail-open paths while its lanes were 11/11 green** — `_sha`
+  losing `shasum`'s rc through `| awk`, `git ls-files -o` failure swallowed by a pipeline, and a
+  label-sanitizing collision that returned `MATCH` for a label **never pinned**. All reproduced by
+  hand, all fixed, lanes 11 → 28.
+- `④ promotion-criteria` section in the identity gate (its absence was itself the first finding).
+- Incubator routing: `net-new` failure now routes to **`CURATED`** (hand the maker the prior-art
+  list and the delta it does not cover) instead of `KILL`; judgment-shaped candidates route to
+  `NOT-APPLICABLE`. KILL survives for measured precision-shortfall, hub-state dependence, and
+  inability-to-run.
+
+**Fixed**
+- `relay_channel` registration-time checker had a **0-line call site** — the gate existed as 42KB
+  of code that nothing invoked.
+- `standpoint: §7` closed its `not-applicable` definition (`Q0` target-class resolution, which can
+  return **more than one** target, each owing its own tier).
+- `mate-agent-boundary` adapter: its **calibration pair was dead** — the peer entry point hardcodes
+  its target and ignores `$1`, so the positive and negative arms were measuring **the same file**.
+  The negative arm's green was not discrimination; the live target simply happened to be failing.
+- `package.json files[]` omitted two scripts that shipped documentation instructs consumers to run
+  (a phantom pointer inside a gate instruction).
+
 ### [2.3.0] — 2026-08-17
 
 🟥 **BREAKING (gate) ①**: the capability effect-probe (`M6`) now watches **directory existence and
