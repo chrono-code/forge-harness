@@ -18,6 +18,23 @@
 set -uo pipefail
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
+# ── EVIDENCE_ROOT — 증거(tracks/)가 사는 곳. **소스 경로와 다르다.** ──────────────
+# 🟥 WHY: 워크트리에서 `--show-toplevel` 은 **그 워크트리**를 준다. `tracks/` 는 gitignored 라
+#    워크트리에 안 따라오므로, 마커와 매니페스트를 거기서 찾으면 **항상 부재**다. 그래서 게이트가
+#    스스로 권하는 «세션당 worktree» 를 게이트 자신이 봉쇄하고 있었다(2026-08-18 실측: 워크트리
+#    FH-자산 커밋 → Axis 2+3 「NOT CONFIRMED」 + Axis 4 「edit_manifest.yaml not found」).
+#    「구조적으로 불가능」이 아니라 **경로 해석 한 줄**이었다.
+# `--git-common-dir` 은 워크트리에서도 **메인 트리의 .git** 을 준다. 메인 트리에서는 `.git` 이라
+# 같은 값이 나온다 ⇒ **하위호환**(3트리 대조 실측: 메인/워크트리/FH 전부 기대대로).
+# ⚠️ 상대 경로로 나올 수 있으므로 절대화한다. 실패하면 REPO_ROOT 로 **degrade** — 증거를 못 찾는
+#    쪽이지 통과시키는 쪽이 아니다(fail-closed 방향 유지).
+_gcd=$(git rev-parse --git-common-dir 2>/dev/null || echo "")
+case "$_gcd" in
+  "") EVIDENCE_ROOT="$REPO_ROOT" ;;
+  /*) EVIDENCE_ROOT=$(dirname "$_gcd") ;;
+  *)  EVIDENCE_ROOT=$(dirname "$REPO_ROOT/$_gcd") ;;
+esac
+[ -d "$EVIDENCE_ROOT" ] || EVIDENCE_ROOT="$REPO_ROOT"
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TODAY=$(date +%Y-%m-%d)
 BRANCH_SLUG="${BRANCH//\//_}"
@@ -305,7 +322,7 @@ else
     if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
       echo "  ⚠️  proceeding with an incomplete gate by PUBLIC_SURFACE_OK=1 (conscious)"
       echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — gate inactive/incomplete" \
-        >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+        >> "$EVIDENCE_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
     else
       FAILED=1
     fi
@@ -342,7 +359,7 @@ else
       if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
         echo "  ⚠️  public-surface hit(s) allowed by PUBLIC_SURFACE_OK=1 (conscious, reviewed intent)"
         echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — review suppressed hit(s) above" \
-          >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+          >> "$EVIDENCE_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
       else
         echo "  Operator-private token reached the public surface. Generalize it (companion-store name"
         echo "  → 'a private companion store'; corp-context → 'restricted/corp env'; absolute home path"
@@ -1243,7 +1260,7 @@ validate_marker_floor() {
 # ── Axes 2+3 — steel-quench + phantom-quench (full gate only) ─────────
 if [ "$GATE_MODE" = "full" ]; then
   echo "[Axis 2+3] Adversarial + Source-Grounding..."
-  MARKER_DIR="$REPO_ROOT/tracks/_meta"
+  MARKER_DIR="$EVIDENCE_ROOT/tracks/_meta"
   MARKER="$MARKER_DIR/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
 
   if [ -f "$MARKER" ]; then
@@ -1270,7 +1287,7 @@ fi
 
 # ── Axis 4 — Edit Manifest entry (always required) ────────────────────────────
 echo "[Axis 4] Edit Manifest..."
-MANIFEST="$REPO_ROOT/tracks/_meta/edit_manifest.yaml"
+MANIFEST="$EVIDENCE_ROOT/tracks/_meta/edit_manifest.yaml"
 if [ ! -f "$MANIFEST" ]; then
   echo "  ❌ FAIL — tracks/_meta/edit_manifest.yaml not found"
   echo "  Run /edit-manifest RECORD or create the file manually."
@@ -1512,7 +1529,7 @@ if [ -n "$LOADBEARING" ]; then
   else
     echo "  ⚠️  degrade lint unavailable (scripts/degrade_direction_scan.sh missing) — advisory leg skipped"
   fi
-  MARKER_LB="$REPO_ROOT/tracks/_meta/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
+  MARKER_LB="$EVIDENCE_ROOT/tracks/_meta/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
   if validate_crossfamily_leg "$MARKER_LB"; then :; else FAILED=1; fi
   if validate_standpoint_leg "$MARKER_LB"; then :; else FAILED=1; fi
   if validate_thirdparty_leg "$MARKER_LB"; then :; else FAILED=1; fi
