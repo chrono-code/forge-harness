@@ -36,11 +36,19 @@ setup() { # $1 = base dir
   printf 'HIGH\tZZ_R4_OVERRIDE_TOKEN_ZZ\n' > "$b/main/.claude/rules/.public-surface-patterns"
 }
 
+# 🟥 고정 `/tmp` 경로 금지 (보안 패스 2026-08-18, MED·재현됨). `>/tmp/.r4out` 은 이름이
+#    완전 고정이라, 공유 `/tmp` 를 쓰는 CI 러너·다중사용자 호스트에서 공격자가 먼저 심볼릭
+#    링크를 걸어두면 `>` 가 링크를 따라가 **호출자 권한으로 임의 파일을 truncate + overwrite**
+#    한다(sticky bit 는 «남의 파일 삭제»만 막지 «먼저 만든 링크»는 못 막는다). 이 스위트는
+#    출하되고 `selfcheck.sh` 에 배선돼 있어 소비자가 셀프체크만 돌려도 발동한다.
+R4OUT="$(mktemp "${TMPDIR:-/tmp}/fh_r4out.XXXXXX")" || exit 1
+trap 'rm -f "$R4OUT"' EXIT
+
 run_hook() { # $1 = 실행 디렉터리 → echoes banner|clean
   local out
   ( cd "$1" && printf 'hello\n' > probe.md && git add probe.md \
-    && bash templates/.git-hooks/pre-commit ) >/tmp/.r4out 2>&1
-  if grep -q "$BANNER" /tmp/.r4out; then echo banner; else echo clean; fi
+    && bash templates/.git-hooks/pre-commit ) >"$R4OUT" 2>&1
+  if grep -q "$BANNER" "$R4OUT"; then echo banner; else echo clean; fi
 }
 
 B=$(mktemp -d); setup "$B"
@@ -65,6 +73,6 @@ printf 'no-tab-garbage-row\n' > "$B/main/.claude/rules/.public-surface-patterns"
 out3=$( ( cd "$B/wt" && printf 'z\n' > p2.md && git add p2.md && bash templates/.git-hooks/pre-commit ) 2>&1 )
 case "$out3" in *"INACTIVE/INCOMPLETE"*) r=announced ;; *) r=silent ;; esac
 t "E3b 손상 행은 «게이트 무효»로 알린다(조용한 통과 아님)" "announced" "$r"
-rm -rf "$B" /tmp/.r4out
+rm -rf "$B"
 
 echo "----"; echo "evidence-root psa: $pass passed, $fail failed"; [ "$fail" -eq 0 ]

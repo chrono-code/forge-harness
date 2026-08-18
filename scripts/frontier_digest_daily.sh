@@ -6,7 +6,15 @@
 # Tool permissions: pre-approved in .claude/settings.json (no interactive prompts needed)
 
 # Auto-detect repo root from this script's location (scripts/ → repo root) and the claude CLI.
-FH_DIR="${FD_FH_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# 🟥 **엔진 루트와 대상 루트는 다르다** (R6, 2026-08-18 — 첫 실사용 발견). 위성은 이 스크립트를
+#    복사하지 않고 **FH 의 것을 그대로** 돌린다(launchd 가 FH 경로를 가리킨다). 그런데 초판은
+#    스캐너·패턴·checker 를 전부 `$FH_DIR`(= **대상 레포**)에서 찾았다 ⇒ forge-wiki 에는
+#    `scripts/psa_scan_lib.sh` 가 없으므로 **publish gate 가 영영 fail-closed** 였다.
+#    실측: 위성 설정 그대로 돌리면 `🚫 publish gate: psa_scan_lib.sh 부재 — fail-closed` (rc=3).
+#    ⇒ **도구는 언제나 이 스크립트 옆에**, 대상만 env 로 바뀐다(`digest_landing_check.sh` 가
+#      같은 이유로 `SELF_DIR` 과 `FH` 를 이미 갈라 놨다 — 그 교훈을 여기 옮긴다).
+ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+FH_DIR="${FD_FH_DIR:-$ENGINE_DIR}"
 # FD_* env 오버라이드: 재현 하네스(test_frontier_digest_retry.sh)가 스텁/짧은 타임아웃을
 # 주입하기 위한 것. 미설정 시 기본값 그대로 — 프로덕션 경로 무변.
 CLAUDE_BIN="${FD_CLAUDE_BIN:-$(command -v claude || echo "${HOME}/.local/bin/claude")}"
@@ -122,15 +130,25 @@ _redact() { # $1 = 출력 · $2 = (선택) 그 출력이 가리키는 실제 경
 
 publish_gate() {
     [ "${FD_PUBLIC_TARGET:-0}" = "1" ] || return 0
-    local lib="${FH_DIR}/scripts/psa_scan_lib.sh"
-    [ -f "$lib" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: psa_scan_lib.sh 부재 — fail-closed" >> "$LOG_FILE"; return 3; }
+    local lib="${ENGINE_DIR}/scripts/psa_scan_lib.sh"
+    # 🟥 초판은 여기서 «게시 안 함» 이라 적고 **파일은 그대로 뒀다** — 그 시점에 digest 는 이미
+    #    공개 트리에 쓰여 있으므로 그 문장이 **거짓**이었다. 다른 NOT-SCANNED 경로와 같이 격리한다.
+    if [ ! -f "$lib" ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: psa_scan_lib.sh 부재 — fail-closed, 격리" >> "$LOG_FILE"
+        local q; while IFS= read -r q; do
+            [ -n "$q" ] || continue
+            mv "$q" "${q}.UNSCANNED" 2>/dev/null
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')]   격리: $(_safe_name "$q").UNSCANNED" >> "$LOG_FILE"
+        done < <(digest_files)
+        return 3
+    fi
     local f out rc worst=0 n=0
     # 🟥 글롭 전 파일을 **순회**한다. 하나라도 비-0 이면 그 값을 물고 나간다(최악 우선:
     #    3 NOT-SCANNED > 2 LEAK > 0). 한 파일만 보고 나머지를 게시하면 fail-open 이다.
     while IFS= read -r f; do
         [ -n "$f" ] || continue
         n=$((n+1))
-        out=$(bash -c '. "$1"; psa_load "$2/.claude/rules/.public-surface-patterns.defaults" "$2/.claude/rules/.public-surface-patterns" >/dev/null 2>&1; psa_scan_file "$3"' _ "$lib" "$FH_DIR" "$f" 2>&1)
+        out=$(bash -c '. "$1"; psa_load "$2/.claude/rules/.public-surface-patterns.defaults" "$2/.claude/rules/.public-surface-patterns" >/dev/null 2>&1; psa_scan_file "$3"' _ "$lib" "$ENGINE_DIR" "$f" 2>&1)
         rc=$?
         case "$rc" in
             0) echo "[$(date '+%Y-%m-%d %H:%M:%S')] publish gate: CLEAN [$(_safe_name "$f")]" >> "$LOG_FILE" ;;
@@ -165,7 +183,7 @@ publish_gate() {
 #    을 파일로 남기는 것 — 세션 시작 노티가 **네트워크 없이 그 파일만 읽게** 하려면 이게 먼저다
 #    (peer: SessionStart 에 원격 호출은 지연·행 위험 · `--author @me` 는 계정 공유 시 오귀속).
 landing_witness() {
-    local checker="${FH_DIR}/scripts/digest_landing_check.sh"
+    local checker="${ENGINE_DIR}/scripts/digest_landing_check.sh"
     [ -x "$checker" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness: checker 부재 — SKIPPED (not a pass)" >> "$LOG_FILE"; return 0; }
     local prev
     # 🟥 R5 (2026-08-18, **첫 실사용에서 발견**) — `sort` 가 로케일 의존이라 «직전»을 틀리게

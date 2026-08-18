@@ -29,6 +29,12 @@
 # Exit 0 = 전 레인.
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# 🟥 arm 간 전달 파일을 **고정 `/tmp` 이름**으로 쓰면 안 된다 (보안 패스 2026-08-18, MED·재현됨).
+#    `/tmp/.lw_clean` · `/tmp/.lg_leak` 처럼 이름이 6개 전부 고정이라 심볼릭 링크 선점으로
+#    임의 파일이 덮인다(`cp` 가 링크를 따라간다). 게다가 정리 코드가 없어 게이트 **로그 사본**이
+#    `/tmp` 에 644 로 영구히 남았다 — 기밀성 축의 정반대 방향이다.
+SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/fh_satlane.XXXXXX")" || exit 1
+trap 'rm -rf "$SCRATCH"' EXIT
 pass=0; fail=0
 t() { if [ "$2" = "$3" ]; then echo "  ✅ $1"; pass=$((pass+1)); else echo "  ❌ $1 — got [$3] want [$2]"; fail=$((fail+1)); fi }
 
@@ -63,9 +69,9 @@ run() { # $1 = digest body · $2 = psa_lib override ("dead") · $3 = arm 이름 
   # 🟥 arm 마다 따로 남긴다. 초판은 단일 파일에 덮어써서 **마지막 arm(P3, 스캐너 사망)** 것을
   # 잡았는데, 거기선 게이트가 실패해 증언이 안 도는 게 정상이다 — 레인이 정상 동작을 실패로
   # 렌더할 뻔했다. 판정 대상 arm 을 이름으로 고른다.
-  grep -h "landing witness" "$td/logs/"*.log 2>/dev/null | head -1 > "/tmp/.lw_$3" || : 
+  grep -h "landing witness" "$td/logs/"*.log 2>/dev/null | head -1 > "$SCRATCH/lw_$3" || : 
   # R2 레인이 읽는다: LEAK arm 의 로그에 토큰 원문이 남았나
-  cp "$td/logs/"*.log "/tmp/.lg_$3" 2>/dev/null || : 
+  cp "$td/logs/"*.log "$SCRATCH/lg_$3" 2>/dev/null || : 
   echo "$rc|$state"
   rm -rf "$td"
 }
@@ -91,7 +97,7 @@ n1state=published; ls "$td/out/"*.QUARANTINE >/dev/null 2>&1 && n1state=quaranti
 t "N1 control — 게이트 미활성이면 안 돈다(FH 경로 무변경)" "0|published" "$n1rc|$n1state"
 rm -rf "$td"
 
-lw=$(cat /tmp/.lw_clean 2>/dev/null)   # 게이트가 CLEAN 인 arm 에서만 증언이 돈다
+lw=$(cat "$SCRATCH/lw_clean" 2>/dev/null)   # 게이트가 CLEAN 인 arm 에서만 증언이 돈다
 case "$lw" in *"landing witness"*) r=logged ;; *) r=absent ;; esac
 t "P4 착지 증언이 로그에 찍힌다(배선했다≠발화한다)" "logged" "$r"
 case "$lw" in *"SKIPPED (not a pass)"*) r=honest ;; *"ALL-LANDED"*) r=honest ;; *"SOME-UNLANDED"*) r=honest ;; *"HARNESS-ERROR"*) r=honest ;; *) r=other ;; esac
@@ -142,10 +148,10 @@ _logloc() { # $1 = FD_PUBLIC_TARGET 값 → echoes inside|outside
 t "R2 공개 대상이면 로그가 OUT_DIR 밖에 앉는다"  "outside" "$(_logloc 1)"
 t "R2n control — 비공개면 종전 자리 그대로(FH 경로 무변경)" "inside"  "$(_logloc 0)"
 
-# R2b · LEAK 로그에 토큰 원문이 남지 않는다 (run() 이 /tmp/.lg_leak 에 복사해 둔다)
-if [ -f /tmp/.lg_leak ]; then
-  if grep -q 'ZZ_SYNTHETIC_LEAK_TOKEN_ZZ' /tmp/.lg_leak; then r=raw
-  elif grep -q 'REDACTED' /tmp/.lg_leak; then r=redacted
+# R2b · LEAK 로그에 토큰 원문이 남지 않는다 (run() 이 "$SCRATCH/lg_leak" 에 복사해 둔다)
+if [ -f "$SCRATCH/lg_leak" ]; then
+  if grep -q 'ZZ_SYNTHETIC_LEAK_TOKEN_ZZ' "$SCRATCH/lg_leak"; then r=raw
+  elif grep -q 'REDACTED' "$SCRATCH/lg_leak"; then r=redacted
   else r=nofinding; fi
 else r=nolog; fi
 t "R2b LEAK 로그가 토큰 원문을 안 적는다(리댁션)" "redacted" "$r"
@@ -284,5 +290,50 @@ _prev_pick() {
   rm -rf "$td"; echo "$got"
 }
 t "R5 표기가 섞여도 «직전»은 날짜상 최신이다" "frontier_digest_2026_08_17.md" "$(_prev_pick)"
+
+# R6 · **엔진 루트 ≠ 대상 루트** (첫 실사용 발견, 2026-08-18)
+# 🟥 위성은 이 러너를 복사하지 않고 FH 의 것을 그대로 돈다(launchd 가 FH 경로를 가리킨다).
+#    초판은 스캐너·패턴·checker 를 전부 `$FH_DIR`(=대상 레포)에서 찾아서, 대상에 그 파일이
+#    없으면 **publish gate 가 영영 fail-closed** 였다 — 실측으로 `psa_scan_lib.sh 부재` 를 봤다.
+#    게다가 그 분기는 파일을 **격리하지 않아** «게시 안 함» 이 거짓이었다(digest 는 이미 트리에 있다).
+_engine_vs_target() { # echoes "rc|state"
+  local eng tgt; eng=$(mktemp -d); tgt=$(mktemp -d)
+  mkdir -p "$eng/scripts" "$eng/.claude/rules" "$tgt/out"      # 🟥 대상에는 scripts/ 를 안 만든다
+  cp "$ROOT/scripts/frontier_digest_daily.sh" "$ROOT/scripts/psa_scan_lib.sh" "$eng/scripts/"
+  cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$eng/.claude/rules/" 2>/dev/null
+  printf 'HIGH\tZZ_SYNTHETIC_LEAK_TOKEN_ZZ\n' > "$eng/.claude/rules/.public-surface-patterns"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$eng/scripts/stub-claude"; chmod +x "$eng/scripts/stub-claude"
+  local d; d=$(date +%Y_%m_%d)
+  printf 'clean\n%s\n' "$(head -c 1200 /dev/zero | tr '\0' 'x')" > "$tgt/out/frontier_digest_${d}.md"
+  local rc
+  ( FD_FH_DIR="$tgt" FD_OUT_DIR="out" FD_PUBLIC_TARGET=1 FD_LOG_DIR="$tgt/logs" \
+    FD_CLAUDE_BIN="$eng/scripts/stub-claude" FD_MAX_ATTEMPTS=1 FD_POLL_SECS=1 \
+    bash "$eng/scripts/frontier_digest_daily.sh" ) >/dev/null 2>&1; rc=$?
+  local state=none
+  ls "$tgt/out/"*.UNSCANNED >/dev/null 2>&1 && state=unscanned
+  ls "$tgt/out/"*.md >/dev/null 2>&1 && [ "$state" = none ] && state=published
+  rm -rf "$eng" "$tgt"; echo "$rc|$state"
+}
+r=$(_engine_vs_target)
+t "R6 도구를 엔진 루트에서 찾는다(대상에 없어도 게이트가 돈다)" "0"         "${r%%|*}"
+t "R6b 그래서 CLEAN 한 digest 가 실제로 게시된다"                "published" "${r##*|}"
+
+# R6c · 스캐너가 **진짜로** 없으면 «게시 안 함» 이 말뿐이 아니라 격리까지 간다
+_lib_absent() {
+  local eng tgt; eng=$(mktemp -d); tgt=$(mktemp -d)
+  mkdir -p "$eng/scripts" "$tgt/out"
+  cp "$ROOT/scripts/frontier_digest_daily.sh" "$eng/scripts/"     # 🟥 psa_scan_lib.sh 는 안 넣는다
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$eng/scripts/stub-claude"; chmod +x "$eng/scripts/stub-claude"
+  local d; d=$(date +%Y_%m_%d)
+  printf 'body\n%s\n' "$(head -c 1200 /dev/zero | tr '\0' 'x')" > "$tgt/out/frontier_digest_${d}.md"
+  local rc
+  ( FD_FH_DIR="$tgt" FD_OUT_DIR="out" FD_PUBLIC_TARGET=1 FD_LOG_DIR="$tgt/logs" \
+    FD_CLAUDE_BIN="$eng/scripts/stub-claude" FD_MAX_ATTEMPTS=1 FD_POLL_SECS=1 \
+    bash "$eng/scripts/frontier_digest_daily.sh" ) >/dev/null 2>&1; rc=$?
+  local state=published
+  ls "$tgt/out/"*.UNSCANNED >/dev/null 2>&1 && state=quarantined
+  rm -rf "$eng" "$tgt"; echo "$state"
+}
+t "R6c 스캐너 부재는 말만이 아니라 실제 격리다"   "quarantined" "$(_lib_absent)"
 
 echo "----"; echo "satellite publish gate: $pass passed, $fail failed"; [ "$fail" -eq 0 ]
