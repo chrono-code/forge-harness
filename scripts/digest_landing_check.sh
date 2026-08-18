@@ -255,7 +255,14 @@ do_check() {
   [ -x "$CHECKER" ] || [ -f "$CHECKER" ] || {
     echo "❌ 착지 검증기 부재: $CHECKER (이 스크립트는 검증을 자체 구현하지 않는다)" >&2; return 10; }
 
-  local -a targets
+  # 🟥 R7 (2026-08-19, **첫 실사용 발견**) — `set -u` + bash 3.2 에서 **빈 배열의 `${a[@]}` 는
+  #    unbound 에러**다. 대상 레포에 digest 이후 커밋이 없으면 targets 가 비고, 그러면 아래
+  #    필터 루프가 터진다. 그 순간 스크립트는 판정을 인쇄하지 못한 채 **rc=1 로 끝나고**,
+  #    러너는 그 1 을 「SOME-UNLANDED」로 로그에 적는다 — 즉 **셸 에러가 착지율 시계열에
+  #    실측값으로 들어간다**([[feedback_not_found_is_not_zero_family]] 의 가장 조용한 얼굴).
+  #    실측: forge-wiki 대상 첫 런이 정확히 그렇게 «SOME-UNLANDED (rc=1)» 을 남겼고 본문은 없었다.
+  #    올바른 값은 rc=10(타깃 0건 = HARNESS-ERROR)이다. 빈 배열 확장을 전부 방어한다.
+  local -a targets=()
   if [ "$#" -gt 0 ]; then targets=("$@")
   else
     # 기본 스코프 = 공개 FH 자산 + tracks. **비공개 store 제외**(운영자 결정).
@@ -314,7 +321,7 @@ do_check() {
   local _dbase; _dbase="$(basename "$d")"
   local -a _filtered=()
   local _t
-  for _t in "${targets[@]}"; do
+  for _t in ${targets[@]+"${targets[@]}"}; do
     case "$_t" in
       *"$_dbase") continue ;;          # digest 자신
       */logs/*)   continue ;;          # 그 생성 로그
@@ -322,7 +329,7 @@ do_check() {
     esac
     _filtered+=("$_t")
   done
-  targets=("${_filtered[@]}")
+  targets=(${_filtered[@]+"${_filtered[@]}"})
   [ "${#targets[@]}" -gt 0 ] || { echo "❌ 타깃 0건" >&2; return 10; }
 
   local probes; probes="$(mktemp -t dlc.XXXXXX)" || return 10
@@ -462,6 +469,25 @@ EOF
       "$RD/tracks/_meta/frontier_digest_2001_01_01.md" ) >/dev/null 2>&1; rc_re=$?
   _t "★N-ctl-re 레포명이 정규식 메타문자여도 리터럴로 취급(컨트롤 오탐 없음)" 10 "$rc_re"
   rm -rf "$RG"
+
+  # ── ★N-empty (2026-08-19, R7) — 타깃이 0건이면 **rc=10** 이지 rc=1 이 아니다 ────────────
+  # 🟥 `set -u` + bash 3.2 에서 빈 배열 확장이 터지면, 스크립트는 판정을 못 내고 **rc=1** 로
+  #    끝난다. 러너는 그 1 을 「SOME-UNLANDED」로 적는다 — 셸 에러가 착지율 시계열에 실측값으로
+  #    들어간다. 첫 실사용(forge-wiki 대상)에서 정확히 그 로그가 나왔고 본문은 비어 있었다.
+  local EG; EG="$(mktemp -d -t dlc_e.XXXXXX)" || return 10
+  (
+    mkdir -p "$EG/wiki" && cd "$EG" && git init -q . \
+      && git config user.email t@t && git config user.name t
+    printf '# d\n## 📌 FH Immediate Application Candidates\n\n| # | 티어 | 내용 |\n|---|---|---|\n| **A1** | M | `zzz_tok` 후보 |\n\n## end\n' \
+      > wiki/frontier_digest_2001_01_01.md
+  ) >/dev/null 2>&1
+  # digest 이후 커밋 0 · ignored 축 없음 ⇒ 타깃 0건
+  local rc_e
+  ( cd "$EG" && CLAUDE_PROJECT_DIR="$EG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+      DLC_CONTROLS="zzz_tok" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" \
+      "$EG/wiki/frontier_digest_2001_01_01.md" ) >/dev/null 2>&1; rc_e=$?
+  _t "★N-empty 타깃 0건은 HARNESS-ERROR(10)이지 미착지(1)가 아니다" 10 "$rc_e"
+  rm -rf "$EG"
   # ⚠️ **줄 단위로** 본다. `case *"A1"*"미착지"*` 는 마지막 요약줄("N건 중 M건 미착지")까지
   # 삼켜 오매칭한다 — 문자열 위치로 판정하는 prose-grep 함정([[feedback_typed_verdict_channel]]).
   if printf '%s\n' "$out" | grep -qE '후보 A1[[:space:]]+미착지'; then
