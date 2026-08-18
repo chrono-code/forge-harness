@@ -145,6 +145,23 @@ if [ -n "$MT_ROOT" ]; then
 else
   echo "  ⏭  M4    [resolve-alias ] mate 실물 루트 없음 — SKIP (통과 아님)"
 fi
+# 🟥 M2b/M2c — **대상 인자가 실제로 먹히는가** (2026-08-18 신설).
+#    초판은 대상을 peer 진입점에 `$1` 로 넘겼는데 **peer 는 그 인자를 안 읽는다**
+#    (`TARGET` 하드코딩). 그래서 양성·음성 두 arm 이 **같은 파일**(peer 실물)을 재고 있었고,
+#    음성의 초록은 판별력이 아니라 **실물이 마침 실패 상태**여서였다 — 캘리브레이션 쌍이
+#    죽어 있었다. M2/M3 만으로는 그 상태를 못 가른다(둘 다 «기대대로» 나올 수 있다).
+#    ⇒ **픽스처를 변형해 판정이 따라오는지**를 본다. peer 실물 상태와 무관하게 성립한다.
+if [ -n "$MT_ROOT" ]; then
+  _MUT="$T/mutated_positive.md"
+  # 양성 픽스처에서 T11(finding_id 어휘 제약) 한 줄만 뺀다.
+  grep -v '\^\[a-f0-9\]{6,64}\$' "$(dirname "$M")/fixtures/mate_agent_boundary_known_positive.md" >"$_MUT"
+  _lane M2b target-honored "양성에서 한 조항만 빼면 → FAIL (대상 인자가 실제로 먹힌다)" 1 \
+    "$(_rc bash "$M" --target "$_MUT")"
+  _lane M2c target-honored "원본 양성은 그대로 PASS (변형 레인의 컨트롤)" 0 \
+    "$(_rc bash "$M" --known-positive)"
+else
+  echo "  ⏭  M2b/M2c [target-honored] mate 실물 루트 없음 — SKIP (통과 아님)"
+fi
 _lane_peer "$MT_ROOT" M5 enum "없는 대상 → HARNESS_ERROR(10). peer 헤더가 «위반 0 이 아니다» 라고 못 박은 값" 10 \
   "$(_rc bash "$M" --target "$T/does_not_exist.md")"
 _lane_peer "$MT_ROOT" M6 enum "알 수 없는 모드 → HARNESS_ERROR(10)" 10 "$(_rc bash "$M" --bogus-mode)"

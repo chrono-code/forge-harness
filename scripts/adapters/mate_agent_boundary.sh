@@ -100,14 +100,34 @@ if [ -n "$TARGET" ]; then
   [ -r "$TARGET" ] || _harness_error "대상 경로를 읽을 수 없다: $TARGET"
 fi
 
-# peer 트리를 **변이하지 않는다** — cwd 만 peer 로 두고 읽기만 한다.
-# (기본 대상이 peer 레포 상대경로라 cwd 가 peer 여야 한다.)
+# peer 트리를 **변이하지 않는다** — cwd 만 두고 읽기만 한다.
 # 판정은 파이프를 통과시키지 않는다(PIPE-VERDICT).
-if [ -n "$TARGET" ]; then
-  out=$(cd "$PEER_ROOT" && bash "$ENTRY" "$TARGET" 2>&1); rc=$?
-else
-  out=$(cd "$PEER_ROOT" && bash "$ENTRY" 2>&1); rc=$?
-fi
+#
+# 🟥 **초판은 대상을 인자로 넘겼고, peer 는 그 인자를 안 읽는다** (2026-08-18 실측).
+#    peer 진입점은 `TARGET=".claude/agents/mate-failure-patcher.md"` 를 **하드코딩**하고
+#    `$1` 은 `pass()`/`fail()` 헬퍼 안에서만 쓴다. 그래서 `--known-positive` / `--known-negative`
+#    두 arm 이 **같은 파일**(peer 실물 명세서)을 재고 있었다 ⇒ **캘리브레이션 쌍이 죽어 있었다.**
+#    음성 arm 이 초록이던 것은 판별력이 아니라 **실물이 마침 실패 상태**여서다.
+#    이 픽스처 파일의 헤더가 스스로 경고한 그 상태다 — *"실물을 양성 arm 으로 쓰면 계기의
+#    판정이 남의 편집에 따라 조용히 뒤집힌다"*.
+# ⇒ 대상이 명시되면 **peer 가 기대하는 모양의 임시 트리**를 만들어 거기서 돌린다.
+#   peer 코드를 고치지 않고(남의 레포다) peer 의 하드코딩된 상대경로를 만족시키는 방법이다.
+_run_peer() {
+  if [ -z "$TARGET" ]; then
+    ( cd "$PEER_ROOT" && bash "$ENTRY" ) 2>&1
+    return $?
+  fi
+  local stage
+  stage=$(mktemp -d) || return 10
+  mkdir -p "$stage/.claude/agents" || { rm -rf "$stage"; return 10; }
+  cp "$TARGET" "$stage/.claude/agents/mate-failure-patcher.md" || { rm -rf "$stage"; return 10; }
+  local o r
+  o=$( cd "$stage" && bash "$ENTRY" 2>&1 ); r=$?
+  rm -rf "$stage"
+  printf '%s\n' "$o"
+  return $r
+}
+out=$(_run_peer); rc=$?
 printf '%s\n' "$out"
 
 # ── 명시 재매핑 (같은 숫자, 다른 사건 — 전파가 아니다) ───────────────────────

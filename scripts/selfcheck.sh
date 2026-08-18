@@ -961,6 +961,21 @@ else
   fail=1
 fi
 
+# target_freeze — 같은 형태(shipped subject + 자기 앵커). 🟥 이 블록이 없어서 `lane-runner`
+# 검사가 «돌리는 게 없는 스위트는 산문이다» 로 정확히 걸었다. 지은 사람이 자기 레인을 안
+# 배선한 것이고, 오늘 이 세션이 남의 코드에서 네 번 잡은 그 얼굴이다.
+if [ ! -f scripts/target_freeze.sh ]; then
+  echo "FAIL  scripts/target_freeze.sh is in package.json files[] but absent — a deleted subject, not a skip"
+  fail=1
+elif [ -f scripts/test_target_freeze_lanes.sh ]; then
+  if ! bash scripts/test_target_freeze_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_target_freeze_lanes.sh: target_freeze.sh present but its anchor is missing"
+  fail=1
+fi
+
 # And the ablation calibrator, for the third instance of the same reason. Its whole job is telling
 # apart states that look identical from outside — "the arm could not answer" vs "the runner is dead"
 # vs "the runner read the answer off disk" — and round 2 of its own adversarial review found that
