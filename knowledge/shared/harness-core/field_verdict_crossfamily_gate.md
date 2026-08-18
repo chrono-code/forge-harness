@@ -159,6 +159,37 @@ changes which ground truth the review is checked against — they are orthogonal
 that maxes out the first while leaving the second at zero has not raised its coverage of
 standpoint-dependent defects at all.*
 
+**Relationship to the isolation axis — standpoint is isolation whose scope moved up to the
+harness (operator, 2026-08-18).** Operator wording: *"요는 이것도 '격리' 프레이밍이 하네스 단위로
+확장되는 거지 … 그 하네스 자체의 입장을 돌리는 거니까 (하네스라는 껍질에 모델이라는 알맹이를
+넣어서 자신이 직접 돌아가게 하니까)."*
+
+The ⓒ isolation axis is normally scoped to a **session**: run the reviewer where the author's
+context cannot reach it — outside the repo, so repo-level instructions are not inherited. `tier2`+
+standpoint makes the same move one scope up: rather than isolating a session from the author's
+context, **boot the target harness itself** — its shell, a model as the filling — and let it run.
+What is isolated is no longer a session but an entire harness's operating context.
+
+This is also the answer to the question the axis reliably draws — *"how is that different from just
+running it in the target repo myself, which I already do before opening a PR?"* Running it yourself
+carries your own assumptions into the run; the harness running itself does not. That is the same
+failure the session-scoped isolation axis already records (a reviewer spawned inside the repo
+inherits that repo's instructions regardless of the prompt), one scope up.
+
+⚠️ **A framing, not an identity — do not collapse the two axes.** Axis membership is decided by
+*what the reviewer receives* (`fh_three_layer_canon.md §1-a`): ⓒ receives the author's sentences
+plus the current tree, ⓑ receives the target's own canon. Raising isolation scope to the harness
+**also swaps the input** — you cannot boot the target harness without it reading its own canon — so
+ⓑ is *isolation-scope expansion accompanied by input replacement*. That accompaniment is why it
+stays a separate axis instead of becoming a tier of ⓒ.
+
+🚫 **Do not describe this as role-play or persona assignment.** *"Act as if you were harness X"* is
+exactly the prompt-level disguise that isolation failures already refuted; booting the shell is its
+opposite. The tier ladder encodes the distinction — `tier2b` (same operator, target's real runtime,
+local wiring visible) sits below `tier3` (a different operator of the target harness runs it)
+precisely because the remaining gap is *whose context is still in the room*, not what the reviewer
+was told to pretend.
+
 **Why the same author cannot close this by working inside the target repo and opening the PR
 there — corrected framing (2026-08-14, after a cross-harness standpoint review of this section
 itself).** The claim is *not* "the author is structurally blind to their own work" — a controlled
