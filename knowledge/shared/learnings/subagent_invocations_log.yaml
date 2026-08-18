@@ -2206,6 +2206,7 @@
   outcome: accepted
   evidence: "**6건 · codex 와 겹친 지적 0.** 최상위는 `GIT_DIR`/`GIT_WORK_TREE` 가 `git -C` 를 이긴다 — **엉뚱한 레포를 재고도 «동결했다» 고 보고**한다(계기가 대상을 틀리는 형태). 그 외 untracked **실행 비트** 미검출(이 레포가 이미 데인 축) · TOCTOU «유령 지문» · 미초기화 서브모듈은 `foreach` 가 건너뜀 · `---` 구분자 경계 · `foreach` 의 `;` rc 소실. 전부 수리, 레인 11→28. ⇒ **계열 분리가 값을 냈다** — 이 6건은 codex 를 한 번 더 돌려서는 안 나온다"
   cost: ~35k tokens
+- date: 2026-08-17
   agent: general-purpose (isolated) ×3 — 원정 1차 정찰 (qasp rule 세트 · FH 등록 바 · clawd 후보 A)
   purpose: "원정 착수 전 3면 동시 정찰. 노드 선언 성립성 / 등록 바가 기계로 강제하는 것 / 외부 기여 후보 실태"
   outcome: accepted
@@ -2253,3 +2254,21 @@
   outcome: accepted
   evidence: "🟥 **warm-cache 아티팩트를 잡았다.** peer 실제 트리 5축 diff 는 전부 공집합 → 이 머신에서 M6 돌렸으면 거짓 `read-only` 가 통과했을 것. cold checkout 격리 클론에서: arm A `바이트코드 캐시 0→5 디렉토리 · 0→18 파일 · 런타임 디렉토리 3개 생성` / arm B(PYTHONDONTWRITEBYTECODE=1) `바이트코드는 0→0 이지만 런타임 디렉토리 3개는 여전히 생성`. 기전 = peer 의 설정 모듈이 import 시점에 «필요 디렉토리 보장» 루틴을 무조건 실행(감사 모듈 import 체인 경유). known-positive 컨트롤로 계기 생존 확인. 문제의 기동 경고는 소스 직독으로 in-memory 전용 확인(grep 부재 아님). ⇒ 정직한 선언은 `write-local`(닫힌 enum: read-only|write-local|write-remote — 팔이 제안한 산문은 HARNESS_ERROR 로 떨어졌을 것, 거버너가 확인)"
   cost: 144k tokens
+
+- date: 2026-08-18
+  agent: codex/gpt-5.5 + agy/gemini-3.1-pro-high (cross-family sidecars, 2 families)
+  model: opus (orchestrator)
+  purpose: "Adversarial review of an outbound PR to a third-party repo (clawd-on-desk #892) before force-push — CLI arg-parser hardening + exit-code contract removal, reshaped at maintainer request"
+  prompt_summary: "Arm 1 (codex): given the diff + the maintainer's written request, find scope creep, parser regressions, and vacuous tests. Arm 2 (agy): given codex's findings first, explicitly required to find a DIFFERENT axis."
+  outcome: accepted
+  finding: "Both arms BLOCK. codex: strict parsing made a path beginning with '-' unreachable (2 forms) — a real regression vs upstream main, plus silent last-wins on a repeated flag and a flattened stat-error message. agy on a different axis: switching the guard to `=== null` let an EMPTY-STRING path through, so `path.resolve('')` sent the validator at the caller's cwd. All 4 reproduced by hand against upstream main before acting; all fixed with tests."
+  note: "🟥 Orchestrator self-detection was ZERO on all of them — the author wrote every one of these lines. BUT the run does NOT test family diversity: arm 2 was handed arm 1's findings plus a steer, so the manipulated variable was WHAT IT RECEIVED, not its family. No same-family control was run either, so even codex's catch cannot be attributed to family rather than to a second pair of eyes. Cite as evidence for the receives-different-input axis, never as evidence that mixing families works."
+
+- date: 2026-08-18
+  agent: fh-meta:beginner (4 rounds, same agent resumed)
+  model: inherited
+  purpose: "Cold-read the outbound PR follow-up comment as the maintainer, before posting — natural-voice check plus does-it-answer-the-ask"
+  prompt_summary: "Read the drafted comment cold as the maintainer who wrote the request; quote before judging; report findings only, no rewriting. Rounds 2-4 re-read the repaired text with the changelog of what was edited."
+  outcome: accepted
+  finding: "R1 caught a whole missing item — the maintainer had explicitly asked to KEEP the malformed-top-level-JSON fix and the draft never confirmed it — plus unprompted flattery and a matched rhetorical headline pair. R2/R3 each found NEW defects introduced by the previous round's repair (a contradiction seam between two sections; a dangling 'same way as last time' reference with no antecedent for the reader). R4 clean, so the loop closed on new-findings-0 AND text-unchanged."
+  note: "Two data points for repair-is-a-defect-source inside one hour, both self-detection ZERO. Honest limit: an in-repo subagent inherits project instructions, so this is WEAK isolation by this hub's own standard — a repo-external headless run would be the strong form."
