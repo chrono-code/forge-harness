@@ -355,7 +355,29 @@ The forge-harness hub has a dual identity: **(a) a seed for others** + **(b) you
 - AI may commit and push automatically (when changes are approved) — **to a feature branch, never to the integration branch**
 - **PR creation requires explicit user request** ("create PR", "PR 올려줘", "pull request")
 - **Reason:** Prevents PR fragmentation — logical units should be grouped into meaningful PRs, not atomized per commit
-- Default workflow: branch → commit → push branch → wait for explicit PR request
+- Default workflow: **claim** → branch → commit → push branch → wait for explicit PR request
+
+🟥 **공유 체크아웃에서는 브랜치를 «잡는» 단계가 별도로 있다 — 그리고 그 기계는 이미 있다**
+(2026-08-18 실측 신설). 세션 여럿이 **한 체크아웃**을 쓰면 HEAD 는 하나뿐이라, 남이 옮기면
+내 발밑이 바뀐다. 순서는 이렇다:
+
+```
+switch 직전   git branch --show-current          ← 실시간 HEAD. claim 파일이 아니다
+자른 직후     git log main..HEAD --oneline       ← 0 줄이 아니면 남의 커밋 위에 앉았다
+잡을 때       bash scripts/branch_claim.sh claim ← 이 줄이 없으면 pre-commit 이 막는다
+확인          bash scripts/branch_claim.sh check
+```
+
+🟥 **`.git/fh-claims/*` 를 읽는 것만으로는 못 막는다** — claim 은 lock 이 아니라 **쓰여진 시점의
+스냅샷**이고, 남이 브랜치를 옮겨도 내 파일은 안 바뀐다. **자기 세션에 대해서도 거짓말한다**(실측:
+claim 이 `main` 인 동안 실제 HEAD 는 peer 브랜치였다 — 두 세션이 독립 재현). 그래서 판별자는
+파일이 아니라 **위 두 줄의 실시간 실행**이고, claim 은 *기록하는* 명령으로만 쓴다.
+
+**남은 잔여 둘, 이름으로 남긴다**: ⓐ 게이트는 **커밋 시점**이라 `switch -c` 사고 자체는 못 막는다
+(그래서 위 두 줄이 여전히 사람 몫이다 — [[feedback_gate_binding_point_not_check_point]])
+ⓑ 반대 방향 — 내가 브랜치를 쥔 동안 남이 되돌리고 커밋하면 **내 staged 파일이 index 에 살아
+있다.** 실측 사례에서 안 섞인 것은 그 세션이 파일 지정 `add` 를 썼기 때문이지 게이트 덕이 아니다.
+⇒ **공유 체크아웃에서 `git add -A` 금지**([[feedback_shared_checkout_ops_touch_others_work]]).
 
 **Integration branch is PR-only** (operator decision 2026-07-20). Never `git push origin main`
 directly. Normal path: `git switch -c <branch>` → push the branch → `gh pr create` → after review
