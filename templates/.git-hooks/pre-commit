@@ -18,6 +18,37 @@
 set -uo pipefail
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
+# ── EVIDENCE_ROOT — 증거(tracks/)가 사는 곳. **소스 경로와 다르다.** ──────────────
+# 🟥 WHY: 워크트리에서 `--show-toplevel` 은 **그 워크트리**를 준다. `tracks/` 는 gitignored 라
+#    워크트리에 안 따라오므로, 마커와 매니페스트를 거기서 찾으면 **항상 부재**다. 그래서 게이트가
+#    스스로 권하는 «세션당 worktree» 를 게이트 자신이 봉쇄하고 있었다(2026-08-18 실측: 워크트리
+#    FH-자산 커밋 → Axis 2+3 「NOT CONFIRMED」 + Axis 4 「edit_manifest.yaml not found」).
+#    「구조적으로 불가능」이 아니라 **경로 해석 한 줄**이었다.
+# `--git-common-dir` 은 워크트리에서도 **메인 트리의 .git** 을 준다. 메인 트리에서는 `.git` 이라
+# 같은 값이 나온다 ⇒ **하위호환**(3트리 대조 실측: 메인/워크트리/FH 전부 기대대로).
+# ⚠️ 상대 경로로 나올 수 있으므로 절대화한다. 실패하면 REPO_ROOT 로 **degrade** — 증거를 못 찾는
+#    쪽이지 통과시키는 쪽이 아니다(fail-closed 방향 유지).
+#
+# 🟥 **명시된 잔여 — 이 수리가 «두 번째 위험»을 처음 도달 가능하게 만든다** (2026-08-18,
+#    타계열 리뷰 지적, 실측으로 확인):
+#      ⓐ 증거 부재      = 이 블록이 닫는 것
+#      ⓑ 훅 자기무력화   = **안 닫힌다.** `core.hooksPath` 가 **상대 경로**(`templates/.git-hooks`
+#                        — FH 문서가 지시하는 바로 그 형태)면 워크트리는 **자기 사본**의 훅을 돌린다.
+#                        그 사본을 워크트리 안에서 고치면 그 워크트리의 게이트가 죽고,
+#                        메인 트리의 `git status` 에는 안 보인다.
+#    종전엔 ⓐ 가 **사실상의 장벽**이라 ⓑ 가 도달 불가였다. ⓐ 를 없애면 ⓑ 가 **처음으로 실재**한다.
+#    ⇒ 워크트리를 쓸 거면 `core.hooksPath` 를 **절대 경로**로 설정해라:
+#         git config core.hooksPath "$(git rev-parse --show-toplevel)/templates/.git-hooks"
+#       그러면 모든 워크트리가 **메인 트리의 훅 한 벌**을 돌아 자기무력화가 구조적으로 막힌다.
+#    🟥 이 훅은 그것을 **강제하지 않는다** — 자기 자신의 설치 형태를 자기가 검사하는 것은
+#       이미 무력화된 뒤엔 안 돌기 때문이다(검사기가 검사 대상). 문서·설치 안내가 그 층이다.
+_gcd=$(git rev-parse --git-common-dir 2>/dev/null || echo "")
+case "$_gcd" in
+  "") EVIDENCE_ROOT="$REPO_ROOT" ;;
+  /*) EVIDENCE_ROOT=$(dirname "$_gcd") ;;
+  *)  EVIDENCE_ROOT=$(dirname "$REPO_ROOT/$_gcd") ;;
+esac
+[ -d "$EVIDENCE_ROOT" ] || EVIDENCE_ROOT="$REPO_ROOT"
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 TODAY=$(date +%Y-%m-%d)
 BRANCH_SLUG="${BRANCH//\//_}"
@@ -305,7 +336,7 @@ else
     if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
       echo "  ⚠️  proceeding with an incomplete gate by PUBLIC_SURFACE_OK=1 (conscious)"
       echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — gate inactive/incomplete" \
-        >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+        >> "$EVIDENCE_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
     else
       FAILED=1
     fi
@@ -342,7 +373,7 @@ else
       if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
         echo "  ⚠️  public-surface hit(s) allowed by PUBLIC_SURFACE_OK=1 (conscious, reviewed intent)"
         echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — review suppressed hit(s) above" \
-          >> "$REPO_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
+          >> "$EVIDENCE_ROOT/tracks/_meta/.psa_override_log" 2>/dev/null || true
       else
         echo "  Operator-private token reached the public surface. Generalize it (companion-store name"
         echo "  → 'a private companion store'; corp-context → 'restricted/corp env'; absolute home path"
@@ -1243,7 +1274,7 @@ validate_marker_floor() {
 # ── Axes 2+3 — steel-quench + phantom-quench (full gate only) ─────────
 if [ "$GATE_MODE" = "full" ]; then
   echo "[Axis 2+3] Adversarial + Source-Grounding..."
-  MARKER_DIR="$REPO_ROOT/tracks/_meta"
+  MARKER_DIR="$EVIDENCE_ROOT/tracks/_meta"
   MARKER="$MARKER_DIR/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
 
   if [ -f "$MARKER" ]; then
@@ -1270,7 +1301,7 @@ fi
 
 # ── Axis 4 — Edit Manifest entry (always required) ────────────────────────────
 echo "[Axis 4] Edit Manifest..."
-MANIFEST="$REPO_ROOT/tracks/_meta/edit_manifest.yaml"
+MANIFEST="$EVIDENCE_ROOT/tracks/_meta/edit_manifest.yaml"
 if [ ! -f "$MANIFEST" ]; then
   echo "  ❌ FAIL — tracks/_meta/edit_manifest.yaml not found"
   echo "  Run /edit-manifest RECORD or create the file manually."
@@ -1311,6 +1342,19 @@ for i, entry in enumerate(doc):
     if not isinstance(entry, dict):
         print("entry #%d is a %s, not a mapping — a list item may have drifted outside its parent"
               % (i, type(entry).__name__)); sys.exit(1)
+# 🟥 인터리브 지문 — 동시 append 는 **YAML 을 깨지 않고** 내용을 뒤섞는다.
+# 2026-08-18 실측(적대적 재현): 워커 4개가 한 엔트리를 여러 write 로 쪼개 append 하면
+# 파싱은 OK 인데 필드가 서로 섞이고(w3 의 branch 에 w2 의 impact) 나머지는 `date` 만 남는다.
+# ⇒ **형식 검사가 통과시키는 무음 손상.** 이 축이 없애려는 병을 이 축 자신이 통과시키고 있었다.
+# 지문은 스키마가 아니다 — 실물 407 엔트리의 키 분포가 느슨해서(date 100% · branch 38%)
+# 필수키를 걸면 과거를 과차단한다. known-pair 로 고른 지문은 **«date 만 있는 엔트리»**:
+#   known-negative 실물 407건 → 0건 · known-positive 재현본 → 3/5.
+# 워크트리 병렬 커밋이 열리기 전에는 이 조건 자체가 안 생겼다 — #448 이 문을 여니 같이 닫는다.
+orphan = [i for i, e in enumerate(doc) if set(e.keys()) == {"date"}]
+if orphan:
+    print("entry #%s has only `date` — concurrent-append interleaving signature "
+          "(fields lost/mixed). Re-check the last appended entries by hand." % orphan[0])
+    sys.exit(1)
 def norm(v):
     return v.isoformat() if hasattr(v, "isoformat") else str(v).strip()
 if not any(norm(e.get("date")) == sys.argv[2] for e in doc):
@@ -1512,7 +1556,7 @@ if [ -n "$LOADBEARING" ]; then
   else
     echo "  ⚠️  degrade lint unavailable (scripts/degrade_direction_scan.sh missing) — advisory leg skipped"
   fi
-  MARKER_LB="$REPO_ROOT/tracks/_meta/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
+  MARKER_LB="$EVIDENCE_ROOT/tracks/_meta/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
   if validate_crossfamily_leg "$MARKER_LB"; then :; else FAILED=1; fi
   if validate_standpoint_leg "$MARKER_LB"; then :; else FAILED=1; fi
   if validate_thirdparty_leg "$MARKER_LB"; then :; else FAILED=1; fi
