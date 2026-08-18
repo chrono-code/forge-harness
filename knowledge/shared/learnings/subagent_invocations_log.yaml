@@ -2272,3 +2272,23 @@
   outcome: accepted
   finding: "R1 caught a whole missing item — the maintainer had explicitly asked to KEEP the malformed-top-level-JSON fix and the draft never confirmed it — plus unprompted flattery and a matched rhetorical headline pair. R2/R3 each found NEW defects introduced by the previous round's repair (a contradiction seam between two sections; a dangling 'same way as last time' reference with no antecedent for the reader). R4 clean, so the loop closed on new-findings-0 AND text-unchanged."
   note: "Two data points for repair-is-a-defect-source inside one hour, both self-detection ZERO. Honest limit: an in-repo subagent inherits project instructions, so this is WEAK isolation by this hub's own standard — a repo-external headless run would be the strong form."
+
+- date: 2026-08-18
+  agent: general-purpose (isolated) — Sister Asset 감사 (omnigent-ai/omnigent)
+  model: inherited
+  purpose: "오늘자 frontier-digest 후보 [C]. FH 정체성 주장과 최대로 겹친다고 지목된 외부 자산에 Sister Asset Protocol §Active adoption 적용 — 해상도 차이 기록 + 수입/전파 양방향 목록"
+  prompt_summary: "정본(sister_asset_protocol.md)을 먼저 읽고 그 절차대로. 🟥 정규화 금지를 명시 조건으로 박고 §Envelope-Boundary 를 읽게 함. 양방향(수입 ∧ 전파) 둘 다 없으면 미완으로 규정. 1차 출처 직독 요구, 접근 실패는 «없다» 아닌 실패로 기록."
+  outcome: accepted
+  finding: "실제 클론(HEAD 65021dc) 후 파일:줄 인용으로 반환. 🟥 디제스트가 못 본 정체성 사실 적발 — Databricks 내부 레포의 OSS 익스포트다(NOTICE:1 · sync 워크플로). 「meta-harness」가 같은 단어로 다른 대상을 가리킴을 확정(저쪽=실행 기질 교체 / FH=방법론 인큐베이터) ⇒ 직교. 수입 후보 10건 중 A1(라이브 triad + DRIFT, verdict.py:110-137)이 FH 정본이 스스로 «carrier 없음»이라 유보해 둔 자리를 정확히 메운다. A3(미측정 7값 enum · SKIPPED≠UNKNOWN 을 타입으로 강제, verdict.py:22-27,57-60). 전파 후보 7건 중 B1 = 저쪽의 팬텀 참조 37건 실측(존재하지 않는 designs/*.md 를 openapi.json 스키마 description 까지 인용)."
+  note: "🟥 정규화가 무너뜨렸을 항목이 실제로 3건이라고 스스로 보고 — 셋 다 «우리도 그거 있다»로 접었으면 사라진다. 자기 미확인 목록을 8항 열거(harness_bench 미실행이라 A1 은 «코드가 그렇게 적혀 있다»까지만 근거 · ★ 수치는 GH API 단일 출처 · shallow clone 이라 팬텀 참조의 이력 확인 불가). 미검증 강도를 스스로 깎은 것이 신뢰도를 올렸다."
+  cost: 183k tokens
+
+- date: 2026-08-18
+  agent: agy/gemini-3.1-pro-high (cross-family sidecar, 2번째 계열)
+  model: opus (orchestrator)
+  purpose: "운영자가 전달한 외부 영상 3편(OpenWiki · Anthropic 인증시험 안티패턴 · Buzz)의 자막에 대해, 거버너가 이미 추출한 목록을 주고 «그 밖의 축»을 요구"
+  prompt_summary: "1번 팔(Claude) 추출 결과를 전부 나열하고 «이걸 다시 말하면 0점» 을 명시. 요구한 축 = 영상 간 모순 · 자기붕괴 지점 · FH 에 나쁜 조언이 될 항목 · 정량 주장의 근거 유무. 항목마다 트랜스크립트 원문 인용 의무, 인용 못 붙이면 «미확인» 으로 분리."
+  outcome: accepted
+  finding: "6건 중 확정 2 · 기각 2 · 반쪽 1 · 자기모순 1. 🟥 **초판이 이 팔을 `partial` 로 채점했는데 운영자가 정정했다 — 발견기를 정밀도로 채점한 오류다.** 탈상관은 오라클이 아니라 **값싼 발견기**이고(다른 사고방식을 그대로 써서 다른 각도로 묻는 것이 가장 싸고 빠르다), **발견이 어렵고 채점이 싸다.** 그러면 오탐 4건은 실패가 아니라 정상 작동이고, 채점 기준은 «거버너가 혼자서는 못 낸 것을 표면화했는가» 다. 그 기준으로는 통과한다 — 아래 ⓐ가 정확히 그것이다. ✅ 확정: ⓐ 「15만 토큰 압축 임계」가 **근거 없는 하드코딩 예시값**(발표자가 슬라이드 코드의 >150000 을 읽은 것) — 🟥 거버너가 이미 자기 보고에 기준선처럼 적어 넣은 뒤였고 대조 없이는 카드까지 갔다 ⓑ cron 기반 문서 갱신이 커밋-시점 게이트 결속을 깬다. ❌ 기각: OpenWiki 자기모순 주장은 agents.md(포인터)와 log.md(변경로그)를 합친 것 · compact 가 frontmatter/[[link]] 그래프를 파손한다는 주장은 컨텍스트 압축이 디스크 파일을 안 고친다는 점에서 기전 오류(인접 위험은 실재)."
+  note: "채점 기준 정정의 함의: 이 원장에서 `partial`/`rejected` 는 **발견기의 정밀도**를 뜻하지 않는다 — 그건 정상 비용이다. 🟥 사이드카가 자기 자신과 모순했다 — §1 에서 「툴 4~5개는 화자 자체 모순」이라 적고 §3 에서 같은 숫자를 「공식 규격에서 기인, 근거 있음」으로 승격. 원문에 그 근거가 없고 Anthropic 실제 스펙 대조도 안 했다(미검증을 검증으로 렌더). 인용 6개는 기계 대조로 5/6 원문 확인 + 1건은 표기 변형(슬랙↔슬렉)뿐. ⇒ 값은 「많이 잡는다」가 아니라 **「거버너가 이미 쓴 것 중 틀린 걸 잡는다」** 쪽에서 나왔다."
+  cost: 미측정 (agy 토큰 미보고 — 0 으로 렌더하지 말 것)
