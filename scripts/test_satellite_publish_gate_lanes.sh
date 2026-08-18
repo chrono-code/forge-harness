@@ -291,4 +291,49 @@ _prev_pick() {
 }
 t "R5 표기가 섞여도 «직전»은 날짜상 최신이다" "frontier_digest_2026_08_17.md" "$(_prev_pick)"
 
+# R6 · **엔진 루트 ≠ 대상 루트** (첫 실사용 발견, 2026-08-18)
+# 🟥 위성은 이 러너를 복사하지 않고 FH 의 것을 그대로 돈다(launchd 가 FH 경로를 가리킨다).
+#    초판은 스캐너·패턴·checker 를 전부 `$FH_DIR`(=대상 레포)에서 찾아서, 대상에 그 파일이
+#    없으면 **publish gate 가 영영 fail-closed** 였다 — 실측으로 `psa_scan_lib.sh 부재` 를 봤다.
+#    게다가 그 분기는 파일을 **격리하지 않아** «게시 안 함» 이 거짓이었다(digest 는 이미 트리에 있다).
+_engine_vs_target() { # echoes "rc|state"
+  local eng tgt; eng=$(mktemp -d); tgt=$(mktemp -d)
+  mkdir -p "$eng/scripts" "$eng/.claude/rules" "$tgt/out"      # 🟥 대상에는 scripts/ 를 안 만든다
+  cp "$ROOT/scripts/frontier_digest_daily.sh" "$ROOT/scripts/psa_scan_lib.sh" "$eng/scripts/"
+  cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$eng/.claude/rules/" 2>/dev/null
+  printf 'HIGH\tZZ_SYNTHETIC_LEAK_TOKEN_ZZ\n' > "$eng/.claude/rules/.public-surface-patterns"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$eng/scripts/stub-claude"; chmod +x "$eng/scripts/stub-claude"
+  local d; d=$(date +%Y_%m_%d)
+  printf 'clean\n%s\n' "$(head -c 1200 /dev/zero | tr '\0' 'x')" > "$tgt/out/frontier_digest_${d}.md"
+  local rc
+  ( FD_FH_DIR="$tgt" FD_OUT_DIR="out" FD_PUBLIC_TARGET=1 FD_LOG_DIR="$tgt/logs" \
+    FD_CLAUDE_BIN="$eng/scripts/stub-claude" FD_MAX_ATTEMPTS=1 FD_POLL_SECS=1 \
+    bash "$eng/scripts/frontier_digest_daily.sh" ) >/dev/null 2>&1; rc=$?
+  local state=none
+  ls "$tgt/out/"*.UNSCANNED >/dev/null 2>&1 && state=unscanned
+  ls "$tgt/out/"*.md >/dev/null 2>&1 && [ "$state" = none ] && state=published
+  rm -rf "$eng" "$tgt"; echo "$rc|$state"
+}
+r=$(_engine_vs_target)
+t "R6 도구를 엔진 루트에서 찾는다(대상에 없어도 게이트가 돈다)" "0"         "${r%%|*}"
+t "R6b 그래서 CLEAN 한 digest 가 실제로 게시된다"                "published" "${r##*|}"
+
+# R6c · 스캐너가 **진짜로** 없으면 «게시 안 함» 이 말뿐이 아니라 격리까지 간다
+_lib_absent() {
+  local eng tgt; eng=$(mktemp -d); tgt=$(mktemp -d)
+  mkdir -p "$eng/scripts" "$tgt/out"
+  cp "$ROOT/scripts/frontier_digest_daily.sh" "$eng/scripts/"     # 🟥 psa_scan_lib.sh 는 안 넣는다
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$eng/scripts/stub-claude"; chmod +x "$eng/scripts/stub-claude"
+  local d; d=$(date +%Y_%m_%d)
+  printf 'body\n%s\n' "$(head -c 1200 /dev/zero | tr '\0' 'x')" > "$tgt/out/frontier_digest_${d}.md"
+  local rc
+  ( FD_FH_DIR="$tgt" FD_OUT_DIR="out" FD_PUBLIC_TARGET=1 FD_LOG_DIR="$tgt/logs" \
+    FD_CLAUDE_BIN="$eng/scripts/stub-claude" FD_MAX_ATTEMPTS=1 FD_POLL_SECS=1 \
+    bash "$eng/scripts/frontier_digest_daily.sh" ) >/dev/null 2>&1; rc=$?
+  local state=published
+  ls "$tgt/out/"*.UNSCANNED >/dev/null 2>&1 && state=quarantined
+  rm -rf "$eng" "$tgt"; echo "$state"
+}
+t "R6c 스캐너 부재는 말만이 아니라 실제 격리다"   "quarantined" "$(_lib_absent)"
+
 echo "----"; echo "satellite publish gate: $pass passed, $fail failed"; [ "$fail" -eq 0 ]
