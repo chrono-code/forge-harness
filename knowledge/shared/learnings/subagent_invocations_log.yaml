@@ -2322,3 +2322,13 @@
   finding: "codex 4건 중 **3 채택**(파일명에 든 토큰이 로그에 남음 · 유도 컨트롤이 ERE 로 쓰여 레포명 메타문자면 오탐 — 실측은 더 나빴다, 글로빙까지 타서 컨트롤 4개로 확장 · pathspec 공백 분리) **1 실측 기각**(빈/손상 오버라이드는 기존 기계가 이미 «게이트 INACTIVE» 로 시끄럽게 막는다 — 레인 E3/E3b 로 고정). agy 는 경로 잔존을 독립 재현했고 **`git log --all` 로 «실제 유출 0»** 을 확인해 줬다."
   note: "🟥 **자력 적발 0 인 항목이 2건**(F2 파일명 토큰 · F3 정규식 컨트롤) — 둘 다 내가 «닫았다» 고 적은 **뒤에** 나왔다. ⚠️ 첫 agy 런은 타임아웃(부분 출력)이라 **좁혀서 재발주**했고 그 값을 썼다 — 죽은 팔의 침묵을 «없다» 로 읽지 않았다."
   cost: codex 88,598 tokens · agy 미보고(0 으로 렌더하지 말 것)
+
+- date: 2026-08-19
+  agent: general-purpose (isolated)
+  model: opus (orchestrator) / 위임 기본 티어
+  purpose: "6축 중 **ⓓ 3자대면**만 UNKNOWN 이라 실제로 돌렸다 — 두 절반(선행자산 · 남의 하네스 의자)"
+  prompt_summary: "🟥 두 절반을 명시적으로 갈랐다. ① 「새롭다」는 주장을 **넷으로 쪼개** 각 조각의 선행자산을 찾고 겹침/비겹침을 갈라라 · «없다» 는 찾아보고 없을 때만, 못 찾아본 건 blocked · ② **gstack 의 자기 규율을 먼저 읽고**(FH 어휘로 정규화 금지) 그 운영자 입장에서 위성 도입을 판정 · 🟥 «FH 가 이미 아는 잔여를 다시 말하는 것은 값이 없다 — 그 레포 규율에서만 나오는 것을 대라»"
+  outcome: accepted
+  finding: "🟥 **FH 가 몰랐던 것 넷, 그중 둘은 설계 결함이다.** ⓐ **위성이 미등록 redaction sink** — gstack 은 「타 모델 dispatch」를 이미 sink 로 분류·스캔하는데 위성 경로는 그 스캐너를 한 줄도 안 탄다. 🟥 FH 의 publish_gate 는 **산출물**을 스캔하고 **입력**은 아무도 안 본다(방향이 반대다) ⓑ 무인 acceptEdits 의 폭발반경이 **레포 밖** — 그쪽 `.claude/skills/gstack` 심링크가 라이브 글로벌 설치본이라 동시 실행 중인 남의 CC 세션을 깬다 ⓒ **AI 에게 period 로 닫힌 파일**(ETHOS.md)이 있고 제안조차 위반 — 프로필 스키마에 「금지 파일」이 필수여야 한다 ⓓ 산출 자리를 발명할 필요 없음(`~/.gstack-dev/plans/` 가 이미 의미론이 같다) + 그 레포는 «git status 오염 = 사건». 절반 ① 은 `checked(겹침 있음)` — Renovate(구조) · Sourcegraph Agentic Batch Changes(«repository specific instructions», 2026-06 상용) · gh-aw(착지 형태) 가 각 조각을 선행한다. **net-new 가 아니라 조합**이고 그 사실이 「새롭다」의 강도를 깎는다."
+  note: "🟥 **회수분이 따로 있다**: gstack 의 «짓기 전에 검색» 규율은 절반 ①(선행자산)을 절반 ②의 **입력**으로 요구한다 — FH 는 둘을 따로 돌렸는데 대상의 의자에 앉으면 한 문서다. ⓓ 의 두 질문이 «둘»이라는 것이 FH 쪽 구성이지 보편이 아니라는 뜻이고, 이건 6축 정의 자체에 닿는다. ⚠️ 절반 ① 은 스니펫 기반이고 1차 문서 전수 직독이 아니다 — Sourcegraph 의 그 문구가 「레포가 쓴 것」인지 「code graph 생성」인지 안 갈렸고, 그 한 줄이 갈리면 겹침이 «부분»에서 «전면»으로 바뀐다. **미확인으로 남겼다.** 신호 = tracks/_meta/fh_signal_2026-08-19_satellite-thirdparty-axis.md"
+  cost: 157,378 tokens (subagent_tokens · tool_uses 20 · 313s)
