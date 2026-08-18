@@ -80,6 +80,7 @@
     "scripts/prepublish_scope_note.sh",
     "scripts/lane_runner_check.sh",
     "scripts/test_package_coverage_lanes.sh",
+    "scripts/test_evidence_root_psa_lanes.sh",
     "scripts/adapters/peer_resolve.sh",
     "scripts/adapters/gstack_content_safety.sh",
     "scripts/adapters/mate_agent_boundary.sh",

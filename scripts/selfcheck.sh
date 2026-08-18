@@ -718,6 +718,20 @@ else
   fail=1
 fi
 
+# test_evidence_root_psa_lanes — 워크트리에서 기밀성 오버라이드를 찾는가 (R4, 2026-08-18).
+# 🟥 `EVIDENCE_ROOT` 에는 레인이 **하나도 없었다** — 그래서 `tracks/` 만 옮기고 gitignored
+# 패턴 파일은 안 옮긴 반쪽-픽스가 그대로 출하됐다. 되돌림 프로브로 E1 만 적색 확인.
+if [ ! -f scripts/test_evidence_root_psa_lanes.sh ]; then
+  echo "FAIL  test_evidence_root_psa_lanes.sh: missing — EVIDENCE_ROOT 기밀성 경로에 앵커 없음"
+  fail=1
+elif _out=$(bash scripts/test_evidence_root_psa_lanes.sh < /dev/null 2>&1); then
+  echo "PASS  test_evidence_root_psa_lanes.sh ($(printf '%s\n' "$_out" | grep -oE '[0-9]+ passed, [0-9]+ failed' | tail -1))"
+else
+  echo "FAIL  test_evidence_root_psa_lanes.sh: evidence-root psa lanes failed"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # cluster_capability_scan — wired 2026-08-16 (정체성 ①-(a) cluster-wizard).
 # 종단 판정줄이 `… 캘리브레이션 통과/실패: N PASS / M FAIL` 이라 위 `_subj` 루프의
 # 캘리브레이션 게이트를 **진짜 판정줄로** 만족한다 — 테스트 케이스 제목이 아니다.
