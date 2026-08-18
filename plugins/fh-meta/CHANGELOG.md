@@ -29,7 +29,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **§Expedition**: 원정 개시에 **«과녁 정체성» 한 줄** 의무. 근거는 1차 ⓐ 채점 **0건**이고 원인이 노력이 아니라 **겨냥**이었다(세 갈래가 전부 이미 🟢 인 정체성 위에 떨어졌다). 주기는 2차 이후로 연기, **계측 3항을 방법까지** 명시(거버너 토큰은 `UNMEASURED` 를 이름으로 남기고 **합계 금지**)
 - **§AI Contribution Model**: 기본 워크플로에 **claim** 단계 + `scripts/branch_claim.sh` 를 이름으로. 기계는 이미 있었는데 산문이 그 이름을 안 불러 두 세션이 «없다»로 결론했다
 
-**호환성 — BREAKING 없음.** 위성 축은 **미설정 시 종전 동작 그대로**이고(`N1`/`N3` 컨트롤이 그것을 주장), FH 자신의 일일 런은 무변경이다. ⚠️ `frontier_digest_daily.sh` 는 **출하 대상이 아니다**(종전 동일 — 출하되는 것은 `frontier_digest_autopilot.sh`).
+**게이트 (peer 동시 착지분 #447·#448)**
+```
+BREAKING (gate): edit_manifest.yaml 에 `date` 만 있는 엔트리가 있으면 커밋이 차단된다
+  — 동시 append 로 손상된 매니페스트의 지문이다(종전엔 무음 통과).
+  remedy: 훅이 지목한 엔트리를 손으로 확인해 필드를 복구하거나 제거한다.
+```
+실측: 이 레포 매니페스트 411건 중 date-only **0건** — **건강한 매니페스트를 가진 소비자는 안 막힌다.** 막히는 것은 동시 append 로 손상된 경우이고, 그 손상은 종전에 **조용히 통과**했다.
+
+**동작 변경(차단 아님)**: 워크트리에서 FH 자산 커밋이 **가능해진다**(evidence-root 를 `--git-common-dir` 로 해석). 종전엔 `tracks/` 가 안 따라와 Axis 2+3·Axis 4 가 구조적으로 부재했다 — 즉 이 항목은 **완화**다.
+⚠️ **위 둘은 같은 사건의 앞뒤다.** 경로 변경으로 워크트리 소비자에게 게이트가 **처음 도달**하는데, 그 순간 `core.hooksPath` 가 **상대 경로**면 워크트리가 **자기 훅 사본**을 돌아 자기무력화가 가능하다.
+권고: `git config core.hooksPath "$(git rev-parse --show-toplevel)/templates/.git-hooks"`
+
+**호환성 — 위성 축은 BREAKING 아님.** 미설정 시 **종전 동작 그대로**이고(`N1`/`N3` 컨트롤이 그것을 주장), FH 자신의 일일 런은 무변경이다. ⚠️ `frontier_digest_daily.sh` 는 **출하 대상이 아니다**(종전 동일 — 출하되는 것은 `frontier_digest_autopilot.sh`).
+
+**위성 주기 (2026-08-18 신설)**: `launchd` 2대 등록 — `com.forge-harness.satellite-forge-wiki`(10:00) · `satellite-the-bible`(11:00). FH 자신(09:00)과 시차를 둔다. 🟥 **엔진은 FH 에 있고 대상만 환경변수로 바뀐다** — 러너를 대상 레포에 복사하지 않는다(그게 복제다).
 
 ### [2.4.0] — 2026-08-18
 
