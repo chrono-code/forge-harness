@@ -152,6 +152,17 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    misjudged the force-push surface three times; the symmetric single-endpoint case is untested,
    but the same failure shape applies.
 
+9. **Shared checkout:** when more than one session works in one clone, the working tree and `HEAD`
+   are shared, so a branch switch moves the other session's ground. Before `git switch`, read the
+   live head with `git branch --show-current`; immediately after cutting a branch, run
+   `git log main..HEAD --oneline` — a non-empty result means the branch was cut on top of someone
+   else's commits, and a later squash of the parent closes the child PR. The claim files under
+   `.git/fh-claims/` are a snapshot written at claim time, not a lock: they do not update when
+   somebody moves a branch, so they answer a different question than the two commands above.
+   Record a switch with `scripts/branch_claim.sh claim`; the pre-commit hook blocks a commit whose
+   claim does not match the live head. In a shared checkout `git add -A` and `git stash` both reach
+   the whole tree, including another session's uncommitted work — stage by explicit path instead.
+
 > **Detail**: See `knowledge/shared/harness-core/agents_md_runtime_details.md §Mandatory-checklist-procedures`
 > — exact supporting procedures and canonical doctrine links — read when any checklist trigger fires.
 
