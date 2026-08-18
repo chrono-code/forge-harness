@@ -45,12 +45,17 @@ markers) — never silently drop a capability.
   *evolver* role (writes harness updates) from the *beneficiary* role (runs on the updated
   harness) and finds harness-**updating** flat across model capability — a Qwen3.5-9B evolver
   induces gains comparable to a Claude Opus 4.6 evolver, i.e. evolver strength does not predict
-  beneficiary gain. Harness-**benefit**, by contrast, is non-monotonic: the weakest tier gains
-  little, traced to failing to *activate* relevant harness artifacts or *follow* them faithfully
-  once activated — not to a stronger model extracting more value from an identical harness. This
-  is independent grounding for the floor split below: sub-Sonnet stays `below-floor` because
+  beneficiary gain. Harness-**benefit**, by contrast, is non-monotonic — and the shape matters, so
+  all three tiers are quoted rather than only the one that suits this section: **weak-tier models
+  benefit little, mid-tier benefit most, and strong-tier benefit *less* than mid-tier.** The paper
+  traces the weak-tier shortfall to two named failure modes: failing to *activate* relevant harness
+  artifacts, or activating them but failing to *follow* them faithfully. This is independent
+  grounding for the floor split below: sub-Sonnet stays `below-floor` because
   activation/faithful-following is where payoff collapses, while Sonnet is named the floor
-  precisely because it clears that bar.
+  precisely because it clears that bar. ⚠️ **The strong-tier half is NOT folded in as support for
+  the ceiling-guard clause above** — the paper measures benefit from *self-evolved harness updates*,
+  not from structure-enforcing checks, so mid > strong is an adjacent finding this doctrine has not
+  reconciled, and is recorded as open rather than read in the author-favorable direction.
 
 ## The defect class: tier-gated capability
 
