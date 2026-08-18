@@ -703,6 +703,21 @@ else
   fail=1
 fi
 
+# test_satellite_publish_gate_lanes — 위성 공개표면 게이트(2026-08-18, 원정 2차).
+# 🟥 이 배선이 없어서 CI 가 `lane-runner: lane suite(s) with no runner and no declaration` 로
+# 빨갰다. 스위트를 신설하고 아무 데서도 안 돌린 것 — 검사기의 표현대로
+# *"A suite nothing executes is prose."* 그 검사기가 내 신설 레인을 잡았다.
+if [ ! -f scripts/test_satellite_publish_gate_lanes.sh ]; then
+  echo "FAIL  test_satellite_publish_gate_lanes.sh: missing — publish gate has no anchor"
+  fail=1
+elif _out=$(bash scripts/test_satellite_publish_gate_lanes.sh < /dev/null 2>&1); then
+  echo "PASS  test_satellite_publish_gate_lanes.sh ($(printf '%s\n' "$_out" | grep -oE '[0-9]+ passed, [0-9]+ failed' | tail -1))"
+else
+  echo "FAIL  test_satellite_publish_gate_lanes.sh: publish gate lanes failed"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # cluster_capability_scan — wired 2026-08-16 (정체성 ①-(a) cluster-wizard).
 # 종단 판정줄이 `… 캘리브레이션 통과/실패: N PASS / M FAIL` 이라 위 `_subj` 루프의
 # 캘리브레이션 게이트를 **진짜 판정줄로** 만족한다 — 테스트 케이스 제목이 아니다.

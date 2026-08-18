@@ -17,6 +17,8 @@
 #   P3  NOT-SCAN  → rc=3, 파일이 .UNSCANNED 로 보류 (게시 안 됨) — 스캐너가 죽어도 fail-closed
 #   N1  CONTROL — FD_PUBLIC_TARGET 미설정 → 게이트 자체가 안 돈다 (FH 프로덕션 경로 무변경)
 #   N2  CONTROL — P2 와 P3 의 rc 가 **다르다**(2 vs 3). 같으면 두 실패가 한 값으로 접힌 것이다
+#   P4  착지 증언이 **실제로 로그에 찍힌다** — 직전 digest 가 없으면 «SKIPPED (not a pass)».
+#       배선했다 ≠ 발화한다. 그리고 SKIP 을 통과로 렌더하지 않는 것까지 주장한다
 #
 # Exit 0 = 5/5.
 set -u
@@ -24,7 +26,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 pass=0; fail=0
 t() { if [ "$2" = "$3" ]; then echo "  ✅ $1"; pass=$((pass+1)); else echo "  ❌ $1 — got [$3] want [$2]"; fail=$((fail+1)); fi }
 
-run() { # $1 = digest body · $2 = psa_lib override ("dead" to break the scanner) → echoes "rc|state"
+run() { # $1 = digest body · $2 = psa_lib override ("dead") · $3 = arm 이름 → echoes "rc|state"
   local td; td=$(mktemp -d)
   mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$td/scripts/"
@@ -49,6 +51,11 @@ run() { # $1 = digest body · $2 = psa_lib override ("dead" to break the scanner
   ls "$td/out/"*.QUARANTINE >/dev/null 2>&1 && state=quarantine
   ls "$td/out/"*.UNSCANNED  >/dev/null 2>&1 && state=unscanned
   ls "$td/out/"*.md         >/dev/null 2>&1 && [ "$state" = none ] && state=published
+  # 착지 증언이 로그에 남았는지 (P4 가 읽는다)
+  # 🟥 arm 마다 따로 남긴다. 초판은 단일 파일에 덮어써서 **마지막 arm(P3, 스캐너 사망)** 것을
+  # 잡았는데, 거기선 게이트가 실패해 증언이 안 도는 게 정상이다 — 레인이 정상 동작을 실패로
+  # 렌더할 뻔했다. 판정 대상 arm 을 이름으로 고른다.
+  grep -h "landing witness" "$td/out/logs/"*.log 2>/dev/null | head -1 > "/tmp/.lw_$3" || : 
   echo "$rc|$state"
   rm -rf "$td"
 }
@@ -58,9 +65,9 @@ A clean digest with no operator-private tokens. $(head -c 1200 /dev/zero | tr '\
 LEAK_BODY="# digest
 this line carries ZZ_SYNTHETIC_LEAK_TOKEN_ZZ which the fixture pattern file flags HIGH. $(head -c 1200 /dev/zero | tr '\0' 'x')"
 
-r=$(run "$CLEAN_BODY" live); t "P1 CLEAN → 게시"            "0|published"  "$r"
-r=$(run "$LEAK_BODY"  live); t "P2 LEAK → 격리(.QUARANTINE)" "2|quarantine" "$r"; P2RC=${r%%|*}
-r=$(run "$CLEAN_BODY" dead); t "P3 스캐너 사망 → 보류(.UNSCANNED)" "3|unscanned" "$r"; P3RC=${r%%|*}
+r=$(run "$CLEAN_BODY" live clean); t "P1 CLEAN → 게시"            "0|published"  "$r"
+r=$(run "$LEAK_BODY"  live leak);  t "P2 LEAK → 격리(.QUARANTINE)" "2|quarantine" "$r"; P2RC=${r%%|*}
+r=$(run "$CLEAN_BODY" dead dead);  t "P3 스캐너 사망 → 보류(.UNSCANNED)" "3|unscanned" "$r"; P3RC=${r%%|*}
 
 # N1 — 게이트 미활성(FD_PUBLIC_TARGET 없음)이면 LEAK 본문이어도 게시된다 = FH 경로 무변경
 td=$(mktemp -d); mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
@@ -73,6 +80,12 @@ out=$(cd "$td" && FD_FH_DIR="$td" FD_OUT_DIR="out" FD_CLAUDE_BIN="$td/scripts/st
 n1state=published; ls "$td/out/"*.QUARANTINE >/dev/null 2>&1 && n1state=quarantine
 t "N1 control — 게이트 미활성이면 안 돈다(FH 경로 무변경)" "0|published" "$n1rc|$n1state"
 rm -rf "$td"
+
+lw=$(cat /tmp/.lw_clean 2>/dev/null)   # 게이트가 CLEAN 인 arm 에서만 증언이 돈다
+case "$lw" in *"landing witness"*) r=logged ;; *) r=absent ;; esac
+t "P4 착지 증언이 로그에 찍힌다(배선했다≠발화한다)" "logged" "$r"
+case "$lw" in *"SKIPPED (not a pass)"*) r=honest ;; *"ALL-LANDED"*) r=honest ;; *"SOME-UNLANDED"*) r=honest ;; *"HARNESS-ERROR"*) r=honest ;; *) r=other ;; esac
+t "P4b SKIP 을 통과로 렌더하지 않는다"          "honest" "$r"
 
 t "N2 control — LEAK 과 NOT-SCANNED 의 rc 가 다르다" "different" "$([ "${P2RC:-x}" != "${P3RC:-y}" ] && echo different || echo collapsed)"
 

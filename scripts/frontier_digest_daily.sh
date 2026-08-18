@@ -67,10 +67,40 @@ publish_gate() {
     esac
 }
 
+# ── 착지 증언 (2026-08-18, 원정 2차 ⓑ) ────────────────────────────────────
+# `digest_landing_check.sh` 는 10 레인을 갖고 selfcheck 루프가 그 self-test 를 돌리는데,
+# **프로덕션 호출부가 0 이었다** — 「후보가 실제로 착지했나」를 아무도 재지 않았다. 그 스크립트
+# 헤더 자신의 표현으로 *"닫히는데 증인이 없다"*. 파이프는 관통하는데 그 사실이 사람 기억으로만.
+#
+# 🟥 **오늘 것이 아니라 직전 다이제스트를 잰다.** 오늘 후보는 착지할 시간이 없었다 — 오늘 것을
+#    재면 «전건 미착지»가 매일 나오고 그건 계기가 아니라 소음이다.
+# 🟥 **차단하지 않는다. 게이트가 아니라 계측이다.** 헤더가 스스로 «선별기»라 적었고
+#    (`file-change ≠ token-introduction` 잔여) 히트는 손으로 열어야 한다. 목적은 **착지율 시계열**
+#    을 파일로 남기는 것 — 세션 시작 노티가 **네트워크 없이 그 파일만 읽게** 하려면 이게 먼저다
+#    (peer: SessionStart 에 원격 호출은 지연·행 위험 · `--author @me` 는 계정 공유 시 오귀속).
+landing_witness() {
+    local checker="${FH_DIR}/scripts/digest_landing_check.sh"
+    [ -x "$checker" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness: checker 부재 — SKIPPED (not a pass)" >> "$LOG_FILE"; return 0; }
+    local prev
+    prev=$(find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name 'frontier_digest_*.md' 2>/dev/null \
+           | grep -v "frontier_digest_${TODAY}" | sort | tail -1)
+    [ -n "$prev" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness: 직전 digest 없음 — SKIPPED (not a pass)" >> "$LOG_FILE"; return 0; }
+    local out rc
+    out=$(bash "$checker" "$prev" "$FH_DIR" 2>&1); rc=$?
+    case "$rc" in
+        0)  echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: ALL-LANDED (rc=0)" >> "$LOG_FILE" ;;
+        1)  echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: SOME-UNLANDED (rc=1) — 선별기다, 히트를 손으로 열어라" >> "$LOG_FILE" ;;
+        10) echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: HARNESS-ERROR (rc=10) — 못 쟀다, 미착지 0 이 아니다" >> "$LOG_FILE" ;;
+        *)  echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: UNEXPECTED rc=$rc — 못 쟀다" >> "$LOG_FILE" ;;
+    esac
+    printf '%s\n' "$out" | sed 's/^/    /' >> "$LOG_FILE"
+    return 0   # 🟥 항상 0 — 계측이 러너의 종료 의미를 바꾸면 안 된다
+}
+
 # Skip if already ran today
 if digest_ready; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Already ran today — skipping" >> "$LOG_FILE"
-    publish_gate; exit $?
+    publish_gate; _pg=$?; [ "$_pg" -eq 0 ] && landing_witness; exit "$_pg"
 fi
 
 # Single-instance lock (mkdir = atomic on bash 3.2). Guards launchd-vs-manual double dispatch:
@@ -129,7 +159,7 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
     # Re-check before spending an attempt (a manual run may have landed the digest during the sleep)
     if digest_ready; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Digest appeared externally before attempt ${ATTEMPT} — success" >> "$LOG_FILE"
-        publish_gate; exit $?
+        publish_gate; _pg=$?; [ "$_pg" -eq 0 ] && landing_witness; exit "$_pg"
     fi
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attempt ${ATTEMPT}/${MAX_ATTEMPTS}" >> "$LOG_FILE"
     "$CLAUDE_BIN" -p --permission-mode acceptEdits \
@@ -156,6 +186,7 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
     if digest_ready; then
         publish_gate; _pg=$?
         [ "$_pg" -eq 0 ] || exit "$_pg"
+        landing_witness
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Digest file present after attempt ${ATTEMPT} (claude exit ${EXIT_CODE}) — success" >> "$LOG_FILE"
         exit 0
     fi
