@@ -54,6 +54,26 @@ set -f
 
 RC_OK=0; RC_VIOLATION=1; RC_UNVERIFIABLE=3; RC_HARNESS=10
 
+# 🟥 **계기 전제 프리플라이트** (2026-08-18, 넓은-질문 탈상관 팔이 known-pair 로 재현).
+#   `_snapshot` 의 파일 축은 `… | xargs -0 shasum -a 256 2>/dev/null` 이다. `shasum` 이 없거나
+#   죽으면 before/after 가 **둘 다 빈 문자열**이 되어 `changed=0` → **`✅ VERIFIED · 관측=no-write`**.
+#   재현(같은 capfile, PATH 만 다름): 정상 `🟥 VIOLATION rc=1` / shasum=127 `✅ VERIFIED rc=0`.
+#   ⇒ 이 파일이 헤더에서 겨눈 「미측정을 0 으로 렌더」의 자기 판본이었고, `UNVERIFIABLE` 조차
+#     아니라 **VERIFIED** 였다. 계기가 죽으면 판정을 내지 않는다.
+#   ★`2>/dev/null` 은 남긴다 — 개별 파일 권한 오류로 전체가 죽으면 그게 더 나쁘다.
+#     막는 지점은 **전제**(도구 부재)이지 개별 항목 실패가 아니다.
+#   ⚠️ **폴백이 필요하다**(cross-family 지목 #3): `shasum` 은 macOS/perl 계열 관행이고
+#     Linux/BusyBox 소비자는 `sha256sum` 만 있는 경우가 흔하다. 이 파일은 `package.json
+#     files[]` 로 **출하되므로** shasum 강제는 과차단이다.
+HASHER=""
+if   command -v shasum    >/dev/null 2>&1; then HASHER="shasum -a 256"
+elif command -v sha256sum >/dev/null 2>&1; then HASHER="sha256sum"
+else
+  echo "❌ HARNESS_ERROR — \`shasum\` 도 \`sha256sum\` 도 PATH 에 없다." >&2
+  echo "   스냅샷의 해시 축이 죽어 거짓 \`VERIFIED\` 가 난다. 판정하지 않고 중단한다." >&2
+  exit "$RC_HARNESS"
+fi
+
 # writes 축 순서 (좁음 → 넓음). 관측이 선언보다 넓으면 VIOLATION.
 ORDER_writes="read-only write-local write-remote"
 
@@ -82,7 +102,8 @@ GIT_META_WATCH=""
 # 아니라 **파일당 프로세스 스폰**이었다. `xargs` 배치로 한 번에 넘기면 같은 대상을 재면서
 # 비용이 떨어진다 — 정확도를 깎아 비용을 맞추려던 게 잘못된 트레이드였다.
 
-_snapshot() {  # $1=dir → "sha  path" 목록 (정렬)
+_snapshot() {  # $1=dir → "file <path>" + "sha  path" + dir/기타 축 (정렬)
+  local _flist; _flist=$(mktemp "${TMPDIR:-/tmp}/fh_flist.XXXXXX")
   {
     # `.git` 은 통째로 제외한다 — `git status` 류가 `.git/index` 를 정당하게 갱신하므로
     # 전체를 재면 읽기 전용 capability 가 거짓 VIOLATION 을 받는다. 대신 아래에서
@@ -101,10 +122,19 @@ _snapshot() {  # $1=dir → "sha  path" 목록 (정렬)
       case "$w" in "$1"/*|"$1") ;; *) continue ;; esac
       find "$w" -type f 2>/dev/null
     done
-  } | LC_ALL=C sort -u \
-    | tr '\n' '\0' \
-    | xargs -0 -n 400 shasum -a 256 2>/dev/null \
+  } | LC_ALL=C sort -u > "$_flist"
+  # 🟥 **이름 목록 축 — 해시와 별도로 낸다** (2026-08-18, cross-family 지목 #1).
+  #   해시 축만 두면 «해시가 실패한 파일»과 «없는 파일»이 **구분 불가**다. 실측 반례 둘:
+  #     ⓐ `shasum` 이 존재하지만 exit 1 인 shim  → 해시 0줄 → changed=0 → ✅ VERIFIED
+  #     ⓑ **가짜 도구 없이도** `touch f && chmod 000 f` → 그 파일 해시만 실패 →
+  #        `2>/dev/null` 이 삼킴 → ✅ VERIFIED
+  #   ⇒ 이름 목록은 **해시 도구와 무관하게** 생성/삭제를 잡는다. 두 축은 서로의 폴백이 아니라
+  #     **다른 것을 잰다**(이름=존재 · 해시=내용). 둘 다 필요하다.
+  LC_ALL=C sed 's/^/file /' "$_flist"
+  tr '\n' '\0' < "$_flist" \
+    | xargs -0 -n 400 $HASHER 2>/dev/null \
     | LC_ALL=C sort
+  rm -f "$_flist"
   # 🟥 **디렉토리 존재 축** (2026-08-17). 위 블록은 `-type f` 라 **파일만** 센다 — 빈
   #   디렉토리는 관측면에 아예 없었고, `mkdir -p uploads outputs tmp` 만 하는 capability 가
   #   `writes: read-only` 선언으로 **✅ VERIFIED** 를 받았다(known-pair 3-arm 실측).
@@ -285,6 +315,12 @@ probe_one() {  # $1=capfile → rc
 
   local before after out rc
   before=$(_snapshot "$sandbox")
+  # 🟥 스냅샷은 **절대 비지 않는다** — 디렉토리 축이 최소한 루트 자신을 찍기 때문이다.
+  #   비었다면 `find` 조차 실패한 것이고, 그건 관측이 아니라 계기 사망이다.
+  if [ -z "$before" ]; then
+    echo "  ❌ HARNESS_ERROR — 사전 스냅샷이 비었다($sandbox). 관측면이 죽었다." >&2
+    return "$RC_HARNESS"
+  fi
   local out_before; out_before=$(_snapshot "$outside")
 
   # 실행 — **양 arm 을 같은 샌드박스 정책으로** 돌린다(2026-08-16 cross-family 지목).
@@ -787,6 +823,106 @@ EOF
     fails=$((fails+1)); echo "❌ L18 rc=$rc (1 기대) — 비정규 노드가 감시면 밖이다"
   fi
 
+  # ── L19 **집계가 위반을 «못 쟀음»으로 삼키지 않는다** ────────────────────────
+  #   RC_VIOLATION=1 · RC_UNVERIFIABLE=3 이라 수치 max 로 접으면 exit 3 이 나왔다.
+  cat > "$d/agg_viol.cap" <<EOF
+id: t:aggv
+entry: bash -c 'touch aggregated_violation'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$("$0" "$d/agg_viol.cap" "$d/nz_undeclared.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ] && printf '%s' "$out" | grep -q "nz_undeclared" \
+     && printf '%s' "$out" | grep -q "unverifiable=1"; then
+    pass=$((pass+1)); echo "✅ L19 위반+미측정 배치: exit=VIOLATION 이고 미측정이 요약에 남는다"
+  else
+    fails=$((fails+1)); echo "❌ L19 rc=$rc — 집계가 위반을 삼키거나 두 번째 capfile 을 안 쟀다"
+  fi
+  # L19b **순서 반전** — cross-family 지목 #4: 위반이 먼저면 short-circuit 퇴행도 초록이다.
+  out=$("$0" "$d/nz_undeclared.cap" "$d/agg_viol.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L19b 순서를 뒤집어도 VIOLATION 이 이긴다(미측정이 먼저여도)"
+  else
+    fails=$((fails+1)); echo "❌ L19b rc=$rc (1 기대) — 첫 rc 에 갇히거나 심각도가 뒤집힌다"
+  fi
+  # L19c 컨트롤 — 위반이 없으면 여전히 미측정(3)이다(과차단 방지).
+  out=$("$0" "$d/nz_undeclared.cap" 2>&1); rc=$?
+  if [ "$rc" = "3" ]; then
+    pass=$((pass+1)); echo "✅ L19c 컨트롤 — 위반 없는 배치는 여전히 UNVERIFIABLE"
+  else
+    fails=$((fails+1)); echo "❌ L19c rc=$rc (3 기대) — 심각도 매핑이 미측정을 잘못 접는다"
+  fi
+
+  # ── L20 계열 **계기가 죽으면 판정하지 않는다 · 살아 있으면 과차단하지 않는다** ──────
+  #   🟥 초판 레인은 두 번 틀렸다(둘 다 자력 적발 0):
+  #     ⓐ `PATH=/nonexistent` 로 재서 **capfile 파싱 실패**를 프리플라이트로 오귀속 — 되돌림
+  #       3중 프로브가 적발(수리를 되돌려도 초록이었다)
+  #     ⓑ shim 빌더가 `set -f`(전역 noglob) 때문에 확장이 안 됨 — **캘리브레이션 짝**이 적발
+  #   여기서는 도구를 **하나씩** 빼고, 매 arm 에 기대값을 다르게 건다.
+  #   ★PATH 원소 분해는 공백/글롭 안전하게(`tr` → 줄 단위). cross-family 지목 #7.
+  _mkshim() {  # $1=shim경로  $2..=제외할 도구명
+    local shimd="$1"; shift
+    mkdir -p "$shimd"
+    printf '%s\n' "$PATH" | tr ':' '\n' > "$d/_pathdirs"
+    local _p _f _b _x _skip
+    set +f
+    while IFS= read -r _p; do
+      [ -n "$_p" ] && [ -d "$_p" ] || continue
+      for _f in "$_p"/*; do
+        [ -e "$_f" ] || continue
+        _b=${_f##*/}; _skip=0
+        for _x in "$@"; do [ "$_b" = "$_x" ] && { _skip=1; break; }; done
+        [ "$_skip" = 1 ] && continue
+        [ -e "$shimd/$_b" ] || ln -s "$_f" "$shimd/$_b" 2>/dev/null
+      done
+    done < "$d/_pathdirs"
+    set -f
+  }
+
+  # L20 해시 도구가 **둘 다** 없으면 판정하지 않는다.
+  _mkshim "$d/bin_none" shasum sha256sum
+  out=$(PATH="$d/bin_none" "${BASH:-/bin/bash}" "$0" "$d/agg_viol.cap" 2>&1); rc=$?
+  if [ "$rc" = "10" ] && printf '%s' "$out" | grep -q "sha256sum"; then
+    pass=$((pass+1)); echo "✅ L20 해시 도구 전무는 HARNESS_ERROR (이유도 찍힌다)"
+  else
+    fails=$((fails+1)); echo "❌ L20 rc=$rc (10 기대) — 계기 사망이 통과/판정으로 렌더된다"
+  fi
+  # L20b **과차단 방지** — `shasum` 만 없고 `sha256sum` 이 있으면 정상 판정해야 한다.
+  #   cross-family 지목 #3: 이 파일은 files[] 로 출하되고 Linux 소비자는 sha256sum 만 갖는다.
+  if command -v sha256sum >/dev/null 2>&1; then
+    _mkshim "$d/bin_s256" shasum
+    out=$(PATH="$d/bin_s256" "${BASH:-/bin/bash}" "$0" "$d/agg_viol.cap" 2>&1); rc=$?
+    if [ "$rc" = "1" ]; then
+      pass=$((pass+1)); echo "✅ L20b shasum 부재+sha256sum 존재 → 폴백이 정상 판정(과차단 없음)"
+    else
+      fails=$((fails+1)); echo "❌ L20b rc=$rc (1 기대) — 폴백이 없거나 과차단한다"
+    fi
+  else
+    echo "⏭  L20b SKIP — 이 머신에 sha256sum 이 없다(미측정, 통과 아님)"
+  fi
+  # L20c **«있는데 고장난» 해시 도구** — cross-family 지목 #1. 프리플라이트는 통과한다.
+  _mkshim "$d/bin_broken" shasum sha256sum
+  printf '#!/bin/sh\nexit 1\n' > "$d/bin_broken/shasum"; chmod +x "$d/bin_broken/shasum"
+  out=$(PATH="$d/bin_broken" "${BASH:-/bin/bash}" "$0" "$d/agg_viol.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L20c 해시 도구가 고장나도 파일 생성은 잡힌다(이름 목록 축)"
+  else
+    fails=$((fails+1)); echo "❌ L20c rc=$rc (1 기대) — 고장난 계기가 거짓 VERIFIED 를 낸다"
+  fi
+  # L20d **읽을 수 없는 파일** — 가짜 도구 없이 재현되는 형태(cross-family 지목 #1 두 번째).
+  cat > "$d/unreadable.cap" <<EOF
+id: t:unread
+entry: bash -c 'touch hidden_regular && chmod 000 hidden_regular'
+requires_cwd: $_rs
+writes: read-only
+EOF
+  out=$(probe_one "$d/unreadable.cap" 2>&1); rc=$?
+  if [ "$rc" = "1" ]; then
+    pass=$((pass+1)); echo "✅ L20d chmod 000 파일 생성도 위반이다(해시 실패가 삼키지 않는다)"
+  else
+    fails=$((fails+1)); echo "❌ L20d rc=$rc (1 기대) — 해시 실패가 파일 생성을 삼킨다"
+  fi
+
   rm -rf "$d"
   echo "── capability_effect_probe lanes: $pass PASS / $fails FAIL ──"
   [ "$fails" = "0" ]
@@ -797,9 +933,41 @@ case "${1:-}" in
   "") echo "usage: $0 <capfile> [...] | --self-test" >&2; exit "$RC_HARNESS";;
 esac
 
+# 🟥 **집계는 수치 max 가 아니라 심각도 max 다** (2026-08-18, 넓은-질문 탈상관 팔 지목).
+#   `RC_VIOLATION=1` · `RC_UNVERIFIABLE=3` 이라 수치 `-gt` 로 접으면
+#   **실제 위반(1) + 못 쟀음(3) → exit 3** 이 된다. 헤더가 3 을 「판정 아님」으로 정의해 놨으니
+#   `rc==1` 로 위반을 라우팅하는 상위 게이트는 **조용히 놓치고** 재시도/유예 경로를 탄다.
+#   ⇒ 수치 순서와 심각도 순서가 어긋나 있었다. 여기서 명시적으로 매핑한다.
+#   ★미지의 코드는 **가장 심각**으로 접는다(fail-closed) — 새 rc 가 생겼을 때 조용히
+#     통과하는 쪽으로 기울지 않게.
+_sev() {  # 종료코드 → 심각도(클수록 심각). 수치 크기 ≠ 심각도.
+  case "$1" in
+    "$RC_OK")           printf '0' ;;
+    "$RC_UNVERIFIABLE") printf '1' ;;
+    "$RC_VIOLATION")    printf '2' ;;
+    "$RC_HARNESS")      printf '3' ;;
+    *)                  printf '3' ;;
+  esac
+}
+
+# 🟥 **배치는 «가장 심각한 것» 하나만 종료코드로 낼 수 있다** — 그래서 접히는 정보가 생긴다.
+#   cross-family 지목 #2: 심각도 매핑을 넣은 뒤 「위반 + 미측정」 배치가 `1` 로 나가므로,
+#   `rc==3` 으로 «미측정 있음» 을 라우팅하던 소비자는 **미측정 capfile 을 잃는다.**
+#   ⇒ 종료코드는 심각도로 두고, **접힌 정보는 요약 줄로 표면화**한다(삼키지 않는다).
+#     한 줄이면 상위가 grep 으로 집을 수 있고, 종료코드 계약은 하나로 유지된다.
 worst=0
+n_viol=0; n_unver=0; n_harn=0; n_ok=0
 for c in "$@"; do
   probe_one "$c"; rc=$?
-  [ "$rc" -gt "$worst" ] && worst=$rc
+  case "$rc" in
+    "$RC_OK")           n_ok=$((n_ok+1)) ;;
+    "$RC_VIOLATION")    n_viol=$((n_viol+1)) ;;
+    "$RC_UNVERIFIABLE") n_unver=$((n_unver+1)) ;;
+    *)                  n_harn=$((n_harn+1)) ;;
+  esac
+  [ "$(_sev "$rc")" -gt "$(_sev "$worst")" ] && worst=$rc
 done
+if [ "$#" -gt 1 ]; then
+  echo "── BATCH SUMMARY: ok=$n_ok violation=$n_viol unverifiable=$n_unver harness=$n_harn (exit=$worst)"
+fi
 exit "$worst"
