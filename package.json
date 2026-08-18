@@ -128,6 +128,7 @@
     "scripts/chamber_candidate_collect.sh",
     "scripts/chamber_witness.sh",
     "scripts/digest_landing_check.sh",
+    "scripts/test_satellite_publish_gate_lanes.sh",
     "scripts/relay_channel.sh",
     "scripts/test_relay_channel_lanes.sh",
     "scripts/fh_session_load.sh",
