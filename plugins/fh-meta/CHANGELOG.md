@@ -49,6 +49,7 @@ BREAKING (gate): edit_manifest.yaml 에 `date` 만 있는 엔트리가 있으면
 - **공개 대상 트리 «안»에 로그를 팠고 findings 가 토큰 원문을 찍었다** ⇒ 트리 밖 + 리댁션 3단(인용 스팬·row 꼬리·경로). ⚠️ **이 러너는 출하 대상이 아니므로 npm 소비자에겐 해당 없다** — 러너를 복사해 쓰는 위성에서만 참이다
 - **`pre-commit` 이 gitignored 패턴 오버라이드를 `REPO_ROOT` 에서만 찾았다** ⇒ `EVIDENCE_ROOT` 우선 + 폴백. **이건 출하된다.** 종전엔 워크트리 커밋이 매번 defaults-only 로 돌아 회사명·실명 클래스가 UNSCANNED 였고, 게다가 비차단 경고라 조용했다. ⓑ #448 의 반쪽-픽스였다
 - **훅 주석 정정**: «절대 hooksPath 면 자기무력화가 **구조적으로 막힌다**» 는 과대주장 — 훅이 `$REPO_ROOT/scripts/*` 를 source 하므로 «한 겹 좁아진다» 가 정확하다
+- 🟥 **게시 직전 보안 패스가 신설 레인 2개에서 실 결함을 냈다**(MED·재현됨): 고정 `/tmp` 경로(`/tmp/.r4out` · `/tmp/.lw_*` · `/tmp/.lg_*`)라 공유 `/tmp` 에서 **심볼릭 링크 선점으로 임의 파일이 덮인다**(CWE-377). 이 스위트들은 **출하되고** `selfcheck.sh` 에 배선돼 있어 소비자가 셀프체크만 돌려도 발동했다 ⇒ `mktemp` + `trap` 정리. 재현으로 확인: 링크를 걸고 돌려도 피해 파일이 그대로다
 - 앵커: 위성 **22 레인** · **`test_evidence_root_psa_lanes.sh` 신설 5 레인**(이 경로엔 앵커가 0개였다) · 착지 self-test 12. 되돌림 **8/8 이 각각 그 레인만** 적색
 
 **호환성 — 위성 축은 BREAKING 아님.** 미설정 시 **종전 동작 그대로**이고(`N1`/`N3` 컨트롤이 그것을 주장), FH 자신의 일일 런은 무변경이다. ⚠️ `frontier_digest_daily.sh` 는 **출하 대상이 아니다**(종전 동일 — 출하되는 것은 `frontier_digest_autopilot.sh`).
