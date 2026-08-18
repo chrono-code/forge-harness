@@ -89,4 +89,23 @@ t "P4b SKIP 을 통과로 렌더하지 않는다"          "honest" "$r"
 
 t "N2 control — LEAK 과 NOT-SCANNED 의 rc 가 다르다" "different" "$([ "${P2RC:-x}" != "${P3RC:-y}" ] && echo different || echo collapsed)"
 
+# ── FD_PROFILE 갈래 (2026-08-18) ──────────────────────────────────────────
+# 🟥 이 배선은 **한 번 소실됐다.** forge-wiki 워킹 사본에만 넣었다가 PR 정리 때 rm 했고,
+# 그 사실을 몰라 다음 대상의 약한 산출을 «입장 티어가 낮다»·«스킬을 못 불렀다»로 오진했다.
+# 산출물은 커밋됐는데 그걸 만든 코드가 없던 상태 — 그래서 레인으로 못 박는다.
+_prompt() { FH_DIR="$1" OUT_DIR=out HUMAN_DATE=2026-08-18 TODAY=2026_08_18 PROFILE_PATH="$2" \
+  bash -c "$(sed -n '/^_build_prompt()/,/^}/p' "$ROOT/scripts/frontier_digest_daily.sh")
+_build_prompt"; }
+pd=$(mktemp -d); printf 'PROFILE_CANARY_BODY
+' > "$pd/p.md"
+case "$(_prompt "$pd" "p.md")" in *"PROFILE_CANARY_BODY"*) r=in ;; *) r=missing ;; esac
+t "P5 프로필이 프롬프트에 실제로 실린다"        "in" "$r"
+case "$(_prompt "$pd" "p.md")" in *"STANDPOINT"*) r=yes ;; *) r=no ;; esac
+t "P5b 입장 지시(대상 소스를 열어라)가 실린다"   "yes" "$r"
+case "$(_prompt "$pd" "")" in *"STANDPOINT"*|*"TARGET HARNESS"*) r=leaked ;; *) r=clean ;; esac
+t "N3 control — 프로필 미설정이면 종전 문자열 그대로(FH 경로 무변경)" "clean" "$r"
+case "$(_prompt "$pd" "nonexistent.md")" in *"STANDPOINT"*) r=leaked ;; *) r=clean ;; esac
+t "N4 control — 프로필 경로가 없으면 조용히 종전 경로(존재하지 않는 파일을 실었다고 안 한다)" "clean" "$r"
+rm -rf "$pd"
+
 echo "----"; echo "satellite publish gate: $pass passed, $fail failed"; [ "$fail" -eq 0 ]

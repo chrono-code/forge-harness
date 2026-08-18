@@ -21,6 +21,13 @@ HUMAN_DATE=$(date +%Y-%m-%d)   # pinned once with TODAY — a wake-fired run cro
 #   FD_MODEL    — 어느 티어로 도는가 (신설). 위성마다 도메인 난이도가 다르다.
 # 🟥 기본값은 **전부 종전 그대로**다 — FH 프로덕션 경로 무변경.
 OUT_DIR="${FD_OUT_DIR:-tracks/_meta}"          # FH_DIR 기준 상대경로
+# FD_PROFILE — 대상 하네스가 **자기를 설명하는** 파일(FH_DIR 기준 상대경로).
+# 🟥 이게 없으면 위성은 «프런티어 신호 목록»을 남의 폴더에 복사한다 — 실측 2026-08-18:
+#   FD_OUT_DIR 만 옮긴 런의 산출물이 "signals relevant to forge-harness (FH) operations" 였다
+#   (대상 어휘 0히트 · FH 어휘 11히트 · frontmatter 0). 파이프는 관통했으나 **복제**였다.
+# 운영자 정의: *"프런티어 동향을 파악해서 그 하네스에 개선할 포인트를 찾아 남기는 것 —
+#   복제가 아니라 **응용**"* ⇒ 대상 축은 «어디에 쓰나»만이 아니라 «누구를 위해 읽나»다.
+PROFILE_PATH="${FD_PROFILE:-}"
 LOG_DIR="${FH_DIR}/${OUT_DIR}/logs"
 LOG_FILE="${LOG_DIR}/frontier_digest_${TODAY}.log"
 
@@ -97,6 +104,22 @@ landing_witness() {
     return 0   # 🟥 항상 0 — 계측이 러너의 종료 의미를 바꾸면 안 된다
 }
 
+# 프롬프트는 프로필 유무로 **형태가 갈린다**. 미설정이면 종전 문자열 그대로(FH 경로 무변경).
+_build_prompt() {
+    local base="[automated-run: launchd] Run /frontier-digest for today (${HUMAN_DATE}). Fetch latest signals from HN, arXiv, and GitHub."
+    local prof="${FH_DIR}/${PROFILE_PATH}"
+    if [ -n "$PROFILE_PATH" ] && [ -f "$prof" ]; then
+        printf '%s\n\n%s\n\n%s\n\n%s\n\n%s\n' \
+"${base}" \
+"🟥 TARGET HARNESS — this digest is NOT for forge-harness. Read the profile below and write for THAT harness. Copying a generic frontier list here is replication, not propagation; the deliverable is **what THIS harness should change**, each point naming a file or behavior in it." \
+"🟥 STANDPOINT — do not write from forge-harness's chair. OPEN AND READ the target's own files that the profile names: its canon docs AND its actual source. Cite them by path + line number or function name. A point you cannot anchor to something you actually opened is a trend statement, not an application. (This is the standpoint axis applied to frontier input: reading the profile is tier1b, reading the real code is tier2 — the measured difference is whether any Route line appears at all.)" \
+"$(cat "$prof")" \
+"Save the digest to ${OUT_DIR}/frontier_digest_${TODAY}.md, in the node grammar the profile specifies. Do NOT regenerate any index. If a source cannot be fetched, say so — never invent a citation, and cite specific items, not listing pages."
+    else
+        printf '%s %s\n' "${base}" "Save the digest to ${OUT_DIR}/frontier_digest_${TODAY}.md."
+    fi
+}
+
 # Skip if already ran today
 if digest_ready; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Already ran today — skipping" >> "$LOG_FILE"
@@ -164,7 +187,7 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attempt ${ATTEMPT}/${MAX_ATTEMPTS}" >> "$LOG_FILE"
     "$CLAUDE_BIN" -p --permission-mode acceptEdits \
         ${FD_MODEL:+--model "$FD_MODEL"} \
-        "[automated-run: launchd] Run /frontier-digest for today (${HUMAN_DATE}). Fetch latest signals from HN, arXiv, and GitHub. Save the digest to ${OUT_DIR}/frontier_digest_${TODAY}.md." \
+        "$(_build_prompt)" \
         >> "$LOG_FILE" 2>&1 &
     CLAUDE_PID=$!
     DEADLINE=$((SECONDS + ATTEMPT_TIMEOUT_SECS))
