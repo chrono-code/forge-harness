@@ -1328,6 +1328,19 @@ for i, entry in enumerate(doc):
     if not isinstance(entry, dict):
         print("entry #%d is a %s, not a mapping — a list item may have drifted outside its parent"
               % (i, type(entry).__name__)); sys.exit(1)
+# 🟥 인터리브 지문 — 동시 append 는 **YAML 을 깨지 않고** 내용을 뒤섞는다.
+# 2026-08-18 실측(적대적 재현): 워커 4개가 한 엔트리를 여러 write 로 쪼개 append 하면
+# 파싱은 OK 인데 필드가 서로 섞이고(w3 의 branch 에 w2 의 impact) 나머지는 `date` 만 남는다.
+# ⇒ **형식 검사가 통과시키는 무음 손상.** 이 축이 없애려는 병을 이 축 자신이 통과시키고 있었다.
+# 지문은 스키마가 아니다 — 실물 407 엔트리의 키 분포가 느슨해서(date 100% · branch 38%)
+# 필수키를 걸면 과거를 과차단한다. known-pair 로 고른 지문은 **«date 만 있는 엔트리»**:
+#   known-negative 실물 407건 → 0건 · known-positive 재현본 → 3/5.
+# 워크트리 병렬 커밋이 열리기 전에는 이 조건 자체가 안 생겼다 — #448 이 문을 여니 같이 닫는다.
+orphan = [i for i, e in enumerate(doc) if set(e.keys()) == {"date"}]
+if orphan:
+    print("entry #%s has only `date` — concurrent-append interleaving signature "
+          "(fields lost/mixed). Re-check the last appended entries by hand." % orphan[0])
+    sys.exit(1)
 def norm(v):
     return v.isoformat() if hasattr(v, "isoformat") else str(v).strip()
 if not any(norm(e.get("date")) == sys.argv[2] for e in doc):
