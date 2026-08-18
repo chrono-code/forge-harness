@@ -19,6 +19,9 @@ HUMAN_DATE=$(date +%Y-%m-%d)   # pinned once with TODAY — a wake-fired run cro
 #   FD_OUT_DIR  — 그 레포의 **어디에** 떨어뜨리는가 (신설). FH 는 tracks/_meta 지만
 #                 대상 하네스는 자기 문법이 있다(forge-wiki 는 frontmatter 달린 위키 노드).
 #   FD_MODEL    — 어느 티어로 도는가 (신설). 위성마다 도메인 난이도가 다르다.
+#   FD_LOG_DIR  — 로그를 어디에 파는가 (R2). 공개 대상이면 기본값이 **대상 트리 밖**이다.
+#   FD_LANDING_{TRACKED,IGNORED,CONTROLS} — 착지 증언의 스코프·컨트롤 (R1). 미설정이면
+#                 checker 기본값(= FH 문법 + 레포명 컨트롤) 그대로.
 # 🟥 기본값은 **전부 종전 그대로**다 — FH 프로덕션 경로 무변경.
 OUT_DIR="${FD_OUT_DIR:-tracks/_meta}"          # FH_DIR 기준 상대경로
 # FD_PROFILE — 대상 하네스가 **자기를 설명하는** 파일(FH_DIR 기준 상대경로).
@@ -28,7 +31,20 @@ OUT_DIR="${FD_OUT_DIR:-tracks/_meta}"          # FH_DIR 기준 상대경로
 # 운영자 정의: *"프런티어 동향을 파악해서 그 하네스에 개선할 포인트를 찾아 남기는 것 —
 #   복제가 아니라 **응용**"* ⇒ 대상 축은 «어디에 쓰나»만이 아니라 «누구를 위해 읽나»다.
 PROFILE_PATH="${FD_PROFILE:-}"
-LOG_DIR="${FH_DIR}/${OUT_DIR}/logs"
+# ── R2 (2026-08-18) · 로그는 **공개 대상 트리 밖**에 판다 ───────────────────
+# `FD_PUBLIC_TARGET=1` 은 «이 OUT_DIR 이 공개표면»이라는 선언인데 초판은 그 밑에 로그를 팠다.
+# 스캐너 findings 는 **매치된 토큰 원문**을 찍고(`psa_scan_lib.sh`: `❌ $sev leak — path: 'tok'`)
+# `publish_gate` 는 `-maxdepth 1 -name '*.md'` 만 보므로 그 로그는 **구조적으로 스캔 밖**이다.
+# ⇒ 유출을 격리하면서 그 유출을 같은 공개 트리에 적는 형태였다. 내 위성 2대는 `logs/` 를
+#   gitignore 해뒀지만 **코드가 그걸 보장하지 않는다** — 소비자가 당한다.
+# 🟥 기본값은 종전 그대로(FH 는 tracks/ 가 gitignored 라 무변경). 공개 대상일 때만 밖으로.
+if [ -n "${FD_LOG_DIR:-}" ]; then
+    LOG_DIR="$FD_LOG_DIR"
+elif [ "${FD_PUBLIC_TARGET:-0}" = "1" ]; then
+    LOG_DIR="${HOME}/.cache/fh/frontier_digest/$(basename "$FH_DIR")"
+else
+    LOG_DIR="${FH_DIR}/${OUT_DIR}/logs"
+fi
 LOG_FILE="${LOG_DIR}/frontier_digest_${TODAY}.log"
 
 mkdir -p "$LOG_DIR"
@@ -40,8 +56,16 @@ find "$LOG_DIR" -name 'frontier_digest_*.log' -mtime +30 -delete 2>/dev/null
 # Success = a non-trivial digest file exists. Mere existence is not enough: the dominant failure
 # class is "connection closed mid-response", which can leave a partial/empty file — that must not
 # count as done (it would also lock out every later run today via the skip-check below).
+# 🟥 선택자는 **한 함수**다 (R3, 2026-08-18). 초판은 `digest_ready` 가 `-size +1k`,
+# `publish_gate` 가 필터 없이 `head -1` 이었다 — 같은 날짜 파일이 둘이면 부산물이 CLEAN 을
+# 내고 **진짜 다이제스트는 미스캔으로 게시**된다(두 계열 독립 수렴).
+# 두 벌의 관대함이 갈리는 그 형태다([[feedback_divergent_leniency_duplicate_normalizers]]).
+digest_files() {
+    find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" -size +1k 2>/dev/null
+}
+
 digest_ready() {
-    find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" -size +1k 2>/dev/null | grep -q .
+    digest_files | grep -q .
 }
 
 # ── 공개표면 게이트 (2026-08-18, 원정 2차) ──────────────────────────────────
@@ -56,22 +80,77 @@ digest_ready() {
 #
 # 🟥 rc 3값을 두 값으로 접지 않는다 — 0 게시 / 1 격리 / 그 외 보류. 스캐너는 자기 죽음을
 #    rc=3(NOT SCANNED)으로 신고하므로 그 값을 존중한다.
+# 🟥 findings 를 **원문 그대로 로그에 적지 않는다** (R2). 스캐너는 매치된 토큰을 인용부호로
+# 찍는데, 그걸 그대로 남기면 «유출을 격리하면서 같은 자리에 유출을 복사»하는 꼴이다.
+# 심각도·경로·패턴 히트 사실은 남기고 **토큰 본문만** 가린다 — 진단은 격리된 파일을 열어서.
+# 🟥 초판은 `s/: '.*'$/…/` 로 **줄 끝의 인용부호만** 잡았다. 스캐너의 allowlist 줄은
+#    `⚪ allowlisted — path: 'tok' (row: … :: …)` 이라 `)` 로 끝나서 **안 가려졌다** — 같은
+#    함수가 잡아야 할 두 형태 중 하나만 잡는 상태였다(자체 격리 대조로 발견, 레인 R2c).
+#    그래서 **줄 안의 모든 인용 스팬**을 가린다. 판정(심각도·경로)은 남고 페이로드만 사라진다.
+# 🟥 두 번째 정정: 인용 스팬만 가려도 allowlist 줄의 `(row: f.md :: <토큰>)` 꼬리는 **인용
+#    없이** 토큰을 또 적는다. 레인 R2c 가 그걸 잡았다(내 첫 수리는 절반이었다).
+# 🟥 세 번째 정정 (cross-family/codex F2): 인용 스팬과 row 꼬리를 가려도 **경로 쪽**이 남는다.
+#    스캐너 출력은 `❌ HIGH leak — <path>: '<tok>'` 이고, 모델이 저장한 **파일명 자체에** 토큰이
+#    들어가면 그 왼쪽은 그대로 로그에 적힌다. 파일명은 우리가 프롬프트로 정하지만 **강제하지는
+#    않는다** — 강제 안 되는 것을 안전 근거로 쓰지 않는다.
+#  ⇒ 경로는 **정규 이름일 때만** 그대로 적고, 아니면 통째로 가린다. 진단 가치(어느 파일인지)는
+#    정규 이름 케이스에서 유지되고, 비정규 이름은 «그 사실 자체»가 진단 정보가 된다.
+_safe_name() {
+    case "$(basename "$1")" in
+        # 🟥 `[0-9_]*` 는 **너무 헐겁다** — 첫 글자만 검사하고 나머지는 `*` 가 다 삼킨다.
+        #    `frontier_digest_2026_08_18-<토큰>.md` 가 정규 이름으로 통과했다(레인 R2d 가 잡음).
+        #    날짜 자릿수를 **전부** 고정한다.
+        frontier_digest_[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9].md) basename "$1" ;;
+        frontier_digest_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md) basename "$1" ;;
+        *) echo "[FILENAME REDACTED — 비정규 이름]" ;;
+    esac
+}
+# 🟥 마지막 sed 는 **벨트 앤 브레이스**다: $2 없이 불리거나 치환이 빗나가면 절대경로가 남는데,
+#    그 경로에는 운영자 실명(홈 디렉터리)이 들어 있다(타계열 실측이 `/Users/<이름>/…` 노출을
+#    재현했다). 지금 호출부는 전부 2인자지만, **호출부가 옳다는 것을 안전 근거로 쓰지 않는다.**
+_redact() { # $1 = 출력 · $2 = (선택) 그 출력이 가리키는 실제 경로
+    local body="$1" path="${2:-}"
+    if [ -n "$path" ]; then
+        body="${body//$path/$(_safe_name "$path")}"
+        body="${body//$(basename "$path")/$(_safe_name "$path")}"
+    fi
+    printf '%s\n' "$body" \
+      | sed -e "s/'[^']*'/'[REDACTED — 격리 파일을 열어라]'/g" \
+            -e "s/(row:[^)]*)/(row: [REDACTED])/g" \
+            -e "s#— /[^ :]*:#— [PATH REDACTED]:#g"
+}
+
 publish_gate() {
     [ "${FD_PUBLIC_TARGET:-0}" = "1" ] || return 0
     local lib="${FH_DIR}/scripts/psa_scan_lib.sh"
     [ -f "$lib" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: psa_scan_lib.sh 부재 — fail-closed" >> "$LOG_FILE"; return 3; }
-    local f out rc
-    f=$(find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" 2>/dev/null | head -1)
-    [ -n "$f" ] || return 0
-    out=$(bash -c '. "$1"; psa_load "$2/.claude/rules/.public-surface-patterns.defaults" "$2/.claude/rules/.public-surface-patterns" >/dev/null 2>&1; psa_scan_file "$3"' _ "$lib" "$FH_DIR" "$f" 2>&1)
-    rc=$?
-    case "$rc" in
-        0) echo "[$(date '+%Y-%m-%d %H:%M:%S')] publish gate: CLEAN" >> "$LOG_FILE"; return 0 ;;
-        1) echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: LEAK — 격리, 게시 안 함" >> "$LOG_FILE"
-           printf '%s\n' "$out" >> "$LOG_FILE"; mv "$f" "${f}.QUARANTINE" 2>/dev/null; return 2 ;;
-        *) echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: NOT SCANNED (rc=$rc) — fail-closed, 게시 안 함" >> "$LOG_FILE"
-           printf '%s\n' "$out" >> "$LOG_FILE"; mv "$f" "${f}.UNSCANNED" 2>/dev/null; return 3 ;;
-    esac
+    local f out rc worst=0 n=0
+    # 🟥 글롭 전 파일을 **순회**한다. 하나라도 비-0 이면 그 값을 물고 나간다(최악 우선:
+    #    3 NOT-SCANNED > 2 LEAK > 0). 한 파일만 보고 나머지를 게시하면 fail-open 이다.
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        n=$((n+1))
+        out=$(bash -c '. "$1"; psa_load "$2/.claude/rules/.public-surface-patterns.defaults" "$2/.claude/rules/.public-surface-patterns" >/dev/null 2>&1; psa_scan_file "$3"' _ "$lib" "$FH_DIR" "$f" 2>&1)
+        rc=$?
+        case "$rc" in
+            0) echo "[$(date '+%Y-%m-%d %H:%M:%S')] publish gate: CLEAN [$(_safe_name "$f")]" >> "$LOG_FILE" ;;
+            1) echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: LEAK [$(_safe_name "$f")] — 격리, 게시 안 함" >> "$LOG_FILE"
+               _redact "$out" "$f" >> "$LOG_FILE"; mv "$f" "${f}.QUARANTINE" 2>/dev/null
+               [ "$worst" -lt 2 ] && worst=2 ;;
+            *) echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: NOT SCANNED (rc=$rc) [$(_safe_name "$f")] — fail-closed, 게시 안 함" >> "$LOG_FILE"
+               _redact "$out" "$f" >> "$LOG_FILE"; mv "$f" "${f}.UNSCANNED" 2>/dev/null
+               worst=3 ;;
+        esac
+    done < <(digest_files)
+    # 🟥 n==0 은 **자기모순**이다 — 이 함수는 `digest_ready` 가 참인 뒤에만 불린다. 파일이
+    #    사라졌거나 선택자가 서로 어긋난 것이고, 둘 다 «게시해도 좋다»의 근거가 아니다.
+    #    초판은 여기서 0(게시)을 냈다(종전 `[ -n "$f" ] || return 0` 를 그대로 옮긴 것).
+    #    degrade-scan 이 S2 로 지목했고, 비가역 표면이므로 **보류(3)** 로 닫는다.
+    if [ "$n" -eq 0 ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: 대상 파일 0건인데 digest_ready 는 참이었다 — 보류(fail-closed)" >> "$LOG_FILE"
+        return 3
+    fi
+    return "$worst"
 }
 
 # ── 착지 증언 (2026-08-18, 원정 2차 ⓑ) ────────────────────────────────────
@@ -89,11 +168,29 @@ landing_witness() {
     local checker="${FH_DIR}/scripts/digest_landing_check.sh"
     [ -x "$checker" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness: checker 부재 — SKIPPED (not a pass)" >> "$LOG_FILE"; return 0; }
     local prev
+    # 🟥 R5 (2026-08-18, **첫 실사용에서 발견**) — `sort` 가 로케일 의존이라 «직전»을 틀리게
+    #    고른다. 실측: 기본 로케일에서 `frontier_digest_2026-06-02.md`(대시 표기 옛 파일)가
+    #    `frontier_digest_2026_08_17.md` 보다 뒤에 정렬돼, **두 달 전 파일**이 직전으로 뽑혔고
+    #    그 파일엔 후보 절이 없어 매 런 HARNESS-ERROR 였다. `LC_ALL=C` 로 바이트 순서를 고정한다.
+    #    (레인 21개가 전부 초록인 채로 이게 살아 있었다 — 픽스처가 한 가지 표기만 썼기 때문이다.)
     prev=$(find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name 'frontier_digest_*.md' 2>/dev/null \
-           | grep -v "frontier_digest_${TODAY}" | sort | tail -1)
+           | grep -v "frontier_digest_${TODAY}" | LC_ALL=C sort | tail -1)
     [ -n "$prev" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness: 직전 digest 없음 — SKIPPED (not a pass)" >> "$LOG_FILE"; return 0; }
     local out rc
-    out=$(bash "$checker" "$prev" "$FH_DIR" 2>&1); rc=$?
+    # 🟥 R1 (2026-08-18) — 초판은 `bash "$checker" "$prev" "$FH_DIR"` 였다. 두 번째 인자는
+    # **«타깃 파일 목록»** 이지 루트가 아니어서, 디렉터리가 타깃으로 들어가 **매 런 rc=10** 이
+    # 찍혔다(실측: 2인자 rc=10 컨트롤 사망 / 1인자 rc=1 컨트롤 2/2). 「배선 완료」라고 보고한
+    # 계기가 배선 첫날부터 죽어 있었다 — 손으로 부른 형태와 러너가 부르는 형태가 달랐다.
+    # 루트는 `CLAUDE_PROJECT_DIR` 로 넘기고, **무엇을 볼지**는 스코프 변수로 넘긴다.
+    # ⚠️ env 접두 할당으로 넘기면 **값의 공백에서 단어분리**된다(기본 스코프가
+    #    `knowledge CLAUDE.md` — 공백이 들어 있다). export 를 서브셸에 가둔다.
+    out=$( export CLAUDE_PROJECT_DIR="$FH_DIR"
+           [ -n "${FD_LANDING_TRACKED:-}" ] && export DLC_TRACKED_PATHS="$FD_LANDING_TRACKED"
+           [ -n "${FD_LANDING_IGNORED+x}" ] && export DLC_IGNORED_DIR="$FD_LANDING_IGNORED"
+           # 🟥 컨트롤 토큰도 대상축이다 — 기본값은 레포 이름이라 FH 는 무변경이지만,
+           #    대상 레포에 확실히 있는 토큰을 위성이 지정할 수 있어야 계기가 산다.
+           [ -n "${FD_LANDING_CONTROLS:-}" ] && export DLC_CONTROLS="$FD_LANDING_CONTROLS"
+           bash "$checker" "$prev" 2>&1 ); rc=$?
     case "$rc" in
         0)  echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: ALL-LANDED (rc=0)" >> "$LOG_FILE" ;;
         1)  echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: SOME-UNLANDED (rc=1) — 선별기다, 히트를 손으로 열어라" >> "$LOG_FILE" ;;

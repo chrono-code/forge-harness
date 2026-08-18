@@ -85,6 +85,21 @@ FH="${CLAUDE_PROJECT_DIR:-$(cd "$SELF_DIR/.." && pwd)}"
 # ⚠️ 검증기는 **도구**이고 FH 는 **대상**이다 — 두 축을 같은 변수로 묶으면 격리 픽스처에서
 # 도구까지 임시 트리에서 찾다가 죽는다(실측). 도구는 언제나 이 스크립트 옆에 있다.
 CHECKER="$SELF_DIR/utterance_landing_check.sh"
+
+# ── 착지 스코프 (2026-08-18, R1) ────────────────────────────────────────────
+# 기본 스코프는 **FH 자신의 문법**이다(`knowledge` · `CLAUDE.md` · gitignored `tracks/_meta`).
+# 위성이 겨눈 대상 하네스에는 그 셋이 없어서 타깃이 0건 → rc=10 이 매 런 찍힌다. 그건 정직한
+# 값이지만(미측정≠0), 계기가 **구조적으로 죽은 채** 배선된 것과 같다.
+# 🟥 스코프를 «러너가 손으로 목록을 만들어 넘기는» 식으로 풀지 않는다 — 그러면 선후 필터가
+#    두 벌이 되고 관대함이 갈리는 순간 한쪽만 통과하는 입력이 무음 드롭된다
+#    ([[feedback_divergent_leniency_duplicate_normalizers]]). 필터는 여기 한 곳에 두고
+#    **무엇을 볼지만** 밖에서 정한다.
+# 기본값은 종전 그대로 — FH 경로 무변경.
+# ⚠️ **명명된 잔여 (cross-family/codex F4)**: 이 값은 **공백 분리**된 다중 pathspec 이다.
+#    따라서 **경로에 공백이 있으면 갈린다** — `docs public` 은 «한 경로»가 아니라 두 경로가 된다.
+#    다중 경로 지원과의 트레이드오프라 오늘은 **문서화만** 했고 기계 검사는 없다.
+DLC_TRACKED_PATHS="${DLC_TRACKED_PATHS:-knowledge CLAUDE.md}"   # git 추적축 (커밋시각)
+DLC_IGNORED_DIR="${DLC_IGNORED_DIR-tracks/_meta}"               # gitignored 축 (mtime). 빈 값 = 그 축 없음
 SECTION_RE='^## .*Immediate Application Candidates'
 
 # 후보 표에서 (id, 판별토큰 OR 정규식) 을 뽑는다. 토큰 없으면 id 만 내고 정규식은 빈 값.
@@ -193,8 +208,30 @@ do_extract() { # $1 = digest
   [ -f "$d" ] || { echo "❌ digest 없음: $d" >&2; return 10; }
   # 컨트롤 — 이 계기가 살아 있는지 증명한다. 대상 트리에 확실히 존재하는 토큰.
   # 컨트롤이 죽으면 착지 검증기가 rc=10 을 내고 타깃 결과를 인쇄하지 않는다.
-  printf 'CONTROL\tforge-harness\t컨트롤: 레포명\n'
-  printf 'CONTROL\tsession\t컨트롤: 흔한 토큰\n'
+  # 🟥 R1-b (2026-08-18) — 컨트롤이 `forge-harness`/`session` 으로 **하드코딩**이었다.
+  # 위성이 겨눈 레포에는 그 두 토큰이 없으므로 **컨트롤이 매번 죽고** 계기는 rc=10 만 낸다.
+  # R1 의 인자 버그를 고쳐도 이게 남아 있으면 계기는 여전히 구조적으로 죽은 채다 — 그 사실을
+  # 이 레인이 잡았다(수리가 신규 결함의 출처인 것과 같은 얼굴: 반쪽 수리).
+  # 기본값은 **자기 레포 이름**이라 FH 에서는 종전과 동일(`forge-harness`)하다.
+  # 🟥 두 갈래를 갈라야 한다 (cross-family/codex F3 지목, 실측으로 **더 나쁜 형태** 확인):
+  #    초판은 `for _ctl in ${DLC_CONTROLS:-$(basename "$FH") session}` 였는데, 비인용 명령치환은
+  #    단어분리 **와 글로빙**을 둘 다 탄다 — 레포명이 `.*` 인 디렉터리에서 실측하니 컨트롤이
+  #    `.git` 등 **4개로 글로브 확장**됐다. 게다가 컨트롤은 ERE 로 쓰이므로 레포명에 정규식
+  #    메타문자가 있으면 «아무 내용에나 매치»해 **계기 생존이 오탐**이 된다.
+  #  ⇒ 유도 기본값은 **리터럴로 취급**(메타문자 이스케이프) · 사용자 지정값만 정규식으로 둔다.
+  local _ctl _label=1
+  if [ -n "${DLC_CONTROLS:-}" ]; then
+    for _ctl in $DLC_CONTROLS; do            # 명시값은 «정규식» 계약 — 의도적 분리
+      printf 'CONTROL\t%s\t컨트롤%s: %s\n' "$_ctl" "$_label" "$_ctl"
+      _label=$((_label+1))
+    done
+  else
+    local _repo; _repo="$(basename "$FH")"
+    # ERE 메타문자 이스케이프 — 유도값은 «그 문자열이 실제로 있는가» 를 묻는 것이지 패턴이 아니다
+    _repo="$(printf '%s' "$_repo" | sed 's/[][\.^$*+?(){}|]/\\&/g')"
+    printf 'CONTROL\t%s\t컨트롤1: %s\n' "$_repo" "$_repo"
+    printf 'CONTROL\tsession\t컨트롤2: session\n'
+  fi
   while IFS=$'\t' read -r id toks; do
     [ -n "${id:-}" ] || continue
     n=$((n+1))
@@ -226,7 +263,8 @@ do_check() {
     # ⚠️ CLAUDE.md 도 **선후 필터를 거친다.** 초판은 무조건 추가했고, 그래서 이 파일 하나가
     # 필터를 우회해 오탐 원천이 됐다 — 손검증에서 "M1 착지 1파일" 의 그 1파일이 CLAUDE.md
     # 였고, 후보와 무관하게 원래 있던 토큰이었다. 예외 경로 하나가 필터 전체를 무력화한다.
-    [ -f "$FH/CLAUDE.md" ] && [ "$FH/CLAUDE.md" -nt "$d" ] && targets+=("$FH/CLAUDE.md")
+    case " $DLC_TRACKED_PATHS " in *" CLAUDE.md "*)
+      [ -f "$FH/CLAUDE.md" ] && [ "$FH/CLAUDE.md" -nt "$d" ] && targets+=("$FH/CLAUDE.md") ;; esac
     # ★ **digest 보다 나중에 수정된 파일만** 본다. grep 은 "토큰이 있다" 만 재고
     # "이 후보 때문에 생겼다" 는 못 잰다 — 이미 있던 문서가 착지로 잡힌다(실측: 후보 하나가
     # 21파일 히트, 전부 무관한 기존 문서였다). 선후 필터가 인과를 주지는 않지만
@@ -261,11 +299,13 @@ do_check() {
       [ -n "$f" ] || continue
       case "$f" in *.md) ;; *) continue ;; esac
       [ -f "$FH/$f" ] && targets+=("$FH/$f")
-    done < <(git -C "$FH" log --since="@$_dts" --name-only --pretty=format: -- knowledge CLAUDE.md 2>/dev/null | sort -u)
-    while IFS= read -r f; do targets+=("$f"); done < <(
-      find "$FH/tracks/_meta" -name '*.md' -type f -newer "$d" 2>/dev/null | head -400)
+    done < <(git -C "$FH" log --since="@$_dts" --name-only --pretty=format: -- $DLC_TRACKED_PATHS 2>/dev/null | sort -u)
+    if [ -n "$DLC_IGNORED_DIR" ] && [ -d "$FH/$DLC_IGNORED_DIR" ]; then
+      while IFS= read -r f; do targets+=("$f"); done < <(
+        find "$FH/$DLC_IGNORED_DIR" -name '*.md' -type f -newer "$d" 2>/dev/null | head -400)
+    fi
     # dirty tracked — 커밋 안 된 수정본엔 git 시각 증거가 없다. 초록으로 만들지 않고 셈에 남긴다.
-    DIRTY_TRACKED="$(git -C "$FH" diff --name-only -- knowledge CLAUDE.md 2>/dev/null | grep -c '[.]md$')" || true
+    DIRTY_TRACKED="$(git -C "$FH" diff --name-only -- $DLC_TRACKED_PATHS 2>/dev/null | grep -c '[.]md$')" || true
     DIRTY_TRACKED="${DIRTY_TRACKED//[^0-9]/}"; DIRTY_TRACKED="${DIRTY_TRACKED:-0}"
   fi
   # ★ 자기참조 차단 — **이 계기의 첫 실물 실행에서 100% 오탐을 낸 원인**이다.
@@ -294,7 +334,7 @@ do_check() {
   local unchk; unchk="$(grep -c '^# UNCHECKABLE' "$probes" 2>/dev/null)" || true
   unchk="${unchk//[^0-9]/}"; unchk="${unchk:-0}"
   echo "── digest 착지 검증: $(basename "$d") ──"
-  echo "   스코프: 공개 FH 자산 + tracks/ (비공개 companion store 제외 — '조직 전파'가 아니라 '허브 내부 착지')"
+  echo "   스코프: git추적[${DLC_TRACKED_PATHS}] + ignored[${DLC_IGNORED_DIR:-없음}] (비공개 companion store 제외 — '조직 전파'가 아니라 '레포 내부 착지')"
   echo "   타깃 파일 ${#targets[@]}건 (digest 이후 수정분만) · 판별불가 후보 ${unchk}건"
   echo "   축: git추적=커밋시각 · gitignored=mtime · dirty tracked ${DIRTY_TRACKED:-0}건=UNMEASURED"
   echo "   ⚠️ 이 계기는 **선후**를 잰다. 인과가 아니다 — 히트는 열어서 확인하라"
@@ -381,8 +421,47 @@ EOF
     touch knowledge/old.md
     printf 'forge-harness session control\n' > tracks/_meta/card.md
   ) >/dev/null 2>&1
-  out="$( cd "$G" && CLAUDE_PROJECT_DIR="$G" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" \
+  # 컨트롤은 픽스처가 실제로 담고 있는 토큰으로 고정한다(레포명이 mktemp 난수라서).
+  # 🟥 이 레인의 주장은 **git/mtime 두 축 분리**지 컨트롤 유도가 아니다 — 축을 섞지 않는다.
+  out="$( cd "$G" && CLAUDE_PROJECT_DIR="$G" DLC_CONTROLS="forge-harness session" \
+          bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" \
           "$G/tracks/_meta/frontier_digest_2001_01_02.md" 2>&1 )"
+  # ── ★N-ctl (2026-08-18, R1-b) — 컨트롤이 **레포 이름을 따라간다** ────────────
+  # 초판은 `forge-harness`/`session` 하드코딩이라 **위성이 겨눈 레포에선 매번 컨트롤 사망**
+  # (= rc=10)이었다. R1 의 인자 버그를 고쳐도 계기는 구조적으로 죽은 채였을 것이다.
+  local out_ctl rc_ctl
+  out_ctl="$( cd "$G" && CLAUDE_PROJECT_DIR="$G" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" \
+          "$G/tracks/_meta/frontier_digest_2001_01_02.md" 2>&1 )"; rc_ctl=$?
+  # 픽스처 레포 이름(mktemp 난수)은 본문에 없다 ⇒ 유도된 컨트롤이 죽어 rc=10 이 정상이다.
+  # 이것이 «유도가 실제로 돈다»의 증거다(하드코딩이면 여기서 rc=1 이 나온다).
+  _t "★N-ctl 컨트롤이 레포명을 따라간다(하드코딩 아님)" 10 "$rc_ctl"
+  # ── ★N-ctl-re (cross-family/codex F3) — 유도 컨트롤은 **리터럴**이지 정규식이 아니다 ──────
+  # 초판은 `for _ctl in ${DLC_CONTROLS:-$(basename "$FH") session}` 였다. 비인용 명령치환이라
+  # ⓐ 레포명이 ERE 메타문자면 «아무 내용에나 매치»해 계기 생존이 **오탐**이 되고
+  # ⓑ 실측하니 글로빙까지 타서 컨트롤이 `.git` 등으로 **확장**되기도 했다.
+  # 🟥 픽스처는 **판별하는 형태**여야 한다. 첫 판본은 레포명을 `.*` 로 잡았는데, 그건 글로빙에
+  #    걸려 죽은 컨트롤이 생기는 바람에 **버그 판본도 rc=10** 을 냈다 — 되돌림 프로브가 그
+  #    장식성을 잡았다([[feedback_fixture_must_use_the_breaking_spelling]]).
+  #    그래서 레포명을 `a.b` 로 쓴다: 글로브로는 아무것도 안 맞아 그대로 남고(확장 없음),
+  #    ERE 로는 `axb` 에 매치된다. 대상에 `axb` 만 두면
+  #      버그 판본 → 컨트롤 **생존(오탐)** → rc≠10
+  #      수리 판본 → 리터럴 `a.b` 없음 → 컨트롤 사망 → rc=10
+  local RG; RG="$(mktemp -d -t 'dlc_re.XXXXXX')" || return 10
+  local RD="$RG/a.b"
+  (
+    mkdir -p "$RD/tracks/_meta" "$RD/knowledge" && cd "$RD" \
+      && git init -q . && git config user.email t@t && git config user.name t
+    printf '# d\n## 📌 FH Immediate Application Candidates\n\n| # | 티어 | 내용 |\n|---|---|---|\n| **A1** | M | `zzz_absent_token` 후보 |\n\n## end\n' \
+      > tracks/_meta/frontier_digest_2001_01_01.md
+    touch -t 200101010000 tracks/_meta/frontier_digest_2001_01_01.md
+    # 리터럴 `a.b` 는 **없다**. `axb`(ERE 로만 매치) 와 `session` 만 있다.
+    printf 'axb 그리고 session\n' > tracks/_meta/card.md
+  ) >/dev/null 2>&1
+  local rc_re
+  ( cd "$RD" && CLAUDE_PROJECT_DIR="$RD" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" \
+      "$RD/tracks/_meta/frontier_digest_2001_01_01.md" ) >/dev/null 2>&1; rc_re=$?
+  _t "★N-ctl-re 레포명이 정규식 메타문자여도 리터럴로 취급(컨트롤 오탐 없음)" 10 "$rc_re"
+  rm -rf "$RG"
   # ⚠️ **줄 단위로** 본다. `case *"A1"*"미착지"*` 는 마지막 요약줄("N건 중 M건 미착지")까지
   # 삼켜 오매칭한다 — 문자열 위치로 판정하는 prose-grep 함정([[feedback_typed_verdict_channel]]).
   if printf '%s\n' "$out" | grep -qE '후보 A1[[:space:]]+미착지'; then

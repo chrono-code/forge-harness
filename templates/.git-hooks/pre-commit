@@ -39,7 +39,12 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 #    종전엔 ⓐ 가 **사실상의 장벽**이라 ⓑ 가 도달 불가였다. ⓐ 를 없애면 ⓑ 가 **처음으로 실재**한다.
 #    ⇒ 워크트리를 쓸 거면 `core.hooksPath` 를 **절대 경로**로 설정해라:
 #         git config core.hooksPath "$(git rev-parse --show-toplevel)/templates/.git-hooks"
-#       그러면 모든 워크트리가 **메인 트리의 훅 한 벌**을 돌아 자기무력화가 구조적으로 막힌다.
+#       그러면 모든 워크트리가 **메인 트리의 훅 한 벌**을 돈다.
+#    🟥 정정 (2026-08-18) — 초판은 여기에 «그러면 자기무력화가 **구조적으로 막힌다**» 라고
+#       적었고 그건 **과대주장**이다. 절대 경로가 막는 것은 **훅 파일 자체의 교체**뿐이다:
+#       이 훅은 `$REPO_ROOT/scripts/*` 를 10곳 넘게 **source** 하므로(psa_scan_lib ·
+#       branch_claim · regression_guard …), 워크트리에서 그 헬퍼 하나를 고치면 게이트는
+#       그대로 초록으로 통과한다. 「막힌다」가 아니라 **「한 겹 좁아진다」**가 정확하다.
 #    🟥 이 훅은 그것을 **강제하지 않는다** — 자기 자신의 설치 형태를 자기가 검사하는 것은
 #       이미 무력화된 뒤엔 안 돌기 때문이다(검사기가 검사 대상). 문서·설치 안내가 그 층이다.
 _gcd=$(git rev-parse --git-common-dir 2>/dev/null || echo "")
@@ -312,8 +317,17 @@ if [ ! -r "$PSA_LIB" ]; then
   FAILED=1
 else
   . "$PSA_LIB"
+  # ── R4 (2026-08-18) · 오버라이드는 **EVIDENCE_ROOT** 에서 찾는다 ──────────────
+  # `tracks/` 는 `--git-common-dir` 로 옮겼는데 **똑같이 gitignored 인** 이 패턴 파일은
+  # `$REPO_ROOT` 에 남아 있었다. 그래서 워크트리 커밋이 매번 **defaults-only** 로 기밀성
+  # 스캔을 돌았다(회사명·실명 클래스가 통째로 UNSCANNED, 게다가 비차단 경고라 조용하다).
+  # 반쪽-픽스의 전형이다([[feedback_half_fix_propagation_boundary]]).
+  # 🟥 `defaults` 는 **tracked** 라 `REPO_ROOT` 가 맞다 — 같이 옮기면 안 된다. 옮기는 것은
+  #    gitignored 인 오버라이드 쪽 하나뿐이고, 없으면 REPO_ROOT 로 폴백한다.
+  PSA_OVR="$EVIDENCE_ROOT/.claude/rules/.public-surface-patterns"
+  [ -r "$PSA_OVR" ] || PSA_OVR="$REPO_ROOT/.claude/rules/.public-surface-patterns"
   psa_load "$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults" \
-           "${PSA_PATTERNS:-$REPO_ROOT/.claude/rules/.public-surface-patterns}"
+           "${PSA_PATTERNS:-$PSA_OVR}"
   if [ "$PSA_OVERRIDE_PRESENT" -eq 0 ]; then
     # 2026-08-16 weekly-audit residual — operator decision: LOUDER WARNING, not fail-closed.
     # A hard block here would fail every fresh clone's / CI's / worktree's first commit (the
