@@ -290,6 +290,77 @@ fi
   ( cd "$FH" && bash scripts/branch_claim.sh reap                     >/dev/null 2>&1 ) || true
 }
 
+# ── 매핑된 프로젝트의 capability 표면화 (2026-08-18) ───────────────────────────
+# WHY HERE (branch-claim 과 같은 자리, early exit **위**): 이건 Mode D 전용이 아니다.
+# companion store 가 없는 설치에서도 프로젝트는 매핑되고, 그때도 형제 하네스의 스킬은
+# 안 보인다. 아래 early exit 밑에 두면 그 설치에서 통째로 죽는다 — 바로 위 branch-claim
+# 블록이 같은 이유로 여기 있다.
+# ⚠️ **정밀화(cross-family 적발)**: `tracks/` 는 npm 산출물에 **안 들어간다**(per-install 데이터).
+#    그러니 «갓 설치한» 소비자에게는 이 블록이 아무것도 안 찍는다 — 값은 그 사람이 프로젝트를
+#    **매핑한 뒤부터** 생긴다. 「공개 사용자에게도 산다」는 그런 뜻이지 «설치 즉시 값이 있다» 가
+#    아니다. (실측: 팩 산출물에 tracks 없음 → 침묵 · tracks/someproject 생성 후 → 발화)
+#
+# WHY AT ALL: `CLAUDE.md §Cross-Project Skill Bus` 는 registry 를 **온보딩 Step 1-c** 에서
+# 읽는데, §Active Onboarding 의 Guards 가 «explicit task-entry → skip onboarding menu» 다.
+# 첫 발화가 task 면 메뉴와 함께 **데이터 로드까지 같이 꺼진다.** 메뉴는 UI 고 registry 는
+# 데이터인데 한 단계에 묶여 있어서 UI 를 끄면 데이터도 꺼진다.
+#   → Mode D companion-store 로드는 이 병을 이미 한 번 고쳤다(«이건 메뉴가 아니라 데이터
+#     로드다» carve-out + 이 스크립트). **registry 엔 그 처방이 안 붙었다** = 반쪽-픽스
+#     전파경계.
+# 실측(2026-08-18): `tracks/gstack` 이 매핑돼 있고 SKILL.md 가 55개인데, 운영자가 이름을
+# 댈 때까지 세션이 그 존재를 몰랐다. CATALOG·CLAUDE.md·sim-conductor 에 전부 등록돼 있었다.
+#
+# 비용 경계: 이름과 개수만. 목록 전량 로드는 안 한다(토큰). 실물이 없거나 스킬이 0인 트랙은
+# 아예 안 찍는다 — 매 세션 13줄이 뜨면 그건 배경 소음이고 아무도 안 읽는다.
+# 🟥 0 을 «없다» 로 렌더하지 않는다: 프로젝트 루트를 못 찾으면 그렇게 적고, 개수를 0 으로
+#    적지 않는다(부재 ≠ 0).
+_PROJ_ROOT="${FH_PROJECTS_ROOT:-$(dirname "$FH")}"
+if [ -d "$FH/tracks" ]; then
+  _reg=""; _mapped=0; _resolved=0
+  for _t in "$FH"/tracks/*/; do
+    _n=$(basename "$_t")
+    case "$_n" in _*) continue ;; esac
+    [ "$_n" = "*" ] && continue
+    _mapped=$((_mapped + 1))
+    _d="$_PROJ_ROOT/$_n"
+    [ -d "$_d" ] || continue
+    _resolved=$((_resolved + 1))
+    # 무거운 디렉터리를 쳐낸다 — 비용 주장이 «내 머신의 내 프로젝트 집합» 위에 서 있으면
+      # 안 된다(cross-family 지적). node_modules/.venv/.git 이 depth 3 안에 있으면 선형으로 는다.
+      _sk=$(find "$_d" -maxdepth 3 \( -name node_modules -o -name .git -o -name .venv \
+              -o -name venv -o -name target -o -name dist \) -prune -o \
+              -name SKILL.md -print 2>/dev/null | wc -l | tr -d ' ')
+    [ "${_sk:-0}" -gt 0 ] || continue
+    _reg="${_reg}  ▸ ${_n} — SKILL.md ${_sk}개  (${_d})
+"
+  done
+  # 🟥 **부재 ≠ 0.** 판별자는 «루트 디렉터리가 있나»가 아니다 — `dirname "$FH"` 는 거의 항상
+  #    존재해서 그 분기는 발화 불가한 장식이었다(초판 결함, 같은 커밋에서 자력 적발).
+  #    실질 판별자는 **매핑된 트랙이 있는데 하나도 실물로 해소되지 않았다** 이고, 그때만
+  #    「못 쟀다」를 말한다. 소비자의 레포가 다른 경로에 있으면 정확히 이 상태가 된다.
+  # 🟥 **all-or-nothing 이면 안 된다** (cross-family 적발, 초판 결함): «전부 못 찾았을 때만»
+  #    말하면 13개 중 1개만 해소되고 12개가 없을 때 그 12개가 **완전히 침묵**한다 — 이 블록이
+  #    없애려는 «부재를 0으로 렌더» 를 블록 자신이 재현한다. 미해소가 하나라도 있으면 말한다.
+  _unres=$((_mapped - _resolved))
+  if [ "$_unres" -gt 0 ]; then
+    _reg="${_reg}  ⚠️ 매핑된 트랙 ${_mapped}개 중 ${_unres}개는 «${_PROJ_ROOT}» 밑에서 실물을 못 찾았다 — 그 ${_unres}개는 «0» 이 아니라 **미측정**이다 (경로가 다르면 FH_PROJECTS_ROOT).
+"
+  fi
+  if [ -n "$_reg" ]; then
+    if [ "$_resolved" -gt 0 ]; then
+      echo "🧩 [cross-project skill bus] 매핑된 프로젝트에 SKILL.md 가 있다 — 파일 개수만 센 것이지 «지금 세션에서 호출 가능하다» 는 확인이 아니다."
+      printf "%s" "$_reg"
+      # 목록이 실제로 있을 때만 낸다. 강등(못 찾음) 케이스에 이 안내가 붙으면 «읽을 것이 있다» 는
+      # 인상을 주는데 목록은 비어 있다 — 없는 것을 있다고 말하는 쪽이다.
+      echo "   ⚠️ 이 줄은 «있다» 만 말한다. 쓰기 전에 그쪽 SKILL.md 를 읽어라 — 필드 하네스 용어를"
+      echo "      일반 개념으로 정규화하는 것이 이 레포의 상습 실패다."
+    else
+      echo "🧩 [cross-project skill bus] 매핑은 있는데 실물을 못 찾았다 — 아래는 **미측정**이다."
+      printf "%s" "$_reg"
+    fi
+  fi
+fi
+
 # Non-Mode-D / no companion store → silent no-op (this is the majority path for public users).
 [ -d "$BE/.git" ] || exit 0
 
