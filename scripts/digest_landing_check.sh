@@ -90,8 +90,57 @@ SECTION_RE='^## .*Immediate Application Candidates'
 # 후보 표에서 (id, 판별토큰 OR 정규식) 을 뽑는다. 토큰 없으면 id 만 내고 정규식은 빈 값.
 _extract() { # $1 = digest path
   awk -v sec="$SECTION_RE" '
+    # 판별자 추출 — 표/문단 **두 경로가 공유**한다(중복 정규화기 방지).
+    function harvest(body, toks,   tmp, w, t) {
+      tmp=body
+      while (match(tmp, /\[\[[^]]+\]\]/)) {
+        w=substr(tmp, RSTART+2, RLENGTH-4); tmp=substr(tmp, RSTART+RLENGTH)
+        if (length(w) >= 5) toks = (toks == "" ? w : toks "|" w)
+      }
+      tmp=body
+      while (match(tmp, /`[^`]+`/)) {
+        t=substr(tmp, RSTART+1, RLENGTH-2); tmp=substr(tmp, RSTART+RLENGTH)
+        sub(/[: ].*$/, "", t)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", t)
+        if (length(t) < 5) continue
+        if (t ~ /[][(){}.*+?^$\\|]/) { if (t ~ /^[A-Za-z0-9_.-]+$/) { } else continue }
+        gsub(/\./, "\\.", t)
+        toks = (toks == "" ? t : toks "|" t)
+      }
+      return toks
+    }
     $0 ~ sec { inblk=1; next }
-    inblk && /^## /  { inblk=0 }
+    inblk && /^## /  { if (pid != "") { print pid "\t" ptoks; pid="" } inblk=0; inpara=0 }
+    # ── 문단 형식 (2026-08-18 신설) ───────────────────────────────────────
+    # 🟥 이 계기는 후보를 **표**로만 읽었다. 실측: 다이제스트 60건 중 표 형식은 **4건**,
+    # 나머지는 `**① …**` `**[A] …**` `**1. …**` `**#1 …**` 같은 **문단 형식**이다.
+    # 즉 계기가 실물의 6.7% 만 읽을 수 있었고, 그래서 첫 실측이 rc=10(«후보 절을 못 찾았다»)
+    # 을 냈다. 안 드러난 이유는 **프로덕션 호출부가 0** 이었기 때문 — 아무도 안 돌렸다.
+    # ⚠️ 머리 표기는 여러 종이라 한 모양에 맞추지 않는다(실측: ① · [A] · 1. · #1 · 그 외).
+    #    **`**` 로 열리는 줄**을 항목 시작으로 보고, 다음 항목/절까지를 본문으로 모은다.
+    # 🟥 판별자 추출은 **표 경로와 같은 코드**를 쓴다 — 두 벌로 갈리면 관대함이 어긋나
+    #    한쪽만 통과하는 입력이 무음 드롭된다(divergent leniency).
+    # 항목 머리 **네** 형식을 다 받는다. 실측(60건 후보 절 전수, 하나씩 열어서 확인):
+    #   `**…**` 74 · 표 `|` 28 · `### [M] 1.` 22 · **번호 리스트 `1. **…**`**(초기 다이제스트의 주 형식)
+    # 🟥 초판은 `**` 만 받았고, 표가 섞인 절에서 **표 앞의 `**` 줄을 먼저 삼켜** 표 행을
+    #    UNCHECKABLE 로 떨어뜨렸다(회귀 실측). 그래서 **표 행은 항상 표 경로가 먼저 가져간다**.
+    inblk && (/^###+ / || /^\*\*/ || /^[0-9]+\. / || /^- \*\*/) {
+      if (pid != "") { print pid "\t" ptoks }
+      pid=$0; ptoks=""
+      sub(/^###+ /, "", pid); sub(/^[0-9]+\. /, "", pid); sub(/^- /, "", pid)
+      sub(/^\*\*/, "", pid); sub(/\*\*.*$/, "", pid)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", pid)
+      # 🟥 substr 로 자르지 않는다 — awk 는 로케일에 따라 **바이트** 단위라 한글/기호를
+      #    중간에서 쪼개고 그 출력이 UTF-8 로 안 읽힌다(실측: 집계 스크립트가 UnicodeDecodeError).
+      #    id 는 표시용이므로 자르지 말고 **공백 기준 앞 6낱말**만 쓴다.
+      if (split(pid, _w, /[[:space:]]+/) > 6) {
+        pid=""; for (_i=1; _i<=6; _i++) pid = pid (_i>1 ? " " : "") _w[_i]
+      }
+      ptoks=harvest($0, ptoks)
+      inpara=1; next
+    }
+    # 표 행은 아래 표 경로가 처리한다 — 여기서 안 먹는다(우선순위 명시).
+    inblk && inpara && !/^\|/ && !/^###+ / && !/^[0-9]+\. / && !/^- \*\*/ { ptoks=harvest($0, ptoks); next }
     inblk && /^\|/ {
       line=$0
       # 헤더/구분선 제외
@@ -135,6 +184,7 @@ _extract() { # $1 = digest path
       }
       print id "\t" toks
     }
+    END { if (pid != "") print pid "\t" ptoks }
   ' "$1"
 }
 
