@@ -12,7 +12,16 @@ FH_DIR="${FD_FH_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 CLAUDE_BIN="${FD_CLAUDE_BIN:-$(command -v claude || echo "${HOME}/.local/bin/claude")}"
 TODAY=$(date +%Y_%m_%d)
 HUMAN_DATE=$(date +%Y-%m-%d)   # pinned once with TODAY — a wake-fired run crossing midnight must not drift (filename date ≠ prompt date)
-LOG_DIR="${FH_DIR}/tracks/_meta/logs"
+# ── 위성 축 (2026-08-18, 원정 2차) ──────────────────────────────────────────
+# 정체성 ④ 「프런티어→조직 전파」의 조직 = **레포**다(운영자 정의). 이 러너는 FH 한 곳만
+# 대상으로 지어졌고, 그래서 ④ 는 «자기 소비»에 머물렀다. 아래 두 변수가 대상 축이다.
+#   FD_FH_DIR   — 어느 레포에서 도는가 (기존)
+#   FD_OUT_DIR  — 그 레포의 **어디에** 떨어뜨리는가 (신설). FH 는 tracks/_meta 지만
+#                 대상 하네스는 자기 문법이 있다(forge-wiki 는 frontmatter 달린 위키 노드).
+#   FD_MODEL    — 어느 티어로 도는가 (신설). 위성마다 도메인 난이도가 다르다.
+# 🟥 기본값은 **전부 종전 그대로**다 — FH 프로덕션 경로 무변경.
+OUT_DIR="${FD_OUT_DIR:-tracks/_meta}"          # FH_DIR 기준 상대경로
+LOG_DIR="${FH_DIR}/${OUT_DIR}/logs"
 LOG_FILE="${LOG_DIR}/frontier_digest_${TODAY}.log"
 
 mkdir -p "$LOG_DIR"
@@ -25,13 +34,43 @@ find "$LOG_DIR" -name 'frontier_digest_*.log' -mtime +30 -delete 2>/dev/null
 # class is "connection closed mid-response", which can leave a partial/empty file — that must not
 # count as done (it would also lock out every later run today via the skip-check below).
 digest_ready() {
-    find "${FH_DIR}/tracks/_meta" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" -size +1k 2>/dev/null | grep -q .
+    find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" -size +1k 2>/dev/null | grep -q .
+}
+
+# ── 공개표면 게이트 (2026-08-18, 원정 2차) ──────────────────────────────────
+# 위성이 **공개 레포**를 대상으로 돌면 **매 런이 publish** 다(비가역 표면). FH 자신은
+# tracks/ 가 gitignored 라 이 문제가 없었고, 그래서 이 러너에 게이트가 없었다.
+# §Irreversibility Surface-Class Degrade Invariant: 비가역 표면은 **fail-CLOSED** —
+# 스캐너가 못 재면 «통과»가 아니라 «보류»다.
+#
+# 🟥 **성공 종료 경로가 셋이라 함수로 뺐다.** 초판은 attempt 루프의 성공 분기에만 달았고,
+# 그러면 ⓐ「오늘 이미 돌았다」조기 스킵과 ⓑ「외부에서 나타났다」로 나가는 digest 가
+# **스캔 없이 게시**된다. 레인 P2·P3 이 그 fail-open 을 잡았다.
+#
+# 🟥 rc 3값을 두 값으로 접지 않는다 — 0 게시 / 1 격리 / 그 외 보류. 스캐너는 자기 죽음을
+#    rc=3(NOT SCANNED)으로 신고하므로 그 값을 존중한다.
+publish_gate() {
+    [ "${FD_PUBLIC_TARGET:-0}" = "1" ] || return 0
+    local lib="${FH_DIR}/scripts/psa_scan_lib.sh"
+    [ -f "$lib" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: psa_scan_lib.sh 부재 — fail-closed" >> "$LOG_FILE"; return 3; }
+    local f out rc
+    f=$(find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" 2>/dev/null | head -1)
+    [ -n "$f" ] || return 0
+    out=$(bash -c '. "$1"; psa_load "$2/.claude/rules/.public-surface-patterns.defaults" "$2/.claude/rules/.public-surface-patterns" >/dev/null 2>&1; psa_scan_file "$3"' _ "$lib" "$FH_DIR" "$f" 2>&1)
+    rc=$?
+    case "$rc" in
+        0) echo "[$(date '+%Y-%m-%d %H:%M:%S')] publish gate: CLEAN" >> "$LOG_FILE"; return 0 ;;
+        1) echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: LEAK — 격리, 게시 안 함" >> "$LOG_FILE"
+           printf '%s\n' "$out" >> "$LOG_FILE"; mv "$f" "${f}.QUARANTINE" 2>/dev/null; return 2 ;;
+        *) echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 publish gate: NOT SCANNED (rc=$rc) — fail-closed, 게시 안 함" >> "$LOG_FILE"
+           printf '%s\n' "$out" >> "$LOG_FILE"; mv "$f" "${f}.UNSCANNED" 2>/dev/null; return 3 ;;
+    esac
 }
 
 # Skip if already ran today
 if digest_ready; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Already ran today — skipping" >> "$LOG_FILE"
-    exit 0
+    publish_gate; exit $?
 fi
 
 # Single-instance lock (mkdir = atomic on bash 3.2). Guards launchd-vs-manual double dispatch:
@@ -90,11 +129,12 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
     # Re-check before spending an attempt (a manual run may have landed the digest during the sleep)
     if digest_ready; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Digest appeared externally before attempt ${ATTEMPT} — success" >> "$LOG_FILE"
-        exit 0
+        publish_gate; exit $?
     fi
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attempt ${ATTEMPT}/${MAX_ATTEMPTS}" >> "$LOG_FILE"
     "$CLAUDE_BIN" -p --permission-mode acceptEdits \
-        "[automated-run: launchd] Run /frontier-digest for today (${HUMAN_DATE}). Fetch latest signals from HN, arXiv, and GitHub. Save the digest to tracks/_meta/frontier_digest_${TODAY}.md." \
+        ${FD_MODEL:+--model "$FD_MODEL"} \
+        "[automated-run: launchd] Run /frontier-digest for today (${HUMAN_DATE}). Fetch latest signals from HN, arXiv, and GitHub. Save the digest to ${OUT_DIR}/frontier_digest_${TODAY}.md." \
         >> "$LOG_FILE" 2>&1 &
     CLAUDE_PID=$!
     DEADLINE=$((SECONDS + ATTEMPT_TIMEOUT_SECS))
@@ -114,6 +154,8 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
         EXIT_CODE=$?
     fi
     if digest_ready; then
+        publish_gate; _pg=$?
+        [ "$_pg" -eq 0 ] || exit "$_pg"
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Digest file present after attempt ${ATTEMPT} (claude exit ${EXIT_CODE}) — success" >> "$LOG_FILE"
         exit 0
     fi
