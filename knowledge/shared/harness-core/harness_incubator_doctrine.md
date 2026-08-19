@@ -530,6 +530,123 @@ ceiling will never propose the redesign that was the point of incubating.
 *nursery* is allowed to do to it while it is still inside. The first is an exit condition; the second
 is a working posture.
 
+### 3-e. Two moves observed in one incubation session — «채운다» is not the whole job (operator-approved, 2026-08-19)
+
+⚠️ **Scope, up front**: this section records a **failure taxonomy measured on one field harness in
+one session**, and the move it names. It is **not** a claim about what incubation essentially *is*.
+A cross-family review of the first draft killed that framing, and it was right to
+(§3-e-PROVENANCE below).
+
+Operator's framing going in: *"qasp가 아직 남은 점들이 있으나 fh나 pmh의 인큐베이팅 모드로
+사용시(pmh가 실시간 검증 및 보강)에는 부족한 점을 메꾸어서 의도한 기능들이 … 발휘 가능한
+상태들이라고 나는 보고있어. 인큐베이터 기능의 확장이지."*
+
+That holds **for the class of gap it names**. The session then measured a class outside it:
+
+| | |
+|---|---|
+| ① **채운다** | The target **declares** it cannot do something — `UNCALIBRATED`, an unwired slot, a domain lock. The incubator supplies the capability at more tokens, more time. |
+| ② **선언되게 만든다** | The target produces **plausible output that is wrong**. ① has nothing to grab. The move here is to *manufacture the declaration* — or, more often than expected, **to move an existing declaration into the path someone reads.** |
+
+#### 🟥 The five cases split three ways — and the first draft got this wrong
+
+The draft asserted *"none of the five signals a shortfall upstream."* **That is false, and the
+falsification came from this repo's own artifacts** (cross-family review flagged it; source check
+confirmed and went further than the reviewer did):
+
+```
+진짜 무음 — 채널이 없었다        "면제"·"무료" 자기억제                        2건
+                                (scanner did not exist until the session built it)
+신호는 있는데 안 읽혔다           라우팅 고아 — caller_zero_baseline.json 이     2건
+                                 ORPHAN 으로 기록 중이었다(tracked · CI 가 읽는다)
+                                 핸드오프 — 선행 문서가 "후속이 갱신본" 이라는
+                                 포인터를 남겼고, 그 후속이 침묵했다
+채널을 만들었더니 선언됐다        p6 분류표 0/6 — `_UNMAPPED_SEEN` 관측 채널이   1건
+                                 하루 전 커밋으로 도입돼 리포트까지 배선됐고,
+                                 그 다음 날 수리됐다
+```
+
+**The third row is the load-bearing one, and the draft had it backwards** — it cited p6 as an example
+of silence when p6 is the **existence proof of ② succeeding**: someone built the channel, the silent
+thing declared itself, ① closed it the next day. One case, one day apart, in-repo.
+
+⇒ So ② is not one move but two, and the second is more common than expected:
+
+- **(a) build the channel where none exists** — the 2 self-suppression cases
+- **(b) put the channel where the reader is** — the 2 unread-signal cases. This is
+  `gate_locality_principle.md` applied to *declarations* rather than to gates: a declaration nobody
+  reads is not a declaration. **Neither of those two was fixed by adding information; both were fixed
+  by moving where it surfaces.**
+
+#### What was actually built, stated narrowly
+
+Function ② was realized on that session as **authoring-time static instruments** —
+`scripts/self_suppression_scan.py` (trigger vocabulary swallowed by negation vocabulary),
+`scripts/domain_coupling_scan.py` (hardcoded domain vocabulary), plus anchors that go red when the
+instrument itself dies.
+
+🟥 **This is not a runtime declaration mechanism and must not be read as one.** Nothing there makes a
+*running* audit announce «this output is confidently wrong». What was demonstrated: **an incubator
+holding §3-d's whole-repo authority built instruments the target had not built for itself.** Whether
+the target *could* have is not established — the observed reason was ordinary (nobody had looked),
+not structural.
+
+#### Ordering: conditional, not a law
+
+The draft said *"② is prior to ①"*. Weakened deliberately: **where a defect is undeclared, ① has no
+target, so ② has to come first for that defect.** That is a statement about one defect's handling
+order, not a phase ordering for incubation, and one session cannot support the stronger reading.
+
+Likewise the draft's *"the second is worse than the first"* (silent-wrong vs crash) is **withdrawn** —
+severity depends on the operating context, and nothing here measured it.
+
+#### 🟥 ② presupposes decorrelated input — this belongs in the definition, not the caveats
+
+Self-detection on that session was **2 of 16**, and both of the two were *reading something already
+written down* (a baseline file that said `ORPHAN`; a loop that finished suspiciously fast), not
+inference. The rest came from cross-family review (two families, zero overlap), revert probes, the
+full suite, a caller-zero ratchet, a peer session, and a company session.
+
+⇒ **② as described is a property of an incubation regime that has decorrelated review attached, not
+of a lone incubation session.** A single session should not be assumed able to run it.
+
+🟥 **And «decorrelated» is decided by what you SEND, not by which family you send it to.** A panel
+that all receives the same payload keeps the same blind spot no matter how many reviewers sign it.
+The payload for ② is **the frozen diff *and* the change's own marker** — the diff carries the code,
+the marker carries the *claims* (which axes ran, which controls were alive, what residual is
+admitted). A reviewer who never sees the marker cannot catch «an axis asserted with no trace» or
+«a residual implied but unlisted», because those defects are not in the code.
+
+**Measured on this section itself, the same day**: the grounding arm was sent a **5-item fact list**
+instead of repo access, and consequently reported every well-grounded statement outside that list as
+invention — one usable finding out of six. The family was fine; **the payload was the defect.**
+⇒ [[feedback_decorrelation_axis_is_what_you_send]]. The plumbing that supplies this is
+`auto-decorrelation` Step 5 (payload = frozen diff + marker), scoped to **consistency**, not honesty
+— asking whether the record matches the diff is a channel check; asking whether the record is *true*
+is a verdict, and §Mechanization Boundary keeps verdicts out of code.
+
+#### The failure mode ② carries
+
+The instruments were wrong **seven times** in that session. Six produced **plausible wrong numbers**;
+one died loudly (`No such file`, `rc=1`) and was caught instantly. Once, a control was the only thing
+standing between «the corpus has none of this shape» and the truth, «the detection surface does not
+see that shape».
+
+⇒ **An instrument built to expose silent wrongness is itself a source of silent wrongness.** The
+prescription measured there: **put the control in the same commit as the instrument.** Where that was
+done the error surfaced immediately; where it was not, it surfaced afterwards, if at all.
+
+#### §3-e-PROVENANCE — what this section's own review caught
+
+- **cross-family (codex, gpt-5.5)**: killed the «essence of incubation» framing, the
+  «none of the five» claim, the «prior to» ordering, and the «worse than» severity rule. All four
+  were adopted. Self-detection on this section: **0**.
+- **grounding pass (agy, gemini-3.1-pro)**: mostly measured **the author's own dispatch error** — it
+  was given a 5-item fact list rather than repo access, so every well-grounded statement outside that
+  list was reported as invention. One finding survived: *"all of them wrong"* overstated p6
+  (a finding whose true category happened to be the fallback would not be wrong), now softened.
+  🟥 Recorded because the lesson is about **the reviewer's input scope**, not about the reviewer.
+
 ## 4. Compose ∪ disrupt — two operating modes over other harnesses
 
 | Mode | What | FH mechanism |
