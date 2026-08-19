@@ -21,6 +21,12 @@ TODAY=$(date +%Y_%m_%d)
 mk_sandbox() {  # stdout: sandbox dir
   local T; T=$(mktemp -d)
   mkdir -p "$T/fh/tracks/_meta/logs" "$T/bin"
+  # 🟥 2026-08-19: 러너가 «엔진 레포가 아닌 트리»에서 돌면 프로필 선언을 요구한다
+  #    (FD_PROFILE 미설정으로 게이트를 끌 수 있으면 그게 우회다 — cross-family S1).
+  #    이 샌드박스도 엔진 레포가 아니므로 선언을 준다. 재시도/watchdog 로직을 재는 레인이라
+  #    금지선은 비우되(`none`) **명시적으로** 적는다 — 빈 값은 미선언과 같이 막힌다.
+  printf -- '---\nsatellite_profile: v1\nforbidden_paths: [none]\noutput_location: tracks/_meta\negress_sinks: [none]\n---\n' \
+      > "$T/fh/.satellite-profile.md"
   echo "$T"
 }
 
@@ -31,7 +37,7 @@ run_case() {  # $1=name $2=stub-body $3=expect-grep $4=expect-exit [$5=extra-env
   chmod +x "$T/bin/claude-stub"
   local log="$T/fh/tracks/_meta/logs/frontier_digest_${TODAY}.log"
   set +e
-  env FD_FH_DIR="$T/fh" FD_CLAUDE_BIN="$T/bin/claude-stub" \
+  env FD_FH_DIR="$T/fh" FD_PROFILE=.satellite-profile.md FD_CLAUDE_BIN="$T/bin/claude-stub" \
       FD_ATTEMPT_TIMEOUT_SECS=3 FD_POLL_SECS=1 FD_RETRY_SLEEP_SECS=1 $extra \
       bash "$RUNNER" >/dev/null 2>&1
   local rc=$?
@@ -70,7 +76,7 @@ run_case "③ 1차 실패 → 2차 성공 조기종료" \
 T=$(mk_sandbox)
 printf '#!/usr/bin/env bash\nexit 1\n' > "$T/bin/claude-stub"; chmod +x "$T/bin/claude-stub"
 log="$T/fh/tracks/_meta/logs/frontier_digest_${TODAY}.log"
-env FD_FH_DIR="$T/fh" FD_CLAUDE_BIN="$T/bin/claude-stub" \
+env FD_FH_DIR="$T/fh" FD_PROFILE=.satellite-profile.md FD_CLAUDE_BIN="$T/bin/claude-stub" \
     FD_ATTEMPT_TIMEOUT_SECS=3 FD_POLL_SECS=1 FD_RETRY_SLEEP_SECS=30 \
     bash "$RUNNER" >/dev/null 2>&1 &
 RPID=$!

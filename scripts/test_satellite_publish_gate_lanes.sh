@@ -286,7 +286,11 @@ _prev_pick() {
   : > "$td/out/frontier_digest_${d}.md"           # 오늘 것 (제외 대상)
   # 러너의 선택 표현을 그대로 떼어 쓴다 — 우회하면 앵커가 장식이 된다
   local expr; expr=$(sed -n '/prev=\$(find/,/tail -1)/p' "$ROOT/scripts/frontier_digest_daily.sh")
-  local got; got=$( cd "$td" && FH_DIR="$td" OUT_DIR=out TODAY="$d" bash -c "$expr; basename \"\$prev\"" )
+  # 🟥 2026-08-19: 러너가 `${FH_DIR}/${OUT_DIR}` 조립을 `OUT_ABS` 로 뽑아내면서(레포 밖
+  #    절대경로 지원) 이 추출 표현식이 **레인이 안 세팅한 변수**를 참조하게 됐다 →
+  #    `find ""` → got=[]. 앵커를 실물에서 떼어 쓰는 대가이고, 끊긴 것이 즉시 적색으로 났다.
+  #    OUT_ABS 는 러너와 **같은 규칙**으로 만든다(상대경로 분기).
+  local got; got=$( cd "$td" && FH_DIR="$td" OUT_DIR=out OUT_ABS="$td/out" TODAY="$d" bash -c "$expr; basename \"\$prev\"" )
   rm -rf "$td"; echo "$got"
 }
 t "R5 표기가 섞여도 «직전»은 날짜상 최신이다" "frontier_digest_2026_08_17.md" "$(_prev_pick)"
