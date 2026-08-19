@@ -138,7 +138,7 @@ cd ~/projects/{your-project} && claude
 |---|---|
 | 個人開発者、プロジェクト1つ、まず試したい | [`templates/starter_profile.md`](templates/starter_profile.md) — コマンド1つ、厳選された最初の5つのスキル |
 | プロジェクトが複数、複利で積み上がるハブが欲しい | ハブをクローン（上のクイックスタート） |
-| CI / 非 Claude ランタイム、ゲートだけ欲しい | `npx @chrono-meta/fh-gate`（インストール不要のガバナンスゲート） |
+| CI / 非 Claude ランタイム、ゲートだけ欲しい | `npx --package @chrono-meta/fh-gate fh-gate`（インストール不要のガバナンスゲート） |
 | `npx`/`npm` より `brew` がいい | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 内容は100%同一、インストール体験だけが違います（コミュニティ tap; まだ Homebrew Core には入っていないので、先に tap しないと `brew search` では見つかりません） |
 
 ---

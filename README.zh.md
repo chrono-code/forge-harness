@@ -131,7 +131,7 @@ cd ~/projects/{your-project} && claude
 |---|---|
 | 单人开发者，一个项目，只想先试试 | [`templates/starter_profile.md`](templates/starter_profile.md) —— 一条命令，一份精选的头五个技能 |
 | 有多个项目，想要那个复利累积的中枢 | 克隆中枢（见上面的快速上手） |
-| CI / 非 Claude 运行时，只要门禁 | `npx @chrono-meta/fh-gate`（零安装的治理门禁） |
+| CI / 非 Claude 运行时，只要门禁 | `npx --package @chrono-meta/fh-gate fh-gate`（零安装的治理门禁） |
 | 比起 `npx`/`npm` 更习惯 `brew` | `brew tap chrono-meta/forge-harness && brew install forge-harness` —— 内容 100% 一致，只是安装体验不同（社区 tap；尚未进入 Homebrew Core，所以不先加 tap 的话 `brew search` 找不到它） |
 
 ---
