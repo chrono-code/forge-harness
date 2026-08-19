@@ -90,7 +90,7 @@ Identity marker: every greeting response opens with **🐿️ then an identity-r
 **Branch test (mechanical — local state only)**: returning = session files exist (any `tracks/**/session_*.md` or `tracks/_meta/*.md` beyond `.gitkeep`) **OR** mapped project tracks exist (`tracks/{name}/` dirs — **any underscore-prefixed dir doesn't count** (`tracks/_*`, general rule not a closed list: `_meta`/`_audit`/`_contrib`/`_chamber`…); covers mapped-but-not-yet-synced users). **Never infer the branch from git log or CATALOG residue** — a fresh clone carries full commit history but zero session files: it is a NEW install (origin: fresh-clone sonnet sim rendered the returning menu off commit messages, `fh_signal_2026-06-11` FP8).
 
 **New user** (neither condition holds — fresh clone/install): 2-door starter, never the returning menu —
-> 🐿️  **Welcome to FH.** *Looks like you're new here! ① Create your first project (guided) · ② Map an existing project — and I can run `/install-wizard` to finish initial setup.*
+> 🐿️  **Welcome to FH.** *Looks like you're new here! ① Create your first project (guided) · ② Map an existing project · 📖 Read the guide / ask me anything — and I can run `/install-wizard` to finish initial setup.*
 
 - **① Create your first project** → Step 3-0 (guided: name → `tracks/` → `.claudeignore` → cascade)
 - **② Map an existing project** → `auto_project_mapping.md`; after a successful mapping, offer the §6 Full-Harness promotion prompt
@@ -100,8 +100,20 @@ Identity marker: every greeting response opens with **🐿️ then an identity-r
 > 🐿️  **Welcome to FH.** *forge-harness is a tool hub for rapidly setting up Claude Code projects. It supports plugin recommendations, project setup, and harness diagnostics. What would you like to work on?*
 
 **Returning user** (branch test above) — open with the fixed 4-door menu (the doors are stable; the contents are composed live). A summary copy lives in CLAUDE.md §Active Onboarding — keep branch tests and door labels in sync when editing:
-> 🐿️  **Welcome back to FH.** *What would you like to start? ① Map a project · ② Create a new project · ③ Accelerate **or diagnose** a mapped project (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates} · ④ Cross-project synergy*
+> 🐿️  **Welcome back to FH.** *What would you like to start? ① Map a project · ② Create a new project · ③ Accelerate **or diagnose** a mapped project (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates} · ④ Cross-project synergy · 📖 Guide / Q&A*
 >
+**📖 door (unnumbered, always rendered)** — opens `docs/USER_GUIDE.md` and takes FH-usage questions.
+🟥 **Do not renumber.** ①–④ are the fixed set; 🔧 was the only unnumbered exception and 📖 joins it at
+that layer. A guide is *reference before work*, not *the start of work*, so it does not belong in the
+numbered set. **G-GREET-03 (fixed 4-door) and G-GREET-05 (welcome literals) both stay satisfied** — no
+number was added and no welcome phrase was touched.
+🟥 **"Open" means path + a 3-line table of contents FIRST.** Never dump the file inline — burning tokens
+every session is precisely what this door exists to avoid. Then, and only then, branch on `uname -s`
+to *suggest* an opener (Darwin→`open` · Linux→`xdg-open` · MINGW/MSYS→`start`); if none exists, skip
+silently — the path already landed, so nothing is lost. ⚠️ `open` is macOS-only and FH ships via npm,
+so it must never be the default path. Operating detail (allowed corpus · say "not found" when absent)
+lives in `/fh` Step 3.5.
+
 > (When **FH-dev state exists** — the operator — the welcome line is **"The FH operator — good to see you."** in place of "Welcome back to FH.")
 
 - **① Map a project** → routes to `auto_project_mapping.md`; after a successful mapping, offer the §6 Full-Harness promotion prompt
@@ -169,6 +181,18 @@ source: {source}
 priority: high|medium|low
 ---
 # FH Improvement Signal — {date} ({source})
+
+## Session Retrospective        ← 마감 회고로 생성된 신호만. 상한 8줄. 이벤트 신호는 이 절 없음
+- 정정: {운영자가 나를 정정한 건수} — 각 한 줄, 무엇을 어떻게 틀렸나
+- 자력 {N} / 타력 {M} — 타력은 **잡은 축 이름**으로 (레인 · 되돌림 · cross-family · 첫실사용 · ⓓ · 운영자 · CI)
+- 안 돌린 축: {이름, 또는 「없음」}
+- 반복: {이번이 N번째인 실수 — memory 키 또는 「신규」}
+
+🟥 **등급을 적지 마라.** «세션이 잘 됐다/못 됐다» 는 자평이고 게임 가능하다. 적는 것은 **사건과
+그것을 잡은 축의 이름**뿐이다. 판정을 안 적으면 자평할 대상이 없다. 「정정 건수」는 트랜스크립트
+사실이지 판단이 아니라서 게임이 어렵고, 자력/타력 분리는 «내가 다 잡았다» 를 쓰기 불편하게 만든다.
+⚠️ 셋 다 자평을 **어렵게** 할 뿐 **닫지 않는다** — 닫히는 것은 peer 나 cross-family 가 이 회고를
+읽을 때이고 그건 이 형식의 범위 밖이다.
 
 ## Friction Point
 -

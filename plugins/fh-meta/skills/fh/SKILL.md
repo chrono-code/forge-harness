@@ -46,6 +46,37 @@ the session card and CATALOG, exactly as the greeting path would.
 End with "pick a door, say a phrase, or just state your task". Do not auto-run anything — this
 command is a map, not a dispatcher.
 
+
+## Step 3.5 — 가이드 · Q&A (📖 문을 골랐을 때만 진입)
+
+🟥 **Q&A 는 net-new 기능이 아니다.** FH 에 대해 묻고 답하는 것은 이미 된다(CLAUDE.md 가 상주라
+세션이 문·게이트·스킬을 안다). 이 절이 더하는 것은 **하나뿐**이다 — 「무엇을 근거로 답하나,
+그리고 없으면 없다고 말한다」는 **계약**. 그래서 새 스킬을 만들지 않고 여기 붙인다.
+
+**ⓐ 가이드** — `docs/USER_GUIDE.md` 의 **경로와 3줄 목차**를 출력한다. 승인하면 플랫폼 opener 를
+제안한다(`uname -s`: Darwin→`open` · Linux→`xdg-open` · MINGW/MSYS→`start`). opener 가 없으면
+조용히 건너뛴다 — 경로는 이미 나갔으므로 손실이 없다.
+🟥 **전문 인라인 출력 금지.** 자동 실행도 안 한다.
+
+**ⓑ Q&A** — 1문 1답. 근거는 아래 코퍼스 **안에서만** 찾는다:
+
+```
+1 docs/USER_GUIDE.md              사용법 · FAQ
+2 CHEATSHEET.md                   명령 · 트리거 문구
+3 knowledge/shared/GLOSSARY.md    용어
+4 README.md §Get started/§Learn more   설치 · 진입 경로
+5 CATALOG.md                      「예전에 뭐 했지」
+6 설치된 SKILL.md frontmatter     「무슨 스킬 있어」
+```
+
+**degrade — 코퍼스에 없으면**
+🟥 **지어내지 않는다.** 「못 찾음 — 코퍼스 N개를 봤고 여기엔 없다」 + **다음 한 걸음**(어느 파일을
+열지 · `/install-doctor` 같은 실제 진단 경로)을 준다. 「아마 이럴 것이다」 형태의 답은 **금지**다.
+이건 §Instrument Calibration 의 «미측정을 0으로 렌더하지 않는다» 와 같은 규율이다.
+답마다 `file:line` 을 단다 — 근거 없는 문장은 팬텀이다.
+
+⚠️ 코퍼스 밖 질문(도메인 작업 · 코드)은 이 절이 아니라 평소대로 처리한다. Q&A 는 **FH 사용법**용이다.
+
 ## Done When
 
 | Condition | Check class |

@@ -1,6 +1,6 @@
 # forge-harness — Persistent Knowledge Hub
 
-> **This file is the operational ruleset for AI (Claude Code).** For human-facing guidance, see `README.md`. For command reference, see `CHEATSHEET.md`.
+> **This file is the operational ruleset for AI (Claude Code).** For human-facing guidance, see `README.md`. For command reference, see `CHEATSHEET.md`. **For a first-time user asking «how do I use this»**, the answer is `docs/USER_GUIDE.md` — not CHEATSHEET (that is a reference to look things up in, not a document to read through). Blind floor-tier sim 2026-08-19 named exactly this: the header alone routes a beginner to CHEATSHEET, and only reading `fh_detail_protocols.md` corrects it.
 >
 ```
 forge-harness/
@@ -457,15 +457,24 @@ Simplification guard: trivial denials with one obvious fix → state block + sin
 
 - **New user** (no session files AND no mapped project tracks under `tracks/` — fresh clone/install; **any underscore-prefixed dir** (`tracks/_*` — `_meta`/`_audit`/`_contrib`/`_chamber`…) doesn't count, general rule not a closed list — `_chamber` holds incubation chamber runs, never mapped projects): 2-door starter, never the returning menu —
 
-  > 🐿️  **Welcome to FH.** *Looks like you're new here! ① Create your first project (guided) · ② Map an existing project — and I can run `/install-wizard` to finish initial setup.*
+  > 🐿️  **Welcome to FH.** *Looks like you're new here! ① Create your first project (guided) · ② Map an existing project · 📖 Read the guide / ask me anything — and I can run `/install-wizard` to finish initial setup.*
 
 - **Returning user** (session files OR mapped project tracks exist): fixed 4-door menu —
 
-  > 🐿️  **Welcome back to FH.** *① Map a project · ② Create a new project · ③ Accelerate **or diagnose** a mapped project (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates} · ④ Cross-project synergy*
+  > 🐿️  **Welcome back to FH.** *① Map a project · ② Create a new project · ③ Accelerate **or diagnose** a mapped project (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates} · ④ Cross-project synergy · 📖 Guide / Q&A*
   >
   > (When **FH-dev state exists** — the operator — the welcome line is **"The FH operator — good to see you."** in place of "Welcome back to FH.")
 
-  Render conditions: ①②③ always (③'s candidates composed live) · ④ only when **2+ project tracks** exist (underscore meta dirs don't count) — synergy findings flow back into each project, and may *propose* an FH contribution (`/field-harvest` → `tracks/_contrib`) as an **outcome of findings, never a standing door**.
+  **📖 문 (비번호, 항상)**: `docs/USER_GUIDE.md` 를 **띄우고**, FH 사용법 문답을 받는다.
+  🟥 **번호를 늘리지 않는다** — ①~④ 는 고정 4문이고 🔧 만 비번호 예외였다(`fh_detail_protocols.md`
+  Step 2 가 문 집합 고정을 명시). 가이드는 「작업의 시작」이 아니라 「작업 전 참조」라 성격이 다르다.
+  🟥 **띄운다 = 경로 + 3줄 목차 출력이 먼저다.** 전문을 인라인으로 뱉지 마라 — 매 세션 토큰을
+  태우는 형태이고, 이 문이 존재하는 이유가 그걸 안 하기 위해서다. opener(`open`/`xdg-open`/`start`)는
+  `uname -s` 로 분기해 **제안만** 하고, 없으면 조용히 넘어간다(경로는 이미 나갔으므로 손실 0).
+  ⚠️ `open` 은 macOS 전용이다 — FH 는 npm 배포물이라 그걸 기본값으로 두면 안 된다.
+  운용 상세(허용 코퍼스 · 모르면 「못 찾음」)는 `/fh` Step 3.5.
+
+Render conditions: ①②③ always (③'s candidates composed live) · ④ only when **2+ project tracks** exist (underscore meta dirs don't count) — synergy findings flow back into each project, and may *propose* an FH contribution (`/field-harvest` → `tracks/_contrib`) as an **outcome of findings, never a standing door**.
 
 - **Developer door (unnumbered, outside the menu)**: when **FH-dev state exists** (session card `tracks/_meta/reference_next_session_starter.md` · open `fh_signal_*` files · `CLAUDE.local.md`), append to the menu line: ` · 🔧 FH self-development — {FH worklist}`. The hub operator always has this state, so the owner always sees it — no flag needed. Without dev state the door is **silently absent**; the user typing `developer` / `개발자` **as a standalone utterance or menu reply** (not a substring of a task sentence) opens it on demand (routes to `docs/CONTRIBUTING.md` + `tracks/_contrib/` + open `fh_signal_*` items).
 
@@ -1249,7 +1258,8 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
        --state open` cross-repo). Classify, **surface-not-auto**: **self-mergeable** PR (own repo,
        checks green) → *propose merge now* (never auto-merge — HITL); **awaiting-external** →
        *surface for tracking only*. (Origin PR#111 + count-consistency pairing → §detail below.)
-  → ② If FH assets changed: harvest-loop
+  → ② If FH assets changed, **or `close_retro` is granted**: harvest-loop
+       (후자는 Step 0-d 세션 회고 — 자산 미변경 세션에도 회고는 의미가 있다)
   → ③ Sync local/gitignored session state to your durable companion store, if you keep one
   → ④ Memory hygiene — update stale entries + record new session findings.
        **Deliberately unmechanized, and stated so rather than left ambiguous**: hygiene is a judged

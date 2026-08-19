@@ -53,6 +53,7 @@
     "CLAUDE.md",
     ".claude/registry/agent_cards.json",
     ".claude/registry/README.md",
+    "docs/USER_GUIDE.md",
     "docs/CONTRIBUTING.md",
     "bin/fh-codex-doctor.js",
     "bin/fh-gate.js",
