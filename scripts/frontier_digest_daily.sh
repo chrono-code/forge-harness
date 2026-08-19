@@ -374,6 +374,9 @@ landing_witness() {
            # 🟥 컨트롤 토큰도 대상축이다 — 기본값은 레포 이름이라 FH 는 무변경이지만,
            #    대상 레포에 확실히 있는 토큰을 위성이 지정할 수 있어야 계기가 산다.
            [ -n "${FD_LANDING_CONTROLS:-}" ] && export DLC_CONTROLS="$FD_LANDING_CONTROLS"
+           # 🟥 절 제목도 대상축이다 (2026-08-19). 위성 산출의 절 이름은 대상 프로필이 정하는데
+           #    체커 기본값은 FH 어휘라, 이 통과가 없으면 위성에서 **영영 rc=10** 이다.
+           [ -n "${FD_LANDING_SECTION_RE:-}" ] && export DLC_SECTION_RE="$FD_LANDING_SECTION_RE"
            bash "$checker" "$prev" 2>&1 ); rc=$?
     case "$rc" in
         0)  echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: ALL-LANDED (rc=0)" >> "$LOG_FILE" ;;
