@@ -10,6 +10,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## Plugin Level
 
+### [2.6.0] — 2026-08-20
+
+**배포본이 소비자 설치에서 `SELFCHECK: FAIL` 이었다 — 그리고 원인 넷이 전부 «계기가 저자의 머신에 결박» 이었다.** 이 릴리스의 중심은 새 기능이 아니라 그 복구다. 발견 경로는 재출하 준비 중의 손 실행이다: `npm pack` → 추출 → **`node_modules/@chrono-meta/fh-gate` 실경로에서 완주**. 레지스트리에서 받은 **실물 2.5.1** 로도 재현했다(컨트롤).
+
+- **위성 레인 둘이 주체 없이 출하됐다.** `test_satellite_publish_gate_lanes.sh`(2.5.1 에 이미 실림) · `test_satellite_profile_schema_lanes.sh`(이번 범위에 추가됨)의 주체는 `frontier_digest_daily.sh` 인데 그건 의도적으로 출하 대상이 아니다(소비자 계정으로 `claude` CLI 를 태운다). 실측: publish_gate **4 passed / 21 failed**, `rc=127`. 🟥 **통과한 쪽이 더 나빴다** — "dispatch 자체가 안 일어남 ✅" 은 러너가 **없어서** 통과한 거짓 초록이다. 선행 사례(`test_frontier_digest_retry.sh`, *"Anchor follows subject"*)대로 `ACCEPTED_ABSENT` 로 내리고, `selfcheck.sh` 는 **주체** 부재를 보고 `_absent_subject_verdict` 로 위임한다 → 이름 있는 SKIP
+- **`digest_landing_check --self-test` 가 폴더 이름에 결박돼 있었다.** 컨트롤이 `basename "$FH"` 로 유도되는데 픽스처 카드가 리터럴 `forge-harness` 를 담고 있어, **디렉터리 이름이 `forge-harness` 일 때만** 컨트롤이 살았다. known-pair(같은 바이트, 이름만 교체): `forge-harness/` **15/15 PASS** · `some-consumer-app/` **5/15 FAIL**. 레인별로 컨트롤을 픽스처 토큰에 고정했다. 🟥 «10 을 기대하는» 레인들도 고정했다 — 고정 전에도 10 을 냈지만 **의도한 사유가 아니라 컨트롤 사망** 때문이었다. 🟥 N1·★N-ctl·★N-ctl-re 는 일부러 유도/사망을 주장하므로 **고정하지 않았다**
+- **`cluster_capability_scan` L13c — 전제만 결박이었다.** `discover` 가 `tracks/`(gitignored, 배포물에 구조적 부재)를 전제하므로, 부재는 **FAIL 이 아니라 이름 있는 SKIP**(미측정 ≠ 0건)으로 낸다. 🟥 **초판은 여기서 하나를 더 «고쳤고», 그게 틀렸다** — 기대 문자열 `^forge-harness\(hub\)` 를 폴더명 결박으로 읽고 `basename` 유도로 바꿨는데, **생산자(`:128`)는 그 리터럴을 낸다.** 유도로 바꾸면 이름이 다른 트리에서 기대와 산출이 갈려 **거짓 FAIL** 이 된다 — 이 파일이 자기 주석에서 경고하는 divergent-normalizer 를 수리가 새로 만든 꼴이다. 되돌렸다. 그 라벨은 디렉터리 이름이 아니라 **허브의 상수 식별자**이고, 양쪽이 같은 상수를 쓰는 한 결박이 아니다. **cross-family(codex/gpt-5.5)가 잡았다 — 자력 적발 0.** known-pair 로 재현: 이름이 다른 트리 + `tracks/` 존재에서 상수판 **20 PASS / 0 FAIL** · 유도판 **19 PASS / 1 FAIL**. 내 소비자 테스트는 그 팔에 **구조적으로 못 닿았다**(거기선 L13c 가 SKIP 이라)
+- **mate 어댑터의 known-pair 픽스처가 안 실렸다.** 게이트는 출하되는데 보정쌍이 소비자 머신에 없어 `HARNESS_ERROR(10)`. `mate_agent_boundary_known_{positive,negative}.md` 를 `files[]` 에 추가 — 이건 **출하하는 쪽**이 맞다(주체가 이미 출하되므로)
+- 검증: 수리 후 소비자 설치 **`SELFCHECK: PASS` (rc=0)**. 🟥 중간에 내 계기가 한 번 틀렸다 — `grep '^FAIL'` 로 세어 «FAIL=0 인데 FAIL» 이라는 가짜 모순을 만들었다. 이 스위트들은 `❌` 로 찍는다
+
+**온보딩 메뉴를 세로로 편다.** `·` 로 이어붙인 한 줄 메뉴는 터미널 폭에서 임의로 접혀 문 경계가 안 보인다(운영자 지적). `G-GREET-02`(🐿️+환영문 같은 줄)·`G-GREET-03`(고정 4문)·`G-GREET-05`(문구 리터럴) **셋 다 불변** — 그 프로브들이 박은 것은 문 집합·리터럴·환영문 줄이지 메뉴의 줄 수가 아니다. 플로어 티어 블라인드 sim(레포 밖 cwd·헤드리스·reps=3): **ARM 3/3 세로 · CONTROL 3/3 가로**, 같은 실행에서 G-GREET-02 도 3/3 유지.
+
+**BREAKING 없음 — 그리고 그 판정을 적어둔다.** 카드는 «위성 런이 프로필 미선언이면 막힌다» 를 `BREAKING (gate):` 후보로 올려뒀는데, 그 게이트가 사는 `frontier_digest_daily.sh` 가 **출하 대상이 아니라** 소비자의 게이트 수용은 안 바뀐다. 오늘 수리는 FAIL→PASS 라 완화 방향이다.
+
+🟥 **이 릴리스가 스스로 낸 교훈**: 결함 넷 중 **셋은 진단이 맞았고 하나는 틀렸는데, 틀린 하나를 자력으로는 못 잡았다.** 소비자-설치 완주라는 계기는 「돌아가나」를 재지 「고친 게 옳은가」를 못 잰다 — SKIP 으로 빠지는 팔은 그 계기가 구조적으로 안 보는 자리다. 잡은 것은 **다른 계열에 diff 를 보낸 것**이다.
+
+**명시 잔여**: `package_coverage_check.sh` 는 「참조된 경로가 출하되나」를 보지 「**출하된 레인의 주체가 출하되나**」를 안 본다 — 네 결함 중 셋을 rc=0 으로 통과시켰다. 그 갭은 이번에 안 닫았다.
+
 ### [2.5.1] — 2026-08-19
 
 **진입점 패리티 — 규칙이 출하돼야 발화한다.** 2.5.0 직후 `④-b` 드리프트 검사가 **AGENTS.md 에 공유 체크아웃 규율이 없다**를 냈다. CLAUDE.md 에는 있고 Codex 진입점에는 없는 상태였고, 그 상태에서는 비-Claude 런타임에 그 규칙이 **보이지 않는다**(gate-locality). 이 릴리스는 그 한 항목을 소비자에게 실제로 보내기 위한 것이다.

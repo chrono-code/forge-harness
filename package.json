@@ -1,6 +1,6 @@
 {
   "name": "@chrono-meta/fh-gate",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "description": "FH runtime adapters — run FH governance, skills, and agents via Claude or Codex with machine-parseable gates.",
   "license": "MIT",
   "keywords": [
@@ -89,6 +89,8 @@
     "scripts/adapters/qasp_web_rules.sh",
     "scripts/adapters/fixtures/qasp_web_rules_known_positive.json",
     "scripts/adapters/fixtures/qasp_web_rules_known_negative.json",
+    "scripts/adapters/fixtures/mate_agent_boundary_known_positive.md",
+    "scripts/adapters/fixtures/mate_agent_boundary_known_negative.md",
     "scripts/test_adapter_lanes.sh",
     "scripts/test_fh_gate_regressions.sh",
     "templates/local_fh_context.md",
@@ -130,8 +132,6 @@
     "scripts/chamber_candidate_collect.sh",
     "scripts/chamber_witness.sh",
     "scripts/digest_landing_check.sh",
-    "scripts/test_satellite_profile_schema_lanes.sh",
-    "scripts/test_satellite_publish_gate_lanes.sh",
     "scripts/relay_channel.sh",
     "scripts/test_relay_channel_lanes.sh",
     "scripts/fh_session_load.sh",

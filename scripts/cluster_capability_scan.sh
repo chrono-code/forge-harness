@@ -590,12 +590,25 @@ EOF
   #   ([[feedback_ci_measures_state_not_transition]] 의 데이터 판본).
   #   앵커를 **추적되는 파일**로 옮긴다 — `.claude/capabilities/*.cap` 은 커밋돼 있어
   #   어느 체크아웃에서도 존재한다. 수집 경로가 죽으면 이 카운트가 0 이 되어 빨개진다.
+  # 🟥 2026-08-20 — 이 레인은 **두 군데가 저자의 체크아웃에 결박**돼 있었고, 소비자 설치에서
+  #   전건 적색이었다(실측: 레지스트리 실물 2.5.1 에서 `discover` rc=10 → selfcheck FAIL).
+  #     ⓐ 전제: `discover` 는 `tracks/` 매핑 목록을 전제하는데 `tracks/` 는 gitignored 라
+  #        **배포물에 구조적으로 존재할 수 없다.** 부재는 «능력 0» 이 아니라 **미측정**이므로
+  #        FAIL 이 아니라 이름 있는 SKIP 으로 낸다([[feedback_not_found_is_not_zero_family]]).
+  #     ⓑ 🟥 **초판이 여기서 틀렸고, cross-family(codex/gpt-5.5)가 잡았다 — 자력 적발 0.**
+  #        기대 문자열 `^forge-harness\(hub\)` 를 «폴더명 결박» 으로 읽고 `basename` 유도로
+  #        바꿨는데, **생산자(:128)는 리터럴 `forge-harness(hub)` 를 낸다.** 즉 유도로 바꾸면
+  #        이름이 다른 트리에서 기대와 산출이 갈려 **거짓 FAIL** 이 된다 — 이 파일이 바로 위에서
+  #        경고하는 divergent-normalizer 를 수리가 새로 만든 꼴이다. 되돌렸다.
+  #        진단 정정: 이 라벨은 «디렉터리 이름»이 아니라 **허브의 상수 식별자**다. 양쪽이 같은
+  #        상수를 쓰는 한 어느 체크아웃에서도 일치하므로 결박이 아니다. 결박은 ⓐ 하나였다.
+  local _hubroot
+  _hubroot="$(cd -P "$(dirname "$SELF")/.." && pwd)"
+  tracked_n="$(_cap_files "$_hubroot/.claude/capabilities" | wc -l | tr -d ' ')"
   out="$(bash "$SELF" discover 2>&1)"; rc=$?
-  # ★세는 규칙은 도구와 **같아야 한다**. 초판은 `ls .../*.cap`(비재귀)였는데 도구가 재귀로
-  #   바뀌자 레인만 2를 세고 도구는 5를 세어 거짓 적색이 났다 — 레인 자신이
-  #   divergent-normalizer 가 된 경우다. `_cap_files` 한 벌로 통일한다.
-  tracked_n="$(_cap_files "$(cd -P "$(dirname "$SELF")/.." && pwd)/.claude/capabilities" | wc -l | tr -d ' ')"
-  if [ "${tracked_n:-0}" -lt 1 ]; then
+  if [ ! -d "$_hubroot/tracks" ]; then
+    echo "  ⏭  L13c SKIP — tracks/ 부재라 discover 의 전제가 없다(gitignored, 배포물에 구조적 부재). 미측정이지 «0건» 아님"
+  elif [ "${tracked_n:-0}" -lt 1 ]; then
     f=$((f+1)); echo "  ❌ L13c 전제 파손 — 추적되는 .claude/capabilities/*.cap 이 0건이다(앵커 대상 부재)"
   elif printf '%s' "$out" | grep -qE '^forge-harness\(hub\)[[:space:]]+OK[[:space:]]+'"$tracked_n"'[[:space:]]'; then
     p=$((p+1)); echo "  ✅ L13c 실물 수집이 살아 있다 — 허브 자신의 추적 선언 ${tracked_n}건을 실제로 집었다"

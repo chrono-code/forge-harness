@@ -110,6 +110,15 @@ ACCEPTED_ABSENT=(
   #     honest state is "declared, and the declaration records a debt" — carried to the card.
   "scripts/test_chamber_run_lanes.sh"
   "scripts/test_frontier_digest_retry.sh"
+  #   · test_satellite_publish_gate_lanes.sh / test_satellite_profile_schema_lanes.sh
+  #     — 2026-08-20. 같은 모양이고, 둘 다 **이미 files[] 에 들어간 채 배포된 뒤에** 잡혔다.
+  #     주체가 frontier_digest_daily.sh(아래 ACCEPTED_ABSENT)라 소비자 머신엔 잴 대상이 없다.
+  #     🟥 실측(레지스트리 실물 2.5.1, 소비자 설치에서 실행): publish_gate 4 passed / 21 failed,
+  #     `rc=127`(러너 부재) → selfcheck 가 하드 FAIL → **배포본이 `SELFCHECK: FAIL` 이었다.**
+  #     🟥 이 검사기는 그걸 rc=0 으로 통과시켰다 — 여기는 「참조된 경로가 출하되나」를 보지
+  #     「출하된 레인의 **주체**가 출하되나」를 안 본다. 그 갭은 아직 안 닫혔다(명시 잔여).
+  "scripts/test_satellite_publish_gate_lanes.sh"
+  "scripts/test_satellite_profile_schema_lanes.sh"
   "scripts/residency_closure_scan.py"
   "scripts/test_residency_closure_lanes.sh"
   # ── The two settings destinations, surfaced 2026-08-13 by fixing this file's own extractor ────

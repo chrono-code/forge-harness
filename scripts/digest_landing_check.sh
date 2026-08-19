@@ -367,6 +367,18 @@ do_check() {
 }
 
 do_self_test() {
+  # 🟥 2026-08-20 — 아래 레인들은 컨트롤을 **픽스처가 실제로 담은 토큰으로 고정**한다.
+  #    고정 전에는 컨트롤이 `basename "$FH"` 로 유도됐고, 픽스처 카드가 리터럴
+  #    `forge-harness session card` 를 담고 있어서 **체크아웃 디렉터리 이름이 `forge-harness`
+  #    일 때만** 컨트롤이 살았다. npm 소비자는 `node_modules/@chrono-meta/fh-gate` 에 깔리므로
+  #    거기서는 컨트롤이 전건 사망 → 착지 판정 레인 5개가 전부 rc=10 이 됐다.
+  #    known-pair 실측(같은 바이트, 디렉터리명만 교체): `forge-harness/` 15/15 PASS ·
+  #    `some-consumer-app/` 5/15 FAIL. 즉 계기가 **저자의 폴더 이름에 결박**돼 있었다.
+  #    🟥 «10 을 기대하는» 레인들도 같이 고정한다 — 그 레인들은 고정 전에도 10 을 냈지만
+  #    그건 **의도한 사유가 아니라 컨트롤 사망** 때문이었다(거짓 초록).
+  #    🟥 N1(컨트롤 사망)·★N-ctl(유도가 도는가)·★N-ctl-re 는 **일부러** 유도/사망을 주장하므로
+  #    고정하지 않는다. 거기에 넣으면 그 레인의 주장이 뒤집힌다.
+  #    선행 관용구 = 이 파일의 ★N-git 레인(“컨트롤은 픽스처가 담은 토큰으로 고정”).
   local T; T="$(mktemp -d -t dlc_t.XXXXXX)" || return 10
   local pass=0 fail=0 rc
   _t() { if [ "$2" = "$3" ]; then echo "✅ $1 → rc=$3"; pass=$((pass+1));
@@ -389,12 +401,12 @@ EOF
   printf 'forge-harness session card\nallow_force_pushes 잔여가 거짓임을 실측했다\n' > "$T/tgt/card.md"
 
   # P1 — 착지분과 미착지분이 섞이면 rc=1 (미착지 있음)
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "M2 착지 · R2 미착지 → 미착지 검출(1)" 1 "$rc"
 
   # P2 — 둘 다 착지시키면 0
   printf 'prime_agent_sister_asset 도 기록했다\n' >> "$T/tgt/card.md"
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "둘 다 착지 → 전건 착지(0)" 0 "$rc"
 
   # N1 — 컨트롤 사망(타깃에 컨트롤 토큰이 없다) → HARNESS-ERROR(10), PASS 도 FAIL 도 아님
@@ -511,7 +523,7 @@ EOF
   # N2a — 후보가 **전부** 판별불가면 TARGET 이 0건이다. 이건 "미착지" 가 아니라
   #        **계기 부적용**이고, 착지 검증기가 rc=10(PASS 도 FAIL 도 아님)을 낸다.
   #        초판은 여기 기대값을 1 로 적었는데 **내 기대가 틀렸다** — 전부 못 쟀으면 에러다.
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest_unchk.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest_unchk.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "판별불가만 있는 digest → HARNESS-ERROR(10), '착지 0건' 아님" 10 "$rc"
 
   # N2b ★ 진짜 중요한 레인 — **혼합**. 잴 수 있는 건 전부 착지했는데 판별불가가 섞였다.
@@ -527,12 +539,12 @@ EOF
 
 ## end
 EOF
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest_mixed.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest_mixed.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "★혼합(착지 전건 + 판별불가 1) → 0 아님(미측정을 분모에서 안 지운다)" 1 "$rc"
 
   # N3 — 후보 절이 없는 digest → 10 (0건과 미검출을 가른다)
   printf '# digest\n## 다른 절\n내용\n' > "$T/nosection.md"
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/nosection.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/nosection.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "후보 절 부재 → HARNESS-ERROR(10), '0건 착지' 아님" 10 "$rc"
 
   # N3-b — **대상 어휘 절 제목**은 기본 정규식으로 못 찾고, DLC_SECTION_RE 로는 찾는다.
@@ -543,18 +555,18 @@ EOF
   #   arm 도 10 을 내고, 그러면 이 레인이 «오버라이드가 안 먹는다» 는 거짓 결론을 낸다
   #   (초판이 그렇게 틀렸다 — 픽스처는 뚫리는 표기로 골라야 한다).
   printf '# digest\n## the-target Application Candidates\n**[A] 후보** — `%s` 를 고친다\n' "card.md" > "$T/targetvocab.md"
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/targetvocab.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/targetvocab.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "★N3-b control — 대상 어휘 절은 기본 정규식으로 못 찾는다(10)" 10 "$rc"
   rc=0; DLC_SECTION_RE='^## .*Application Candidates' \
-        bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/targetvocab.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+        DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/targetvocab.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "★N3-b arm — DLC_SECTION_RE 오버라이드가 절을 찾는다(10 아님)" "not10" "$([ "$rc" -eq 10 ] && echo is10 || echo not10)"
 
   # N4 — digest 파일 자체가 없음 → 10
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/does-not-exist.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/does-not-exist.md" >/dev/null 2>&1 || rc=$?
   _t "digest 부재 → rc=10" 10 "$rc"
 
   # N5 컨트롤 — P2 가 여전히 0 인가 (앞 레인이 상태를 오염시키지 않았는지)
-  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  rc=0; DLC_CONTROLS="forge-harness session" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/digest.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "컨트롤 — 정상 케이스 재확인" 0 "$rc"
 
   rm -rf "$T"

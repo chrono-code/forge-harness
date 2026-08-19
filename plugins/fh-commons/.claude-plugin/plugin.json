@@ -1,6 +1,6 @@
 {
   "name": "fh-commons",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "engines": {
     "claudeCode": ">=1.0.0"
   },

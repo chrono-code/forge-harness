@@ -707,7 +707,18 @@ fi
 # 🟥 이 배선이 없어서 CI 가 `lane-runner: lane suite(s) with no runner and no declaration` 로
 # 빨갰다. 스위트를 신설하고 아무 데서도 안 돌린 것 — 검사기의 표현대로
 # *"A suite nothing executes is prose."* 그 검사기가 내 신설 레인을 잡았다.
-if [ ! -f scripts/test_satellite_publish_gate_lanes.sh ]; then
+# 🟥 2026-08-20 — 대상 축 가드. 이 두 레인의 **주체는 `scripts/frontier_digest_daily.sh`** 이고
+# 그 러너는 의도적으로 출하 대상이 아니다(소비자 계정으로 `claude` CLI 를 태우고 `tracks/` 에 쓴다 —
+# `package_coverage_check.sh` ACCEPTED_ABSENT 가 그 이유를 명시한다). 가드 전에는 레인 파일 존재만
+# 봤기 때문에, 소비자 설치에서 러너가 없는 채로 레인이 실행돼 **rc=127 로 무더기 FAIL** 했다.
+# 실측(레지스트리 실물 2.5.1): publish_gate 4 passed / 21 failed → `SELFCHECK: FAIL`.
+# 🟥 그리고 통과한 쪽이 더 나빴다 — "G1b dispatch 자체가 안 일어남 ✅" 은 러너가 **없어서** 통과한
+# 거짓 초록이다([[feedback_not_found_is_not_zero_family]]).
+# 판정은 `_absent_subject_verdict` 한 곳에 위임한다 — 「files[] 에 없고 부재」면 SKIP,
+# 「출하 선언됐는데 부재」면 삭제/깨진 설치라 FAIL, 매니페스트를 못 읽으면 UNDECIDABLE 로 FAIL.
+if [ ! -f scripts/frontier_digest_daily.sh ]; then
+  _absent_subject_verdict "test_satellite_publish_gate_lanes.sh" "scripts/frontier_digest_daily.sh" || fail=1
+elif [ ! -f scripts/test_satellite_publish_gate_lanes.sh ]; then
   echo "FAIL  test_satellite_publish_gate_lanes.sh: missing — publish gate has no anchor"
   fail=1
 elif _out=$(bash scripts/test_satellite_publish_gate_lanes.sh < /dev/null 2>&1); then
@@ -722,7 +733,9 @@ fi
 # 🟥 신설하고 안 배선해서 `lane-runner: A suite nothing executes is prose` 로 CI 가 빨갰다.
 #    바로 윗 블록이 **같은 사고의 기록**인데 그걸 읽고도 같은 실수를 했다 — 산문은 자기
 #    바로 위에 있어도 안 읽힌다는 실측이고, 잡은 것은 검사기다.
-if [ ! -f scripts/test_satellite_profile_schema_lanes.sh ]; then
+if [ ! -f scripts/frontier_digest_daily.sh ]; then
+  _absent_subject_verdict "test_satellite_profile_schema_lanes.sh" "scripts/frontier_digest_daily.sh" || fail=1
+elif [ ! -f scripts/test_satellite_profile_schema_lanes.sh ]; then
   echo "FAIL  test_satellite_profile_schema_lanes.sh: missing — 프로필 스키마 게이트에 앵커 없음"
   fail=1
 elif _out=$(bash scripts/test_satellite_profile_schema_lanes.sh < /dev/null 2>&1); then
