@@ -100,7 +100,12 @@ CHECKER="$SELF_DIR/utterance_landing_check.sh"
 #    다중 경로 지원과의 트레이드오프라 오늘은 **문서화만** 했고 기계 검사는 없다.
 DLC_TRACKED_PATHS="${DLC_TRACKED_PATHS:-knowledge CLAUDE.md}"   # git 추적축 (커밋시각)
 DLC_IGNORED_DIR="${DLC_IGNORED_DIR-tracks/_meta}"               # gitignored 축 (mtime). 빈 값 = 그 축 없음
-SECTION_RE='^## .*Immediate Application Candidates'
+# 🟥 2026-08-19 — 이 정규식은 **FH 자기 어휘**였고 오버라이드가 없었다. 위성 산출의 절 제목은
+# 대상 프로필이 정한다(`## <대상> Application Candidates`) — 즉 계기가 **대상 레포에서는 구조적으로
+# 후보를 못 찾는다.** 실측: forge-wiki·the-bible 둘 다 rc=10. R1(디렉터리를 타깃 파일로 넘김)과
+# 같은 계열이다 — 「배선 완료」로 보고된 계기가 대상 축에서 죽어 있는 형태.
+# 기본값은 종전 그대로라 FH 자기 런은 무변경.
+SECTION_RE="${DLC_SECTION_RE:-^## .*Immediate Application Candidates}"
 
 # 후보 표에서 (id, 판별토큰 OR 정규식) 을 뽑는다. 토큰 없으면 id 만 내고 정규식은 빈 값.
 _extract() { # $1 = digest path
@@ -529,6 +534,20 @@ EOF
   printf '# digest\n## 다른 절\n내용\n' > "$T/nosection.md"
   rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/nosection.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
   _t "후보 절 부재 → HARNESS-ERROR(10), '0건 착지' 아님" 10 "$rc"
+
+  # N3-b — **대상 어휘 절 제목**은 기본 정규식으로 못 찾고, DLC_SECTION_RE 로는 찾는다.
+  #   🟥 2026-08-19 첫 실사용 발견: 위성 산출의 절 이름은 대상 프로필이 정하는데
+  #   (`## <대상> Application Candidates`) 체커 기본값은 FH 어휘(`Immediate ...`)라
+  #   **위성에서는 구조적으로 rc=10** 이었다(forge-wiki·the-bible 양쪽 실측).
+  #   🟥 픽스처의 후보 머리는 **`**` 형식**이어야 한다 — 평범한 `- ` 불릿은 항목으로 안 잡혀
+  #   arm 도 10 을 내고, 그러면 이 레인이 «오버라이드가 안 먹는다» 는 거짓 결론을 낸다
+  #   (초판이 그렇게 틀렸다 — 픽스처는 뚫리는 표기로 골라야 한다).
+  printf '# digest\n## the-target Application Candidates\n**[A] 후보** — `%s` 를 고친다\n' "card.md" > "$T/targetvocab.md"
+  rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/targetvocab.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  _t "★N3-b control — 대상 어휘 절은 기본 정규식으로 못 찾는다(10)" 10 "$rc"
+  rc=0; DLC_SECTION_RE='^## .*Application Candidates' \
+        bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/targetvocab.md" "$T/tgt/card.md" >/dev/null 2>&1 || rc=$?
+  _t "★N3-b arm — DLC_SECTION_RE 오버라이드가 절을 찾는다(10 아님)" "not10" "$([ "$rc" -eq 10 ] && echo is10 || echo not10)"
 
   # N4 — digest 파일 자체가 없음 → 10
   rc=0; bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$T/does-not-exist.md" >/dev/null 2>&1 || rc=$?
