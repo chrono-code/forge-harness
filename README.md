@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/banner.png" alt="forge-harness — Forge your projects, pass them through, faster. Quality is the lever — speed is the result." width="680">
 </p>
@@ -135,7 +137,7 @@ cd ~/projects/{your-project} && claude
 |---|---|
 | Solo dev, one project, just trying it | [`templates/starter_profile.md`](templates/starter_profile.md) — one command, curated first-five skills |
 | Multiple projects, want the compounding hub | Clone the hub (quickstart above) |
-| CI / non-Claude runtime, gates only | `npx @chrono-meta/fh-gate` (zero-install governance gate) |
+| CI / non-Claude runtime, gates only | `npx --package @chrono-meta/fh-gate fh-gate` (zero-install governance gate) |
 | Prefer `brew` over `npx`/`npm` | `brew tap chrono-meta/forge-harness && brew install forge-harness` — same 100%-parity content, different install UX (community tap; not yet in Homebrew Core, so `brew search` won't find it without the tap first) |
 
 ---
