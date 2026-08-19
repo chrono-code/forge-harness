@@ -718,6 +718,21 @@ else
   fail=1
 fi
 
+# test_satellite_profile_schema_lanes — 프로필 스키마 게이트(2026-08-19, 처방 1+3 · C-2).
+# 🟥 신설하고 안 배선해서 `lane-runner: A suite nothing executes is prose` 로 CI 가 빨갰다.
+#    바로 윗 블록이 **같은 사고의 기록**인데 그걸 읽고도 같은 실수를 했다 — 산문은 자기
+#    바로 위에 있어도 안 읽힌다는 실측이고, 잡은 것은 검사기다.
+if [ ! -f scripts/test_satellite_profile_schema_lanes.sh ]; then
+  echo "FAIL  test_satellite_profile_schema_lanes.sh: missing — 프로필 스키마 게이트에 앵커 없음"
+  fail=1
+elif _out=$(bash scripts/test_satellite_profile_schema_lanes.sh < /dev/null 2>&1); then
+  echo "PASS  test_satellite_profile_schema_lanes.sh ($(printf '%s\n' "$_out" | grep -oE 'PASS=[0-9]+ FAIL=[0-9]+' | tail -1))"
+else
+  echo "FAIL  test_satellite_profile_schema_lanes.sh: 프로필 스키마 레인 실패"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # test_evidence_root_psa_lanes — 워크트리에서 기밀성 오버라이드를 찾는가 (R4, 2026-08-18).
 # 🟥 `EVIDENCE_ROOT` 에는 레인이 **하나도 없었다** — 그래서 `tracks/` 만 옮기고 gitignored
 # 패턴 파일은 안 옮긴 반쪽-픽스가 그대로 출하됐다. 되돌림 프로브로 E1 만 적색 확인.

@@ -32,6 +32,15 @@ HUMAN_DATE=$(date +%Y-%m-%d)   # pinned once with TODAY — a wake-fired run cro
 #                 checker 기본값(= FH 문법 + 레포명 컨트롤) 그대로.
 # 🟥 기본값은 **전부 종전 그대로**다 — FH 프로덕션 경로 무변경.
 OUT_DIR="${FD_OUT_DIR:-tracks/_meta}"          # FH_DIR 기준 상대경로
+# 🟥 처방 2 (2026-08-19) — `FD_OUT_DIR` 가 **레포 밖 절대경로**를 받는다.
+# 종전엔 `${FH_DIR}/${OUT_DIR}` 로만 조립돼 상대경로 전제였다. 그런데 어떤 대상 레포는
+# «`git status` 에 설명되지 않은 것이 뜨면 사건» 으로 취급한다(ⓓ 3자대면, gstack §Compiled
+# binaries) — 거기선 untracked 산출이 **매일 아침 오염**이다. 레포 밖에 떨어뜨릴 수 있어야 한다.
+# 🟥 기본값 무변경: 상대경로면 종전과 **바이트 동일**한 경로가 나온다.
+case "$OUT_DIR" in
+    /*) OUT_ABS="$OUT_DIR" ;;
+    *)  OUT_ABS="${FH_DIR}/${OUT_DIR}" ;;
+esac
 # FD_PROFILE — 대상 하네스가 **자기를 설명하는** 파일(FH_DIR 기준 상대경로).
 # 🟥 이게 없으면 위성은 «프런티어 신호 목록»을 남의 폴더에 복사한다 — 실측 2026-08-18:
 #   FD_OUT_DIR 만 옮긴 런의 산출물이 "signals relevant to forge-harness (FH) operations" 였다
@@ -51,7 +60,7 @@ if [ -n "${FD_LOG_DIR:-}" ]; then
 elif [ "${FD_PUBLIC_TARGET:-0}" = "1" ]; then
     LOG_DIR="${HOME}/.cache/fh/frontier_digest/$(basename "$FH_DIR")"
 else
-    LOG_DIR="${FH_DIR}/${OUT_DIR}/logs"
+    LOG_DIR="${OUT_ABS}/logs"
 fi
 LOG_FILE="${LOG_DIR}/frontier_digest_${TODAY}.log"
 
@@ -69,11 +78,168 @@ find "$LOG_DIR" -name 'frontier_digest_*.log' -mtime +30 -delete 2>/dev/null
 # 내고 **진짜 다이제스트는 미스캔으로 게시**된다(두 계열 독립 수렴).
 # 두 벌의 관대함이 갈리는 그 형태다([[feedback_divergent_leniency_duplicate_normalizers]]).
 digest_files() {
-    find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" -size +1k 2>/dev/null
+    find "${OUT_ABS}" -maxdepth 1 -name "frontier_digest_${TODAY}*.md" -size +1k 2>/dev/null
 }
 
 digest_ready() {
     digest_files | grep -q .
+}
+
+# ── 프로필 스키마 게이트 (2026-08-19, 처방 1+3 · C-2 정밀) ────────────────────
+# ⓓ 3자대면이 낸 설계 결함: 프로필이 «금지 파일 / 산출 자리 / 이 레포의 sink» 를 **요구하지
+# 않는다**. the-bible 프로필에 금지선 5개가 있는 건 내가 그 도메인을 알아서 쓴 것이지 스키마가
+# 요구해서가 아니다 — 다음 위성에서 그 자리가 비면 **조용히** 빠진다.
+#
+# 🟥 그리고 대상이 «남의 레포인데 주인이 FH 로 신청한» 경우(운영자 정의 2026-08-19), 이 세 필드는
+#    위생이 아니라 **권한·동의 표면**이다. 주인이 「내 레포에서 뭘 건드리지 마라 / 여기 뭐가
+#    나가면 안 되나」를 선언하는 자리가 이것뿐이다. 비면 FH 는 그걸 **모르는 채로** 돈다.
+#
+# 검사 성격 — §Mechanization Boundary: 이건 **채널 검사**다(필드가 있나 · 타입이 맞나 ·
+# 비공허한가). 값이 **옳은가**는 안 본다. 후자를 코드로 굳히면 오늘의 판단이 내일의 천장이 된다.
+# ⇒ `egress_sinks: [none]` 같은 **명시적 «없음»은 정당한 값**이고, 금지되는 건 **안 적는 것**뿐이다.
+#
+# 🟥 산문은 검증이 안 되므로 프로필 **맨 앞 frontmatter 블록**만 기계가 읽는다. 본문은 종전대로
+#    사람이 쓰는 산문이고 프롬프트에 통째로 실린다(형태 무변경).
+_profile_field() {
+    # $1 = 프로필 경로, $2 = 필드명 → 값을 줄 단위로 stdout. 없으면 무출력.
+    # inline flow(`[a, b]`) 와 block list(`- a`) 둘 다 받는다.
+    awk -v want="$2" '
+        NR==1 { if ($0 != "---") exit; inb=1; next }
+        inb && $0 == "---" { inb=0; exit }
+        !inb { exit }
+        {
+            if (index($0, want ":") == 1) {
+                val = substr($0, length(want) + 2)
+                sub(/^[ \t]+/, "", val); sub(/[ \t]+$/, "", val)
+                if (val ~ /^\[.*\]$/) {
+                    sub(/^\[/, "", val); sub(/\]$/, "", val)
+                    n = split(val, a, ",")
+                    for (i = 1; i <= n; i++) {
+                        sub(/^[ \t]+/, "", a[i]); sub(/[ \t]+$/, "", a[i])
+                        if (a[i] != "") print a[i]
+                    }
+                } else if (val != "") {
+                    print val
+                }
+                cap = 1; next
+            }
+            if (cap) {
+                if ($0 ~ /^[ \t]*-[ \t]+/) {
+                    v = $0; sub(/^[ \t]*-[ \t]+/, "", v)
+                    sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v)
+                    if (v != "") print v
+                } else if ($0 ~ /^[A-Za-z_]/) {
+                    cap = 0
+                }
+            }
+        }
+    ' "$1"
+}
+
+# 프로필이 선언한 금지선을 **런 단위 deny** 로 물질화한다.
+# 🟥 대상 레포 파일을 **한 줄도 안 고친다** — `claude --settings <JSON>` 이 JSON 문자열을 받는다.
+#    ⓑ(남의 레포) 형태에서 결정적이다: 우리가 그쪽 `.claude/` 에 쓸 권한이 없어도 걸린다.
+# 🟥 실측 known-pair 4런(2026-08-19, scratchpad/kp): deny 없음 → 센티넬 유출 1 /
+#    deny 주입 → 0. Bash(`cat`·`python3`) 경로도 같은 쌍으로 갈렸다(컨트롤이 유출했으므로
+#    「headless 라 Bash 가 원래 안 돈다」 가설은 반증). **막은 것은 deny 다.**
+# 🟥 안 잰 칸: 공식 문서가 *"임의 subprocess 에는 Read deny 가 안 걸린다 — OS 레벨은 sandbox"*
+#    라고 명시한다. 내 arm 은 BLOCKED 를 냈지만 «python 이 막혔다»와 «python 을 시도조차
+#    안 했다»를 구분 못 한다(각 arm reps=1). ⇒ **subprocess 우회는 미측정**이지 닫힌 게 아니다.
+# 🟥 **주장 범위 — 이건 «Read tool deny» 이지 egress 방화벽이 아니다** (cross-family A3).
+#    닫히는 것: Claude 의 Read/Grep/Glob + 인식되는 Bash 파일명령(cat·head·tail·sed).
+#    안 닫히는 것: 임의 subprocess(python/node 가 직접 open) · 미선언 경로에 같은 비밀이
+#    또 있는 경우 · **프로필 본문 자체**(프롬프트에 통째로 실려 이미 나간다).
+#    OS 레벨 차단은 sandbox 뿐이고 이 러너는 그걸 안 쓴다.
+# 🟥 파싱 문법도 YAML 전체가 아니다 (cross-family B7): frontmatter 안의
+#    **인용 없는 스칼라 + 단순 리스트**(`[a, b]` 또는 `- a`)만 받는다. 인용 스칼라·값 안의
+#    쉼표·인라인 주석은 오판하며, 방향은 fail-closed(과차단)다.
+PROFILE_SETTINGS_JSON=""
+_json_str() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+validate_profile() {
+    local prof="$1" missing="" f v n
+    if ! head -1 "$prof" | grep -q '^---$'; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 profile gate: frontmatter 블록 없음 — 스키마 미선언, fail-closed" >> "$LOG_FILE"
+        return 4
+    fi
+    for f in satellite_profile output_location forbidden_paths egress_sinks; do
+        v=$(_profile_field "$prof" "$f")
+        [ -n "$v" ] || missing="${missing}${f} "
+    done
+    if [ -n "$missing" ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 profile gate: 필수 필드 누락 [${missing% }] — fail-closed" >> "$LOG_FILE"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')]   («없음»을 뜻하려면 빈 값이 아니라 명시적으로 none 을 적어라)" >> "$LOG_FILE"
+        return 4
+    fi
+    # 🟥 `output_location` 은 **읽어서 대조한다**. 존재만 검사하면 「슬롯은 있고 소비처가 0」인
+    #    반쪽 외부화가 되고, 그동안 선언값과 실제 `FD_OUT_DIR` 이 조용히 갈린다
+    #    ([[feedback_half_externalization_slot_without_consumer]]).
+    #    프로필이 «내 산출은 여기»라고 적었는데 러너가 딴 데 떨어뜨리면 선언과 실제가 갈린 것이다.
+    # ⚠️ **주장 범위**: 이건 «러너가 어디로 지시하는가»의 대조지 «모델이 딴 파일에 못 쓴다»가
+    #    아니다(cross-family A5). 쓰기 억제는 위 forbidden_paths deny 가 하고, 그것도 부분적이다.
+    local declared decl_abs
+    declared=$(_profile_field "$prof" output_location)
+    case "$declared" in
+        /*) decl_abs="$declared" ;;
+        *)  decl_abs="${FH_DIR}/${declared}" ;;
+    esac
+    decl_abs="${decl_abs%/}"
+    if [ "$decl_abs" != "${OUT_ABS%/}" ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 profile gate: 산출 자리 불일치 — 프로필 선언 '$decl_abs' vs 실제 '${OUT_ABS%/}' — fail-closed" >> "$LOG_FILE"
+        return 4
+    fi
+
+    # deny 물질화. `none` 은 «선언된 없음»이라 규칙을 안 만든다.
+    # 🟥 F6: 절대경로가 오면 `./` 를 안 붙인다. 초판은 무조건 붙여 `.//abs` 를 만들었다.
+    # 🟥 F8: control char 는 JSON 문자열을 깬다 — 인용/역슬래시와 같이 fail-closed.
+    _deny_path() {
+        case "$1" in
+            /*) printf '%s' "$1" ;;
+            *)  printf './%s' "$1" ;;
+        esac
+    }
+    local rules="" item esc fp_any=0
+    while IFS= read -r item; do
+        [ -n "$item" ] || continue; [ "$item" = "none" ] && continue
+        case "$item" in *'"'*|*'\'*|*[[:cntrl:]]*)
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 profile gate: forbidden_paths 에 인용/역슬래시/control char — JSON 조립 불가, fail-closed" >> "$LOG_FILE"
+            return 4 ;;
+        esac
+        esc=$(_json_str "$(_deny_path "$item")")
+        rules="${rules}\"Edit(${esc})\",\"Write(${esc})\","
+        fp_any=1
+    done <<EOF
+$(_profile_field "$prof" forbidden_paths)
+EOF
+    while IFS= read -r item; do
+        [ -n "$item" ] || continue; [ "$item" = "none" ] && continue
+        case "$item" in *'"'*|*'\'*|*[[:cntrl:]]*)
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 profile gate: egress_sinks 에 인용/역슬래시/control char — JSON 조립 불가, fail-closed" >> "$LOG_FILE"
+            return 4 ;;
+        esac
+        esc=$(_json_str "$(_deny_path "$item")")
+        rules="${rules}\"Read(${esc})\","
+    done <<EOF
+$(_profile_field "$prof" egress_sinks)
+EOF
+    # 🟥 F4 (cross-family A4): `Edit`/`Write` deny 만으로는 파일 변경이 안 닫힌다.
+    #    `--permission-mode acceptEdits` 는 공식 문서상 **mkdir·touch·rm·rmdir·mv·cp·sed 를
+    #    자동 승인**한다 — 즉 `sed -i` 한 줄로 forbidden_paths 의 파일을 고칠 수 있었다.
+    #    무인 런에서 그 변이 명령들은 필요가 없으므로 통째로 닫는다.
+    # ⚠️ 이건 경로별이 아니라 **명령별**이라 coarse 하다. 정밀하게 닫는 유일한 층은 OS sandbox 다.
+    if [ "$fp_any" = "1" ]; then
+        for _c in sed mv cp rm rmdir; do
+            rules="${rules}\"Bash(${_c}:*)\","
+        done
+    fi
+    if [ -n "$rules" ]; then
+        PROFILE_SETTINGS_JSON="{\"permissions\":{\"deny\":[${rules%,}]}}"
+        n=$(printf '%s' "$rules" | tr -cd ',' | wc -c | tr -d ' ')
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] profile gate: OK — deny 규칙 ${n}건 주입" >> "$LOG_FILE"
+    else
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] profile gate: OK — 선언된 금지선 없음(none), deny 규칙 0건" >> "$LOG_FILE"
+    fi
+    return 0
 }
 
 # ── 공개표면 게이트 (2026-08-18, 원정 2차) ──────────────────────────────────
@@ -191,7 +357,7 @@ landing_witness() {
     #    `frontier_digest_2026_08_17.md` 보다 뒤에 정렬돼, **두 달 전 파일**이 직전으로 뽑혔고
     #    그 파일엔 후보 절이 없어 매 런 HARNESS-ERROR 였다. `LC_ALL=C` 로 바이트 순서를 고정한다.
     #    (레인 21개가 전부 초록인 채로 이게 살아 있었다 — 픽스처가 한 가지 표기만 썼기 때문이다.)
-    prev=$(find "${FH_DIR}/${OUT_DIR}" -maxdepth 1 -name 'frontier_digest_*.md' 2>/dev/null \
+    prev=$(find "${OUT_ABS}" -maxdepth 1 -name 'frontier_digest_*.md' 2>/dev/null \
            | grep -v "frontier_digest_${TODAY}" | LC_ALL=C sort | tail -1)
     [ -n "$prev" ] || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness: 직전 digest 없음 — SKIPPED (not a pass)" >> "$LOG_FILE"; return 0; }
     local out rc
@@ -229,9 +395,9 @@ _build_prompt() {
 "🟥 TARGET HARNESS — this digest is NOT for forge-harness. Read the profile below and write for THAT harness. Copying a generic frontier list here is replication, not propagation; the deliverable is **what THIS harness should change**, each point naming a file or behavior in it." \
 "🟥 STANDPOINT — do not write from forge-harness's chair. OPEN AND READ the target's own files that the profile names: its canon docs AND its actual source. Cite them by path + line number or function name. A point you cannot anchor to something you actually opened is a trend statement, not an application. (This is the standpoint axis applied to frontier input: reading the profile is tier1b, reading the real code is tier2 — the measured difference is whether any Route line appears at all.)" \
 "$(cat "$prof")" \
-"Save the digest to ${OUT_DIR}/frontier_digest_${TODAY}.md, in the node grammar the profile specifies. Do NOT regenerate any index. If a source cannot be fetched, say so — never invent a citation, and cite specific items, not listing pages."
+"Save the digest to ${OUT_ABS}/frontier_digest_${TODAY}.md, in the node grammar the profile specifies. Do NOT regenerate any index. If a source cannot be fetched, say so — never invent a citation, and cite specific items, not listing pages."
     else
-        printf '%s %s\n' "${base}" "Save the digest to ${OUT_DIR}/frontier_digest_${TODAY}.md."
+        printf '%s %s\n' "${base}" "Save the digest to ${OUT_ABS}/frontier_digest_${TODAY}.md."
     fi
 }
 
@@ -292,6 +458,30 @@ trap 'echo "[$(date "+%Y-%m-%d %H:%M:%S")] SIGNAL: runner received INT/HUP" >> "
 # 인터럽터블 sleep — foreground sleep 은 끝나야 trap 이 돌아 신호 수신이 sleep 잔여시간만큼
 # 늦는다(challenger B-1: launchd 의 TERM→~20s→KILL 창에서 backoff 600s 기준 기록 확률 ~3%).
 # `sleep & wait` 는 wait 가 builtin 이라 신호를 즉시 받는다 → trap 즉발.
+# 🟥 프로필 스키마 게이트는 **dispatch 직전**에 선다 — 여기가 비가역 경계다(한 번 나간
+#    바이트는 안 돌아온다). 위쪽 publish_gate 조기-종료 경로들보다 **뒤**에 두는 것은 의도다:
+#    이미 착지한 다이제스트의 게시/증언은 프로필과 무관하고, 거기서 막으면 어제 산출이
+#    스캔도 못 받고 묶인다.
+# 🟥 «위성인가»는 FD_PROFILE 유무로 판정하지 **않는다** (cross-family S1, 2026-08-19).
+#    초판이 그렇게 했고, 그러면 `FD_FH_DIR` 만 남의 레포로 돌린 런이 프로필 없이 **그대로
+#    dispatch 된다** — 게이트를 끄는 방법이 «필드를 안 적는 것»이었다. 더 나쁜 건 내 레인 E2 가
+#    그 우회를 「FH 경로 무변경」이라며 **초록으로 고정**하고 있었다는 것이다
+#    ([[feedback_lane_vocabulary_blind_to_its_own_fix]] — 수리와 같은 어휘로 레인을 쓰면 안 잡힌다).
+# 판정은 **기계적**이다: 엔진이 사는 레포에서 도는가(FH 자기 런), 남의 레포에서 도는가(위성).
+IS_SATELLITE=0
+[ "$(cd "$FH_DIR" 2>/dev/null && pwd -P)" != "$(cd "$ENGINE_DIR" 2>/dev/null && pwd -P)" ] && IS_SATELLITE=1
+if [ "$IS_SATELLITE" = "1" ] && [ -z "$PROFILE_PATH" ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 profile gate: 위성 런(FD_FH_DIR≠엔진 레포)인데 FD_PROFILE 미설정 — fail-closed" >> "$LOG_FILE"
+    rmdir "$LOCK_DIR" 2>/dev/null; exit 4
+fi
+if [ -n "$PROFILE_PATH" ]; then
+    if [ ! -f "${FH_DIR}/${PROFILE_PATH}" ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] 🚫 profile gate: FD_PROFILE 지정됐는데 파일 부재 ($PROFILE_PATH) — fail-closed" >> "$LOG_FILE"
+        rmdir "$LOCK_DIR" 2>/dev/null; exit 4
+    fi
+    validate_profile "${FH_DIR}/${PROFILE_PATH}" || { rmdir "$LOCK_DIR" 2>/dev/null; exit 4; }
+fi
+
 _isleep() { sleep "$1" & wait $!; }
 for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
     # Re-check before spending an attempt (a manual run may have landed the digest during the sleep)
@@ -302,6 +492,7 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attempt ${ATTEMPT}/${MAX_ATTEMPTS}" >> "$LOG_FILE"
     "$CLAUDE_BIN" -p --permission-mode acceptEdits \
         ${FD_MODEL:+--model "$FD_MODEL"} \
+        ${PROFILE_SETTINGS_JSON:+--settings "$PROFILE_SETTINGS_JSON"} \
         "$(_build_prompt)" \
         >> "$LOG_FILE" 2>&1 &
     CLAUDE_PID=$!
