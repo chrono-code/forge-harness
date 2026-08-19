@@ -54,6 +54,38 @@ Session end
     │  edit-manifest VERIFY: check pending predictions in edit_manifest.yaml
     │  memory-hygiene scan: staleness check on memory/*.md entries (skip if < 7 days)
     │
+[Step 0-d] Session Retrospective (close_retro 가 granted 일 때만)
+  🟥 새 스킬을 만들지 않는다 — 회고 산출은 그대로 Step 2(contention-layer) → Step 3 → 3.5(등급)
+     로 **이미 있는 파이프라인**을 탄다. 「개선포인트 정리」가 거기서 공짜로 붙는다.
+
+  진입 조건 (기계적, 이 순서로):
+    1. `tracks/_meta/user_adaptation_profile.md` frontmatter 의 `close_retro`
+         granted  → 실행
+         declined → 건너뛴다. **다시 묻지 않는다**(operational_adaptation.md no-re-nag)
+         unset / UAP 부재 / ephemeral → **실행하지 않고, 지어내지도 않는다.**
+           운영자 맥락이면(= `CLAUDE.local.md` 존재, `psa_detect_operator_context()` 와 같은
+           판별자) **최초 마감 1회만** 제안하고 답을 UAP 에 기록한다. 그 이상 묻지 않는다.
+    🟥 `CLAUDE.local.md` 존재가 판별자인 이유는 그것이 **gitignored** 라 fresh clone·CI 체크아웃·
+       워크트리 어디에도 안 따라오기 때문이다. 기각된 후보: 「tracks/_meta 가 비어있지 않음」 —
+       `.gitkeep` 이 tracked 라 **fresh clone 이 만족시킨다**(psa_scan_lib.sh 주석의 실측).
+    🟥 **운영자 맥락이라고 자동 granted 가 아니다.** 파일이 존재해서 승인되는 게 아니라
+       **운영자 발화가 인용돼 기록되는 순간** 승인된다. 전자는 세션이 자기 권한을 넓히는 형태다.
+
+  산출: 오늘자 `tracks/_meta/fh_signal_{date}_{source}.md` 에 `retro: close` 를 달고
+        `## Session Retrospective` 4필드를 채운다(형식 정본 = fh_detail_protocols.md).
+        「없음」·「0」도 유효한 값이고, **비우는 것만 안 된다.**
+
+  Done When:
+    + 오늘자 signal 파일이 존재하고 `retro: close` 를 달고 있다              — mandatory-pass
+    + Session Retrospective 4필드가 전부 채워졌다                             — mandatory-pass
+    + 정정 건수는 **세었지 회상하지 않았다**                                   — measured
+    + FH Registration Candidate 가 비면 그 이유가 한 줄 적혀 있다             — mandatory-pass
+
+  ⚠️ `session_close_check.sh` 에 기계 검사를 **붙이지 않는다.** 값싸게 붙일 수 있는 형태는
+     «오늘자 signal 이 있나» 인데 그건 *존재*만 재고 *회고했나*는 못 잰다 — CLAUDE.md 가 ④ 메모리
+     위생에 대해 같은 이유로 검사를 뺐다(«a check that can be satisfied without doing the work
+     is a decoration»). 같은 판단을 그대로 적용한다.
+
 [Step 0] Regression Guard
     │  Check: does anything from this session conflict with or regress a validated skill?
     │  → Regression detected: flag, route to contention-layer
