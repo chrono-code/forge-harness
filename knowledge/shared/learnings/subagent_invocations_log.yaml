@@ -2332,3 +2332,13 @@
   finding: "🟥 **FH 가 몰랐던 것 넷, 그중 둘은 설계 결함이다.** ⓐ **위성이 미등록 redaction sink** — gstack 은 「타 모델 dispatch」를 이미 sink 로 분류·스캔하는데 위성 경로는 그 스캐너를 한 줄도 안 탄다. 🟥 FH 의 publish_gate 는 **산출물**을 스캔하고 **입력**은 아무도 안 본다(방향이 반대다) ⓑ 무인 acceptEdits 의 폭발반경이 **레포 밖** — 그쪽 `.claude/skills/gstack` 심링크가 라이브 글로벌 설치본이라 동시 실행 중인 남의 CC 세션을 깬다 ⓒ **AI 에게 period 로 닫힌 파일**(ETHOS.md)이 있고 제안조차 위반 — 프로필 스키마에 「금지 파일」이 필수여야 한다 ⓓ 산출 자리를 발명할 필요 없음(`~/.gstack-dev/plans/` 가 이미 의미론이 같다) + 그 레포는 «git status 오염 = 사건». 절반 ① 은 `checked(겹침 있음)` — Renovate(구조) · Sourcegraph Agentic Batch Changes(«repository specific instructions», 2026-06 상용) · gh-aw(착지 형태) 가 각 조각을 선행한다. **net-new 가 아니라 조합**이고 그 사실이 「새롭다」의 강도를 깎는다."
   note: "🟥 **회수분이 따로 있다**: gstack 의 «짓기 전에 검색» 규율은 절반 ①(선행자산)을 절반 ②의 **입력**으로 요구한다 — FH 는 둘을 따로 돌렸는데 대상의 의자에 앉으면 한 문서다. ⓓ 의 두 질문이 «둘»이라는 것이 FH 쪽 구성이지 보편이 아니라는 뜻이고, 이건 6축 정의 자체에 닿는다. ⚠️ 절반 ① 은 스니펫 기반이고 1차 문서 전수 직독이 아니다 — Sourcegraph 의 그 문구가 「레포가 쓴 것」인지 「code graph 생성」인지 안 갈렸고, 그 한 줄이 갈리면 겹침이 «부분»에서 «전면»으로 바뀐다. **미확인으로 남겼다.** 신호 = tracks/_meta/fh_signal_2026-08-19_satellite-thirdparty-axis.md"
   cost: 157,378 tokens (subagent_tokens · tool_uses 20 · 313s)
+
+- date: 2026-08-19
+  agent: claude-code-guide · general-purpose ×2 · general-purpose(sonnet, blind sim) · codex sidecar
+  model: opus (orchestrator) / sonnet (blind sim) / gpt-5.5 (sidecar)
+  purpose: "위성 프로필 스키마 게이트 + 온보딩·마감회고 설계 + 게이트 적대검증 + 플로어 티어 발화 확인 — 한 세션 5건을 클래스로 묶어 1엔트리"
+  prompt_summary: "① 헤드리스 권한 의미론을 **1차 출처 직독**으로(추측 금지, 확인 불가는 명시) ② 마감 회고 상설화 설계 — 기존 자산 커버리지부터 갈라라 ③ 온보딩 가이드/Q&A 설계 — «이미 되는 것»이면 그렇게 결론내라 ④ **시험 대상을 안 알려준** 블라인드 4상황 sim ⑤ cross-family: fail-open 구멍·되돌림 우회를 찾아라"
+  outcome: accepted
+  finding: "🟥 **cross-family 가 S급 1건** — `FD_PROFILE` 미설정으로 게이트를 통째로 끌 수 있었고 **내가 쓴 레인이 그 우회를 초록으로 고정**하고 있었다(자력 적발 0). A급 4건도 전부 실물: acceptEdits 가 `sed·mv` 를 자동승인해 `sed -i` 로 금지파일 수정 가능 · 절대경로가 `.//abs` 로 조립 · 레인이 JSON 구조를 안 보고 문자열만 grep · 「egress 방화벽」 주장 과장. ★ **블라인드 sonnet sim 4/4 발화**(문 렌더 · 인라인 덤프 거부 · Linux 분기 · 없는 스킬에 「0건 근거」)이면서 **진짜 결함 1건 적발** — CLAUDE.md 서문이 신규자를 CHEATSHEET 로 오라우팅. ★ 설계 2건은 둘 다 **「새 자산 신설 없음」으로 수렴**했고, 그중 하나는 요청받은 형식(install-wizard 3부 동의)이 **이 용도엔 오용**이라고 반증했다."
+  note: "🟥 **블라인드 sim 은 계기 생존을 확인했다**(tool_uses=7) — 2026-08-16 의 `tool_uses: 0` 죽은 sim 과 구분된다. 그러나 **reps=1 로 이 레포 자체 바(reps≥3) 미달**이고, 「발화했다」는 관측 1회지 일반화가 아니다. ⚠️ 훅 tally 는 51 인데 이 엔트리 포함 4엔트리다 — tally 는 재시도·내부 스폰까지 세므로 **1:1 대응이 아니다**(개별 기록이 아니라 클래스 집계로 남긴다)."
+  cost: "claude-code-guide 124,771 · 설계 138,542 + 159,983 · 블라인드 sim 140,094 · codex 64,443 tokens"
