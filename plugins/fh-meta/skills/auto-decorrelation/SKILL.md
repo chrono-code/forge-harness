@@ -202,6 +202,50 @@ re-checks** it against the artifact (phantom-quench back-trace) before accepting
 source-grounded is **dropped, not judged**. No sidecar-only verdict (no weak-local-judge regression).
 Local 4090 = **canary tier** (evidence-of, never terminal verdict).
 
+🟥 **What you SEND decides which axis you get — put the MARKER in the payload, not just the diff**
+(2026-08-19). Sidecars have been receiving the *diff* only. That buys a review of the **code** and
+buys nothing on the **record**: the Axes 2+3 marker is self-attested, and this repo has already
+written down that the closing move is *"cross-family reading that marker"* — then never wired the
+marker into the thing that recruits cross-family. Measured twice: (a) a release marker's false
+`not-applicable` passed the new typed lanes untouched, because **form was correct**; (b) this skill's
+own dispatch on 2026-08-19 sent a diff and no marker, so the round could not have caught a false
+axis claim even in principle.
+
+**So the payload is two parts**: the frozen diff **and** the marker for this change — **as it stands
+at dispatch time**: `axes-run:` · `controls:` · `standpoint:` · `thirdparty:` · `residual:`.
+
+🟥 **`crossfamily:` is NOT in the payload — it is this round's OUTPUT.** Step 6 below says every rung
+*emits* that value and "the rung is not done until its verdict is recorded", so requiring it in the
+thing you send is circular: you would be shipping a field this dispatch has not produced yet. Send the
+marker with that line **absent or `UNKNOWN`**, and fill it from the result. (Caught by a blind
+floor-tier sim of this very paragraph, 2026-08-19 — the first draft listed `crossfamily:` among the
+payload fields and no reader could have satisfied it.) Ask the sidecar one extra
+question: *"does the record match the diff — is any axis claimed that the diff shows no trace of, and
+is any residual missing that the diff implies?"*
+
+⚠️ **Scope, deliberately narrow.** This asks whether the record is **consistent with the artifact**.
+It does NOT ask the sidecar to score honesty — «is this marker truthful» is a *conclusion*, and
+§Mechanization Boundary forbids freezing that into machinery. Consistency is checkable from two
+documents; honesty is not.
+⚠️ **You cannot observe that the sidecar READ it — say so rather than implying otherwise.** Putting the
+marker in the payload and the sidecar actually using it are different events, and nothing here
+distinguishes them: a silently-ignored marker looks exactly like a marker that was read and raised
+nothing. The cheap partial anchor is to require the return to **quote one marker line it checked** —
+a reply that quotes nothing did not demonstrably read it. That is evidence-of-reading, not proof, and
+it does not close §Mechanization Boundary's named self-attestation residual. Three independent
+readers flagged this same gap on the day the paragraph was written (a peer session, and two blind
+floor-tier sims), which is why it is stated here instead of left to the reader to notice.
+
+⚠️ **Prose, not a check** — measured recurrence is 2, below this repo's own N≥3 bar
+(`[[feedback_mechanize_at_repetition_prose_before]]`). On the third occurrence, mechanize it here.
+⚠️ **Residency still governs**: a marker can name company assets. Sanitize before any external-family
+dispatch, exactly as with the diff — the marker is not exempt because it is metadata.
+
+*Origin*: sister-asset read of `raphaelchristi/harness-evolver`'s `harness-critic` agent, whose whole
+role is auditing the **evaluator** rather than the artifact. Its detection signatures (score jumps,
+suspiciously fast convergence) do **not** port — FH markers carry no score — but the *target* does.
+Full assessment incl. what was deliberately not imported: `tracks/_audit/proposal_2026-08-19_sister_harness-evolver.md`.
+
 **Target freeze — a prior drop reason, checked before any of the above (2026-08-17).** Grounding a
 finding against *today's* tree proves nothing if the sidecar reviewed *yesterday's*. Pin before
 dispatch and verify on return:
