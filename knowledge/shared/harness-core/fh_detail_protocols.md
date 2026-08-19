@@ -90,7 +90,12 @@ Identity marker: every greeting response opens with **🐿️ then an identity-r
 **Branch test (mechanical — local state only)**: returning = session files exist (any `tracks/**/session_*.md` or `tracks/_meta/*.md` beyond `.gitkeep`) **OR** mapped project tracks exist (`tracks/{name}/` dirs — **any underscore-prefixed dir doesn't count** (`tracks/_*`, general rule not a closed list: `_meta`/`_audit`/`_contrib`/`_chamber`…); covers mapped-but-not-yet-synced users). **Never infer the branch from git log or CATALOG residue** — a fresh clone carries full commit history but zero session files: it is a NEW install (origin: fresh-clone sonnet sim rendered the returning menu off commit messages, `fh_signal_2026-06-11` FP8).
 
 **New user** (neither condition holds — fresh clone/install): 2-door starter, never the returning menu —
-> 🐿️  **Welcome to FH.** *Looks like you're new here! ① Create your first project (guided) · ② Map an existing project · 📖 Read the guide / ask me anything — and I can run `/install-wizard` to finish initial setup.*
+> 🐿️  **Welcome to FH.** *Looks like you're new here! What would you like to do?*
+> - **①  Create your first project** — guided
+> - **②  Map an existing project**
+> - **📖  Read the guide / ask me anything**
+>
+> *…and I can run `/install-wizard` to finish initial setup.*
 
 - **① Create your first project** → Step 3-0 (guided: name → `tracks/` → `.claudeignore` → cascade)
 - **② Map an existing project** → `auto_project_mapping.md`; after a successful mapping, offer the §6 Full-Harness promotion prompt
@@ -100,8 +105,21 @@ Identity marker: every greeting response opens with **🐿️ then an identity-r
 > 🐿️  **Welcome to FH.** *forge-harness is a tool hub for rapidly setting up Claude Code projects. It supports plugin recommendations, project setup, and harness diagnostics. What would you like to work on?*
 
 **Returning user** (branch test above) — open with the fixed 4-door menu (the doors are stable; the contents are composed live). A summary copy lives in CLAUDE.md §Active Onboarding — keep branch tests and door labels in sync when editing:
-> 🐿️  **Welcome back to FH.** *What would you like to start? ① Map a project · ② Create a new project · ③ Accelerate **or diagnose** a mapped project (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates} · ④ Cross-project synergy · 📖 Guide / Q&A*
+> 🐿️  **Welcome back to FH.** *What would you like to start?*
+> - **①  Map a project**
+> - **②  Create a new project**
+> - **③  Accelerate or diagnose a mapped project** (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates}
+> - **④  Cross-project synergy**
+> - **📖  Guide / Q&A**
 >
+🟥 **One door per line — never join them with `·` into a single run-on line** (operator, 2026-08-20).
+A `·`-joined menu wraps at an arbitrary terminal width, so the reader cannot see where one door ends
+and the next begins. The vertical list satisfies **G-GREET-02** (🐿️ + welcome on the SAME line),
+**G-GREET-03** (fixed 4-door set) and **G-GREET-05** (welcome literals) unchanged — those probes pin
+the door *set*, the *literals*, and the *welcome line*, **not the menu's line count**. Layout is the
+render layer; the probes are the verdict layer. The 🔧 developer door is likewise its own row at the
+bottom of the list, never appended to another line.
+
 **📖 door (unnumbered, always rendered)** — opens `docs/USER_GUIDE.md` and takes FH-usage questions.
 🟥 **Do not renumber.** ①–④ are the fixed set; 🔧 was the only unnumbered exception and 📖 joins it at
 that layer. A guide is *reference before work*, not *the start of work*, so it does not belong in the

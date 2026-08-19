@@ -457,13 +457,29 @@ Simplification guard: trivial denials with one obvious fix → state block + sin
 
 - **New user** (no session files AND no mapped project tracks under `tracks/` — fresh clone/install; **any underscore-prefixed dir** (`tracks/_*` — `_meta`/`_audit`/`_contrib`/`_chamber`…) doesn't count, general rule not a closed list — `_chamber` holds incubation chamber runs, never mapped projects): 2-door starter, never the returning menu —
 
-  > 🐿️  **Welcome to FH.** *Looks like you're new here! ① Create your first project (guided) · ② Map an existing project · 📖 Read the guide / ask me anything — and I can run `/install-wizard` to finish initial setup.*
+  > 🐿️  **Welcome to FH.** *Looks like you're new here! What would you like to do?*
+  > - **①  Create your first project** — guided
+  > - **②  Map an existing project**
+  > - **📖  Read the guide / ask me anything**
+  >
+  > *…and I can run `/install-wizard` to finish initial setup.*
 
 - **Returning user** (session files OR mapped project tracks exist): fixed 4-door menu —
 
-  > 🐿️  **Welcome back to FH.** *① Map a project · ② Create a new project · ③ Accelerate **or diagnose** a mapped project (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates} · ④ Cross-project synergy · 📖 Guide / Q&A*
+  > 🐿️  **Welcome back to FH.** *What would you like to start?*
+  > - **①  Map a project**
+  > - **②  Create a new project**
+  > - **③  Accelerate or diagnose a mapped project** (work · Full-Harness · skills/agents/plugins · 진단) — {field candidates}
+  > - **④  Cross-project synergy**
+  > - **📖  Guide / Q&A**
   >
   > (When **FH-dev state exists** — the operator — the welcome line is **"The FH operator — good to see you."** in place of "Welcome back to FH.")
+
+  🟥 **한 줄로 이어붙이지 마라 — 문은 한 줄에 하나다** (운영자 지적 2026-08-20). `·` 로 이어붙인
+  한 줄짜리 메뉴는 터미널 폭에서 임의로 접혀서 **어디까지가 한 문인지 눈으로 안 갈린다**. 세로
+  목록은 G-GREET-02(🐿️+환영문 **같은 줄**)·G-GREET-03(고정 4문)·G-GREET-05(문구 리터럴)를
+  **셋 다 그대로 만족한다** — 그 프로브들이 박은 것은 문 집합·리터럴·환영문 줄이지 **메뉴의 줄
+  수가 아니다**. 세로로 펴는 것은 렌더 층이고 판정 층이 아니다.
 
   **📖 문 (비번호, 항상)**: `docs/USER_GUIDE.md` 를 **띄우고**, FH 사용법 문답을 받는다.
   🟥 **번호를 늘리지 않는다** — ①~④ 는 고정 4문이고 🔧 만 비번호 예외였다(`fh_detail_protocols.md`
@@ -476,7 +492,7 @@ Simplification guard: trivial denials with one obvious fix → state block + sin
 
 Render conditions: ①②③ always (③'s candidates composed live) · ④ only when **2+ project tracks** exist (underscore meta dirs don't count) — synergy findings flow back into each project, and may *propose* an FH contribution (`/field-harvest` → `tracks/_contrib`) as an **outcome of findings, never a standing door**.
 
-- **Developer door (unnumbered, outside the menu)**: when **FH-dev state exists** (session card `tracks/_meta/reference_next_session_starter.md` · open `fh_signal_*` files · `CLAUDE.local.md`), append to the menu line: ` · 🔧 FH self-development — {FH worklist}`. The hub operator always has this state, so the owner always sees it — no flag needed. Without dev state the door is **silently absent**; the user typing `developer` / `개발자` **as a standalone utterance or menu reply** (not a substring of a task sentence) opens it on demand (routes to `docs/CONTRIBUTING.md` + `tracks/_contrib/` + open `fh_signal_*` items).
+- **Developer door (unnumbered, outside the menu)**: when **FH-dev state exists** (session card `tracks/_meta/reference_next_session_starter.md` · open `fh_signal_*` files · `CLAUDE.local.md`), append it as **its own row at the bottom of the menu list**, not tacked onto another line: `- **🔧  FH self-development** — {FH worklist}`. The hub operator always has this state, so the owner always sees it — no flag needed. Without dev state the door is **silently absent**; the user typing `developer` / `개발자` **as a standalone utterance or menu reply** (not a substring of a task sentence) opens it on demand (routes to `docs/CONTRIBUTING.md` + `tracks/_contrib/` + open `fh_signal_*` items).
 
 Compose session-card candidates **into door ③ (field) and the 🔧 door (FH-dev)**, never as a raw priority dump that replaces the menu. An urgent open item (time-windowed handoff · blocking external deadline) outranks the menu; an explicit task utterance skips it entirely (see Guards below); cadence reminders (§Cadence Rules) ride below it, they don't displace it. Canonical source: `fh_detail_protocols.md` Step 2 — keep branch tests and door labels in sync.
 
