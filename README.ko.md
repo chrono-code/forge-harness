@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/walkinglabs/awesome-harness-engineering#coding-agent-harnesses"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Harness Engineering"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e.svg" alt="MIT License"></a>
   <a href="https://zenodo.org/records/20397566"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20397566-blue.svg" alt="DOI"></a>
   <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
@@ -135,7 +136,7 @@ cd ~/projects/{your-project} && claude
 |---|---|
 | 1인 개발자, 프로젝트 하나, 일단 써보는 중 | [`templates/starter_profile.md`](templates/starter_profile.md) — 명령 하나, 엄선된 첫 5개 스킬 |
 | 프로젝트 여럿, 복리 허브를 원함 | 허브 클론(위 빠른 시작) |
-| CI / 비-Claude 런타임, 게이트만 | `npx @chrono-meta/fh-gate` (무설치 거버넌스 게이트) |
+| CI / 비-Claude 런타임, 게이트만 | `npx --package @chrono-meta/fh-gate fh-gate` (무설치 거버넌스 게이트) |
 | `npx`/`npm`보다 `brew`를 선호 | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 100% 동일한 내용, 설치 UX만 다름(커뮤니티 탭; 아직 Homebrew Core에 없어서 탭을 먼저 추가하지 않으면 `brew search`로는 안 잡힙니다) |
 
 ---

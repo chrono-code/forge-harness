@@ -214,7 +214,7 @@ fi
 No Stop hook is required. After the Codex goal/session completes, resolve changed files with git and run:
 
 ```bash
-FH_BACKEND=codex npx @chrono-meta/fh-gate "{changed-files}" quick codex-goal
+FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-gate "{changed-files}" quick codex-goal
 ```
 
 For high-stakes or external-facing work, use `full` instead of `quick`. Treat `BLOCKED` or `ESCALATE` the same as the Claude path: fix and re-run the gate, or surface the decision to the user.

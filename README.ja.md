@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/walkinglabs/awesome-harness-engineering#coding-agent-harnesses"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Harness Engineering"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e.svg" alt="MIT License"></a>
   <a href="https://zenodo.org/records/20397566"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20397566-blue.svg" alt="DOI"></a>
   <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
@@ -137,7 +138,7 @@ cd ~/projects/{your-project} && claude
 |---|---|
 | 個人開発者、プロジェクト1つ、まず試したい | [`templates/starter_profile.md`](templates/starter_profile.md) — コマンド1つ、厳選された最初の5つのスキル |
 | プロジェクトが複数、複利で積み上がるハブが欲しい | ハブをクローン（上のクイックスタート） |
-| CI / 非 Claude ランタイム、ゲートだけ欲しい | `npx @chrono-meta/fh-gate`（インストール不要のガバナンスゲート） |
+| CI / 非 Claude ランタイム、ゲートだけ欲しい | `npx --package @chrono-meta/fh-gate fh-gate`（インストール不要のガバナンスゲート） |
 | `npx`/`npm` より `brew` がいい | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 内容は100%同一、インストール体験だけが違います（コミュニティ tap; まだ Homebrew Core には入っていないので、先に tap しないと `brew search` では見つかりません） |
 
 ---
