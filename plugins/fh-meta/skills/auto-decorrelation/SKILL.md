@@ -202,6 +202,34 @@ re-checks** it against the artifact (phantom-quench back-trace) before accepting
 source-grounded is **dropped, not judged**. No sidecar-only verdict (no weak-local-judge regression).
 Local 4090 = **canary tier** (evidence-of, never terminal verdict).
 
+🟥 **What you SEND decides which axis you get — put the MARKER in the payload, not just the diff**
+(2026-08-19). Sidecars have been receiving the *diff* only. That buys a review of the **code** and
+buys nothing on the **record**: the Axes 2+3 marker is self-attested, and this repo has already
+written down that the closing move is *"cross-family reading that marker"* — then never wired the
+marker into the thing that recruits cross-family. Measured twice: (a) a release marker's false
+`not-applicable` passed the new typed lanes untouched, because **form was correct**; (b) this skill's
+own dispatch on 2026-08-19 sent a diff and no marker, so the round could not have caught a false
+axis claim even in principle.
+
+**So the payload is two parts**: the frozen diff **and** the marker for this change (`axes-run:` ·
+`controls:` · `crossfamily:` · `standpoint:` · `thirdparty:` · `residual:`). Ask the sidecar one extra
+question: *"does the record match the diff — is any axis claimed that the diff shows no trace of, and
+is any residual missing that the diff implies?"*
+
+⚠️ **Scope, deliberately narrow.** This asks whether the record is **consistent with the artifact**.
+It does NOT ask the sidecar to score honesty — «is this marker truthful» is a *conclusion*, and
+§Mechanization Boundary forbids freezing that into machinery. Consistency is checkable from two
+documents; honesty is not.
+⚠️ **Prose, not a check** — measured recurrence is 2, below this repo's own N≥3 bar
+(`[[feedback_mechanize_at_repetition_prose_before]]`). On the third occurrence, mechanize it here.
+⚠️ **Residency still governs**: a marker can name company assets. Sanitize before any external-family
+dispatch, exactly as with the diff — the marker is not exempt because it is metadata.
+
+*Origin*: sister-asset read of `raphaelchristi/harness-evolver`'s `harness-critic` agent, whose whole
+role is auditing the **evaluator** rather than the artifact. Its detection signatures (score jumps,
+suspiciously fast convergence) do **not** port — FH markers carry no score — but the *target* does.
+Full assessment incl. what was deliberately not imported: `tracks/_audit/proposal_2026-08-19_sister_harness-evolver.md`.
+
 **Target freeze — a prior drop reason, checked before any of the above (2026-08-17).** Grounding a
 finding against *today's* tree proves nothing if the sidecar reviewed *yesterday's*. Pin before
 dispatch and verify on return:
