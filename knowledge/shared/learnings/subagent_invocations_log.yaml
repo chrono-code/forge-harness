@@ -2342,3 +2342,13 @@
   finding: "🟥 **cross-family 가 S급 1건** — `FD_PROFILE` 미설정으로 게이트를 통째로 끌 수 있었고 **내가 쓴 레인이 그 우회를 초록으로 고정**하고 있었다(자력 적발 0). A급 4건도 전부 실물: acceptEdits 가 `sed·mv` 를 자동승인해 `sed -i` 로 금지파일 수정 가능 · 절대경로가 `.//abs` 로 조립 · 레인이 JSON 구조를 안 보고 문자열만 grep · 「egress 방화벽」 주장 과장. ★ **블라인드 sonnet sim 4/4 발화**(문 렌더 · 인라인 덤프 거부 · Linux 분기 · 없는 스킬에 「0건 근거」)이면서 **진짜 결함 1건 적발** — CLAUDE.md 서문이 신규자를 CHEATSHEET 로 오라우팅. ★ 설계 2건은 둘 다 **「새 자산 신설 없음」으로 수렴**했고, 그중 하나는 요청받은 형식(install-wizard 3부 동의)이 **이 용도엔 오용**이라고 반증했다."
   note: "🟥 **블라인드 sim 은 계기 생존을 확인했다**(tool_uses=7) — 2026-08-16 의 `tool_uses: 0` 죽은 sim 과 구분된다. 그러나 **reps=1 로 이 레포 자체 바(reps≥3) 미달**이고, 「발화했다」는 관측 1회지 일반화가 아니다. ⚠️ 훅 tally 는 51 인데 이 엔트리 포함 4엔트리다 — tally 는 재시도·내부 스폰까지 세므로 **1:1 대응이 아니다**(개별 기록이 아니라 클래스 집계로 남긴다)."
   cost: "claude-code-guide 124,771 · 설계 138,542 + 159,983 · 블라인드 sim 140,094 · codex 64,443 tokens"
+
+- date: 2026-08-20
+  agent: general-purpose ×2 (harness-doctor · pmh-dev 답습) · codex sidecar · agy sidecar · headless sonnet ×6 (블라인드 sim 양팔)
+  model: opus (orchestrator) / gpt-5.5 (codex) / gemini-3.1-pro (agy) / sonnet (sim)
+  purpose: "2.6.0 재출하 준비 — 소비자 설치 selfcheck 복구 · 30일 구조 진단 · pmh-dev 선행분 조사 · 메뉴 세로화 검증. 한 세션 5클래스를 1엔트리로 묶는다"
+  prompt_summary: "① harness-doctor 30일 캐던스 — known-pair 보정 후 숫자, 못 잰 칸은 UNMEASURED 로 ② pmh-dev 3분류(net-new / PMH 앞섬 / FH 앞섬), residency 가 organization-private 인 항목은 인용 금지 ③ codex: diff 를 받고 **수리를 반증**해라(fail-open 인가 · 결박이 남았나) ④ agy: 코드 아닌 **기록의 주장**을 검증해라(표본이 결론을 지탱하나 · 미측정을 0으로 렌더했나) ⑤ 시험 대상 안 알려준 블라인드 렌더 sim, ARM/CONTROL 각 3회"
+  outcome: accepted
+  finding: "🟥 **cross-family 지적 3건 전부 실재·전부 채택·자력 적발 0.** codex(diff 축)가 내 수리의 반쪽을 잡았다 — L13c 라벨을 유도로 바꿨는데 **생산자는 리터럴을 낸다**, 즉 수리가 divergent-normalizer 를 새로 만들고 있었다(되돌림 + known-pair 재현: 상수 20/0 · 유도 19/1). agy(주장 축)가 둘 — ③문 자기모순, 그리고 **detail 파일의 신규사용자 문이 안 따라온 반쪽-픽스**(내 확인 grep 이 따옴표 탓에 거짓 「없음」을 냈다). 🟥 **두 계열 지적이 하나도 안 겹쳤다(코드 1 / 주장 2)** — 축 분리의 값이 실측으로 나온 자리다. harness-doctor: FAIL(M-tier 1 = 상주 140,217자) · S 9 · R 4, «못 잰 것» 8항 명시. pmh-dev: 흡수 후보 3(Wave 1-D · HEAVY 분류기 레인 · Step 0.35), 그중 **A1 은 PMH 문서가 없는 기계를 있다고 적었다**(`axis2-defense` 훅 히트 0, 컨트롤 `crossfamily` 21) — 산문만 옮기면 팬텀 기계-주장을 들여온다. 블라인드 sim ARM 3/3 vs CONTROL 3/3 완전 분리."
+  note: "🟥 **계기가 못 보는 자리를 탈상관이 봤다.** 소비자-완주 계기는 「돌아가나」를 재지 「고친 게 옳은가」를 못 잰다 — SKIP 으로 빠지는 팔은 그 계기가 **구조적으로 안 보는** 자리이고 codex 지적이 정확히 거기 있었다. ⚠️ codex 세션이 **최종 산문 판정 없이 끝났다**(4턴, 마지막이 도구 출력) — 지적은 중간 턴에서 건졌다. 「지적 없음」이 아니라 **부분 산출**로 계상한다. ⚠️ 훅 tally 는 67 인데 이 엔트리 포함 소수다 — tally 는 재시도·내부 스폰까지 세므로 1:1 대응이 아니다(클래스 집계)."
+  cost: "harness-doctor 196,158 · pmh 답습 186,940 tokens (subagent_tokens) · codex/agy/sim 은 CLI 라 토큰 미노출 = UNMEASURED"
