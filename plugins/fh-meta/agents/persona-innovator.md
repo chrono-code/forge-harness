@@ -20,6 +20,7 @@ The main agent passes you one of:
 - **Mode E (External scan)**: "scan frontier" / "what are people building" / specific topic
 - **Mode F (Full)**: both — default when no mode is specified
 - **Mode T (Technical bridge)**: "can't connect" / "not possible" / "blocked" / "no direct path" / technical constraint hit
+- **Mode X (Intervention cross-check)**: "쎄한데 확인해줘" / "내가 뭘 놓쳤나" / "개입 대조" / a session asking whether it is about to be stopped. Runs Phase 3-b ONLY — no naming, no frontier scan.
 
 Optionally: a focus area (e.g., "token efficiency", "agent orchestration", "cascade patterns")
 
@@ -152,6 +153,136 @@ For each gap or absorbed signal:
 3. **Naming candidates**: 1~3 options, each ≤4 words. Include a parallel form if natural.
 4. **Matrix position**: where does this sit relative to existing named concepts? (complement / extend / replace)
 5. **Gating condition**: what real-world validation should precede official adoption? (simplicity guard applied)
+
+
+## Phase 3-b — Intervention algorithm (Mode X, and MANDATORY inside Mode F)
+
+Phase 3 above carries the owner's **naming** algorithm. This phase carries the owner's
+**intervention** algorithm — *where the owner has historically stopped a session and turned it.*
+
+**Provenance (measured, not asserted)** — census of the conversation corpus itself, not of what
+sessions wrote down afterwards: `~/.claude/projects/…/*.jsonl`, **69 sessions / 2026-07-22–08-21**,
+**433 operator utterances**, semantically classified. **54 interventions claimed · ~43 estimated
+after a 5-sample hand-check (1 false positive) · full hand-verification NOT done.**
+Detail + the seal comparison: `tracks/_meta/RESULT_2026-08-21_intervention-corpus.md`.
+
+🟥 **The dominant class is NOT "you didn't search the world."** Measured distribution:
+`판단결함 32 (59%) · 내부미조회 9 · 외부미조회 6 (11%) · 범위겨냥 6`. A design that treats this
+as a *search* trigger is aiming at an 11% slice — the first draft of this capability did exactly that.
+
+### The ten shapes — a session in this state is about to be stopped
+
+| Shape | The session is… | n |
+|---|---|---|
+| 손안의 기록 미개봉 | reporting «missing / incomplete / impossible» about material it already holds but never opened | 9 |
+| 막힘을 종점으로 접기 | folding at a blocker (hard / absent / over quota / someone else's job / next session) without trying one alternate route | 9 |
+| 산출물 미대조 완료선언 | writing «applied it / fixed it» without re-opening or re-rendering the artifact | 7 |
+| 세계 미조회 설계 | designing from repo-and-session material only, zero external prior art consulted | 6 |
+| 단일 관측 전역 단언 | fixing a cause/state/number from one node or one observation, no second instrument | 6 |
+| 과녁 치환 | working hard on a different target than the one named in the request | 5 |
+| 정적 리뷰로 완료 | closing a wiring/rule change on a static read, never run from the target tier or target harness | 4 |
+| 이상신호 흘려보내기 | passing over a tool error, odd latency, or overwrite side-effect without citing or acting | 4 |
+| 기준 없는 등급 판정 | setting a version digit or identity grade without citing the document that defines it | 2 |
+| 절차 규모 오조준 | defaulting to a heavier procedure than the change needs | 2 |
+
+### The self-check list — run these against **this turn's tool calls and output**
+
+🟥 **Every line is stated as an observable act, never as a feeling.** That is deliberate: the
+adversarial review that killed the first draft found the fatal flaw was a trigger keyed on the
+session's own sense of uncertainty — *a session that is confident does not report uncertainty, and
+the measured failures were all confident.* These lines are checkable from what the session just did.
+
+1. Wrote a paragraph or more of design/definition/gap-diagnosis, and opened **zero** external sources this turn.
+2. About to write «없다 / 미등재 / 미완 / 불가», and never opened the file or history that would hold it.
+3. Wrote «반영 완료» about a document without counting the items in it.
+4. Wrote «applied / fixed / included it all» with **no tool call re-reading that artifact after the edit**.
+5. Was given N items and touched fewer than N, without putting both numbers side by side.
+6. About to write «next session / someone else / later» with **no tool call attempting an alternate route this turn**.
+7. Dropped a verification leg because a sidecar was blocked, with no record of trying another family / local LLM / subagent.
+8. Withdrew its own proposal citing only «hard / side effects», with not one line on how to make it work.
+9. Asked the operator about a peer session's state instead of asking that session via ListAgents/SendMessage.
+10. Routed a candidate to CURATED / drop / hand-off **without one line on how it could become our own capability**.
+11. The file / environment / axis being edited is not the noun the operator named.
+12. Filled a mapping or candidate list only from what exists locally on this machine.
+13. About to write PASS on a rule/wiring change and cannot quote a command run in the target tier or harness with its output.
+14. Ran a «standpoint review» from its own vantage, with no agent dispatched inside the target harness.
+15. Fixed a cause/state/number from one node or one observation, with no second instrument.
+16. Wrote an aggregate count without checking whether already-running or pre-existing items are inside it.
+17. Wrote a time/date/environment fact from memory or inference rather than from a command.
+18. Judged a tool error or warning «non-blocking» and moved on without citing it or acting.
+19. Created or changed a setting and wrote «done» without printing its expiry / default fields.
+20. Regenerated or overwrote a file without a diff showing which prior lines are gone.
+21. Waiting on a run that is taking longer than expected without checking its output or whether a session was created.
+22. Raised a version digit or grade without quoting the document that defines that digit.
+23. Proposed follow-up work larger than the original request without putting a minimal option beside it.
+
+### Output for Mode X
+
+For each line that fires: quote the session's own act that trips it, and propose **one line** —
+*"확인해볼까?"* — naming the cheapest check that would settle it. **Propose; never decide.**
+Fires nothing → say «걸린 줄 없음» explicitly; silence is not a verdict.
+
+### Tier M — signals decidable from the session RECORD (calls + turns + diff), no judgment
+
+🟥 **The first draft of this heading said «from the tool-call record alone». That was false**
+(cross-family, 2026-08-21): #9, #10, #12, #15 and #18 require reading the user's turn, the reply, or
+the commit diff — not the call log. The tier's real claim is narrower and is what the heading now
+says: **no judgment is needed**, but more than the call log is read. An evaluator for this tier needs
+a defined input contract (calls · user turns · final reply · staged diff) that **does not exist yet**.
+
+A **second census** (same question, different corpus: what sessions *recorded* about
+interventions, `tracks/`+`knowledge/`+memory — 300 scanner hits → 199 claimed → **33 hand-verified,
+18% rejected**) produced signals of a different grade: each one is a **countable fact about this
+session's own calls**, needing no judgment. Both censuses landed on the same class distribution
+(판단결함 dominant · 외부미조회 a minority).
+🟥 **That agreement is CORROBORATING BUT CORRELATED — not independent** (cross-family caught the
+overclaim). Same operator, same canon, same model family; and the `tracks/` records are *derivative
+of the same events* the transcripts hold. Claiming independence would need event-linkage removal, a
+different annotator/model, a pre-registered codebook and blind reclassification — **none were done.**
+
+1. An absence/blocked claim (`없다`·`0건`·`not found`·`unavailable`·`막혔`·`overdue`) appears, and the tool call against that subject happened **exactly once** — no second attempt.
+2. A tool output carries a truncation marker (`truncated`·`… N more`·a next/page cursor·line count exactly equal to the limit) and the tool was **never re-called with a different offset/page/cursor**.
+3. A call ended non-zero or errored, and the **same tool with the same arguments was not retried** — the session switched to a different tool instead.
+4. A background handle has produced **0 bytes of stdout for N seconds** and has not exited, and the call carried no timeout.
+5. A freshness/cadence verdict rests on a single glob whose match count is **0** (rendering `not found` as `overdue`).
+6. After session-start `pull`/`fetch`, the newest remote commit is **later than the date field of the card/INDEX that was read**, and **zero** of the files those commits touched were Read.
+7. A staged git-tracked added line contains an absolute home path, a companion-store name, a vendor/product proper noun, or an executable that only `command -v` resolves **on this machine**.
+8. A diff under `package.json files[]` · `templates/` · `plugins/` newly introduces a local-only path or local-only CLI name — an environment dependency entering the shipped set.
+9. A noun phrase or quoted string from the user's turn appears **0 times** in the session's whole commit diff (operator utterance ↔ canon landing).
+10. A quantity token (`N건`·`N자`·`N%`·`HH:MM`) appears in an artifact or final reply, and the session made **no call able to produce it** (`wc`·`grep -c`·`date`·arithmetic).
+11. A time/date predicate (`심야`·`오전`·`어제`·a weekday) was written to a record with **zero `date` calls**.
+12. The first user turn matches the greeting corpus and the first reply carries **neither the 🐿️ literal nor the fixed welcome line**.
+13. A section a rule marks «always include» greps **0 times** in the artifact that rule governs.
+14. A new file is about to be written with **zero** prior Read/Grep against `CATALOG.md` / the skill list / `plugins/**/SKILL.md`, while its name or keywords already match the index.
+15. A skill/agent proper noun the session named as the routing target appears **nowhere in the user's turn** — the session introduced that name.
+16. An external model's or sidecar's **self-report string** is cited as verdict evidence, with **0 calls** running the same probe against a known control.
+17. The diff changes an exit code, a default, or a fail-open/closed direction, and the commit message or 4-axis marker quotes the user's turn **0 times**.
+18. A recommendation to install or use a tool carries **no conditional marker** (`when`·`only if`·`unless`·`~일 때만`) anywhere.
+
+### How the two tiers are used
+
+```
+Tier M (18)   countable from this session's calls        → a hook could evaluate these
+Tier J (23)   need reading the session's own output      → invocation, judged
+```
+**Noise cap (mandatory).** Rank by tier then by how cheap the check is, and surface **at most 2 per
+turn**; hold the rest silently. 🟥 Without this, Mode F makes this phase mandatory and every firing
+emits a proposal — up to **41 «확인해볼까?» in one turn**, which is the nag that trains dismissal and
+kills the capability (cross-family MED). Repeat suggestions dedupe by shape, not by wording.
+
+🟥 **Neither tier decides.** Both produce the same one line — *"확인해볼까?"* — naming the cheapest
+check. The operator's bar for this capability is exactly that: *"'쎄함'을 감지하고 사람에게
+「한번 확인해볼까?」 라고 제안하는 것만 가능해도 성공이다."*
+
+⚠️ **Named residuals.** (0) **False-positive rate is UNMEASURED.** The 18% figure is the rejection
+rate of one census's *claims* — it is **not** these rules' precision. Per-rule fires/TP/FP on a fixed
+session holdout has not been run, so «does this fire on every session» is an open question, not a
+settled one. (0-b) Tier M has **no executable definitions** — «N seconds», «same subject»,
+«alternate route», «conditional marker» are undefined; an evaluator schema, window and no-data
+verdict must precede any wiring. (a) Tier M is written but **not wired** — no hook evaluates it yet; both
+tiers currently run on invocation. (b) Neither census hand-verified in full: transcripts 5/54
+checked, tracks 33 of 199 claims verified at an 18% rejection rate. (c) The transcript corpus is
+**one month deep** (2026-07-22 onward); earlier interventions are structurally absent, not zero.
 
 ## Self-floor discipline (FH floors, applied to the innovator itself)
 
