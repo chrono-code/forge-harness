@@ -2381,3 +2381,15 @@
   outcome: accepted
   evidence: "4 findings, all reproduced and all fixed. 1 HIGH (the fix planted a fresh dead pointer at the file-level guard site: sync_file's only call site is CLAUDE.local.md, which sync-from-be.sh refuses by name), 2 MED (unquoted printed command; overclaimed 'discriminator'), 1 LOW (exactly-two-causes overclaim). Governor source-grounded each by grep before accepting. Self-catch on these: 0/4."
   note: "Recorded per CLAUDE.md §Agent Dispatch invocation-log obligation. Sidecar leg, not an Agent-tool subagent, so the SubagentStop tally does not see it."
+
+- date: 2026-08-20
+  agent: Explore ×1 (ship_readiness_gate 발췌) · codex/gpt-5.6-terra ×2 (착지계기 REFUTE 레그 · 캘리브레이션 컨트롤)
+  model: opus (orchestrator) / gpt-5.6-terra (codex)
+  caller: FH hub session 08d6fe75 (air node) — peer 로부터 훅 수정 인계받은 축
+  purpose: "정체성 ④ 등급 판정 + 착지 계기 결함 수리. Explore 는 등급표 ④행·§Gate consequence·등급 정의를 **원문 인용으로** 발췌(요약 금지 — 조건을 무르게 만들지 말라고 명시). codex 는 내 수리를 반증"
+  prompt_summary: "① ship_readiness_gate.md 에서 ④행·압도성 절·🟢/🔵 정의·screener 잔여 처리를 파일:줄 붙여 원문 발췌, 못 찾으면 「못 찾음」이라 하고 추정 금지 ② 내 DLC_EXCLUDE_TARGETS 수리를 REFUTE — 비인용 확장/경로매칭/과잉제외/러너배선/레인품질/대안설계 6축, 각 항목에 성립·불성립과 근거 줄"
+  reps: 1
+  outcome: accepted
+  finding: "🟥 **codex HIGH 3 · MED 1 성립, LOW 2 정당 기각 — 자력 적발 0.** HIGH#1 비인용 확장의 글로빙·단어분리로 공백 경로면 제외가 빗나감 = **fail-open, 옛 거짓 양성 재발**. HIGH#2 `./` 접두가 git 경로와 불일치하는데 러너 `-f` 게이트는 실재만 보므로 **무신호로** 실패. LOW#4·#5 는 불성립이나 **하위지적 둘이 유효**했다(조건부 export 가 부모 환경을 상속 · 레인 b 가 `not10` 만 요구해 «안 죽었다» 만 보증). HIGH#6 은 채택 안 함(판정 의미론 변경이라 분리). ★ Explore 는 **카드가 물려준 미결을 무효화**했다 — 「screener 잔여가 명시 잔여냐 보류 사유냐」는 §④ promotion criteria(08-17)가 이미 **재분류**해 뒀다(계기가 재는 것은 «조직 전파»가 아니라 «허브 내부 착지»라 그 조건을 100% 닫아도 ④ 명제는 한 글자도 안 재진다). 즉 결정할 것이 아니라 틀린 이지선다였다."
+  note: "🟥 **사이드카 캘리브레이션이 필요했다.** 첫 두 codex 런이 exit 0 인데 출력이 프롬프트 에코에서 끊겼다(바이트 동일 2,123 = 비결정 아님). 「지적 없음」으로 읽지 않고 known-answer 컨트롤(2+2)을 돌려 **사이드카는 살아 있음**을 확인, 변수 하나씩 갈라 원인이 **긴 프롬프트의 2분 초과**임을 특정했다. exit 0 을 통과로 읽었으면 crossfamily 를 거짓으로 적었을 자리다. ⚠️ Explore 는 요청 밖 항목(P4-1 선행조건 미충족·프로덕션 호출부 0개·§Gate consequence 6행 중 4행 비일관)까지 냈고 그게 판정의 하중이 됐다."
+  cost: "Explore 60,857 tokens (subagent_tokens) · codex ×2 는 CLI 라 미노출 = UNMEASURED · 거버너 = UNMEASURED. 🟥 합계 안 적는다"
