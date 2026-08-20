@@ -1827,6 +1827,24 @@ PTR_EOF
   fi
 fi
 
+# ── 상주 유입 게이트 (mandatory-pass — blocks) ────────────────────────────────
+# 왜 여기 있나 (2026-08-20 실측): 감량은 유출이 아니라 **유입** 문제다.
+#   CLAUDE.md 23,839(05-26) → 70,758(07-20 «11.9% 감량» 직후) → 144,138(08-20)
+#   07-20 이후 31일 +73,380 = 약 2,367 bytes/일. 같은 기간 어블레이션 CUT 판정 **0건**.
+#   최대 감량 후보 절(22k)조차 유입 9일치 ⇒ 나가는 문만 당기면 구조적으로 진다.
+# 검사하는 것은 **기록의 속성**이지 결론이 아니다(§Mechanization Boundary):
+# 「이 문단이 상주할 가치가 있나」를 판정하지 않고 「저자가 유형을 선언했나」만 본다.
+# Anchor: scripts/test_residency_admission_lanes.sh (레인 10 · 컨트롤 2 · 가드 7 전수 되돌림 격리)
+RESID="$REPO_ROOT/scripts/residency_admission_check.sh"
+if [ -f "$RESID" ]; then
+  echo "[Residency] 상주 유입 게이트..."
+  resid_out=$(bash "$RESID" "$REPO_ROOT" 2>&1); resid_rc=$?
+  printf '%s\n' "$resid_out" | sed 's/^/  /'
+  if [ "$resid_rc" -ne 0 ]; then FAILED=1; fi
+else
+  echo "  ⚠️  상주 유입 게이트 미설치 (scripts/residency_admission_check.sh) — skipped, not passed"
+fi
+
 # ── Verdict ───────────────────────────────────────────────────────────────────
 echo ""
 echo "══════════════════════════════════════════════"
