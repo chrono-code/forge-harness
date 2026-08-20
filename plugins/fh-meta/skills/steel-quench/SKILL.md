@@ -259,6 +259,55 @@ A finding here is a real-code attack (Wave 1 execution principle) — cite the e
 
 ---
 
+## Wave 1-D — Defense Questions (floor tiers · mechanically required)
+
+Three questions, asked of **your own findings and numbers**, before Wave 1 is done. They are written
+out rather than left to judgment because that is exactly what makes them portable: measured n=6 in
+the origin field, a floor-tier pass executes the attack angles above without defect but **does not
+spontaneously ask these three**, while a stronger tier does. That is a **checklist gap, not a
+capability gap** — and by `sonnet_floor_doctrine.md` a harness whose behaviour depends on which model
+is driving is *defective*, not merely limited.
+
+| # | Question | What a real answer looks like |
+|:---:|---|---|
+| **재현성** | Can another session reproduce this verdict from the same inputs? | The exact command, or `file:line`, another session runs. "It's reproducible" is not an answer. |
+| **비교공정성** | Were the two arms measured under the same conditions? | reps, inputs and environment named for **both** arms. An asymmetry you found and left in place counts — say so. |
+| **추정층위** | Is each number a measurement, an estimate, or a quotation? | Which, per number — and for a measurement, what showed the instrument works **on this target** (known-pair). |
+
+**Where the answers go** — one line in the Axes 2+3 marker:
+
+```
+axis2-defense: reproducibility=<…> fairness=<…> estimation-layer=<…>
+```
+
+**Enforcement, stated exactly.** `templates/.git-hooks/pre-commit` → `validate_defense_leg()` runs
+this **at the floor tiers only** (`floor-status: sonnet-floor` or `below-floor`), and checks
+**presence · completeness · non-vacuity**: all three sub-answers must exist and `ok`/`yes`/`n/a` is
+rejected as a filled form rather than an answer. Fixtures: `scripts/test_marker_defense_lanes.sh`
+(17 lanes: known-pairs both directions, two over-block controls, four prescription assertions, and a
+call-site pin — because a suite that extracts the function and calls it directly stays green when
+the hook stops calling it, which is precisely the failure being imported against).
+🟥 **It cannot check whether the answers are TRUE.** That stays with the operator and the weekly
+audit, exactly like every other marker field — do not read the hook's PASS as verification.
+
+**Why the trigger is narrow.** `below-floor` occurs **0 times** across the existing marker corpus, so
+gating on it alone would be a decoration that never fires; `sonnet-floor` occurs 11. The wide reading
+("any marker carrying numbers") is deliberately **not** taken — pricing this axis at a near-universal
+rate is the over-trigger `field_verdict_crossfamily_gate.md §7` rejects, and a field required
+everywhere becomes a rubber stamp.
+
+> **Provenance, and what was deliberately NOT imported.** Absorbed from a sibling harness
+> (2026-08-20). That document additionally amends its floor rule so a below-floor pass carrying this
+> line **plus** a crossfamily record passes **without the operator ack**. 🟥 That is a *loosening* of
+> an existing FH gate and **was not adopted** — here the leg is purely additive and `below-floor`
+> still requires `below-floor-ack`, unchanged.
+> 🟥 The same document asserted its own hook read this field and its own fixture suite pinned it.
+> Measured twice with a control (`crossfamily` → 21 hits in the same files): **both were 0**. The
+> prose was portable; the machine was not. Everything claimed in this section's *Enforcement*
+> paragraph was built here, and the fixture file named there is the receipt.
+
+---
+
 ## Wave 2 — Defense Principles
 
 **3 Defense Principles**: (1) Reinforce with external cases via WebSearch — "unique to us" or "structural pattern"?

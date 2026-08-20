@@ -703,6 +703,21 @@ else
   fail=1
 fi
 
+# test_marker_defense_lanes — Wave 1-D 방어줄(`axis2-defense:`)의 known-pair (2026-08-20).
+# 🟥 이 레인이 존재하는 이유 자체가 기록이다: 절차를 흡수해온 sibling 문서가 «훅이 이 줄을 읽는다»·
+#    «marker_floor 레인이 핀한다» 고 적었는데 **둘 다 0 히트**였다(컨트롤 crossfamily 21).
+#    산문은 이식됐고 기계는 안 왔다. 그래서 FH 가 짓는다 — 우리가 그 주장을 할 땐 참이도록.
+if [ ! -f scripts/test_marker_defense_lanes.sh ]; then
+  echo "FAIL  test_marker_defense_lanes.sh: missing — axis2-defense 레인에 앵커 없음"
+  fail=1
+elif _out=$(bash scripts/test_marker_defense_lanes.sh < /dev/null 2>&1); then
+  echo "PASS  test_marker_defense_lanes.sh ($(printf '%s\n' "$_out" | grep -oE '[0-9]+ lanes hold' | tail -1))"
+else
+  echo "FAIL  test_marker_defense_lanes.sh: 방어줄 검증이 바뀌었다"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # test_heavy_classifier_lanes — 4축 게이트의 **라우팅 판별자**에 대한 known-pair (2026-08-20).
 # 🟥 이 분류기가 놓치는 경로는 FAIL 하지 않는다 — 게이트가 **조용히 적용되지 않고** 커밋이
 #    초록으로 나간다. 가장 조용한 실패 형태이고, 실측상 이걸 시험하는 레인이 **0개**였다

@@ -118,6 +118,7 @@
     "scripts/substrate_jump_detector.sh",
     "scripts/tier_census_grep.sh",
     "scripts/test_marker_floor_lanes.sh",
+    "scripts/test_marker_defense_lanes.sh",
     "scripts/test_marker_crossfamily_lanes.sh",
     "scripts/test_marker_standpoint_lanes.sh",
     "scripts/test_marker_thirdparty_lanes.sh",
