@@ -39,6 +39,14 @@ cd "$REPO_ROOT" || exit 1
 #   scripts/sync_to_be_lanes.sh             — forward-path lane suite for sync-to-be.sh, itself
 #       ACCEPTED_ABSENT above; added 2026-08-14, pmh-dev#69.
 ACCEPTED_ABSENT=(
+  # 🟥 나가는 질의 위생 린트와 그 레인 — **일부러 출하하지 않는다.**
+  # 이 가드는 운영자 내부 패턴층(`.claude/rules/.public-surface-patterns`, gitignored)이 없으면
+  # fail-closed 로 막는다. 그 층은 소비자에게 안 나가므로, 출하하면 **신선한 설치는 100% 차단**된다
+  # — CLAUDE.md 가 «모든 새 install 을 막는 게이트는 엄격한 게이트가 아니라 우회 훈련기» 라 못박은
+  # 그 형태다. 소비자용으로 열려면 override 부재 시의 degrade 를 따로 설계해야 하고, 안 했다.
+  # `selfcheck.sh` 는 대상 부재 시 `_absent_subject_verdict` 로 빠지므로 패키지 모드에서 옳게 degrade 한다.
+  "scripts/outbound_query_guard.sh"
+  "scripts/test_outbound_query_lanes.sh"
   ".claude/registry/LOCAL_SKILL_REGISTRY.md"
   # An INSTALL DESTINATION the user creates (`cp templates/local_fh_context.md
   # .claude/rules/local_fh_context.md`), not a file FH ships. Shipping it would overwrite the
