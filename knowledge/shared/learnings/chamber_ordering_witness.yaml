@@ -119,3 +119,7 @@
   artifact: SIM_NOTES.md
   sha256: dd06fde535890ec387777df12613272a514ec4f0c56836513226da8e6491def8
   recorded: 2026-08-19T23:52:33Z
+- run: interslide-dependency-graph
+  artifact: EMISSION_VERDICT.md
+  sha256: 09ccc31664fbaf442b6182d2d93d339826d1f951bb5416e309e9fbdcc2ebf081
+  recorded: 2026-08-20T00:18:14Z
