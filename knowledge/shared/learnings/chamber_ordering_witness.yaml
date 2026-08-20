@@ -83,3 +83,39 @@
   artifact: EMISSION_VERDICT.md
   sha256: 5250bbe764ae3e77bedc96893816e8cac224f7743fc57c1299f3e46933ec0d50
   recorded: 2026-08-17T09:41:36Z
+- run: multisurface-reading-harness
+  artifact: INTENT.md
+  sha256: ab37e55595522b83545b09b55855b56205a1fe72c27bbc620823e06bc745a3b8
+  recorded: 2026-08-19T23:03:12Z
+- run: multisurface-reading-harness
+  artifact: BUDGET.md
+  sha256: 565e2066bfcbbc9911546d99f36415fabf667c053d00151e7b04da2a913f4b83
+  recorded: 2026-08-19T23:03:38Z
+- run: multisurface-reading-harness
+  artifact: SIM_NOTES.md
+  sha256: 77654b4a24950f0e4d992c4227050f707ca05883d32803051fc92e4fb9e2c163
+  recorded: 2026-08-19T23:10:57Z
+- run: multisurface-reading-harness
+  artifact: EMISSION_VERDICT.md
+  sha256: bfcdb5f05d002bd1ebd7b26dbeaa278fe1e573decef84f37c86808601250657c
+  recorded: 2026-08-19T23:16:06Z
+- run: multisurface-reading-harness
+  artifact: EMISSION_VERDICT.md
+  sha256: b9125f3259051197852655cddf88e7f4222b3f6602d264895e6fe9779aae506b
+  recorded: 2026-08-19T23:17:00Z
+- run: multisurface-reading-harness
+  artifact: EMISSION_VERDICT.md
+  sha256: aeda3a3db39a11ae38ad2de42a6995b9b591b97b7ad5372c426d13646003b4eb
+  recorded: 2026-08-19T23:17:50Z
+- run: interslide-dependency-graph
+  artifact: INTENT.md
+  sha256: 4d9bb55523de396696ce9ede9ed030d3c94c95649d5945a74d4e3f00faab34bb
+  recorded: 2026-08-19T23:42:29Z
+- run: interslide-dependency-graph
+  artifact: BUDGET.md
+  sha256: e5c5494c1e956b799f178437e8e2b63089bbf17ba24ca4f1a238b25a7f5758f0
+  recorded: 2026-08-19T23:42:44Z
+- run: interslide-dependency-graph
+  artifact: SIM_NOTES.md
+  sha256: dd06fde535890ec387777df12613272a514ec4f0c56836513226da8e6491def8
+  recorded: 2026-08-19T23:52:33Z
