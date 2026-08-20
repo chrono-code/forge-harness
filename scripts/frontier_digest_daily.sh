@@ -377,6 +377,17 @@ landing_witness() {
            # 🟥 절 제목도 대상축이다 (2026-08-19). 위성 산출의 절 이름은 대상 프로필이 정하는데
            #    체커 기본값은 FH 어휘라, 이 통과가 없으면 위성에서 **영영 rc=10** 이다.
            [ -n "${FD_LANDING_SECTION_RE:-}" ] && export DLC_SECTION_RE="$FD_LANDING_SECTION_RE"
+           # 🟥 **프로필은 digest 의 입력이므로 타깃이 될 수 없다** (2026-08-20 실측).
+           # 이 줄이 없어서 forge-wiki 무인 런이 실제 착지 0 을 **4 «착지»** 로 보고했다:
+           # 그날 digest 이후 커밋된 유일한 .md 가 프로필 자신이었고, 프로필은 digest 를 만들 때
+           # 프롬프트에 주입되므로 어휘 겹침이 **보장**돼 있다. 계기가 자기 입력을 읽고 착지라고
+           # 한 것이다. 여기서 넘기지 않으면 체커는 그 파일이 입력이었다는 걸 알 방법이 없다.
+           # (`DLC_EXCLUDE_TARGETS` 는 레포 상대경로 · 공백 구분. 미설정이면 종전 동작.)
+           # 🟥 **조건부 export 가 아니라 항상 export 한다** (cross-family #4 하위지적, 2026-08-20).
+           # 조건부면 PROFILE_PATH 가 빌 때 **부모 환경의 DLC_EXCLUDE_TARGETS 를 그대로 상속**한다
+           # ⇒ 「프로필 없으면 종전과 무변경」이 «외부에서 그 변수를 안 설정했을 때만» 참이 된다.
+           # 항상 쓰면 러너의 동작이 부모 환경과 무관해진다(빈 값 = 제외 없음 = 종전 동작).
+           export DLC_EXCLUDE_TARGETS="$PROFILE_PATH"
            bash "$checker" "$prev" 2>&1 ); rc=$?
     case "$rc" in
         0)  echo "[$(date '+%Y-%m-%d %H:%M:%S')] landing witness [$(basename "$prev")]: ALL-LANDED (rc=0)" >> "$LOG_FILE" ;;

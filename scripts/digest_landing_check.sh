@@ -100,6 +100,9 @@ CHECKER="$SELF_DIR/utterance_landing_check.sh"
 #    다중 경로 지원과의 트레이드오프라 오늘은 **문서화만** 했고 기계 검사는 없다.
 DLC_TRACKED_PATHS="${DLC_TRACKED_PATHS:-knowledge CLAUDE.md}"   # git 추적축 (커밋시각)
 DLC_IGNORED_DIR="${DLC_IGNORED_DIR-tracks/_meta}"               # gitignored 축 (mtime). 빈 값 = 그 축 없음
+# digest 의 «입력» 파일들(레포 상대경로, 공백 구분). 이 파일들은 digest 생성 시 프롬프트에
+# 주입됐으므로 어휘 겹침이 보장된다 ⇒ 착지를 가를 수 없다. 아래 자기참조 차단 2 참조.
+DLC_EXCLUDE_TARGETS="${DLC_EXCLUDE_TARGETS:-}"                  # 미설정 = 제외 없음 (종전 동작)
 # 🟥 2026-08-19 — 이 정규식은 **FH 자기 어휘**였고 오버라이드가 없었다. 위성 산출의 절 제목은
 # 대상 프로필이 정한다(`## <대상> Application Candidates`) — 즉 계기가 **대상 레포에서는 구조적으로
 # 후보를 못 찾는다.** 실측: forge-wiki·the-bible 둘 다 rc=10. R1(디렉터리를 타깃 파일로 넘김)과
@@ -323,19 +326,86 @@ do_check() {
   # ★ 자기참조 차단 — **이 계기의 첫 실물 실행에서 100% 오탐을 낸 원인**이다.
   # digest 자신(과 그 로그)이 타깃에 있으면 모든 후보 토큰이 거기서 발견되므로
   # **전건이 자동으로 "착지"** 가 된다. 손검증 전까지 3/3 초록이었고 실제 착지는 0이었다.
+  # ★ 자기참조 차단 2 — **digest 의 «입력»도 타깃이 될 수 없다** (2026-08-20, 실측 발견).
+  # 위 필터는 digest 자신·그 로그·타 digest 를 뺀다. 그런데 위성 런은 `FD_PROFILE`(대상 하네스가
+  # 자기를 설명하는 파일)을 **프롬프트에 주입해서** digest 를 만든다 ⇒ 그 프로필과 digest 는
+  # 어휘를 공유하는 것이 **보장돼 있다.** 프로필이 타깃 집합에 들어오면 후보 토큰이 거기서
+  # 발견되고, 그건 «채택» 이 아니라 **«내가 준 것을 내가 되읽은 것»** 이다.
+  #
+  # 실측 2026-08-20 (forge-wiki, 무인 런) — 이 필터가 없어서 판정이 뒤집혔다:
+  #   digest mtime 이후 커밋된 .md = `wiki/.satellite-profile.md` **한 건**(= 그날의 타깃 전부)
+  #   ⇒ 5 후보 중 4 «착지» · 1 «미착지» → rc=1 SOME-UNLANDED 로 렌더됐다.
+  #   손검증: 유일한 «미착지» 후보를 열었더니 레포 전체 0히트이고, `git log --since=<digest>` 도
+  #   공집합이었다. **실제 착지는 0이다.** 즉 계기는 0 을 4 로 보고했다.
+  #   올바른 값은 rc=10(타깃 0건 = 못 쟀다)이고, 이 필터가 그 값을 되돌려준다.
+  #
+  # ⚠️ 명명된 잔여 — **프로필에 진짜로 착지한 건은 이제 구조적으로 안 보인다.**
+  # (예: digest 가 "프로필에 egress sink 를 선언해라" 라고 했고 운영자가 그렇게 고친 경우.)
+  # 위 `*frontier_digest_*` 제외가 「후보가 내일 digest 에 재등장하는 것」을 못 보는 것과 **같은
+  # 급의 트레이드오프**이고, 같은 이유로 받는다: 보장된 겹침을 착지로 렌더하는 쪽이 **거짓
+  # 양성**이라 더 나쁘다. 미측정은 0 으로 렌더되지 않고 rc=10 으로 나간다.
+  #
+  # 🟥 기본값 무변경: `DLC_EXCLUDE_TARGETS` 미설정이면 아래 루프는 한 건도 안 뺀다 —
+  # FH 자체 런(프로필 없음)은 **바이트 동일**하게 돈다.
   local _dbase; _dbase="$(basename "$d")"
   local -a _filtered=()
-  local _t
+  local _t _x
+  local _n_input_excl=0
   for _t in ${targets[@]+"${targets[@]}"}; do
     case "$_t" in
       *"$_dbase") continue ;;          # digest 자신
       */logs/*)   continue ;;          # 그 생성 로그
       *frontier_digest_*) continue ;;  # 다른 날짜 digest (후보가 이월되며 반복 등장한다)
     esac
+    # digest 의 선언된 입력(프로필 등). 레포 상대경로로 받아 절대경로로 맞춘다.
+    # 🟥 두 방어는 cross-family(codex/gpt-5.6-terra, 2026-08-20) 가 **fail-open** 으로 지목해서 붙었다.
+    #   ⓐ 비인용 확장이라 값이 **글로빙**된다 — `wiki/*.md` 가 CWD 기준으로 퍼져 진짜 착지를 과잉
+    #     제외할 수 있다. `set -f` 로 그 루프에서만 끈다(뒤에서 원복).
+    #   ⓑ 문자열 동등비교라 `./wiki/x.md` 가 git 경로 `wiki/x.md` 와 **안 맞는다.** `FD_PROFILE` 은
+    #     러너의 `-f` 게이트를 통과하므로(그건 실재만 본다) 제외만 조용히 실패한다 = 거짓 양성 재발.
+    #     ⇒ 양쪽에서 `./` 접두와 후행 `/` 를 벗겨 비교한다.
+    # ⚠️ 남은 잔여(명명): **심볼릭 링크**는 여전히 안 맞는다. `profile.md -> source.md` 이고 git 이
+    #   `source.md` 를 타깃으로 주면 제외가 빗나간다. 실경로 해석은 bash 3.2 에서 이식성 있게
+    #   하기 어렵고, 이 레포의 위성 둘 다 링크를 안 쓴다(실측) ⇒ 안 닫고 이름으로 남긴다.
+    local _is_input=0
+    local _tn="${_t#./}"; _tn="${_tn%/}"
+    set -f
+    for _x in ${DLC_EXCLUDE_TARGETS:-}; do
+      [ -n "$_x" ] || continue
+      _x="${_x#./}"; _x="${_x%/}"
+      if [ "$_tn" = "$FH/$_x" ] || [ "$_tn" = "$_x" ]; then _is_input=1; break; fi
+    done
+    set +f
+    if [ "$_is_input" -eq 1 ]; then _n_input_excl=$((_n_input_excl+1)); continue; fi
     _filtered+=("$_t")
   done
   targets=(${_filtered[@]+"${_filtered[@]}"})
-  [ "${#targets[@]}" -gt 0 ] || { echo "❌ 타깃 0건" >&2; return 10; }
+  # 🟥 공백이 든 경로는 단어분리로 조각난다(codex HIGH #1). 조각은 실재 파일이 아니므로, 선언된
+  # 제외 항목 중 **레포에 실재하지 않는 것**을 크게 경고한다 — 조용한 fail-open 대신 시끄러운 오류.
+  # (이 검사는 «제외가 걸렸나» 가 아니라 «지정이 말이 되나» 를 본다. 프로필이 그날 안 바뀐 정상
+  #  케이스에서는 실재하므로 안 뜬다.)
+  set -f
+  local _bad=""
+  for _x in ${DLC_EXCLUDE_TARGETS:-}; do
+    [ -n "$_x" ] || continue
+    _x="${_x#./}"; _x="${_x%/}"
+    [ -e "$FH/$_x" ] || [ -e "$_x" ] || _bad="$_bad $_x"
+  done
+  set +f
+  [ -z "$_bad" ] || \
+    echo "   ⚠️ DLC_EXCLUDE_TARGETS 에 실재하지 않는 항목:$_bad — 경로에 공백이 있으면 단어분리로 조각난다. 제외가 빗나가 입력이 타깃에 남을 수 있다(fail-open)" >&2
+  [ "$_n_input_excl" -eq 0 ] || \
+    echo "   ⓘ digest 입력 ${_n_input_excl}건을 타깃에서 제외했다 (어휘 겹침이 보장돼 착지를 못 가른다): ${DLC_EXCLUDE_TARGETS}" >&2
+  # rc=10 은 둘 다 «못 쟀다» 지만 **원인이 다르고 처방도 다르다** — 하나로 뭉개면 운영자가
+  # 「아무도 안 고쳤다」와 「내가 겨냥을 잘못했다」를 구분 못 한다.
+  if [ "${#targets[@]}" -eq 0 ]; then
+    if [ "$_n_input_excl" -gt 0 ]; then
+      echo "❌ 타깃 0건 — 변경분이 digest 입력뿐이었다(제외 ${_n_input_excl}건). 착지 0 이 아니라 **미측정**이다" >&2
+    else
+      echo "❌ 타깃 0건 — digest 이후 커밋된 대상 파일이 없다. 착지 0 이 아니라 **미측정**이다" >&2
+    fi
+    return 10
+  fi
 
   local probes; probes="$(mktemp -t dlc.XXXXXX)" || return 10
   if ! do_extract "$d" > "$probes"; then rm -f "$probes"; return 10; fi
@@ -504,6 +574,76 @@ EOF
       DLC_CONTROLS="zzz_tok" bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" \
       "$EG/wiki/frontier_digest_2001_01_01.md" ) >/dev/null 2>&1; rc_e=$?
   _t "★N-empty 타깃 0건은 HARNESS-ERROR(10)이지 미착지(1)가 아니다" 10 "$rc_e"
+
+  # ── ★N-input (2026-08-20) — digest 의 «입력»(프로필)은 타깃이 될 수 없다 ────────────────
+  # 🟥 이 픽스처는 **오늘 실제로 일어난 런을 그대로 재현한다**(forge-wiki 무인 런, 10:03:38).
+  #    digest 이후 커밋된 유일한 .md 가 프로필 자신이었고, 프로필은 digest 를 만들 때 프롬프트에
+  #    주입되므로 어휘 겹침이 **보장**돼 있다 ⇒ 계기가 자기 입력을 읽고 「착지」라고 보고했다.
+  #    실제 착지는 0 이었는데 rc=1(SOME-UNLANDED, 4/5 착지)로 렌더됐다.
+  # 알려진 짝이다 — 두 팔이 **같은 레포·같은 digest·같은 커밋 수**이고 다른 것은 «커밋된 파일이
+  # 입력이냐 아니냐» **하나뿐**이다. 한 팔만 있으면 「제외가 다 죽인다」와 구분이 안 된다.
+  local IG; IG="$(mktemp -d -t dlc_i.XXXXXX)" || return 10
+  local rc_ia rc_ib
+  # 팔 A(known-POSITIVE, 버그의 형상): 커밋된 것이 프로필뿐 → 타깃 0건이어야 한다(10)
+  (
+    mkdir -p "$IG/wiki" && cd "$IG" && git init -q . \
+      && git config user.email t@t && git config user.name t
+    printf '# d\n## 📌 FH Immediate Application Candidates\n\n| # | 티어 | 내용 |\n|---|---|---|\n| **A1** | M | `zzz_tok` 후보 |\n\n## end\n' \
+      > wiki/digest.md
+    touch -t 200101010000 wiki/digest.md
+    # 프로필은 digest 어휘를 그대로 갖는다 — 주입된 입력이니 당연하다
+    printf 'zzz_tok 을 다루는 위성 프로필 · zzz_ctl\n' > wiki/.satellite-profile.md
+    git add -A && git commit -qm p
+  ) >/dev/null 2>&1
+  ( cd "$IG" && CLAUDE_PROJECT_DIR="$IG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+      DLC_CONTROLS="zzz_ctl" DLC_EXCLUDE_TARGETS="wiki/.satellite-profile.md" \
+      bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$IG/wiki/digest.md" ) >/dev/null 2>&1; rc_ia=$?
+  _t "★N-input a) 변경분이 digest 입력(프로필)뿐이면 미측정(10)이지 착지가 아니다" 10 "$rc_ia"
+  # 팔 B(known-NEGATIVE, 제외가 과잉이 아님): 진짜 착지면이 함께 커밋되면 계기는 **살아야** 한다
+  (
+    cd "$IG" && printf 'zzz_tok 을 실제로 반영한 문서 · zzz_ctl\n' > wiki/adopted.md
+    git add -A && git commit -qm a
+  ) >/dev/null 2>&1
+  ( cd "$IG" && CLAUDE_PROJECT_DIR="$IG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+      DLC_CONTROLS="zzz_ctl" DLC_EXCLUDE_TARGETS="wiki/.satellite-profile.md" \
+      bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$IG/wiki/digest.md" ) >/dev/null 2>&1; rc_ib=$?
+  # 🟥 초판은 `not10` 만 요구했다 — cross-family 지적: 그건 «하네스가 안 죽었다» 지 «진짜 착지를
+  # 옳게 잡았다» 가 아니다. 다른 이유로 rc=1 이 나도 통과한다. 이제 **rc=0(전건 착지)** 을 요구한다.
+  _t "★N-input b) 진짜 착지면이 있으면 제외가 그걸 안 죽인다(전건 착지=0)" 0 "$rc_ib"
+  # 팔 C(컨트롤 — 제외를 «끄면» 옛 거짓 양성이 되살아난다). 이게 없으면 팔 A 가 제외 덕인지
+  # 다른 이유로 10 이 난 건지 안 갈린다.
+  local rc_ic
+  ( cd "$IG" && git rm -q --cached wiki/adopted.md >/dev/null 2>&1; rm -f wiki/adopted.md; git commit -qm r ) >/dev/null 2>&1
+  ( cd "$IG" && CLAUDE_PROJECT_DIR="$IG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+      DLC_CONTROLS="zzz_ctl" \
+      bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$IG/wiki/digest.md" ) >/dev/null 2>&1; rc_ic=$?
+  _t "★N-input c) CONTROL — 제외를 끄면 프로필이 타깃이 되어 10 이 아니게 된다(버그 재현)" "not10" "$([ "$rc_ic" -eq 10 ] && echo is10 || echo not10)"
+  # ── 아래 둘은 cross-family(codex, 2026-08-20) 가 낸 **fail-open 2건의 회귀 앵커**다.
+  # 둘 다 「제외가 조용히 빗나가 입력이 타깃에 남는다」= 옛 거짓 양성 재발이 증상이다.
+  local rc_id rc_ie
+  # d) `./` 접두로 지정해도 제외돼야 한다. FD_PROFILE 은 러너의 `-f` 게이트를 통과하므로
+  #    (그건 실재만 본다) 이게 안 맞으면 **아무 신호 없이** 버그가 돌아온다.
+  ( cd "$IG" && CLAUDE_PROJECT_DIR="$IG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+      DLC_CONTROLS="zzz_ctl" DLC_EXCLUDE_TARGETS="./wiki/.satellite-profile.md" \
+      bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$IG/wiki/digest.md" ) >/dev/null 2>&1; rc_id=$?
+  _t "★N-input d) './' 접두 지정도 제외된다(경로 정규화, fail-open 앵커)" 10 "$rc_id"
+  # e) 글롭이 확장되면 안 된다. 확장되면 CWD 의 다른 .md 까지 제외돼 **진짜 착지가 사라진다**.
+  #    여기선 실착지면(adopted.md)을 되살려 놓고, 글롭 지정이 그걸 안 먹는지 본다.
+  ( cd "$IG" && printf 'zzz_tok 을 실제로 반영한 문서 · zzz_ctl\n' > wiki/adopted.md \
+      && git add -A && git commit -qm a2 ) >/dev/null 2>&1
+  # 🟥 **CWD 가 레포 루트여야 이 레인이 산다.** 초판은 `$IG/wiki` 에서 돌렸는데 거기서는
+  #    `wiki/*.md` 가 매치할 게 없어 확장이 아예 안 일어났다 ⇒ **죽은 레인**(뮤턴트로 자기적발).
+  #    2차 시도(루트에서 `wiki/*.md`)도 죽어 있었다 — 글롭이 퍼져도 프로필은 **닷파일이라 `*` 에
+  #    안 걸려** 타깃이 안 비고 rc 가 양쪽 다 0 이었다. 판별되려면 **글롭이 걸릴 때만 타깃이
+  #    0 이 되어야** 한다:
+  #      noglob : `wiki/a*.md` 는 리터럴이라 아무것도 안 맞음 → 프로필만 제외 → 타깃=[adopted] → 0
+  #      glob   : `wiki/a*.md`→`wiki/adopted.md` → 둘 다 제외 → 타깃 0건 → 10
+  #    두 번 죽은 레인을 두 번 다 뮤턴트가 잡았다. 컨트롤 없이 「추가했다」로 끝냈으면 장식이었다.
+  ( cd "$IG" && CLAUDE_PROJECT_DIR="$IG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+      DLC_CONTROLS="zzz_ctl" DLC_EXCLUDE_TARGETS='wiki/a*.md wiki/.satellite-profile.md' \
+      bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$IG/wiki/digest.md" ) >/dev/null 2>&1; rc_ie=$?
+  _t "★N-input e) 글롭이 확장되지 않는다(진짜 착지면을 과잉 제외 안 함)" 0 "$rc_ie"
+  rm -rf "$IG"
   rm -rf "$EG"
   # ⚠️ **줄 단위로** 본다. `case *"A1"*"미착지"*` 는 마지막 요약줄("N건 중 M건 미착지")까지
   # 삼켜 오매칭한다 — 문자열 위치로 판정하는 prose-grep 함정([[feedback_typed_verdict_channel]]).
