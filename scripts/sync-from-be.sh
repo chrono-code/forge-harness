@@ -503,8 +503,37 @@ pull_dir() {   # $1 = companion (source) dir, $2 = hub (destination) dir, $3 = l
 #                          forward script (SYNC_EXCLUDES) rather than re-homed — nothing to pull
 #                          back on this side either; listed here for the same reason `.fh_node_state`
 #                          is: a belt-and-suspenders name exclusion in case a stale copy ever lands.
-# ⚠️ scripts/sync_guard_check.sh asserts the forward script's two copies of this list stay
-# equivalent. This is the THIRD copy; it is covered there too — do not edit one without the others.
+#
+# ── WHY these are excluded BY NAME and not gated on content (2026-08-20, air node) ──
+# The rule the whole list rests on, written down because nothing above states it:
+#
+#     A strict-superset check proves NO LOSS. It does NOT prove INSTALLABILITY.
+#
+# Measured this session on CLAUDE.local.md: the hub copy (8,501B) vs the store's (17,351B, last
+# written by the PRO node's forward sync). `diff hub store | grep -c '^<'` returned 0 — a strict
+# superset — so merging the store copy in lost nothing, and that reconcile was correct. But "lost
+# nothing" is the ONLY thing that check established. Had any of the 113 added lines been
+# machine-scoped (a node path, a machine id, a per-machine lease), the superset test would have
+# passed IDENTICALLY while installing another machine's binding here — which is the .fh_node_state
+# failure of 2026-08-02 one level up.
+# The property that disqualifies these files is WHOSE they are, and no diff of two copies can
+# answer that. So a future reader tempted to relax one into "pull it when the store's copy is a
+# superset" is proposing a check that is structurally blind to the failure mode.
+#
+# ⚠️ COVERAGE — corrected 2026-08-20; the previous note here was FALSE and this is why it mattered.
+# It read: "scripts/sync_guard_check.sh asserts the forward script's two copies of this list stay
+# equivalent. This is the THIRD copy; it is covered there too — do not edit one without the others."
+# The first sentence is true. The second is not, and it is the half that tells an editor a machine
+# will catch their drift. Measured, known pair:
+#   · sync_guard_check.sh §1 reads ONLY sync-to-be.sh (SYNC_EXCLUDES vs that file's own find
+#     predicates). Injecting a bogus name into SYNC_EXCLUDES -> rc=1, RED. Injecting one into THIS
+#     prose block -> rc=0, GREEN. The named instrument does not read this file at all.
+#   · A real 3-way parity lane does exist, but in a DIFFERENT script: sync_from_be_lanes.sh L13.
+#     It covers THREE hardcoded names (.gitkeep, *.marker, .fh_node_state), one direction
+#     (forward -> return presence), by whole-file grep. Removing .fh_node_state here -> L13 RED;
+#     removing MEMORY.md here -> L13 GREEN (other lanes caught that one, the parity lane did not).
+# So: the names below MEMORY.md's row are held by prose, not by a check. Edit all three copies by
+# hand, and do not read this block as machine-verified.
 
 # ── Machine-scoped return leg (same machine ONLY) ────────────────────────────
 # The forward script re-homes three files out of the shared namespace into a per-machine name:
