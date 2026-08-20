@@ -51,8 +51,24 @@ BASELINE_DATE="2026-08-20"
 #    (`count_check.sh:94-106` 이 같은 법칙을 README 렌더링에서 이미 실측했다).
 VALID="soul irreversible-gate disambiguator pointer relocatable"
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-[ -f "$ROOT/$RESIDENT_FILE" ] || { echo "❌ HARNESS ERROR: $RESIDENT_FILE 없음" >&2; exit 2; }
+# 🟥 루트는 **스크립트 위치가 아니라 검사 대상 레포**다. 초판은 `dirname $0/..` 를 썼는데,
+#    소비자 설치에서 그건 `node_modules/@chrono-meta/fh-gate` 라 **소비자 레포의 CLAUDE.md 가
+#    아니라 패키지 안의 우리 CLAUDE.md** 를 검사한다. 정적으로 읽을 땐 안 보였고,
+#    팩을 풀어 돌려서 나왔다(§Local Execution First — 실행이 하중선인 이유).
+#    호출자(pre-commit)가 $1 로 레포 루트를 준다. 없으면 git 에게 묻는다.
+ROOT="${1:-}"
+if [ -z "$ROOT" ]; then
+  ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || ROOT=""
+fi
+# ── 적용 가능성 판정 (🟥 «구조적으로 해당 없음» 과 «도구가 없음» 을 같은 값으로 접지 않는다) ──
+if [ -z "$ROOT" ]; then
+  echo "  SKIP  상주 유입 게이트 — git 레포가 아니다 (적용 대상 없음, 통과가 아니라 해당 없음)"
+  exit 0
+fi
+if [ ! -f "$ROOT/$RESIDENT_FILE" ]; then
+  echo "  SKIP  상주 유입 게이트 — 이 레포에 $RESIDENT_FILE 이 없다 (적용 대상 없음)"
+  exit 0
+fi
 
 # ── 순증 계산: 스테이징된 변경만 본다 ────────────────────────────────────────
 diffstat=$(git -C "$ROOT" diff --cached --numstat -- "$RESIDENT_FILE" 2>/dev/null)
@@ -66,10 +82,18 @@ case "$ins$del" in *-*) echo "ℹ️  $RESIDENT_FILE 이 바이너리로 보고�
 net=$(( ins - del ))
 
 cur=$(wc -c < "$ROOT/$RESIDENT_FILE" | tr -d ' ')
+# 🟥 베이스라인은 **FH 자신의** CLAUDE.md 기준이다. 다른 레포에서 델타를 찍으면 남의 파일을
+#    우리 숫자로 재는 것이라 무의미하다 — 소비 레포에선 총량만 말한다.
+if [ "$cur" -lt $(( BASELINE_BYTES / 4 )) ] || [ "$cur" -gt $(( BASELINE_BYTES * 4 )) ]; then
+  printf '  상주 규모: %s bytes (이 레포 기준 · FH 베이스라인과 스케일이 달라 델타는 생략)\n' "$cur"
+  BASELINE_BYTES=0
+fi
 delta=$(( cur - BASELINE_BYTES ))
-pct=$(( delta * 1000 / BASELINE_BYTES ))
-printf '  상주 규모: %s bytes (기준 %s @ %s · %+d, %+d.%d%%)\n' \
-  "$cur" "$BASELINE_BYTES" "$BASELINE_DATE" "$delta" "$((pct/10))" "$((pct%10<0?-pct%10:pct%10))"
+if [ "$BASELINE_BYTES" -gt 0 ]; then pct=$(( delta * 1000 / BASELINE_BYTES )); else pct=0; fi
+if [ "$BASELINE_BYTES" -gt 0 ]; then
+  printf '  상주 규모: %s bytes (기준 %s @ %s · %+d, %+d.%d%%)\n' \
+    "$cur" "$BASELINE_BYTES" "$BASELINE_DATE" "$delta" "$((pct/10))" "$((pct%10<0?-pct%10:pct%10))"
+fi
 
 if [ "$net" -le 0 ]; then
   echo "  ✅ 상주 순증 없음 (+$ins/-$del 줄) — 유입 게이트 해당 없음"
@@ -77,6 +101,17 @@ if [ "$net" -le 0 ]; then
 fi
 
 # ── 순증이다. 마커에 유형 선언이 있어야 한다 ─────────────────────────────────
+# 🟥 단, **이 레포가 4축 마커 체제를 돌릴 때만** 그렇다. 마커 디렉터리 자체가 없으면
+#    그건 소비 레포이고, 거기서 마커를 요구하면 **이식 이후 한 번도 통과 못 하는 검사**가 된다
+#    — 통과 불가능한 게이트는 게이트가 아니라 `--no-verify` 훈련기다
+#    (`count_check.sh:94-106` 이 README 렌더링에서 이미 실측한 법칙).
+#    소비자 트리 ARM 3 실행이 이걸 냈다: 소비자가 자기 CLAUDE.md 를 늘리자 rc=2 로 막혔다.
+if [ ! -d "$ROOT/tracks/_meta" ]; then
+  echo "  SKIP  상주 유입 게이트 — 이 레포는 4축 마커 체제를 안 돌린다 (적용 대상 없음)"
+  echo "        (순증 +$net 줄은 봤다. 판정하지 않는 이유는 마커 디렉터리 부재다)"
+  exit 0
+fi
+
 today=$(date +%Y-%m-%d)
 marker=$(ls -t "$ROOT"/tracks/_meta/.axes_23_passed_*_"$today".marker 2>/dev/null | head -1)
 if [ -z "$marker" ]; then

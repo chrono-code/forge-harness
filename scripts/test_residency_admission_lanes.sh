@@ -39,7 +39,10 @@ L_novoid()    { mk_base; grow; mk_marker "residency: soul —"; }
 L_valid()     { mk_base; grow; mk_marker "residency: soul — 절대 안 함 목록이라 판단 회로다"; }
 # soul 인데 추가분이 근거 서술 → advisory 가 떠야 한다(차단은 아니다: rc=0)
 L_soulprov()  { mk_base; for i in 1 2 3 4 5; do echo "2026-08-$i 실측: n=3 반증됨" >> CLAUDE.md; done; git add CLAUDE.md; mk_marker "residency: soul — 판단 회로라고 주장한다 근거는 길게"; }
-L_nomarker()  { mk_base; grow; }
+L_nomarker()  { mk_base; grow; }   # tracks/_meta 는 있는데 오늘자 마커가 없다 → HARNESS ERROR
+# 🟥 소비 레포: 마커 체제 자체가 없다 → **SKIP(적용 대상 없음)** 이지 차단이 아니다.
+#    이 레인이 없으면 「이식 후 통과 불가」가 조용히 살아 있다(소비자 트리 실행이 잡았다).
+L_consumer()  { mk_base; grow; rm -rf tracks/_meta; }
 
 echo "── residency admission lanes ──"
 run "컨트롤: 상주 무변경"        0 L_nochange
@@ -52,5 +55,6 @@ run "순증 + 자기 거절(목적지 있음)" 1 L_selfreject
 run "순증 + 자기 거절(목적지 없음)" 1 L_nodest "옮길 곳을 안 적었다"
 run "순증 + 근거 공허"           1 L_novoid
 run "순증인데 마커 자체 부재"    2 L_nomarker
+run "소비 레포(마커 체제 없음)"  0 L_consumer "적용 대상 없음"
 echo "── PASS $PASS · FAIL $FAIL ──"
 [ "$FAIL" -eq 0 ]

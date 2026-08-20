@@ -1838,7 +1838,7 @@ fi
 RESID="$REPO_ROOT/scripts/residency_admission_check.sh"
 if [ -f "$RESID" ]; then
   echo "[Residency] 상주 유입 게이트..."
-  resid_out=$(bash "$RESID" 2>&1); resid_rc=$?
+  resid_out=$(bash "$RESID" "$REPO_ROOT" 2>&1); resid_rc=$?
   printf '%s\n' "$resid_out" | sed 's/^/  /'
   if [ "$resid_rc" -ne 0 ]; then FAILED=1; fi
 else
