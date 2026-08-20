@@ -824,7 +824,8 @@ deleted branch was carrying).
 **When this gate fires** — *before* any of: branch deletion (local or remote), history rewrite /
 force-push, scrub of tracked history, bulk deletion of session records / tracks content.
 
-1. **Enumerate (measured)**: `bash templates/predelete_check.sh <repo> [base]` — per branch: commits
+1. **Enumerate (measured)** — 🟥 **this step is run BY A HUMAN; no hook executes it** (measured
+   2026-08-20, residency-ledger pass): `bash templates/predelete_check.sh <repo> [base]` — per branch: commits
    off base + unique paths. Verdicts: SAFE (fully merged) · CHECK (0 unique paths but commits off
    base — shared files may hold *newer* content, e.g. an unmerged session card) · REVIEW (unique
    paths — recovery mandatory).
@@ -845,6 +846,15 @@ prose gate is now stopped); it does **not** close the injected/adversarial one �
 or errors, this irreversible surface **fails closed** — the pre-push hook blocks (enumerate by hand or
 take the explicit `DESTRUCTIVE_OP_OK=1` override); a tooling-down enumerate step never silently degrades
 into "just delete it."
+🟥 **Read that precisely — the floor is the HOOK, not this script.** `templates/.git-hooks/pre-push`
+implements the per-ref verdict **inline**; it does not call `predelete_check.sh`. Measured 2026-08-20
+(control: the same scan finds `session_close_check` wired in that hook): every in-repo reference to
+`predelete_check.sh` is a **mention, not an execution** — `pre-push:408` lists the path inside a *grep
+pattern*, `destructive_pre_gate.sh:191` *prints the command* as advisory text, and `selfcheck.sh:192`
+runs `bash -n` on it. So the script is the **operator's enumerate tool**, and step 1 above is a human
+step that the machinery reminds you of rather than performs. Stating it the other way round is the
+"prose-invoked floor" the 4-axis marker spec calls M-tier when a rule claims a floor its script has
+no caller for — this section does not make that claim, and this note keeps it from drifting into one.
 
 > **Detail**: See `knowledge/shared/harness-core/claude_md_gate_details.md §Destructive-Op-Hook-Coverage`
 > — the per-ref verdict mechanics, what the hook does/does not close (honest scope + adversarial residual),
