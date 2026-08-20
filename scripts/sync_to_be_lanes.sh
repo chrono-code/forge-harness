@@ -87,6 +87,81 @@ MID=lanea run >/dev/null 2>&1
 [ -f "$BEX/tracks-meta/normal2.md" ]; chk $? "CONTROL: an ordinary file synced (run actually executed)"
 [ ! -f "$BEX/tracks-meta/.close_stamps_2026-08-14" ]; chk $? "close-stamp file never landed in the companion store at all"
 
+echo "── L5 destination-newer abort CITES the return path and drops the false single-cause claim (2026-08-20) ──"
+# The old message asserted one cause ("it was edited in the MIRROR") and offered only
+# SYNC_OVERWRITE_OK=1 — measured 0/4 correct on the air node, where all four hits were a PEER NODE's
+# forward sync. Overriding there would have destroyed the peer's newer work. These lanes assert the
+# message names both causes and routes to sync-from-be.sh, at BOTH guard sites.
+new_env l5
+mkdir -p "$HUB/scripts"; printf '#!/usr/bin/env bash\n' > "$HUB/scripts/sync-from-be.sh"
+printf 'hub-v1\n' > "$HUB/tracks/_meta/card.md"
+MID=lanea run >/dev/null 2>&1
+[ -f "$BEX/tracks-meta/card.md" ]; chk $? "CONTROL: first sync landed the file (fixture is live)"
+out_clean="$(MID=lanea run 2>&1)"
+printf '%s' "$out_clean" | grep -q 'SYNC ABORTED'; [ $? -ne 0 ]
+chk $? "KNOWN-NEGATIVE: an unchanged re-sync prints no abort (the lane can fail)"
+sleep 2
+printf 'peer-node-added-this\n' >> "$BEX/tracks-meta/card.md"
+[ "$BEX/tracks-meta/card.md" -nt "$HUB/tracks/_meta/card.md" ]
+chk $? "CONTROL: companion copy really is newer + divergent (fixture ordering worked)"
+out="$(MID=lanea run 2>&1)"; rc=$?
+[ "$rc" -ne 0 ]; chk $? "KNOWN-POSITIVE: the guard still aborts (fail-closed preserved)"
+printf '%s' "$out" | grep -q 'sync-from-be.sh" --dry-run'
+chk $? "the abort CITES the return path with the exact (quoted) command to run"
+printf '%s' "$out" | grep -q 'ANOTHER NODE advanced'
+chk $? "cause ⓐ (peer node advanced) is named, not just the mirror-edit cause"
+printf '%s' "$out" | grep -q 'EDITED IN PLACE'
+chk $? "cause ⓑ (mirror edited in place) is still named"
+printf '%s' "$out" | grep -q 'means it was edited in the'; [ $? -ne 0 ]
+chk $? "the retired single-cause assertion is GONE (0/4 correct when measured)"
+printf '%s' "$out" | grep -q 'NOT the fix'
+chk $? "SYNC_OVERWRITE_OK=1 is marked as not-the-fix for the peer-node case"
+printf '%s' "$out" | grep -q 'COUNTED AND NOT LISTED'
+chk $? "the message warns that the return path's 'clean' set is silent (the 2026-08-20 misread)"
+printf '%s' "$out" | grep -q "the 'clean' set"
+chk $? "that warning is literal text, not a swallowed command substitution (backtick trap)"
+printf '%s' "$out" | grep -q 'bash "'
+chk $? "the printed command QUOTES the path (survives a hub dir containing spaces — codex MED)"
+printf '%s' "$out" | grep -q 'NOT provenance'
+chk $? "the message states the guard tests newer+divergent, not provenance (codex LOW/MED overclaim)"
+
+echo "── L6 the file-level guard: SAME message, DIFFERENT remedy (its only file is unpullable) ──"
+new_env l6
+mkdir -p "$HUB/scripts"; printf '#!/usr/bin/env bash\n' > "$HUB/scripts/sync-from-be.sh"
+printf 'ordinary\n' > "$HUB/tracks/_meta/normal.md"
+printf 'binding-v1\n' > "$HUB/CLAUDE.local.md"
+MID=lanea run >/dev/null 2>&1
+# Resolved by search, not by a literal subdirectory name: the destination is an operator-private
+# companion-store layout, and hard-coding it would both leak that name onto the public surface and
+# break the lane on any other operator's layout.
+[ -n "$(find "$BEX" -name CLAUDE.local.md 2>/dev/null)" ]
+chk $? "CONTROL: CLAUDE.local.md went through the file-level path at all"
+lf="$(find "$BEX" -name CLAUDE.local.md | head -1)"
+sleep 2
+printf 'peer-edit\n' >> "$lf"
+out="$(MID=lanea run 2>&1)"
+printf '%s' "$out" | grep -q 'SYNC ABORTED'
+chk $? "KNOWN-POSITIVE: the file-level guard aborts"
+printf '%s' "$out" | grep -q 'does NOT cover this file'
+chk $? "the file-level abort declares the return path does NOT cover CLAUDE.local.md (codex HIGH, 2026-08-20)"
+printf '%s' "$out" | grep -q 'reconcile by hand'
+chk $? "it hands over a remedy that actually exists for this file (manual reconcile)"
+printf '%s' "$out" | grep -q 'sync-from-be.sh" --dry-run'; [ $? -ne 0 ]
+chk $? "it does NOT cite the return path here — sync-from-be.sh refuses this file by name"
+
+echo "── L7 a missing return path is declared missing, never cited as a live remedy ──"
+new_env l7
+printf 'hub-v1\n' > "$HUB/tracks/_meta/card.md"
+MID=lanea run >/dev/null 2>&1
+sleep 2
+printf 'peer\n' >> "$BEX/tracks-meta/card.md"
+[ ! -f "$HUB/scripts/sync-from-be.sh" ]; chk $? "CONTROL: the return path really is absent in this fixture"
+out="$(MID=lanea run 2>&1)"
+printf '%s' "$out" | grep -q 'NOT PRESENT'
+chk $? "the abort says the return path is NOT PRESENT instead of printing a dead pointer"
+printf '%s' "$out" | grep -q -- '--dry-run'; [ $? -ne 0 ]
+chk $? "it does NOT hand out a --dry-run command that cannot run here"
+
 echo ""
 echo "════ lanes: $PASS passed · $FAIL failed ════"
 [ "$FAIL" -eq 0 ]

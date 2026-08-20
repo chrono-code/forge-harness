@@ -2352,3 +2352,11 @@
   finding: "🟥 **cross-family 지적 3건 전부 실재·전부 채택·자력 적발 0.** codex(diff 축)가 내 수리의 반쪽을 잡았다 — L13c 라벨을 유도로 바꿨는데 **생산자는 리터럴을 낸다**, 즉 수리가 divergent-normalizer 를 새로 만들고 있었다(되돌림 + known-pair 재현: 상수 20/0 · 유도 19/1). agy(주장 축)가 둘 — ③문 자기모순, 그리고 **detail 파일의 신규사용자 문이 안 따라온 반쪽-픽스**(내 확인 grep 이 따옴표 탓에 거짓 「없음」을 냈다). 🟥 **두 계열 지적이 하나도 안 겹쳤다(코드 1 / 주장 2)** — 축 분리의 값이 실측으로 나온 자리다. harness-doctor: FAIL(M-tier 1 = 상주 140,217자) · S 9 · R 4, «못 잰 것» 8항 명시. pmh-dev: 흡수 후보 3(Wave 1-D · HEAVY 분류기 레인 · Step 0.35), 그중 **A1 은 PMH 문서가 없는 기계를 있다고 적었다**(`axis2-defense` 훅 히트 0, 컨트롤 `crossfamily` 21) — 산문만 옮기면 팬텀 기계-주장을 들여온다. 블라인드 sim ARM 3/3 vs CONTROL 3/3 완전 분리."
   note: "🟥 **계기가 못 보는 자리를 탈상관이 봤다.** 소비자-완주 계기는 「돌아가나」를 재지 「고친 게 옳은가」를 못 잰다 — SKIP 으로 빠지는 팔은 그 계기가 **구조적으로 안 보는** 자리이고 codex 지적이 정확히 거기 있었다. ⚠️ codex 세션이 **최종 산문 판정 없이 끝났다**(4턴, 마지막이 도구 출력) — 지적은 중간 턴에서 건졌다. 「지적 없음」이 아니라 **부분 산출**로 계상한다. ⚠️ 훅 tally 는 67 인데 이 엔트리 포함 소수다 — tally 는 재시도·내부 스폰까지 세므로 1:1 대응이 아니다(클래스 집계)."
   cost: "harness-doctor 196,158 · pmh 답습 186,940 tokens (subagent_tokens) · codex/agy/sim 은 CLI 라 토큰 미노출 = UNMEASURED"
+- date: 2026-08-20
+  agent: codex/gpt-5.6-terra (cross-family sidecar, headless)
+  caller: FH hub session (air node)
+  purpose: adversarial refutation of the sync-to-be.sh destination-newer abort-message fix (load-bearing data-loss guard)
+  reps: 1
+  outcome: accepted
+  evidence: "4 findings, all reproduced and all fixed. 1 HIGH (the fix planted a fresh dead pointer at the file-level guard site: sync_file's only call site is CLAUDE.local.md, which sync-from-be.sh refuses by name), 2 MED (unquoted printed command; overclaimed 'discriminator'), 1 LOW (exactly-two-causes overclaim). Governor source-grounded each by grep before accepting. Self-catch on these: 0/4."
+  note: "Recorded per CLAUDE.md §Agent Dispatch invocation-log obligation. Sidecar leg, not an Agent-tool subagent, so the SubagentStop tally does not see it."
