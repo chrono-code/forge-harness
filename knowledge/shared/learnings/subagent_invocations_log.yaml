@@ -2372,3 +2372,12 @@
   finding: "🟥 **설계를 준 것이 검증보다 컸다 — 이게 오늘의 net-new 관측이다.** #15 에서 거버너의 계기가 known-positive 를 **미탐**하고 있었는데, 블라인드 냉독이 실물 8건을 손분류해 **판별자 자체를 줬다**(«트리거는 회고 부사가 아니라 «이 어구가 이 장에서 처음 정의되는가»»). 그 규칙으로 갈아끼우자 known-pair 통과. ★ **이미 배출한 하네스의 결함 2건을 페르소나가 잡았다**: L1 이 `>` 를 무조건 주석으로 떨궈 **원고 낭독을 통째로 안 보면서 초록**이었다(판정 0건→12건) · 은퇴 선언을 헤딩에서만 찾아 죽은 장 4개를 live 로 계상. **거버너 자력 적발 0**, 둘 다 실행으로 확정. ★ #14: 「인스턴스 1개」가 실물 대조로 **반증**(덱 밖 5개, 소급 귀속 아님 — 그 코드 저자가 렌즈 이전에 자기 언어로 같은 메커니즘을 적었다) · ⓓ3자대면 첫 실행이 §3 을 «거의 전량 선행»(RTE·BX/lens·XLIFF·Jupytext·pandoc·token-drift)으로 뒤집었고, 그 결과가 **출구가 아니라 재료**가 됐다(운영자 결정). ★ #15 expert: 정밀도 선행이 설계를 바꿨다 — bridging 자동해소 **F1 26~30**, discourse deixis **21.5** ⇒ 자동 «판정»으로 설계하면 미검출이 지배한다(`not_found_is_not_zero_family`). 추출=재현율 · 판정=사람으로 범위 재조정."
   note: "🟥 **#14 에서 challenger 가 INTENT.md 를 읽고 자진 신고했다** — 워크스페이스가 페르소나와 같은 레포에 있으니 «주지 마라» 라는 산문은 격리를 못 만든다. **격리는 산문이 아니라 경로다.** #15 에서 봉인을 워크스페이스 밖으로 빼자 아무도 못 읽었다(처방 닫힘). ⚠️ 그리고 그 신고가 없었으면 «독립 수렴 3건» 으로 오계상됐을 것이다 — 자진 신고에 의존하는 구조라 다음에도 잡힌다는 보장이 없다. ⚠️ K2(도구/판단)에서 두 페르소나가 **반대 결론**을 냈고, 그 갈림 자체를 «안 닫힌 축» 으로 기록했다(한쪽으로 접지 않았다)."
   cost: "런 #14: 508,284 · 런 #15: 620,426 tokens (subagent_tokens, 기계 출처) · 거버너 = **UNMEASURED**(세션이 자기 소비를 못 읽는다) · 🟥 **합계 안 적는다** — 미측정 칸을 0 으로 접는 것이다. #15 는 추정 450k 대비 +38%(CAP 700k 이내), #14 는 추정 단위가 달라 UNCALIBRATED 였고 그 교훈이 #15 의 단위 정정으로 갔다"
+
+- date: 2026-08-20
+  agent: codex/gpt-5.6-terra (cross-family sidecar, headless)
+  caller: FH hub session (air node)
+  purpose: adversarial refutation of the sync-to-be.sh destination-newer abort-message fix (load-bearing data-loss guard)
+  reps: 1
+  outcome: accepted
+  evidence: "4 findings, all reproduced and all fixed. 1 HIGH (the fix planted a fresh dead pointer at the file-level guard site: sync_file's only call site is CLAUDE.local.md, which sync-from-be.sh refuses by name), 2 MED (unquoted printed command; overclaimed 'discriminator'), 1 LOW (exactly-two-causes overclaim). Governor source-grounded each by grep before accepting. Self-catch on these: 0/4."
+  note: "Recorded per CLAUDE.md §Agent Dispatch invocation-log obligation. Sidecar leg, not an Agent-tool subagent, so the SubagentStop tally does not see it."

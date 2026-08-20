@@ -251,6 +251,78 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
   done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -name '.fh_node_state' ! -name '.close_stamps_*' ! -path '*/logs/*' 2>/dev/null)
 }
 
+# ── Shared abort message for BOTH destination-newer sites ─────────────────────
+# ONE function, deliberately: the file-level guard below was added because "a guard applied to some
+# callers of a shared hazard is not a guard; it just relocates the hole". The same argument applies
+# to the guard's MESSAGE — the two copies had already drifted (the dir-level one named a remedy the
+# file-level one did not), and a remedy that exists in one branch is invisible from the other.
+#
+# MEASURED 2026-08-20 (air node, n=4 files, one run) — why the old wording was wrong:
+#   The old text asserted ONE cause: "A newer file there means it was edited in the MIRROR."
+#   All four files that tripped it had last been written by a `sync:` commit from ANOTHER NODE
+#   (git log -1 on each: the pro node's own forward sync), and every mirror copy was a strict
+#   superset of the hub's. Nothing had been edited in the mirror. The message was 0/4 correct.
+#   Worse, its only escape hatch — SYNC_OVERWRITE_OK=1 — would have pushed this node's STALE copy
+#   over the peer's newer work: the exact loss this guard exists to prevent, delivered by the guard's
+#   own override. sync-from-be.sh has existed since 2026-08-02 for precisely this case and its own
+#   header names this trap ("a guard whose only escape hatch is the data-loss button trains the
+#   data-loss button") — but the forward script never cited it, so the fix was unreachable from the
+#   moment of need. Gate-locality on a healing path: the remedy must be legible where the block fires.
+#   Calibrated before citing: sync-from-be.sh --dry-run was run against all four and covers all four
+#   (3 in its silent `clean` set, 1 in `review`). It is cited as the discriminator because it IS one,
+#   not because it is adjacent.
+# $2 = "pullable" (the return path covers these files) | "local-binding" (it does NOT).
+# The second argument exists because a cross-family review (codex/gpt-5.6-terra, 2026-08-20) caught
+# this fix REPRODUCING the very defect it closes: sync_file() has exactly ONE call site — the
+# `sync_file "$FH/CLAUDE.local.md"` line below — and sync-from-be.sh refuses that file BY NAME
+# (grep it there: the "is never pulled" exclusion note and the pair-list comment above pull_dir).
+# 🟥 Anchors are NAMES, not line numbers, on purpose: the first version of this comment cited
+# `:551` / `:576` and BOTH had already drifted by the time this branch was reviewed — the same
+# commit that added these lines pushed them down. A number in prose is a phantom waiting for the
+# next edit; a greppable string survives it.
+# So a shared message citing the return path there is dead advice at 100% of that site's invocations.
+# One message for two sites was right; one *remedy* for two sites was not.
+_abort_dest_newer() {   # $1 = pre-formatted hit list (one "  <path>  (newer than <path>)" per line)
+  local rp="$FH/scripts/sync-from-be.sh" kind="${2:-pullable}"
+  echo "" >&2
+  echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
+  printf '%s' "$1" >&2
+  echo "" >&2
+  echo "   This transport is ONE-WAY: the hub is canonical, the companion store is a mirror." >&2
+  echo "   A newer file there has TWO COMMON causes that take OPPOSITE remedies (the guard" >&2
+  echo "   tests newer+divergent, NOT provenance — corruption or a stray copy land here too)." >&2
+  echo "" >&2
+  echo "   ⓐ ANOTHER NODE advanced. Its work reaches this hub's gitignored half ONLY through" >&2
+  echo "      the store, so the mirror is legitimately ahead and THIS hub is the stale one." >&2
+  if [ "$kind" = "local-binding" ]; then
+    echo "      🟥 The return path does NOT cover this file. sync-from-be.sh refuses" >&2
+    echo "         CLAUDE.local.md by name (a peer's local binding must never land here), so" >&2
+    echo "         there is no scripted recovery: open BOTH copies and reconcile by hand." >&2
+  elif [ -f "$rp" ]; then
+    echo "      → bash \"$rp\" --dry-run" >&2
+    echo "        Run this FIRST. It does not prove WHO wrote the file — it answers the" >&2
+    echo "        question that decides the remedy: would the return path pull these?" >&2
+    echo "        🟥 Read its COUNT line (\"pulled N ... clean C · review R\"), not only the" >&2
+    echo "           names below it: the 'clean' set is COUNTED AND NOT LISTED, so a name" >&2
+    echo "           missing from the printout is not a file missing from the pull. (This" >&2
+    echo "           misread happened on 2026-08-20 — 3 of 4 hits were in the silent set.)" >&2
+    echo "        Re-run without --dry-run to apply; it backs up every file it overwrites." >&2
+  else
+    echo "      ⚠️  the return path is NOT PRESENT at $rp" >&2
+    echo "        — ⓐ cannot be applied on this node; recover by hand before overriding." >&2
+  fi
+  echo "" >&2
+  echo "   ⓑ The mirror was EDITED IN PLACE. Move the edit back to the canonical path under" >&2
+  echo "      the hub, then re-run this script." >&2
+  echo "" >&2
+  echo "   🟥 SYNC_OVERWRITE_OK=1 is NOT the fix for ⓐ. It overwrites the other node's newer" >&2
+  echo "      work with this node's stale copy — the very loss this guard exists to stop," >&2
+  echo "      delivered by its own override. Use it ONLY when the mirror copy is genuinely" >&2
+  echo "      stale: SYNC_OVERWRITE_OK=1 \"$0\"" >&2
+  echo "" >&2
+  exit 1
+}
+
 # ── Mirror banner (salience layer over the guard above) ───────────────────────
 # The guard stops the loss; this stops the *edit* that causes it. A directory-level README is too
 # weak — an agent opens a FILE, and nothing in the content says "this is a copy". So the banner
@@ -335,18 +407,7 @@ sync_dir() {
       printf '%s\tSYNC_OVERWRITE_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$dst" \
         >> "$BE/$TM/.sync_overwrite_override_log" 2>/dev/null || true
     else
-      echo "" >&2
-      echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
-      printf '%s' "$NEWER_HITS" >&2
-      echo "" >&2
-      echo "   This transport is ONE-WAY. The canonical copy is under forge-harness; the" >&2
-      echo "   companion store is a mirror. A newer file there means it was edited in the" >&2
-      echo "   MIRROR — continuing would overwrite it silently, and that loss is irreversible." >&2
-      echo "" >&2
-      echo "   Fix: move the edit back to the canonical path, then re-run." >&2
-      echo "   Deliberate overwrite (the mirror copy is genuinely stale): SYNC_OVERWRITE_OK=1 $0" >&2
-      echo "" >&2
-      exit 1
+      _abort_dest_newer "$NEWER_HITS"
     fi
   fi
   if [ "$HAVE_RSYNC" -eq 1 ]; then
@@ -391,13 +452,8 @@ sync_file() {
       printf '%s\tSYNC_OVERWRITE_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$dstf" \
         >> "$BE/$TM/.sync_overwrite_override_log" 2>/dev/null || true
     else
-      echo "" >&2
-      echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
-      echo "  $dstf  (newer than $src)" >&2
-      echo "   One-way transport: the hub copy is canonical. Move the edit back, then re-run." >&2
-      echo "   Deliberate overwrite: SYNC_OVERWRITE_OK=1 $0" >&2
-      echo "" >&2
-      exit 1
+      _abort_dest_newer "  $dstf  (newer than $src)
+" local-binding
     fi
   fi
   if [ "$HAVE_RSYNC" -eq 1 ]; then
