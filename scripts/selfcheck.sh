@@ -1247,6 +1247,19 @@ else
   fail=1
 fi
 
+# outbound-query 위생 린트 — 나가는 질의에 내부 토큰이 실렸는지. 레인이 이 가드의 fail-closed
+# 분기 4개(라이브러리 부재·defaults 부재·override 부재·상태값 오염)에 각각 짝을 갖는다.
+if [ ! -f scripts/outbound_query_guard.sh ]; then
+  _absent_subject_verdict "test_outbound_query_lanes.sh" "scripts/outbound_query_guard.sh" || fail=1
+elif [ -f scripts/test_outbound_query_lanes.sh ]; then
+  if ! bash scripts/test_outbound_query_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_outbound_query_lanes.sh: outbound_query_guard.sh present but its anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/pipe_verdict_guard.sh ]; then
   _absent_subject_verdict "test_pipe_verdict_guard_lanes.sh" "scripts/pipe_verdict_guard.sh" || fail=1
 elif [ -f scripts/test_pipe_verdict_guard_lanes.sh ]; then
