@@ -575,6 +575,86 @@ marker_recreate_hint() {
 # VALUE is a closed enum; the three degrade values additionally require a non-vacuous reason
 # on the SAME line (keeping the established one-line marker convention rather than adding a
 # second field). Returns 0 = accepted, 1 = block.
+validate_defense_leg() { # $1 = marker path — fires ONLY at the floor tiers (see call site)
+  # Wave 1-D defense line. Absorbed from a sibling harness 2026-08-20, but the machine is OURS:
+  # 🟥 the source document claimed "the commit hook reads that line" and "pinned by
+  # test_marker_floor_lanes.sh" — measured twice with a control (`crossfamily` 21 hits), BOTH were
+  # 0 hits there. Porting the prose without building this function would have imported the phantom.
+  #
+  # WHY IT EXISTS: measured n=6 in the origin field — a floor-tier pass executes the attack angles
+  # without defect but does NOT spontaneously ask these three of its own numbers. That is a
+  # checklist gap, not a capability gap, and a harness whose behaviour depends on which model drives
+  # it is defective by sonnet_floor_doctrine.md rather than merely limited.
+  # FH-side corroboration (2026-08-20, this session, n=1): a comparison was published from two
+  # DIFFERENT package versions and read as a defect ("15 lanes vs 13 lanes — two vanished"). The
+  # 비교공정성 question — *were the two arms measured under the same conditions?* — asks exactly
+  # that, and the claim was retracted only because a later step happened to surface the version gap.
+  #
+  # SCOPE, and why it is not wider: `below-floor` occurs 0 times across the existing marker corpus,
+  # so gating on it alone would be a decoration that never fires. `sonnet-floor` occurs 11 times.
+  # Both are gated here; the wide reading ("any marker carrying numbers") is deliberately NOT taken —
+  # it would price this axis at a near-universal rate, which is the over-trigger §7 rejects.
+  #
+  # 🟥 WHAT WAS NOT IMPORTED: the origin also amends its floor rule so that below-floor + this line
+  # + a crossfamily record PASSES WITHOUT the operator ack. That is a LOOSENING of an existing FH
+  # gate and it is not adopted. Here this leg is purely additive: below-floor still requires
+  # below-floor-ack, unchanged.
+  local m="$1" line r f e
+  if [ ! -f "$m" ] || ! grep -qE '^[[:space:]]*axis2-defense:[[:space:]]*[^[:space:]]' "$m"; then
+    echo "  ❌ FAIL — floor-tier marker with no 'axis2-defense:' line."
+    echo "     At the floor tier the attack angles run but the three defense questions do not get"
+    echo "     asked spontaneously. Ask them OF YOUR OWN findings and numbers, then record:"
+    echo "       axis2-defense: reproducibility=<exact command or file:line another session runs>"
+    echo "                      fairness=<reps/inputs/env named for BOTH arms>"
+    echo "                      estimation-layer=<per number: measured | estimate | quotation;"
+    echo "                                        for measured, what showed the instrument works here>"
+    echo "     Append to: $m"
+    return 1
+  fi
+  if [ "$(grep -cE '^[[:space:]]*axis2-defense:' "$m")" -gt 1 ]; then
+    echo "  ❌ FAIL — marker carries MORE THAN ONE 'axis2-defense:' line."
+    grep -nE '^[[:space:]]*axis2-defense:' "$m" | sed 's/^/       /'
+    echo "     The reader takes the FIRST, so an appended correction is silently shadowed."
+    echo "     Leave exactly one line."
+    return 1
+  fi
+  # The whole value, including any continuation lines, up to the next top-level field.
+  line=$(sed -n '/^[[:space:]]*axis2-defense:/,/^[a-z0-9-]*:[[:space:]]/p' "$m"          | sed -E '2,$ { /^[a-z0-9-]+:[[:space:]]/d; }' | tr '\n' ' ')
+  r=$(printf '%s' "$line" | sed -nE 's/.*reproducibility=([^ ].*)/\1/p' | sed -E 's/(fairness=|estimation-layer=).*//')
+  f=$(printf '%s' "$line" | sed -nE 's/.*fairness=([^ ].*)/\1/p' | sed -E 's/(reproducibility=|estimation-layer=).*//')
+  e=$(printf '%s' "$line" | sed -nE 's/.*estimation-layer=([^ ].*)/\1/p' | sed -E 's/(reproducibility=|fairness=).*//')
+  local missing=""
+  [ -n "$r" ] || missing="$missing reproducibility"
+  [ -n "$f" ] || missing="$missing fairness"
+  [ -n "$e" ] || missing="$missing estimation-layer"
+  if [ -n "$missing" ]; then
+    echo "  ❌ FAIL — axis2-defense: missing sub-answer(s):$missing"
+    echo "     All three are required. A partially-filled form is not a defense — the question you"
+    echo "     skipped is the one you did not want to answer."
+    return 1
+  fi
+  # Non-vacuity. `ok` / `yes` / `n/a` / `done` are a FILLED FORM, not an answer — the same shape the
+  # crossfamily leg rejects. Anything under 12 chars cannot name a command, a reps count, or a layer.
+  local bad=""
+  for pair in "reproducibility:$r" "fairness:$f" "estimation-layer:$e"; do
+    local k="${pair%%:*}" v="${pair#*:}"
+    v=$(printf '%s' "$v" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+    case "$(printf '%s' "$v" | tr 'A-Z' 'a-z')" in
+      ok|yes|y|n/a|na|none|done|true|-|tbd|todo) bad="$bad $k(vacuous:'$v')" ;;
+      *) [ "${#v}" -ge 12 ] || bad="$bad $k(too short:'$v')" ;;
+    esac
+  done
+  if [ -n "$bad" ]; then
+    echo "  ❌ FAIL — axis2-defense: vacuous answer(s):$bad"
+    echo "     'ok'/'yes'/'n/a' is a filled form, not an answer. Name the command, the reps, the layer."
+    echo "     🟥 The hook checks PRESENCE and NON-VACUITY only. It cannot check whether the answers"
+    echo "     are TRUE — that stays with the operator and the weekly audit, exactly like every other"
+    echo "     marker field. Do not read a PASS here as a claim that these answers were verified."
+    return 1
+  fi
+  return 0
+}
+
 validate_crossfamily_leg() { # $1 = marker path
   local m="$1" line val reason fams
   if [ ! -f "$m" ] || ! grep -qE '^[[:space:]]*crossfamily:[[:space:]]*[^[:space:]]' "$m"; then
@@ -1292,7 +1372,17 @@ if [ "$GATE_MODE" = "full" ]; then
   MARKER="$MARKER_DIR/.axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
 
   if [ -f "$MARKER" ]; then
-    if validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER"; then
+    # Wave 1-D defense leg — floor tiers only (sonnet-floor / below-floor), on ANY full-gate marker.
+    # 🟥 It was first wired inside the LOAD-BEARING block below, which made the real condition
+    # "load-bearing AND floor tier" while the skill documented "floor tiers only" — a SKILL.md
+    # change at sonnet-floor would have passed with no defense line. Found by cross-family review
+    # (codex/gpt-5.5, 2026-08-20); self-detection 0. The scope the doctrine states is the scope
+    # the hook now has.
+    _DEFENSE_OK=1
+    if grep -qE '^[[:space:]]*floor-status:[[:space:]]*(sonnet-floor|below-floor)' "$MARKER"; then
+      validate_defense_leg "$MARKER" || _DEFENSE_OK=0
+    fi
+    if [ "$_DEFENSE_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER"; then
       echo "  ✅ PASS (marker confirmed + floor/axes fields valid:"
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
     else
