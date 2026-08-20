@@ -625,17 +625,24 @@ English with FH's own persona/viewpoint sense of "standpoint" (`fh-meta:beginner
 `expert`) — a different axis (which persona reviews, not whose repo is ground truth); kept as-is,
 not renamed, but do not conflate the two. 🟥 **CORRECTED 2026-08-20 — this paragraph used to say
 `standpoint:` was "Prose-only today — no pre-commit hook or fixture suite validates this field yet".
-That is FALSE and was false in this same file**: `validate_standpoint_leg()` is defined at
-`templates/.git-hooks/pre-commit:798` and called at `:1575`, and its fixture suite
-`scripts/test_marker_standpoint_lanes.sh` is wired through `scripts/selfcheck.sh:531`. §자기 대조
+That is FALSE and was false in this same file**: `validate_standpoint_leg()` lives in
+`templates/.git-hooks/pre-commit` and is called from the marker block, and its fixture suite
+`scripts/test_marker_standpoint_lanes.sh` is wired through `scripts/selfcheck.sh`. (🟥 **Grep the
+names, do not trust line numbers** — the first version of this correction cited `:798`/`:1575` and a
+commit landed the same hour that moved them to `:878`/`:1665`. A hardcoded anchor in prose is a
+phantom waiting for the next edit.) §자기 대조
 above already said so (PR #429), so **one file carried both claims at once** and a reader landed on
 whichever they reached first. Found by the residency-ledger pass, not by a lane — no check compares
 a rule's self-description against the machinery it describes, which is why a stale "we have not
 built this yet" is the quietest form of drift: it reads as honest modesty and it suppresses use of a
-control that already exists. **What is validated is FORM, not truth** — the hook checks that the
-value is inside the closed enum and that its grounds are non-empty; whether `tier2` is *true* is
-still self-attested, exactly as with `crossfamily:`. That residual is real and unchanged; it is the
-sentence above that was wrong, not the caution. Three artifacts, one carrying two
+control that already exists. **What is validated is the ENUM** — measured by varying ONE variable at a
+time, because the first version of this correction varied two and mis-attributed the result:
+`banana(qasp)` → blocked (enum) · `tier2` without parens → blocked (enum) · `tier2(qasp)` with **no**
+execution grounds → **passes with a warning** · with grounds → passes. 🟥 So the first fix's claim
+that "grounds are non-empty" are checked **over-shot, and a different-family reviewer caught it**:
+the `tier2`+ execution grounds are **advisory**. Two residuals remain and both are real — grounds are
+not enforced, and whether `tier2` is *true* is still self-attested. What was wrong was only the claim
+that nothing validated the field at all. Three artifacts, one carrying two
 independent trials (forge-harness PR #368, a sibling field harness's PR #8 reps=3 and its
 known-answer trial, qasp-dev PR #161 as adjacent corroboration) crossed this repo's own evidence
 bar the same day this was formalized — including one caught by this session's own qasp PR #161

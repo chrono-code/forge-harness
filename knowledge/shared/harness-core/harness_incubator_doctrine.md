@@ -331,8 +331,18 @@ by design. ~~**Therefore a meta-harness candidate is not a chamber candidate.**~
 day-one walk 의 정의는 *"on the first run, with the user adding nothing, the thing produces
 something useful"* 이고 반대말이 `built-but-not-wired`, 그리고 *"**wiring is part of the birth**"*
 다. **md 규율은 구조적으로 호출부가 없다**(살리언스). 실제 반례:
-`.claude/rules/fh_4axis_gate.md` 의 `standpoint:` 필드 — *"Still validated by nothing — zero hook
-lines, no fixture suite"* 였고, `tier1b` 등급이 **없어서 정적 리뷰가 tier2 로 기록**됐다.
+`.claude/rules/fh_4axis_gate.md` 의 `standpoint:` 필드 — 그 규율이 *"Still validated by nothing —
+zero hook lines, no fixture suite"* 라고 **자기 자신에 대해** 적고 있었다.
+🟥 **2026-08-20 정정 — 이 예시는 인용한 문장이 틀렸다는 것이 밝혀져 방향이 바뀐다.** 실측: 그 시점에
+`validate_standpoint_leg()` 는 훅에 **있었고** 픽스처도 `selfcheck.sh` 로 배선돼 있었다
+(`banana(qasp)` → 차단 · `tier2` 괄호 없음 → 차단). 즉 이건 «태어났는데 안 걸은 규율»이 아니라
+**«걷고 있는데 자기가 못 걷는다고 적어둔 규율»**이다 — 그리고 그게 더 조용한 결함이다: 정직한
+겸손처럼 읽히면서 **이미 있는 컨트롤의 사용을 억제**하고, 실제로 그 문장은 **여섯 개 문서로
+전파돼** 있었다(`CLAUDE.md` ×2 · 그 규칙 파일 · `AGENTS.md` · `field_verdict_crossfamily_gate.md` ·
+여기). ⇒ md 규율의 실패 모드는 **하나가 아니라 둘**이다:
+① 태어나고 안 걷는다(호출부 부재) ② **걷는데 자기 상태를 틀리게 적는다**(자기서술 드리프트).
+②는 ①의 판정자(«블라인드 sim 이 발화하는가»)로는 안 잡힌다 — 규율은 정상 발화하고, 틀린 것은
+그 규율이 자기에 대해 하는 **진술**이기 때문이다. 그걸 잡는 검사는 아직 없다.
 `axes-run` 기호 키도 53건 중 2건이 옛 의미로 쓰였다. **태어났고 안 걸은 md 규율들**이다.
 
 ⇒ **유닛 클래스별 day-one walk 판정자를 따로 건다**:
