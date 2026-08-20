@@ -273,8 +273,13 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
 #   not because it is adjacent.
 # $2 = "pullable" (the return path covers these files) | "local-binding" (it does NOT).
 # The second argument exists because a cross-family review (codex/gpt-5.6-terra, 2026-08-20) caught
-# this fix REPRODUCING the very defect it closes: sync_file() has exactly ONE call site — CLAUDE.local.md
-# (:551) — and sync-from-be.sh refuses that file by name (its :47 and :576, "pulling a peer's would…").
+# this fix REPRODUCING the very defect it closes: sync_file() has exactly ONE call site — the
+# `sync_file "$FH/CLAUDE.local.md"` line below — and sync-from-be.sh refuses that file BY NAME
+# (grep it there: the "is never pulled" exclusion note and the pair-list comment above pull_dir).
+# 🟥 Anchors are NAMES, not line numbers, on purpose: the first version of this comment cited
+# `:551` / `:576` and BOTH had already drifted by the time this branch was reviewed — the same
+# commit that added these lines pushed them down. A number in prose is a phantom waiting for the
+# next edit; a greppable string survives it.
 # So a shared message citing the return path there is dead advice at 100% of that site's invocations.
 # One message for two sites was right; one *remedy* for two sites was not.
 _abort_dest_newer() {   # $1 = pre-formatted hit list (one "  <path>  (newer than <path>)" per line)
