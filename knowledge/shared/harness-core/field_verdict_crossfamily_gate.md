@@ -469,11 +469,25 @@ own. `tier2b` is the honest reachable rung for that pairing; do not inflate a `t
 `tier3`, and do not undersell it to `tier2` either — it is a distinct, real, if operator-correlated,
 data point.
 
-**Mechanization status — `standpoint:` is prose-only today, and this must not be read as more than
-that.** `crossfamily:`'s degrade triad is hard-blocked at commit (`templates/.git-hooks/pre-commit`,
-`scripts/test_marker_crossfamily_lanes.sh` — grep-verified: ~20 crossfamily references in the hook,
-validated fixtures). `standpoint:` has **no value-enum validation and no fixture suite** — nothing stops an author from
-writing `not-applicable` with a thin justification, and no marker-shape check catches a wrong value.
+**Mechanization status — 🟥 CORRECTED 2026-08-20.** This paragraph used to say `standpoint:` was
+"prose-only today" with "**no value-enum validation and no fixture suite**". **Both halves are false**
+and had been for a while: `validate_standpoint_leg()` lives in `templates/.git-hooks/pre-commit` and
+`scripts/test_marker_standpoint_lanes.sh` is wired through `scripts/selfcheck.sh`. Measured by varying
+one variable at a time — `banana(qasp)` → **blocked (enum)** · `tier2` without parens → **blocked
+(enum)** · `tier2(qasp)` with no execution grounds → **passes with a warning** · with grounds →
+**passes**.
+
+**What is actually true, stated at the right width**: the enum IS closed and enforced; the `tier2`+
+execution grounds are **advisory** (a thin `tier2` records and warns, it does not block); and nothing
+checks whether the recorded value is *true*. The old sentence collapsed all three into "no validation",
+which suppresses use of a control that exists — the quietest kind of drift, because it reads as
+honest modesty.
+
+🟥 **This same false claim stood in FIVE places** (`CLAUDE.md` ×2, `.claude/rules/fh_4axis_gate.md`,
+`AGENTS.md`, here). The first repair fixed one; the second fixed three and still missed this file and
+over-stated the fix. Both misses were surfaced by a **different-family reviewer**, not by a lane and
+not by the author — there is still no check that compares a rule's self-description against the
+machinery it describes.
 
 🟥 **Two sentences that stood here were STALE and are corrected (2026-08-17, re-measured — a
 cross-family reviewer flagged the second, the first fell out of checking it).** They read

@@ -190,9 +190,32 @@ controls: n/a — no measurement in this delta (<reason>)
 ```
 
 **`standpoint:`** — closed enum, canonical spec in
-`knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §7`. **Still validated by nothing**
-— zero hook lines, no fixture suite. Recorded here so the gap is visible from the rules side rather
-than only from the hook's absence.
+`knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §7`. 🟥 **CORRECTED 2026-08-20, then CORRECTED AGAIN the same hour.** This used to read "Still validated
+by nothing — zero hook lines, no fixture suite", which is FALSE: `validate_standpoint_leg()` lives in
+`templates/.git-hooks/pre-commit` (grep the function name — **line numbers are deliberately not cited
+here; the first version of this fix cited `:798`/`:1575` and a commit landed the same hour that moved
+them to `:878`/`:1665`**), and `scripts/test_marker_standpoint_lanes.sh` is wired through
+`scripts/selfcheck.sh`.
+🟥 **But the first correction over-shot, and cross-family caught that too.** It said "the value enum
+IS closed and the grounds ARE required". Only the first half holds. Measured by varying ONE variable
+at a time — the original known-pair varied two and mis-attributed the result:
+
+```
+standpoint: tier2(qasp) — ran <cmd>, saw <out>   rc=0   ✅
+standpoint: tier2(qasp)          (no grounds)    rc=0   ⚠️  warns, does NOT block
+standpoint: tier2                (no parens)     rc=1   ❌  not an enum member
+standpoint: banana(qasp)                         rc=1   ❌  not an enum member
+```
+
+So: **the enum is closed and enforced; the execution grounds for `tier2`+ are ADVISORY.** A marker can
+still record `tier2` without naming a command and pass with a warning — that is the real remaining
+gap, and it is narrower than "validated by nothing" and wider than "grounds are required". Neither
+earlier sentence was accurate, and the accurate one required varying one variable at a time.
+🟥 **This same false claim stood in FIVE places**, not three — `CLAUDE.md` (twice), here, `AGENTS.md`,
+and `field_verdict_crossfamily_gate.md`. Fixing one and stopping is the half-fix propagation failure;
+fixing three and stopping was the same failure one round later. The question is never "is this
+sentence wrong" but **"where else does this sentence live"** — and the answer came from a
+different-family reviewer, not from me.
 
 **`thirdparty:` — ⓓ3자 대면의 자기 필드 (2026-08-17 신설).** ⓑ가 `standpoint:` 를 갖는 것과
 같은 형태다: `axes-run` 에는 포인터(`ⓓ=→thirdparty`)만 두고 값은 이 필드가 나른다.

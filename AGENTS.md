@@ -127,9 +127,14 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    2 of the 4 circled-key markers on disk are dated 2026-08-10 and carry the OLD meanings. Aligning
    the notation still helps going forward; it does not work backwards.
    `standpoint:` remains the canonical field for ⓑ (the `axes-run` entry
-   is only a pointer to it, and a pointer at an empty field is blocked); **its value enum is still
-   validated by nothing** — that is the one remaining gap, and it is not the same thing as the axis
-   being unmechanized. Format spec: `.claude/rules/fh_4axis_gate.md §Marker axis fields`.
+   is only a pointer to it, and a pointer at an empty field is blocked). 🟥 **CORRECTED 2026-08-20.** This used to say
+   "its value enum is still validated by nothing" — FALSE. `validate_standpoint_leg()` in the
+   pre-commit hook enforces a closed enum. Measured by varying one variable at a time:
+   `standpoint: banana(qasp)` → **blocked (enum)** · `standpoint: tier2` without parens → **blocked
+   (enum)** · `standpoint: tier2(qasp)` with no execution grounds → **passes with a warning** ·
+   with grounds → **passes**. So the enum is enforced and the `tier2`+ execution grounds are
+   **advisory** — a first version of this correction said grounds were required, which over-shot.
+   The hook also cannot check whether `tier2` is **true**. Those two, together, are the gap. Format spec: `.claude/rules/fh_4axis_gate.md §Marker axis fields`.
    (Two drift corrections landed here on 2026-08-17: first this sentence said "four" while its own
    next clause described the +1 — caught by the session-close ④-b CC↔Codex parity check — and then
    the machine layer moved to six the same day.)
@@ -144,6 +149,22 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    `❌`. Execution is the half with no substitute; see `field_verdict_crossfamily_gate.md §7`. Read it before recording; §1-c
    holds the sample limits — read it before citing. This record is self-attested and has no hook
    behind it; it is closed by a different-family reader, not by writing it more carefully.
+   🟥 **`axis2-defense:` — a marker field added 2026-08-20 that a Codex-side author WILL hit.**
+   It is required when the marker records `floor-status: sonnet-floor` or `below-floor`, and it carries
+   three sub-answers (on one line, or across continuation lines — the hook reads both) about **your own findings and numbers**:
+   `axis2-defense: reproducibility=<exact command or file:line another session runs> fairness=<reps,
+   inputs and environment named for BOTH arms> estimation-layer=<per number: measured | estimate |
+   quotation; for a measurement, what showed the instrument works on this target>`.
+   The hook (`validate_defense_leg`) checks **presence · completeness · non-vacuity** — `ok`/`yes`/
+   `n/a` is rejected as a filled form rather than an answer, and all three sub-answers must exist.
+   It cannot check whether the answers are true. Why it exists: measured n=6 in the origin field, a
+   floor-tier pass runs the attack angles without defect but does **not** spontaneously ask these
+   three; that is a checklist gap, not a capability gap, and a harness whose behaviour depends on
+   which model drives it is defective by the Sonnet-Floor doctrine.
+   Fixtures: `scripts/test_marker_defense_lanes.sh`. Spec: `plugins/fh-meta/skills/steel-quench/SKILL.md`
+   §Wave 1-D. **Recorded here because a rule living in only one entry point is invisible to the other
+   runtime** — that is the gate-locality principle, and this line is it being applied rather than cited.
+
 8. **Branch-surface claims:** GitHub branch protection is two independent layers — legacy
    protection and rulesets coexist, and the strictest wins. Read both
    `/repos/{owner}/{repo}/branches/{branch}/protection` and
