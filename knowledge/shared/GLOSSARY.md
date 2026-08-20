@@ -74,4 +74,29 @@
 
 ---
 
-*Updated: 2026-05-26*
+## Notation — `[[wikilink]]` in FH documents
+
+FH documents (this package included) use `[[some_note_name]]` to cite a **provenance note in the
+author's local memory store** — the per-project memory directory a Claude Code session keeps outside
+the repository. Measured 2026-08-20 across the npm-published file set: **156 shipped `.md` files
+carry 98 such references to 59 distinct targets, and none of those targets exist inside the
+package** (hand-verified sample: `CLAUDE.md` cites `[[feedback_not_found_is_not_zero_family]]`,
+which resolves only at the operator's memory path — `git ls-files` returns 0).
+
+**So, for a reader who is not the author, these are not navigable links.** They are *attribution
+markers*: they say "this sentence came from a recorded failure, not from taste", and they name that
+failure so it can be discussed. Read them as footnote labels, not as paths.
+
+🟥 **Do not treat one as a broken reference or try to repair it.** They are deliberately not
+vendored — a memory store is per-operator, session-scoped, and frequently contains project-private
+material, so shipping it would be a residency violation, not a fix. Equally, do not read a
+`[[…]]`-cited claim as *unsourced*: the surrounding text always states the claim in full, and the
+marker is provenance on top of it, never a substitute for it.
+
+The convention is scoped to memory notes. A pointer to a file that **does** ship is written as an
+ordinary path (`knowledge/shared/harness-core/…`), and those are checked mechanically by the
+detail-pointer resolution gate at commit time.
+
+---
+
+*Updated: 2026-08-20*

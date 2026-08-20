@@ -149,7 +149,13 @@ running tool itself). Full procedure: `knowledge/shared/harness-core/measurement
 `M-n · <verbatim row text or its threshold> · <measured value>`. If you cannot quote the row, **you do not
 have a finding** — downgrade to an observation. Origin (2026-07-20, instrument defect n+4, the *fourth* in
 a single run): a run fired `M-1 · CLAUDE.md 816 lines — exceeds the FH threshold of 500`. The string `500`
-does not occur anywhere in this file (grep: 0 hits), and the meta-harness row it claimed to read says raw
+did not occur anywhere in this file at the time (a later grep finds 2 — both in this narrative, added by
+this very post-mortem; the self-referential claim drifted and is corrected here rather than re-asserted).
+🟥 **And that grep was scoped wrong**: it searched this file only. The 500 was NOT invented from nothing —
+`docs/platform_sustainability.md` carried it as a live standard until 2026-08-20, contradicting this row.
+The lesson is not "the run hallucinated" but **"the absence check was run against the wrong corpus"**
+([[feedback_absence_measurement_needs_control]] — a no-hit grep is evidence only when its scope covers
+where the thing would actually live). The meta-harness row it claimed to read says raw
 line count is **"Not a verdict."** So the run invented a threshold *and* fired a row this skill explicitly
 disables for meta-harnesses — the exact recurrence of the 2026-07-15 inversion documented below, which had
 already been patched *in the skill*. The patch held; the **run** ignored it. A verdict grounded in a

@@ -4,6 +4,47 @@ AI reads this file first when searching past work. Open individual files for det
 
 ---
 
+## 2026-08-20 — Seven canonical `knowledge/` docs were missing from this index
+
+Found by the 30-day `harness-doctor` cadence run. Seven files under `knowledge/` had **zero**
+CATALOG entries, so the CATALOG-first recall path (CLAUDE.md §Autonomous Initiative — *"read
+`CATALOG.md`, identify candidates by tag/date, then open only those files"*) could not reach them
+at all. Measured with a live control in the same run (`harness_6axis_framework` → 2 hits, so the
+grep was alive; each of the seven → 0).
+
+🟥 **The worst of the seven is `fh_three_layer_canon.md`** — CLAUDE.md names it a *mandatory*
+pre-read before naming, re-scoping, or citing the 3-layer canon, and it was unreachable from the
+index that the recall protocol reads first. A mandatory document that the lookup path cannot find
+is, for any session that does not already know its filename, indistinguishable from absent.
+
+- `knowledge/shared/harness-core/fh_three_layer_canon.md` — #canon, #3-stage, #4-engines,
+  #5-identities, #6-axis. The 3-layer canon (3-stage process · 4 engines · 5 identities) and the
+  definition of the **six verification axes** (ⓐ계열 · ⓑ입장 · ⓒ격리 그라운딩 · ⓓ3자대면 ·
+  ⓔ첫실사용 · ⓕ되돌림) that stage ③ actually consists of. **Read before citing any of the three.**
+- `knowledge/shared/harness-core/capability_composition_contract.md` — #capability, #composition,
+  #strictest-wins. How a field harness's typed capability merges with hub constraints
+  (strictest-wins regardless of layer; an untyped or silent channel is `HARNESS_ERROR`, never PASS).
+- `knowledge/shared/harness-core/dispatch_conditional_prohibition.md` — #dispatch, #subagent,
+  #conditional. The measured resolution order behind the runtime's *"do not call the AgentTool
+  unless the user requested it"* line — why it is a **conditional** a request satisfies, not an
+  override. Carries the calibrated where-it-is-not table and reproduction commands.
+- `knowledge/shared/harness-core/agents_md_runtime_details.md` — #codex, #agents-md, #entrypoint.
+  Runtime detail for the non-Claude entry point.
+- `knowledge/shared/harness-core/harness_terminal_correlation_and_recommendations.md` —
+  #correlation, #terminal, #recommendations.
+- `knowledge/shared/rules/knowledge_layer_seam.md` — #seam, #org-knowledge, #unwired. Names FH's own
+  unwired candidates at the knowledge-layer seam (including `steel-quench` Step 0.35).
+- `knowledge/shared/rules/multi_session_close_protocol.md` — #close, #multi-session, #parallel.
+  Canonical close discipline when two or more sessions run on one harness — order, discriminators,
+  write discipline. **Not replaceable by a `gh pr list` re-check** (that structurally misses deltas
+  with no PR).
+
+- Decision: indexed as one consolidated entry rather than seven, because the finding is a *class*
+  (index drift on `knowledge/`), and splitting it would hide that they were all missed the same way.
+- Open: nothing mechanically prevents the next `knowledge/` file from landing unindexed. A
+  `knowledge/**` → CATALOG coverage check is a candidate, not built (recurrence N=1 as a measured
+  class; the repo's own bar is N≥3 or a second surface before mechanizing).
+
 ## 2026-08-15 — Global positioning & distribution roadmap (Homebrew/npm compatibility)
 
 - **New doc** (`knowledge/shared/harness-core/fh_global_positioning_and_distribution_roadmap.md`):
