@@ -118,18 +118,33 @@ All 4 checks must pass to proceed with creation. **If any one fails, no creation
 | Classification | Criteria | Application |
 |---|---|---|
 | **Server room** (single project) | 200-line CLAUDE.md standard | Single project exceeds 200 lines = M-tier |
-| **Data center** (meta-harness) | Meta layer specification standard | FH CLAUDE.md 500-line standard / 16 skills as upper limit standard |
+| **Data center** (meta-harness) | Meta layer specification standard | **No line/count threshold exists.** `harness-doctor` declares meta CLAUDE.md raw line and section count **"Not a verdict"** and judges by the char-based always-loaded footprint (S > 40k · M > 80k) plus the residency ledger and the doctrine red flags (orphaned · redundant · decorative) |
 
 `harness-doctor` L2 complexity diagnosis automatically applies this separation:
-- When FH cwd is detected → use 500-line standard instead of 200-line standard
-- Prevents the error of `harness-doctor` judging FH's own CLAUDE.md as M-tier by single project standards
+- Scope is decided **mechanically at the TARGET root** (`tracks/` ∧ `knowledge/` ∧ `plugins/` all present = meta),
+  never from cwd and never self-declared — a bare cwd test misclassifies every field target as meta
+- On a meta target the line-count rows are **disabled outright**, not swapped for a larger number —
+  so `harness-doctor` cannot fire an **M-tier** on FH's own CLAUDE.md off a single-project line
+  standard. The verdict comes instead from the footprint rows, which apply to both scopes and are
+  char-based; those *can* legitimately reach M-tier, and when they do the lever is capability-level
+  (merge or retire a governance unit), never "the file is long"
 
 ### Meta-harness self-constraint prohibition
 
 Prohibit the pattern of applying external standards (single project complexity standards) to the meta-harness to self-constrain:
 
-- **Prohibited**: "FH has 16 skills, it's gotten complex → needs to be reduced" (single project standard applied)
+- **Prohibited**: "FH has N skills, it's gotten complex → needs to be reduced" (single project standard applied)
 - **Allowed**: "Among FH skills, some have 0 invocation records within 90 days → those skills enter Deprecation Gate" (meta layer standard applied)
+
+🟥 **Why this section carries no numbers (2026-08-20).** It used to pin "500-line / 16 skills".
+Both went stale (CLAUDE.md is past 1,400 lines; there are 40 skills) and — worse — the 500 was
+**contradicted by the skill it claimed to describe**: `harness-doctor` disables the line-count row for
+meta targets rather than raising it. That live-but-wrong number is not inert: a run once fabricated
+`M-1 · exceeds the FH threshold of 500` and a downstream sidecar reasoned from the invented figure
+(recurrence N=2 — `harness-doctor/SKILL.md` §"Every M/S-tier must cite the row it fired"). The skill's
+own post-mortem grepped **itself** and found 0 hits, so it concluded the threshold was invented from
+nothing — it never grepped the repo, where **this file was the source**. Do not re-pin a number here:
+thresholds belong in the skill that measures them, where a citation can be quoted verbatim.
 
 Judgment standard: **If there are no real-use problems, no simplification pressure**. Simplification is solving real-use problems, not reducing complexity.
 

@@ -623,10 +623,19 @@ written — a static read was recorded as `tier2` because `tier1b` did not yet e
 gets filled by the next one up rather than staying empty.) Naming note: this collides in
 English with FH's own persona/viewpoint sense of "standpoint" (`fh-meta:beginner`/`main-player`/
 `expert`) — a different axis (which persona reviews, not whose repo is ground truth); kept as-is,
-not renamed, but do not conflate the two. **Prose-only today** — unlike `crossfamily:`, no
-pre-commit hook or fixture suite validates this field yet, and mechanizing it is FH's own
-responsibility since a sibling harness that syncs this doctrine verbatim cannot add the check
-locally; mechanize on the first recorded false value, not before. Three artifacts, one carrying two
+not renamed, but do not conflate the two. 🟥 **CORRECTED 2026-08-20 — this paragraph used to say
+`standpoint:` was "Prose-only today — no pre-commit hook or fixture suite validates this field yet".
+That is FALSE and was false in this same file**: `validate_standpoint_leg()` is defined at
+`templates/.git-hooks/pre-commit:798` and called at `:1575`, and its fixture suite
+`scripts/test_marker_standpoint_lanes.sh` is wired through `scripts/selfcheck.sh:531`. §자기 대조
+above already said so (PR #429), so **one file carried both claims at once** and a reader landed on
+whichever they reached first. Found by the residency-ledger pass, not by a lane — no check compares
+a rule's self-description against the machinery it describes, which is why a stale "we have not
+built this yet" is the quietest form of drift: it reads as honest modesty and it suppresses use of a
+control that already exists. **What is validated is FORM, not truth** — the hook checks that the
+value is inside the closed enum and that its grounds are non-empty; whether `tier2` is *true* is
+still self-attested, exactly as with `crossfamily:`. That residual is real and unchanged; it is the
+sentence above that was wrong, not the caution. Three artifacts, one carrying two
 independent trials (forge-harness PR #368, a sibling field harness's PR #8 reps=3 and its
 known-answer trial, qasp-dev PR #161 as adjacent corroboration) crossed this repo's own evidence
 bar the same day this was formalized — including one caught by this session's own qasp PR #161
