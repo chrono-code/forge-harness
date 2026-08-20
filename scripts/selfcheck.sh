@@ -703,6 +703,22 @@ else
   fail=1
 fi
 
+# test_heavy_classifier_lanes — 4축 게이트의 **라우팅 판별자**에 대한 known-pair (2026-08-20).
+# 🟥 이 분류기가 놓치는 경로는 FAIL 하지 않는다 — 게이트가 **조용히 적용되지 않고** 커밋이
+#    초록으로 나간다. 가장 조용한 실패 형태이고, 실측상 이걸 시험하는 레인이 **0개**였다
+#    (컨트롤: 훅을 언급하는 test_*.sh 는 12개). sibling harness 에서 흡수했고, 핵심은
+#    픽스처 목록이 아니라 **훅에서 정규식을 실시간 추출**하는 설계다(픽스처가 대상에서 안 떨어진다).
+if [ ! -f scripts/test_heavy_classifier_lanes.sh ]; then
+  echo "FAIL  test_heavy_classifier_lanes.sh: missing — 게이트 라우팅 판별자에 앵커 없음"
+  fail=1
+elif _out=$(bash scripts/test_heavy_classifier_lanes.sh < /dev/null 2>&1); then
+  echo "PASS  test_heavy_classifier_lanes.sh (4-way routing known-pair + fail-closed extraction)"
+else
+  echo "FAIL  test_heavy_classifier_lanes.sh: 게이트 라우팅이 바뀌었다"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # test_satellite_publish_gate_lanes — 위성 공개표면 게이트(2026-08-18, 원정 2차).
 # 🟥 이 배선이 없어서 CI 가 `lane-runner: lane suite(s) with no runner and no declaration` 로
 # 빨갰다. 스위트를 신설하고 아무 데서도 안 돌린 것 — 검사기의 표현대로
@@ -1015,6 +1031,22 @@ elif [ -f scripts/test_branch_claim_lanes.sh ]; then
   fi
 else
   echo "FAIL  test_branch_claim_lanes.sh: branch_claim.sh present but its anchor is missing"
+  fail=1
+fi
+
+# residency_admission — 같은 형태. 🟥 그리고 **또 같은 얼굴이었다**: 2026-08-20 에 이 레인을
+# 지으면서 여기 배선을 안 했고, `lane-runner` 가 «돌리는 게 없는 스위트는 산문이다» 로 CI 에서
+# 잡았다. 아래 target_freeze 주석이 기록한 그 형태의 **최소 세 번째**다 — 즉 이건 개인 부주의가
+# 아니라 «레인을 짓는 사람이 배선 지점을 안 본다» 는 구조적 순서 문제다.
+if [ ! -f scripts/residency_admission_check.sh ]; then
+  echo "FAIL  scripts/residency_admission_check.sh is wired into pre-commit but absent — a deleted subject, not a skip"
+  fail=1
+elif [ -f scripts/test_residency_admission_lanes.sh ]; then
+  if ! bash scripts/test_residency_admission_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_residency_admission_lanes.sh: residency_admission_check.sh present but its anchor is missing"
   fail=1
 fi
 
