@@ -123,3 +123,23 @@
   artifact: EMISSION_VERDICT.md
   sha256: 09ccc31664fbaf442b6182d2d93d339826d1f951bb5416e309e9fbdcc2ebf081
   recorded: 2026-08-20T00:18:14Z
+- run: consolidation-path-gate
+  artifact: INTENT.md
+  sha256: 840b5b75f64f3bfe3a34adde3a6f0f4bc2f5293438ba4973c6ecf27f022f8d96
+  recorded: 2026-08-20T14:40:28Z
+- run: consolidation-path-gate
+  artifact: INTENT.md
+  sha256: c3020f79e399555b2deb4a729c04a061a02d30b5b2ccc70dfb0302d11539c533
+  recorded: 2026-08-20T14:41:50Z
+- run: consolidation-path-gate
+  artifact: BUDGET.md
+  sha256: 95fbcd49dbb41816d4748e5f2d7659abaa85798ef30b6055b7be1d96d5d2785a
+  recorded: 2026-08-20T14:42:07Z
+- run: consolidation-path-gate
+  artifact: SIM_NOTES.md
+  sha256: 2150d51459d93b83d1809943e4e04a947d1e2cf31bd40bac32c9d6438b4265c4
+  recorded: 2026-08-20T14:51:03Z
+- run: consolidation-path-gate
+  artifact: EMISSION_VERDICT.md
+  sha256: 136cb4b2f47e9531d48aa640fbf85c7954cd3de021a668971ba9f14fd5f873de
+  recorded: 2026-08-20T14:55:46Z
