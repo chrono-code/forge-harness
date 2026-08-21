@@ -236,6 +236,8 @@
     ".claude/capabilities",
     "scripts/prior_art_prompt.sh",
     "scripts/test_prior_art_prompt_lanes.sh",
-    "templates/settings.PriorArt.snippet.json"
+    "templates/settings.PriorArt.snippet.json",
+    "scripts/listing_watch.sh",
+    "scripts/test_listing_watch_lanes.sh"
   ]
 }

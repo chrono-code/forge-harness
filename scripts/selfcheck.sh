@@ -1064,6 +1064,21 @@ else
   fail=1
 fi
 
+# listing_watch — 같은 형태. 🟥 이 블록을 «레인을 짓는 같은 커밋에서» 붙인다: 바로 위 주석이
+# 기록한 「레인은 지었는데 selfcheck 배선을 안 했다」 재발이 최소 세 번이고, 그 셋 다 CI 나
+# lane-runner 가 뒤늦게 잡았다. 순서를 바꾸는 것이 유일한 처방이라 여기서 그렇게 한다.
+if [ ! -f scripts/listing_watch.sh ]; then
+  echo "FAIL  scripts/listing_watch.sh is in package.json files[] but absent — a deleted subject, not a skip"
+  fail=1
+elif [ -f scripts/test_listing_watch_lanes.sh ]; then
+  if ! bash scripts/test_listing_watch_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_listing_watch_lanes.sh: listing_watch.sh present but its anchor is missing"
+  fail=1
+fi
+
 # residency_admission — 같은 형태. 🟥 그리고 **또 같은 얼굴이었다**: 2026-08-20 에 이 레인을
 # 지으면서 여기 배선을 안 했고, `lane-runner` 가 «돌리는 게 없는 스위트는 산문이다» 로 CI 에서
 # 잡았다. 아래 target_freeze 주석이 기록한 그 형태의 **최소 세 번째**다 — 즉 이건 개인 부주의가
