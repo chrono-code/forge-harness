@@ -575,6 +575,8 @@ bash -c "set -e; . '$LIB'; PSA_STREAM=ORIGINAL; PSA_ALLOWLIST=/dev/null; PSA_DEF
   trap 'printf \"%s\" \"\$PSA_STREAM\" > '$_N3'/v' EXIT
   awk(){ return 1; }
   psa_require_live >/dev/null 2>&1" >/dev/null 2>&1
+# portability-noqa: 이 파일은 set -e 가 아니다 — 린트가 잡은 `set -e` 는 위 `bash -c` 문자열 «안»의 것이고
+#                   그건 자식 셸의 설정이다. 파일 스코프 판별의 오탐이며, 그 오탐 자체가 N3 가 재현하는 결함이다.
 _r=$(cat "$_N3/v" 2>/dev/null); rm -rf "$_N3"
 [ "$_r" = "ORIGINAL" ] && ok "N3 ★교차조건 set -e × 실패 생산자 → PSA_STREAM 복원됨" \
                        || bad "N3 교차조건에서 복원 미도달 — PSA_STREAM=[$_r] (카나리아 잔류 = P3 미해결)"
