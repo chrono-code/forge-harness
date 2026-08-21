@@ -80,6 +80,42 @@ chk "D5 ★컨트롤 리다이렉트 없는 명령 → 침묵" \
 chk "D6 ★컨트롤 같은 세션 두 번째 Bash → 침묵 (세션당 1회가 Bash 에서도 산다)" \
     "$( { printf '%s' '{"session_id":"d6","tool_input":{"command":"cat > scripts/a.sh <<EOF\nx\nEOF"}}' | bash "$H" >/dev/null 2>&1
          printf '%s' '{"session_id":"d6","tool_input":{"command":"cat > scripts/b.sh <<EOF\nx\nEOF"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' '; } )" 0
+# 🟥 E: cross-family 4 HIGH — **전부 오발화**다 (2026-08-21). 이 훅에서 오발화는 미발화보다
+#    훨씬 비싸다: 소음이 되면 운영자가 무시하고 능력이 죽는다(원 저자가 «자기무력화 경로» 라 명명).
+rm -f "$D3/.claude/.prior_art_prompted_"*
+chk "E1 ★컨트롤 tee_probe.py 언급 (tee 에 뒤 경계 없던 자리) → 침묵" \
+    "$(printf '%s' '{"session_id":"e1","tool_input":{"command":"rg tee_probe.py scripts"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
+chk "E2 ★컨트롤 stderr 리다이렉트 2> …/errors.sh → 침묵 (>>? 가 2> 안의 > 를 잡던 자리)" \
+    "$(printf '%s' '{"session_id":"e2","tool_input":{"command":"pytest 2> /tmp/pytest_errors.sh"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
+chk "E2b ★컨트롤 stdout 버리고 stderr 만 .sh 로 → 침묵" \
+    "$(printf '%s' '{"session_id":"e2b","tool_input":{"command":"make test > /dev/null 2> /tmp/failures.sh"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
+chk "E3 ★컨트롤 프로젝트 밖 리포트 git diff > /tmp/review_delta.sh → 침묵" \
+    "$(printf '%s' '{"session_id":"e3","tool_input":{"command":"git diff > /tmp/review_delta.sh"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
+chk "E4 ★컨트롤 미확장 변수 \$LOG_DIR/x.sh → 침묵 (리터럴로 존재검사하면 거짓이다)" \
+    "$(printf '%s' '{"session_id":"e4","tool_input":{"command":"echo more >> \"$LOG_DIR/x.sh\""}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
+# 🟥 E1b/E2c — **프로젝트 «안»** 경로로 같은 두 결함을 친다. E1/E2 는 /tmp 라서
+#    프로젝트-범위 규칙(ⓒ)만으로도 침묵했다 — 되돌림 실측에서 정규식 수리를 되돌려도
+#    적색이 0 이었고(=장식), 그게 이 두 레인을 만든 이유다. 아래는 ⓒ 가 못 잡는 자리다.
+rm -f "$D3/.claude/.prior_art_prompted_"*
+chk "E1b ★컨트롤 프로젝트 안 tee_probe.sh 언급 → 침묵 (tee 뒤 경계를 격리해서 친다)" \
+    "$(printf '%s' '{"session_id":"e1b","tool_input":{"command":"rg tee_probe.sh scripts"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
+chk "E2c ★컨트롤 프로젝트 안 stderr 2> scripts/errors.sh → 침묵 (리다이렉트 앞 경계를 격리해서 친다)" \
+    "$(printf '%s' '{"session_id":"e2c","tool_input":{"command":"pytest 2> scripts/errors.sh"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
+# E5/E6 — session_id 는 신뢰할 수 없는 입력이다
+_ESC=$(dirname "$D3")/pap_lane_escape_$$
+rm -f "$_ESC"
+printf '%s' "{\"session_id\":\"x/../../../$(basename "$_ESC")\",\"tool_input\":{\"file_path\":\"scripts/zz_new.sh\"}}" | bash "$H" >/dev/null 2>&1
+chk "E5 session_id 경로 탈출 → 프로젝트 밖에 파일이 안 생긴다" \
+    "$([ -e "$_ESC" ] && echo escaped || echo none)" none
+rm -f "$_ESC"
+rm -f "$D3/.claude/.prior_art_prompted_"*
+chk "E6 session_id 끝에 «/» → 두 번째 호출은 침묵 (스탬프가 실제로 써진다)" \
+    "$( { printf '%s' '{"session_id":"x/","tool_input":{"file_path":"scripts/zz_a.sh"}}' | bash "$H" >/dev/null 2>&1
+         printf '%s' '{"session_id":"x/","tool_input":{"file_path":"scripts/zz_b.sh"}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' '; } )" 0
+# E7 — 🟥 «additionalContext 가 떴다» 는 파서가 **옳은 토큰**을 뽑았다는 증거가 아니다(cross-family 레인 지적).
+rm -f "$D3/.claude/.prior_art_prompted_"*
+chk "E7 추출된 대상이 실제 리다이렉트 대상이다 (파서가 엉뚱한 토큰을 뽑아도 통과하던 자리)" \
+    "$(printf '%s' '{"session_id":"e7","tool_input":{"command":"cat > scripts/uniq_target_name.sh <<EOF\nx\nEOF"}}' | bash "$H" 2>/dev/null | grep -c 'uniq_target_name.sh')" 1
 unset CLAUDE_PROJECT_DIR; rm -rf "$D3"
 
 echo "── CONTROL: 계기가 죽으면 조용히 통과 (advisory 는 세션을 못 죽인다) ──"

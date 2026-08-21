@@ -71,9 +71,29 @@ CMD="${_REST#*$'\t'}"
 #    (`tar x` · 에디터 · `cp`)는 **명시된 잔여**다 — 이 훅은 판정이 아니라 제안이라 미발화의
 #    비용이 오발화보다 싸다.
 if [ -z "$FILE" ] && [ -n "$CMD" ]; then
-  for _c in $(printf '%s' "$CMD" | grep -oE '(>>?|[[:space:]]tee)[[:space:]]*"?'"'"'?[^ "'"'"'|;&)<>]+' 2>/dev/null | sed -E 's/^(>>?|[[:space:]]*tee)[[:space:]]*//; s/^["'"'"']//'); do
+  # 🟥 cross-family 4 HIGH 를 받고 다시 지었다 (2026-08-21). 넷 다 **오발화**였고,
+  #    이 훅에서 오발화는 미발화보다 훨씬 비싸다(소음 = 자기무력화 경로).
+  #      ① `[[:space:]]tee` 에 **뒤 경계가 없어** `rg tee_probe.py` 가 tee 대상으로 읽혔다
+  #      ② `>>?` 가 **`2>` 안의 `>`** 를 잡아 `pytest 2> /tmp/errors.sh` 가 발화했다
+  #      ③ `git diff > /tmp/review_delta.sh` — 리포트인데 이름이 `.sh` 라 발화했다
+  #      ④ `"$LOG_DIR/x.sh"` — 변수가 안 풀려 리터럴 `$LOG_DIR/...` 로 존재검사를 통과했다
+  #    수리 셋: ⓐ 리다이렉트는 **앞이 «줄머리 또는 공백»** 이어야 한다(→ `2>`·`1>`·`&>` 배제)
+  #             ⓑ `tee` 는 **앞뒤 공백**을 요구한다  ⓒ 대상은 **이 프로젝트 안**이어야 한다
+  #    ⓒ 가 ②③ 의 현실적 형태를 함께 죽인다 — 새 «메커니즘» 은 /tmp 에 안 산다.
+  for _c in $(printf '%s' "$CMD" \
+      | grep -oE '(^|[[:space:]])(>>?|tee[[:space:]])[[:space:]]*"?'"'"'?[^ "'"'"'|;&)<>]+' 2>/dev/null \
+      | sed -E 's/^[[:space:]]*(>>?|tee[[:space:]])[[:space:]]*//; s/^["'"'"']//'); do
     case "$_c" in
-      /dev/*|\&*|-) continue ;;
+      ''|/dev/*|\&*|-) continue ;;
+      *'$'*) continue ;;                       # ④ 미확장 변수 — 리터럴로 판정하면 거짓이다
+      *..*) continue ;;                        # 상위 탈출 경로는 «이 프로젝트 안» 이 아니다
+    esac
+    # ⓒ 프로젝트 밖 절대경로는 대상이 아니다. 상대경로는 프로젝트 기준이라 통과시킨다.
+    case "$_c" in
+      /*) case "$_c" in
+            "${CLAUDE_PROJECT_DIR:-/nonexistent-project-dir}"/*) ;;
+            *) continue ;;
+          esac ;;
     esac
     case "$_c" in
       *.sh|*/SKILL.md|*/SKILL_detail.md|*/agents/*.md|*/rules/*.md|*.py|*.js|*.ts) FILE="$_c"; break ;;
@@ -103,7 +123,12 @@ esac
 # 여럿 도는 환경(이 운영자가 그렇다)에서는 **첫 세션만 뜨고 나머지는 전부 침묵**한다. 내 레인도
 # 못 잡았다: 디렉터리만 갈랐지 날짜 의미론을 안 쟀다. 훅 입력의 `session_id` 로 고친다.
 # session_id 가 없으면(구버전·수동 호출) 날짜로 degrade — 침묵이 아니라 «덜 자주» 쪽이다.
-STAMP="${CLAUDE_PROJECT_DIR:-.}/.claude/.prior_art_prompted_${SID:-$(date +%Y%m%d)}"
+# 🟥 `session_id` 는 **신뢰할 수 없는 입력**이다 (cross-family HIGH#5). 실측: `x/../../../name`
+#    이 접두 검사를 통과해 프로젝트 밖에 파일을 만들었고, 끝에 `/` 를 붙이면 스탬프가 아예
+#    안 써져 **매번 발화**했다(세션당 1회가 무력화). 화이트리스트로 좁힌다 — 빈 값이 되면
+#    날짜로 degrade(침묵이 아니라 «덜 자주» 쪽).
+_SID_SAFE=$(printf '%s' "${SID:-}" | tr -cd 'A-Za-z0-9_-')
+STAMP="${CLAUDE_PROJECT_DIR:-.}/.claude/.prior_art_prompted_${_SID_SAFE:-$(date +%Y%m%d)}"
 [ -f "$STAMP" ] && exit 0
 mkdir -p "$(dirname "$STAMP")" 2>/dev/null || true
 : > "$STAMP" 2>/dev/null || true
