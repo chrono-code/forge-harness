@@ -71,6 +71,10 @@ its file never declared at all.
 - **Runtime authority:** a non-Claude sidecar returns evidence candidates, never the terminal verdict.
   The governor must source-close each finding against a local file hit, literal source span, or
   passing check. Governor agreement alone is not an anchor.
+- **Sidecar write boundary:** a sidecar audits; it does not write to the target tree. Return
+  findings, and at most a proposed patch as text — the governor applies it. This is not a
+  courtesy: measured 2026-08-21, an auditor sidecar edited the tree directly and its own fix
+  introduced a self-referential fail-open that 41 existing lanes passed.
 - **Sidecar completion:** judge a sidecar only by the typed verdict from `scripts/sidecar_wait.sh`.
   Never infer completion or emptiness by looking at its output file.
 - **Identity grades:** the five-identity grade table is canonical only in
