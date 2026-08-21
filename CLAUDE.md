@@ -1022,7 +1022,7 @@ Self-healing is not only FH-self-dev (Mode D 4-axis) and reactive (`verify-bidir
 
 ## Agent Dispatch Operation (FH cwd-Based)
 
-> **Runtime authority (canonical):** one explicit governor per context + capability-routed sidecars; sidecar findings are evidence candidates, not terminal verdicts, until source-closed by the governor *via a mechanical anchor* — never governor agreement alone. CC=action/governor · Codex=repo-grounded audit sidecar · Gemini/agy=breadth/multimodal sidecar · other runtimes=portable `AGENTS.md` entrypoint only. Full doctrine + Maintenance-Cost Rule: `knowledge/shared/harness-core/multi_model_sidecar_strategy.md §Runtime Authority`.
+> **Runtime authority (canonical):** one explicit governor per context + capability-routed sidecars; sidecar findings are evidence candidates, not terminal verdicts, until source-closed by the governor *via a mechanical anchor* — never governor agreement alone. 🟥 **A sidecar audits; it does not WRITE to the target tree** — findings and at-most a proposed patch as text, applied by the governor (measured 2026-08-21: an auditor sidecar edited the tree and its fix introduced a self-referential fail-open that 41 lanes passed). CC=action/governor · Codex=repo-grounded audit sidecar · Gemini/agy=breadth/multimodal sidecar · other runtimes=portable `AGENTS.md` entrypoint only. Full doctrine + Maintenance-Cost Rule: `knowledge/shared/harness-core/multi_model_sidecar_strategy.md §Runtime Authority`.
 
 **Isolated delegation is a component of the identity, not an optional extra** (operator decision,
 2026-08-08). FH/PMH are defined as governor + orchestrator; a harness that cannot dispatch is a
@@ -1334,7 +1334,7 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
 
        | Bump | Reserved for (operator's own wording, 2026-08-17) |
        |---|---|
-       | **major** `+1.0.0` | **any one of three**: ⓐ **완전히 새로 지음** — rebuilt from scratch, not extended · ⓑ **정체성이 확립됨** — an identity of the five (+Ⓑ) actually standing 🟢, not progressing toward it · ⓒ **기능이 혁신적으로 변경되거나 늘어남** — a capability *class* appears or is replaced, not a capability instance. 🟥 **Never** for tightening a gate that already existed |
+       | **major** `+1.0.0` | **any one of three**: ⓐ **완전히 새로 지음** — rebuilt from scratch, not extended · ⓑ **정체성이 확립됨** — 🟥 **다섯이 «전부» 🟢** 인 순간이지 하나가 🟢 로 올라선 순간이 아니다(운영자 결정 2026-08-21). 초판은 *"an identity of the five … actually standing 🟢"* 였고 **「하나만 초록이어도 major」로 읽혔다** — 실제로 그날 ②가 🟢 로 판정되면서 3.0.0 후보로 올라왔고, 그 애매함이 그때 닫혔다. 🟥 그리고 **정체성 등급은 npm 이 나르는 신호가 아니다** — 그건 `identity-v*` 계보의 사건이고, npm 이 또 나르면 같은 날 고친 「두 계보 한 이름」 결함을 번호에서 재생산한다. ⇒ major-ⓑ 는 **`identity-v1.0.0` 과 같은 사건**을 가리킨다 · ⓒ **기능이 혁신적으로 변경되거나 늘어남** — a capability *class* appears or is replaced, not a capability instance. 🟥 **Never** for tightening a gate that already existed |
        | **minor** `+0.1.0` | 미들급 — new assets, new gate lanes, doctrine that changes behavior; **including changes that break a consumer's gate acceptance**, which then carry a mandatory `BREAKING (gate):` line |
        | **patch** `+0.0.1` | 트리비아급 — fixes, wiring, docs that change no behavior |
 

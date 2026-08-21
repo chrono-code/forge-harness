@@ -149,6 +149,38 @@ human-review floor is structural, not a transitional patch. (Its Faros AI number
 the author's own caveat travels with any citation.)
 "Aggressive" Codex/Gemini use is bounded by the fit task-class above, never a blanket main-seat swap.
 
+### Write authority — a sidecar audits, it does not edit (measured 2026-08-21)
+
+The doctrine above governs **verdicts**: a sidecar's finding is an evidence candidate until the governor
+source-closes it. That is the *judgment* axis. It says nothing about the **write** axis, and the gap is
+not academic — a sidecar with tool access will start editing the target tree unless told not to.
+
+> **A sidecar returns findings and, at most, a proposed patch as TEXT. It does not write to the target
+> tree.** The governor applies, or does not apply, each change. Same shape as the verdict rule: the
+> sidecar supplies material, the governor is the only writer.
+
+🟥 **The reason is not overreach. It is that the fixer and the checker become the same party.**
+Measured this day: `codex/gpt-5.5` was dispatched as an adversarial auditor over a hook delta and began
+editing the working tree directly (caught by `mtime`, not by any gate). Its *finding* was real and sharp
+— two detectors in the same file had divergent leniency. Its *fix* widened one detector's pattern, and
+the widened pattern then matched **the claim line's own text** as its own evidence — a self-referential
+false positive that flipped a BLOCK lane to PASS. **41 lanes stayed green.** A human reading the diff
+sees "leniency aligned", which is correct as far as it goes. What caught it was the first real use in an
+isolated clone. This is [[feedback_blind_separation_is_a_defect_generator]] arriving through a door the
+verdict rule left open: the sidecar was, for those minutes, both author and reviewer of the same lines.
+
+**Operationally**: dispatch sidecars with the target tree read-only where the runtime supports it; when it
+does not, state the constraint in the prompt AND verify afterwards (`git status` / `mtime` on the files you
+handed over). A sidecar edit discovered after the fact is treated as a **finding to re-derive**, never as a
+patch to keep — re-decide it in the governor's seat, because a patch you did not author is a patch you did
+not review.
+
+⚠️ **Process safety, same surface**: terminating a runaway sidecar needs a discriminator for *your own*
+process — pin the model, capture the PID, or `pgrep` first. A bare `pkill -f codex` on a shared machine
+reaches other sessions' sidecars; measured the same day (nothing was actually killed — exit codes
+separated the cases afterwards — but the command could not have known that in advance). **Confirm what
+died after killing**, not before.
+
 ### Decorrelation axes — model family AND authoring context (measured 2026-08-01)
 
 Decorrelation has been treated as one axis (model family). A codex-outage session measured a second,

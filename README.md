@@ -141,6 +141,36 @@ cd ~/projects/{your-project} && claude
 
 ---
 
+## Two version numbers, and they measure different things
+
+This repo publishes **two counters**, deliberately. Conflating them is the single most common way to
+misread the project's status, so they are named here rather than only in the canon.
+
+| Counter | Where you see it | What it means |
+|---|---|---|
+| **Package version** (currently **2.6.0**) | npm, the plugin manifests, `git tag v2.x` | *what you install.* Ordinary release numbering: fixes → patch, new assets and gate lanes → minor, a capability **class** appearing or the thing being rebuilt → major |
+| **Identity-maturity release** (currently **v0.3.0**) | the GitHub **Releases** page | *how far along the harness is.* `0.x` carries an incomplete-but-honest status **by design**; **the all-green ship is reserved for `identity-v1.0.0`** — every one of the five identities at 🟢, none 🔵/🟡/🔴 |
+
+🟥 **A high package number does not mean maturity.** `2.6.0` is not "ahead of" `v0.3.0`; they are not on
+the same scale. The maturity track is deliberately allowed to sit at `0.x` while the package ships and
+improves, because the thing `0.x` refuses to do is **lie** — it says out loud that not every identity has
+cleared its bar yet, and each release names exactly which real run is still missing.
+
+⚠️ **Known wart, stated rather than hidden**: today both counters live in the same `vX.Y.Z` git-tag
+namespace, and only the maturity track has GitHub *Release* objects — so the Releases page shows
+`v0.3.0` as "Latest" while the shipped package is `2.6.0`. Two layers under one name is a defect this
+project keeps finding in its own gates; here it is in its own version numbers. Being fixed by giving the
+maturity track its own `identity-v*` prefix going forward. 🟥 **Not** by also publishing the package
+track here — that was tried on 2026-08-21 and reverted the same hour: GitHub gives exactly **one**
+"Latest" badge, so two tracks on one page compete for it, and whichever holds it defines what the repo
+says it is. Putting the package number there pushed the maturity claim — the honest core — below it.
+**The Releases page carries the maturity track; what the package shipped is carried by
+[CHANGELOG](plugins/fh-meta/CHANGELOG.md) and the registry.** Existing tags are left alone — renaming them is an irreversible operation on a public surface, and the
+[Destructive-Op gate](knowledge/shared/harness-core/claude_md_gate_details.md) applies to us too.
+
+Full rules for what each grade requires:
+[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).
+
 ## What it is
 
 forge-harness is structured as **two distinct layers**:
@@ -321,10 +351,25 @@ That is why the column that matters most below is *what it gets*:
 |---|---|---|---|
 | **ⓐ Different family** | the diff + the author's framing | the **implementation** is wrong | a reviewer from another model family (`auto-decorrelation`) |
 | **ⓑ Standpoint** | the diff + **the target harness's own canon** | **whether the rule you cited actually says that** | run the diff from that harness's own repo and rules ([`§7`](knowledge/shared/harness-core/field_verdict_crossfamily_gate.md)) |
-| **ⓒ Isolated grounding** | the sentences the author wrote + the tree as it stands now | the **claim** is wrong | someone who did not write it re-measures what it says |
+| **ⓒ Isolated grounding** | the sentences the author wrote — their claims *and* what they **declared before starting** — + the tree as it stands now | the **claim** is wrong · the delta does not match what was declared | someone who did not write it re-measures what it says; for the pre-declaration, a gate that reads the stated success definition back against the delta |
 | **ⓓ Third-party encounter** | the problem + **someone else's codebase** | **is this already solved** · where your change touches someone else's repo | look at the same problem in an unrelated third repo |
 | **ⓔ First real use** | one real target | the **way you are measuring** is wrong — the instrument's instrument | run it once against one real target and check the result by hand |
 | **ⓕ Revert and observe** | the tree with the wiring deleted | the **anchor** is wrong — the check is decorative | delete the thing it guards and confirm *that specific* check goes red |
+
+> **ⓒ widened on 2026-08-21, and how it widened is the more useful part.** Every commit marker in
+> this repo has been required since 2026-08-09 to carry the author's own pre-declaration — *what
+> counts as success* and *what I will not do* — written before designing. Measured with a control
+> that day: **nothing read it.** Zero lines of consuming code anywhere, while the sibling fields
+> were checked in 21 places; the gate spec did not even name it. On the real corpus, **37 of 98
+> markers carried no such line at all** — including a panel-reviewed one with 28 lanes and every
+> other field filled. The axes all looked *outward* (the diff, the target repo, prior art, the
+> artifact); none looked at the record's own mandatory field. A slot with no consumer always
+> reports "done", because presence is doing the judging.
+>
+> The fix was not a seventh axis. ⓒ already receives *the sentences the author wrote plus the tree
+> as it stands* — which is, word for word, what a pre-declaration check receives. Tense (declared
+> beforehand vs claimed afterwards) is a **posture**, like adversariality, not an axis. Minting a
+> new one would have repeated the exact error the blind reclassification above found.
 
 **You do not run all six every time, and that is the design** — do not multiply them, **choose**:
 
@@ -353,6 +398,37 @@ with tools**, the boundary blurs — an outside judgment held that "the store is
 "the swallowed exception" are catchable by ⓐ and ⓒ as well, since those reviewers grep for themselves.
 Conversely, "a rule another repo retired long ago" **cannot be fetched by any tool** — there is no reason
 to have access to that project's review history in the first place. That is where ⓓ remains.
+
+**Where a rule lives — and why the always-loaded layer does not have to grow forever.**
+
+A harness learns by writing rules down. The obvious place is the always-loaded file every session
+reads, and that file only ever gets longer. Left there, the reasoning ends in a corner: *a harness
+that keeps learning keeps getting more expensive to start.*
+
+It does not, because a rule has **three possible seats**, and the right one is decided by **when the
+rule has to fire**:
+
+| Seat | Fires | Costs | Fits |
+|---|---|---|---|
+| **Always-loaded** | before you act | every session, every turn | rules whose trigger is an *intention* — tone, "don't normalize the unfamiliar", "prove the instrument works here". Nothing can hook an intention, so salience is the only layer |
+| **The gate's own error message** | at the moment you act | **nothing** | rules whose trigger is an *action*. The message that blocks you also teaches the form: `Write, before the design: success = «…». never = «…».` |
+| **The hook** | after you act | nothing | properties of a record — present · typed · attributable · non-vacuous |
+
+The middle seat is the one that usually goes unused, and it is free. It is
+[gate-locality](knowledge/shared/harness-core/gate_locality_principle.md) applied to salience: the actor reads it exactly where the
+action happens, so it does not have to be carried all session to be there when needed.
+
+🟥 **It is a third layer, not a replacement — and the honest limit is that it only fires on failure.**
+Someone who gets it right never sees it. So mechanizing a rule does **not** shrink the resident layer:
+measured on the very change described above, the machine grew by 480 lines and the always-loaded prose
+by **zero**, and that is correct. The prose has to reach the author *before* they design; the hook
+catches its absence *after*. A backstop cannot substitute for salience that must fire earlier.
+
+⚠️ And the threshold that would tell you the resident layer is "too big" is, in this repo, **not
+grounded** — the numbers in our own doctor skill were introduced without a single line justifying the
+cutpoints, and one of them was set to a value the target already exceeded on the day it landed. We are
+re-deriving them rather than trimming toward a number nobody can defend. Cutting resident text toward
+an unjustified target buys fail-open with the savings.
 
 > 🟥 **Limits to read before citing this**: the six-axis table is **n=1** (one artifact · one session ·
 > one author). Whether the axes' non-overlap is structural or an accident of that day is **unmeasured**.
