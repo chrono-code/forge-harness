@@ -18,6 +18,16 @@
 </p>
 
 <p align="center">
+  <b>forge-harness is a forge for repeated intent — and the place harnesses are born.</b>
+</p>
+
+<p align="center">
+  The things you keep re-asking Claude Code for become skills, gates and agents that live in your repo
+  and fire on their own.<br>
+  <b>What that buys you: the trial and error comes off you and runs in parallel.</b>
+</p>
+
+<p align="center">
   <b>Ask it for things. When the asking repeats, it offers to build you the thing.</b>
 </p>
 
@@ -42,9 +52,15 @@ cd ~/projects/forge-harness && claude
 ```
 
 **Then type `hi`** — or a greeting in whatever language you actually think in: `안녕`, `こんにちは`,
-`你好`, `hola`, `bonjour`. **It answers in the language you greeted it in**, so you never have to work
-in English to use this. A numbered menu appears and takes it from there — pick a door, answer a couple
-of questions, and it runs the install wizard for you.
+`你好`, `hola`, `bonjour`. **Any of them opens the menu**, and it will try to answer in the language you
+used. A numbered menu appears and takes it from there — pick a door, answer a couple of questions, and
+it runs the install wizard for you.
+
+<sub>🟥 <b>Honest about that last part</b>: matching your language is a prose rule with no mechanical
+gate behind it, and it does not always hold. Blind floor-tier runs on 2026-08-21 got Japanese right 3/3
+and Chinese 1/5 (the misses came back in Korean or English), so if it answers in the wrong language,
+just say so — it will switch. The residual is written up in <code>CLAUDE.md</code> §Voice/Tone rather
+than smoothed over.</sub>
 
 Everything below this line is reference for when you want it, not homework before you start.
 
@@ -124,7 +140,8 @@ claude
 ```
 
 > ✅ Then **type a greeting** — `hi`, `안녕`, `こんにちは`, `你好`, whatever you actually think in; it
-> replies in that language. The 🐿️ door menu appears on a *typed* greeting, not on launch alone.
+> tries to reply in that language (see the note above — it is right more often than not, not always).
+> The 🐿️ door menu appears on a *typed* greeting, not on launch alone.
 > Say **"Connect a project"** → hub scans `../`, finds `.git` directories, creates `tracks/{project}/`.
 > For full initial setup (hooks · gates · baseline — each item individually approved, declining is
 > respected and recorded), ask for **`/install-wizard`**.
