@@ -268,6 +268,71 @@ echo
 #        부재로 HARNESS_ERROR(3) 를 낸다 — 기대값과 같은 값이다. 즉 R2 는 Q5 를 원리적으로
 #        구분하지 못한다. 그건 Q5 의 결함이 아니라 **이 프로브 축의 사각지대**이고,
 #        Q5 는 R1 이 아니라 별도 축(모호 판정 자체를 지우는 중화)으로만 흔들 수 있다.
+# ── P 레인: peer_resolve 자체의 이름 해석 (2026-08-21 신설) ─────────────────────
+# 🟥 이게 왜 필요한가: `peer_resolve.sh` 의 `FH_PROJECTS_HOME` 팔을 `fh_track_resolve.sh` 로
+#    배선하면서 **거짓 AMBIGUOUS 결함이 하나 닫혔는데, 그 변경을 되돌려도 빨개지는 레인이
+#    0개였다**(실측). 즉 기존 31 레인은 이 축에 대해 앵커가 아니다 —
+#    [[feedback_anchor_can_be_decorative]]. 픽스처는 **실제로 뚫려 있던 표기**(공백 이름)를 쓴다.
+#
+# 🟥 **초판 P 레인은 거짓 초록이었다 — 계기가 대상을 안 불렀다.** `peer_resolve.sh` 를
+#    `bash <파일> <이름>` 으로 «실행» 했는데 이 파일은 **sourced 라이브러리**라 실행하면
+#    아무것도 안 하고 rc=0 으로 끝난다. P1·P3 이 그 rc=0 을 «해소 성공» 으로 읽어 초록이었고,
+#    P2 의 빨강도 코드 결함이 아니라 내 하네스 결함이었다. 판별 근거는 **HEAD 에서도 같은
+#    값이 나왔다**는 것이다(변경 전후가 같으면 계기가 대상을 안 보고 있다).
+#    [[feedback_instrument_vs_target_and_budget]] — 이상하면 대상보다 계기를 먼저 의심해라.
+_PR="${FH_ADAPTER_DIR:-$REPO_ROOT/scripts/adapters}/peer_resolve.sh"
+if [ ! -f "$_PR" ]; then
+  echo "  SKIP P 레인 (peer_resolve.sh 없음) — PASS 가 아니라 미검사다"
+else
+  # shellcheck source=scripts/adapters/peer_resolve.sh
+  . "$_PR"
+  if ! type fh_peer_resolve >/dev/null 2>&1; then
+    echo "  ❌ P 레인 하네스 결함 — source 했는데 fh_peer_resolve 가 없다"
+    FAIL=1
+  else
+  _PW="$(mktemp -d)"
+  mkdir -p "$_PW/sp ace" "$_PW/aliased-dev" "$_PW/dual" "$_PW/dual-dev"
+  # P0 컨트롤 — 계기가 대상을 실제로 부르는가. 이게 초록이 아니면 아래 셋은 의미가 없다.
+  FH_PROJECTS_HOME="$_PW" fh_peer_resolve nosuchpeer >/dev/null 2>&1; _prc=$?
+  _lane P0 control "계기 생존 — 없는 peer 는 부재(1)로 온다(rc=0 무음이면 대상을 안 부른 것)" 1 "$_prc"
+  # P1 — 공백 이름 1건: 한 후보가 두 단어로 세어져 거짓 AMBIGUOUS(2) 가 나던 자리
+  FH_PROJECTS_HOME="$_PW" fh_peer_resolve 'sp ace' >/dev/null 2>&1; _prc=$?
+  _lane P1 resolve-guard "공백 이름 1건은 정상 해소 — 거짓 AMBIGUOUS 아님" 0 "$_prc"
+  # P2 컨트롤 — 진짜 모호는 여전히 거부해야 한다(P1 의 통과가 모호검출을 죽인 게 아니다)
+  FH_PROJECTS_HOME="$_PW" fh_peer_resolve dual >/dev/null 2>&1; _prc=$?
+  _lane P2 control "진짜 모호(dual + dual-dev)는 여전히 고르지 않는다" 2 "$_prc"
+  # P3 컨트롤 — 별칭 해소가 실제로 살아 있나(P 레인이 통째로 공허하지 않다는 증거)
+  FH_PROJECTS_HOME="$_PW" fh_peer_resolve aliased >/dev/null 2>&1; _prc=$?
+  _lane P3 resolve-alias "'-dev' 별칭이 해소된다" 0 "$_prc"
+  rm -rf "$_PW"
+  fi
+fi
+# 🟥 **명시 잔여 — 팔 A 는 안 닫혔다.** `FH_CLUSTER_ROOTS`(임의 절대경로의 basename 조회)는
+#    조회 모델이 달라 라이브러리로 통일하지 않았고, 거기 공백 거짓-AMBIGUOUS 가 **그대로 있다**
+#    (실측 확인). 별도 축의 독립 수리이므로 레인을 안 박았다 — 안 잰 것이지 통과한 게 아니다.
+
+# 🟥 **2026-08-21 — 사전등록 두 줄을 갱신했다. 이유를 적는 게 갱신 자체보다 중요하다.**
+#    (위 규율 그대로: 관측에 맞춰 «조용히» 고치면 프로브의 판별력 증거가 사라진다.)
+#      · **R1: `G1 G5 M1 Q1` → `G1 G5 M1 Q1 W1`** — **선재 오류**다. 사전등록이 `qasp_web_rules.sh`
+#        (W 레인) 도입 **이전**에 쓰였고, W1 도 부재 분기에 결박된 레인이라 빨간 게 맞다.
+#        내 변경 이전 HEAD 에서도 `--revert-probe` 는 이 차이로 RC=1 이었다(실측). 즉 이건
+#        내가 깬 게 아니라 **이미 틀려 있던 것을 이번에 갚는 것**이다.
+#      · **R2: 11개 → `M4 Q4 Q7 Q8`** — 이건 **내 변경이 원인**이고, 기대값을 낮추는 것으로
+#        끝내면 안 된다. `peer_resolve.sh` 의 `FH_PROJECTS_HOME` 팔이 이제 별칭을
+#        `fh_track_resolve.sh` 에서 받으므로 **`fh_peer_alias_candidates` 를 안 읽는다** →
+#        그걸 중화해도 안 흔들린다. 남은 넷은 전부 `FH_CLUSTER_ROOTS`(팔 A) 레인이다.
+#        🟥 **명시 잔여 — 커버리지가 줄었다**: R2 는 더 이상 «팔 B 가 별칭을 보는가» 를
+#        흔들지 못한다. 그 축의 앵커는 지금 `scripts/test_track_resolve_lanes.sh`(라이브러리
+#        레인 1~3 + 배선 레인 9)에만 있고, **어댑터 층에는 없다.** 팔 A 는 조회 모델이 달라
+#        (임의 절대경로의 basename) 통일하지 않았으므로 R2 는 그대로 유효하다.
+#        이 잔여를 닫으려면 라이브러리를 중화하는 별도 프로브 축(R3)이 필요하고,
+#        지금 프로브는 `scripts/adapters/` 만 사본으로 뜨므로 **그 축은 아직 없다.**
+#      · **P 레인 추가분(같은 날, 2차)**: `P0 P1` 이 R1 에, `P1` 이 R2 에 들어간다. 사전등록을
+#        P 레인 **추가 전에** 썼기 때문에 빠져 있었다. 기계적 설명: R1 은 부재 분기를 «순진한
+#        추측» 으로 바꾸므로 P0(없는 peer → rc=1 이어야 한다)이 rc=0 을 받아 빨개지고, P1 도
+#        그 조기 반환에 걸린다. R2 는 별칭 후보를 이름 하나로 줄이므로 P1(공백 이름 해소)이
+#        후보 루프를 못 탄다. 🟥 **둘 다 «레인이 그 중화에 실제로 반응한다»는 뜻이라 빨간 게
+#        맞다** — 이 갱신은 기대를 낮추는 게 아니라 **새 앵커를 사전등록에 등록하는 것**이다.
 # ★중화는 **실물 파일이 아니라 사본**에 건다(FH_ADAPTER_DIR). 실물 트리를 건드리지 않고,
 #  사본이 실물과 «중화한 줄 말고는 동일» 함을 적용확인 단계에서 대조한다.
 _revert_probe() {
@@ -317,14 +382,14 @@ case "${1:-}" in
     _revert_probe R1 \
       's|^    printf .peer-resolve: peer|    printf "%s" "${FH_PROJECTS_HOME:-$HOME/projects}/$n"; return 0  # NEUTRALIZED_R1\n    printf '"'"'peer-resolve: peer|' \
       'NEUTRALIZED_R1' \
-      'G1 G5 M1 Q1' \
+      'G1 G5 M1 P0 P1 Q1 W1' \
       '«부재» 분기 중화 → 부재 분기에 결박된 레인만 빨개져야 한다' || RP=1
     echo
     # R2: 별칭 후보를 이름 자신 하나로 줄인다 — `-dev` 를 못 찾게 된다.
     _revert_probe R2 \
       's|^  printf .%s\\n. "\$1" "\$1-dev".*$|  printf "%s\\n" "$1"   # NEUTRALIZED_R2|' \
       'NEUTRALIZED_R2' \
-      'M2 M3 M4 M5 M6 Q2 Q3 Q4 Q6 Q7 Q8' \
+      'M4 P1 Q4 Q7 Q8' \
       '별칭 목록 중화 → mate/qasp 쪽 레인만 빨개져야 한다(gstack 은 별칭이 필요 없다)' || RP=1
     echo
     [ "$RP" -eq 0 ] || FAIL=1

@@ -416,6 +416,20 @@ else
   _absent_subject_verdict "test_adapter_lanes.sh" "scripts/test_adapter_lanes.sh" || fail=1
 fi
 
+# track→repo 해석기 단일화 레인 (2026-08-21 harness-doctor F-1).
+# 🟥 배선이 없으면 이 레인은 «만들고 배선 안 함» 이 된다. 그리고 이 수리는 특히 그 위험이 크다 —
+# 세 소비자가 전부 npm 으로 나가므로, 라이브러리가 files[] 나 selfcheck 어느 한쪽에서 빠지면
+# 소비자 install 에서만 조용히 수리 이전 동작으로 강등된다(로컬은 초록).
+if [ ! -f scripts/fh_track_resolve.sh ]; then
+  _absent_subject_verdict "test_track_resolve_lanes.sh" "scripts/fh_track_resolve.sh" || fail=1
+elif [ -f scripts/test_track_resolve_lanes.sh ]; then
+  if ! bash scripts/test_track_resolve_lanes.sh; then
+    fail=1
+  fi
+else
+  _absent_subject_verdict "test_track_resolve_lanes.sh" "scripts/test_track_resolve_lanes.sh" || fail=1
+fi
+
 if [ ! -f scripts/package_coverage_check.sh ]; then
   _absent_subject_verdict "test_package_coverage_lanes.sh" "scripts/package_coverage_check.sh" || fail=1
 elif [ -f scripts/test_package_coverage_lanes.sh ]; then
