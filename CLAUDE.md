@@ -376,8 +376,18 @@ claim 이 `main` 인 동안 실제 HEAD 는 peer 브랜치였다 — 두 세션�
 **남은 잔여 둘, 이름으로 남긴다**: ⓐ 게이트는 **커밋 시점**이라 `switch -c` 사고 자체는 못 막는다
 (그래서 위 두 줄이 여전히 사람 몫이다 — [[feedback_gate_binding_point_not_check_point]])
 ⓑ 반대 방향 — 내가 브랜치를 쥔 동안 남이 되돌리고 커밋하면 **내 staged 파일이 index 에 살아
-있다.** 실측 사례에서 안 섞인 것은 그 세션이 파일 지정 `add` 를 썼기 때문이지 게이트 덕이 아니다.
-⇒ **공유 체크아웃에서 `git add -A` 금지**([[feedback_shared_checkout_ops_touch_others_work]]).
+있다.** 🟥 **2026-08-21 실제로 났고, 섞은 세션은 파일 지정 `add` 를 썼다**(초판은 여기 「파일
+지정 add 를 썼기 때문에 안 섞였다」고 적었는데 거짓이다). 파일 지정 add 는 «내가 무엇을
+**추가**하나»만 통제하고 **index 에 이미 있는 것은 못 막는다.** ⇒ `git add -A` 금지는 필요조건
+이지 충분조건이 아니다. **커밋을 한 호출로 묶고 그 안에서 둘을 확인한다** — 확인은 점이고 위험은
+구간이라, 사이에 턴이 끼면 창이 다시 생긴다(같은 날 두 세션이 시점을 각각 `switch` 직전/직후로
+달리 골랐는데 **둘 다 뚫렸다**):
+```
+B=$(git branch --show-current); [ "$B" = "<내 브랜치>" ] || exit 1
+git diff --cached --name-only    # 내 것만 있나 — 남의 것은 restore --staged
+git commit …
+```
+([[feedback_shared_checkout_ops_touch_others_work]] · [[feedback_gate_binding_point_not_check_point]])
 
 **Integration branch is PR-only** (operator decision 2026-07-20). Never `git push origin main`
 directly. Normal path: `git switch -c <branch>` → push the branch → `gh pr create` → after review
