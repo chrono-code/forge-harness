@@ -41,24 +41,29 @@ git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harn
 cd ~/projects/forge-harness && claude
 ```
 
-**Then type `hi`.** A numbered menu appears and takes it from there — pick a door, answer a couple of
-questions, and it runs the install wizard for you. Everything below this line is reference for when you
-want it, not homework before you start.
+**Then type `hi`** — or a greeting in whatever language you actually think in: `안녕`, `こんにちは`,
+`你好`, `hola`, `bonjour`. **It answers in the language you greeted it in**, so you never have to work
+in English to use this. A numbered menu appears and takes it from there — pick a door, answer a couple
+of questions, and it runs the install wizard for you.
 
-**What it amplifies** — the number of attempts; trial and error moves off you and runs in parallel.
-**What it does not** — the model's ceiling. A harness lifts a model to its own ceiling, not past it.
-**How you can check** — it grades itself in public, five identities, in every
-[release](https://github.com/chrono-meta/forge-harness/releases); the ones that are not green name
-the real run still missing.
+Everything below this line is reference for when you want it, not homework before you start.
+
+- **What it amplifies** — the number of attempts. Trial and error moves off you and runs in parallel.
+
+- **What it does not** — the model's ceiling. A harness lifts a model to its own ceiling, not past it.
+
+- **How you can check** — it grades itself in public. Five identities, honestly, in every
+  [release](https://github.com/chrono-meta/forge-harness/releases). Any square that is not green names
+  the real run that is still missing.
 
 ---
 
 <p align="center">
-  <img src="docs/pillars.svg" alt="FORK - ADAPT - COLLABORATE - EMPOWER" width="680">
+  <img src="docs/pillars.svg" alt="HARNESS - FORGE - ACCELERATE - COMPOUND" width="680">
 </p>
 
 <p align="center">
-  <b>Quality is the lever; speed is the result.</b> <i>Fork it. Rename it. Make it yours.</i><br>
+  <b>Quality is the lever; speed is the result.</b><br>
   <sub>If this is useful, a star helps others find it.</sub>
 </p>
 
@@ -118,7 +123,8 @@ cd ~/projects/forge-harness
 claude
 ```
 
-> ✅ Then **type a greeting ("hi")** — the 🐿️ door menu appears on a typed greeting, not on launch alone.
+> ✅ Then **type a greeting** — `hi`, `안녕`, `こんにちは`, `你好`, whatever you actually think in; it
+> replies in that language. The 🐿️ door menu appears on a *typed* greeting, not on launch alone.
 > Say **"Connect a project"** → hub scans `../`, finds `.git` directories, creates `tracks/{project}/`.
 > For full initial setup (hooks · gates · baseline — each item individually approved, declining is
 > respected and recorded), ask for **`/install-wizard`**.
@@ -127,8 +133,8 @@ claude
 
 **Your first 15 minutes** — what success looks like, and what to do with it:
 
-1. You'll know setup worked when a greeting ("hi") shows the 🐿️ door menu, and "Connect a project"
-   creates `tracks/{your-project}/`.
+1. You'll know setup worked when a greeting — in any language — shows the 🐿️ door menu, and
+   "Connect a project" creates `tracks/{your-project}/`.
 2. Then grab an immediate win in the same session: say **"accelerate this project"** (ranked plan of
    skills/plugins worth wiring, install-gated) or **"run /context-doctor"** (token-waste scan).
 3. One honest note: FH's core payoff is **compounding** — session records, harvested learnings,
@@ -347,11 +353,25 @@ harness is actually used.
 
 **The three-stage process** — this is an *order of investment*, not a menu:
 
+```mermaid
+flowchart LR
+  S["① Circuit<br/>before design"]
+  P["② Parallel decorrelation<br/>in the middle"]
+  B["③ Burn it down<br/>on six axes"]
+  A(["⟹ It accelerates"])
+  S --> P --> B --> A
+  style A fill:#0f766e,stroke:#0f766e,color:#fff
+```
+
+**Speed is the arrow at the end, not a fourth box.** And ② is **two dials, turned separately** —
+*decorrelation* (reacts to blind-spot risk: a different model family ⓐ, a different standpoint ⓑ)
+and *parallelism* (reacts to surface size: can one context hold it?). Do not multiply them, choose.
+
 ```
 ① Circuit before design   the judgment circuit goes in FIRST — success · leaning · out-of-scope ·
                           never-do — not written up afterwards as a record of what you did
 
-② Decorrelate in the      split the work into checks that fail DIFFERENTLY and run them at once.
+② Parallel decorrelation  split the work into checks that fail DIFFERENTLY and run them at once.
    middle, to accelerate  Choose which differences matter — a second reviewer of the same kind is
                           not decorrelation, it is the same blind spot twice. Parallelism has no
                           direction of its own; the judgment circuit from ① is what picks.
@@ -392,6 +412,22 @@ That is why the column that matters most below is *what it gets*:
 > beforehand vs claimed afterwards) is a **posture**, like adversariality, not an axis. Minting a
 > new one would have repeated the exact error the blind reclassification above found.
 
+> **A peer session counts on ⓑ and ⓓ — decided 2026-08-21, and *which* peer you ask is the whole
+> trick.** A parallel session of this same harness, running hot on a different branch of the work, is
+> not a copy of you. At the point it got hot it has genuinely grown a second face: a real standpoint
+> (ⓑ) and a real someone-else's-codebase (ⓓ). So peer findings are recorded on those two axes — no
+> seventh axis was minted, and the marker's `axes-run` alphabet did not change.
+>
+> This is why the ⓓ row above says *someone else's codebase* rather than *another company's repo*:
+> the boundary that matters is **whose working context produced the judgment**, not whose GitHub org
+> owns the files. A peer hot on a different branch is across that boundary; a subagent you spawned
+> from this context is not, however different the repo it reads.
+>
+> 🟥 The corollary is the part that bites. **Ask the peer about the axis it actually got hot on.**
+> Anywhere else it wears your face and decorrelates nothing — same input, same blind spot. And a
+> subagent cannot stand in for it, nor can re-reading your own work: the second face comes from that
+> session having *done* different work, and a prompt cannot manufacture it.
+
 **You do not run all six every time, and that is the design** — do not multiply them, **choose**:
 
 ```
@@ -414,8 +450,9 @@ itself.
 **Why this is not superseded by base-model advances** — an axis is defined by its **input**, not by the
 *reviewer's ability*. A stronger model still **cannot see information it was not given.** Scaffolding
 sheds as models improve, but **input-boundary decorrelation does not**, and a single author cannot, by
-definition, step outside their own input. 🟥 Honest edge: if the agent **fetches more input by itself
-with tools**, the boundary blurs — an outside judgment held that "the store is never used in full" and
+definition, step outside their own input.
+
+🟥 **Honest edge**: if the agent **fetches more input by itself with tools**, the boundary blurs — an outside judgment held that "the store is never used in full" and
 "the swallowed exception" are catchable by ⓐ and ⓒ as well, since those reviewers grep for themselves.
 Conversely, "a rule another repo retired long ago" **cannot be fetched by any tool** — there is no reason
 to have access to that project's review history in the first place. That is where ⓓ remains.
@@ -554,22 +591,42 @@ Full spec: [`fh_integration_contract.md`](knowledge/shared/harness-core/fh_integ
 
 ---
 
-## The forge
+## The forge — where the name comes from
 
-forge-harness treats a project like steel — and the metaphor is literal, not decoration. Work is shaped,
+forge-harness treats a project like steel, and the metaphor is literal, not decoration. Work is shaped,
 hardened by attack, and only then does it ship faster, for having survived.
 
-| Movement | What happens | The commands |
+> 🟥 **This is the name's origin, not a procedure — do not count it.** The smith's words below are a
+> vocabulary, not a stage list. They are a **different layer** from the three-stage process, the four
+> engines, the four-axis commit gate and the six verification axes above; nothing here lines up with a
+> number in any of those, and reading it as a fifth numbered set is the one mistake this section can
+> cause.
+
+**Three at the anvil:**
+
+| The smith's word | What it means here | The commands |
 |---|---|---|
 | **Forge** | shape the raw project into a harness — raise its floor | `install-wizard`, "harness-ify this project" |
 | **Quench** | harden it by attack — the cold pass leaves standing only what is sound | `steel-quench` · `phantom-quench` |
 | **Temper** | take the brittleness back out of the hardened asset | `steel-quench` Wave-T · `templates/temper_check.sh` |
-| → **Accelerate** | a blade that survived the forge cuts faster | `goal-quench` — *Pass → Accelerate* |
 
-All four movements ship. Temper was named before it was built — deliberately (see
-[`ETHOS.md`](docs/ETHOS.md#the-forge)) — and shipped once measurement runs validated it. Around the forge,
-two more signatures keep it running: `harvest-loop` (each session's lessons become permanent skills) and
-`agent-composer` (orchestrate the dispatch). The other skills wait until you need them — full list below.
+```mermaid
+flowchart LR
+  F["Forge"] --> Q["Quench"] --> T["Temper"] --> A(["⟹ Accelerate"])
+  style A fill:#0f766e,stroke:#0f766e,color:#fff
+```
+
+**⟹ And then it accelerates.** A blade that survived the forge cuts faster — `goal-quench`,
+*Pass → Accelerate*. Speed is what the three above **produce**; it is not a fourth thing you do.
+That is the same sentence as the tagline at the top of this page, said in the smith's words:
+quality is the lever, speed is the result.
+
+Every command named above ships today. Temper was named before it was built — deliberately (see
+[`ETHOS.md`](docs/ETHOS.md#the-forge)) — and shipped once measurement runs validated it.
+
+Around the forge, two more signatures keep it running: `harvest-loop` (each session's lessons become
+permanent skills) and `agent-composer` (orchestrate the dispatch). The other skills wait until you need
+them — full list below.
 
 ## 40 skills · 8 agents
 
