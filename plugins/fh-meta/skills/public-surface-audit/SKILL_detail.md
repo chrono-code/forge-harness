@@ -25,9 +25,24 @@ if [ -r "scripts/psa_scan_lib.sh" ]; then
   # Feed every tracked file as path<TAB>line, the stream psa_scan_tagged consumes. Sourcing the lib
   # without these calls is a no-op scan — measured on this repo (PSA_STREAM stayed unset), so the
   # calls are spelled out here rather than pointed at.
+  # 🟥 rc 를 반드시 받아라 (2026-08-21 배선 리뷰 S-1). 이 파이프는 **원래 뚫렸던 바로 그 진입점**이고,
+  #    바로 아래 coverage 조건이 `$?` 를 덮으므로 여기서 안 받으면 계약이 소실된다.
+  #    계약: 0=신고할 것 없음 · 1=유출(이미 인쇄됨) · 3=NOT SCANNED(계기 사망)
+  #    ⚠️ `_psa_rc=0` 은 반드시 `while` **밖**에 둔다 — 안에 두면 루프 본문이라 매 줄 초기화되고
+  #       파이프 서브셸에 갇힌다(초판이 그렇게 넣었고 `bash -n` 은 통과했다. 문법은 맞고 의미가 틀린다).
+  _psa_rc=0
   while IFS= read -r f; do
     awk -v p="$f" '{printf "%s\t%s\n", p, $0}' "$f" 2>/dev/null
-  done < /tmp/_psa_tracked.txt | psa_scan_tagged
+  done < /tmp/_psa_tracked.txt | psa_scan_tagged || _psa_rc=$?
+  # 🟥 3 은 «깨끗» 이 아니라 «안 쟀다» 다. 여기서 멈춰야 한다 — 이 스킬은 publish 직전에
+  #    Pre-Publish Gate 가 1번으로 체이닝하는 렌즈이고, 그 자리에서 미측정을 통과시키면
+  #    아래 coverage 줄이 «defaults-only 로는 스캔했다» 는 인상까지 얹는다.
+  if [ "$_psa_rc" -eq 3 ]; then
+    echo "⛔ INSTRUMENT DEAD: the scanner did not run (rc=3). NOT SCANNED is not clean."
+    echo "   Fix first — run under bash (zsh special vars can blank PATH inside the matcher),"
+    echo "   and confirm psa_load ran (PSA_STREAM non-empty). Do NOT report a verdict from this run."
+    exit 3
+  fi
   [ "$PSA_OVERRIDE_PRESENT" -eq 1 ] \
     || echo "coverage: defaults-only — operator literals NOT CONFIGURED (identity/company classes UNSCANNED)"
 else

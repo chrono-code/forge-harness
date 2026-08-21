@@ -36,6 +36,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+
+      # 🟥 zsh 를 설치한다 — 장식이 아니라 **커버리지 구멍을 닫는 것**이다.
+      # 2026-08-21 실측: `psa_scan_tagged` 가 `local path` 때문에 **zsh 에서만** 죽었고 그 죽음이
+      # 「깨끗한 스캔」과 바이트 동일이었다(유출 스캐너가 무음 통과). 그 축의 레인(Z1~Z4 ·
+      # E2~E5/zsh)은 `command -v zsh` 조건부라 zsh 없는 러너에서 **8개가 통째로 SKIP** 된다 —
+      # 즉 그 결함을 고친 PR 이 CI 에서 **한 번도 검증되지 않는다.** macOS 기본 셸이 zsh 이고
+      # public-surface-audit 스킬 본문이 그 셸로 실행되므로 이건 **소비자 표면**이다.
+      # ⚠️ 스킵은 실패가 아니라 레인 플로어가 조건부로 계산된다 — 그래서 이 설치가 없어도 CI 는
+      #    초록인데, **그 초록이 이 축에 대해서는 미측정**이다. 그 구별이 이 스텝의 존재 이유다.
+      - name: Install zsh (second shell arm for the psa lanes — see comment)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zsh
+          zsh --version
       - name: Check for operator-private token residue
         run: |
           echo "=== Scanning for generic operator-private patterns ==="

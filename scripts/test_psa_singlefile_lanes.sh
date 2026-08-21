@@ -282,7 +282,137 @@ out=$(bash -c "
 check "L21 declare -i (attribute rejects the value) → REFUSED, caller survives" 0 "$rc" "REFUSED" "$out"
 case "$out" in *SURVIVED*) ok "L21b caller survives the attribute case" ;; *) bad "L21b caller died on the attribute case" ;; esac
 
+# ── Z 레인 : 셸 이식성 (2026-08-21) ──────────────────────────────────────────────────────
+# 🟥 왜 [실측]: psa_scan_tagged 가 `local path` 를 선언했는데 **zsh 에서 `path` 는 `PATH` 와
+#    tied 된 특수 배열**이라 그 스코프의 PATH 가 비어 `cat` 부터 죽었다. 이 함수 계약이
+#    「빈 입력 = return 0」이라 **계기 사망이 «깨끗한 스캔»과 바이트 단위로 같은 출력**이 됐다 —
+#    known-positive·known-negative 가 zsh 에서 **둘 다 rc=0**.
+# 🟥 이 머신만의 문제가 아니었다: psa_scan_lib.sh 와 public-surface-audit/SKILL_detail.md 가
+#    **둘 다 출하되고**(npm pack 산출물로 확인), 그 스킬 본문은 무가드 psa_scan_tagged 직접
+#    호출을 지시하며, macOS 기본 셸은 zsh 다. ⇒ 소비자 스킬 경로가 같은 상태였다.
+# 🟥 `bash -n`/`zsh -n` 은 못 잡는다 — 문법이 아니라 런타임 의미론이다. 실행으로만 성립한다.
+# 🟥 조건부 레인 수를 세어 둔다. 플로어를 상수로 박으면 zsh 없는 러너에서 «INSTRUMENT ERROR»
+#    가 난다 — 실제로 CI(ubuntu-latest, zsh 미설치)에서 그렇게 났다. 스킵은 실패가 아니다.
+_cond_lanes=0
+if command -v zsh >/dev/null 2>&1; then
+  _cond_lanes=$((_cond_lanes + 4))
+  _ztmp=$(mktemp -d)
+  printf 'contains LANECANARY here\n' > "$_ztmp/pos.md"
+  printf 'clean prose\n' > "$_ztmp/neg.md"
+  _zrun() {
+    "$1" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\\tLANECANARY') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; cat '$2' | psa_scan_tagged '$2' >/dev/null 2>&1; echo \$?"
+  }
+  _zp=$(_zrun zsh  "$_ztmp/pos.md"); _zn=$(_zrun zsh  "$_ztmp/neg.md")
+  _bp=$(_zrun bash "$_ztmp/pos.md"); _bn=$(_zrun bash "$_ztmp/neg.md")
+  [ "$_zp" = "1" ] && ok "Z1 zsh known-positive → 1 (계기가 zsh 에서 살아 있다)" || bad "Z1 zsh 양성이 1 이 아니다: got $_zp"
+  [ "$_zn" = "0" ] && ok "Z2 zsh known-negative → 0 (오탐 없음)"                  || bad "Z2 zsh 음성이 0 이 아니다: got $_zn"
+  # ★컨트롤 — 두 팔이 갈리면 이식성 결함 잔존, 두 팔이 같이 죽으면 Z1/Z2 통과가 공허하다
+  [ "$_bp" = "$_zp" ] && ok "Z3 ★컨트롤 bash 양성 = zsh 양성 (두 팔 일치, $_bp)" || bad "Z3 두 팔 불일치: bash=$_bp zsh=$_zp"
+  [ "$_bn" = "$_zn" ] && ok "Z4 ★컨트롤 bash 음성 = zsh 음성 ($_bn)"             || bad "Z4 두 팔 불일치: bash=$_bn zsh=$_zn"
+  rm -rf "$_ztmp"
+else
+  echo "  SKIP Z 레인 (zsh 없음) — 🟥 PASS 가 아니라 미검사다"
+fi
+
+# ── E 레인 : 계기 사망은 «깨끗함»이 아니라 NOT SCANNED(3) 로 ──────────────────────────────
+# 무가드 직접 호출부(pre-commit ×3 · pre-push · outbound-guard)는 전부 **비영 = 차단**으로
+# 읽으므로 3 은 셋 모두에서 fail-closed 다. 0 이면 셋 다 «깨끗»으로 통과한다.
+# 🟥 **초판 E1 은 두 번 결함이었다** (cross-family + 되돌림 프로브가 각각 하나씩 잡았다):
+#   ⓐ 기본 분기가 `ok` 여서 rc=3 이 아닌 «모든» 출력(빈 출력 포함)을 PASS 로 셌다
+#   ⓑ 판정을 **종료코드가 아니라 문자열 `*rc=3*`** 로 했는데, 가드가 stdout 에 찍는 문구
+#      자체에 `(rc=3)` 이 들어 있다 → **페이로드가 자기 판정 문자열을 인쇄**한다. 가드의
+#      `return 3` 을 `return 0` 으로 사보타주해도 레인이 초록이었다. 앵커가 장식이었다.
+#   ⇒ 판정은 **숫자 rc 하나**로만. 메시지는 증거지 판정이 아니다.
+_erc=$(bash -c "
+  . '$LIB'
+  psa_load '$PWD/.claude/rules/.public-surface-patterns.defaults' '$PWD/.claude/rules/.public-surface-patterns' >/dev/null 2>&1
+  PATH=/nonexistent-psa-probe
+  printf 'p\tLANECANARY\n' | psa_scan_tagged >/dev/null 2>&1
+  echo \$?
+" 2>/dev/null | tail -1)
+[ "$_erc" = "3" ] && ok "E1 계기 사망 → rc=3 NOT SCANNED (숫자로 판정, 0 으로 안 접힌다)" \
+                  || bad "E1 계기 사망이 rc=3 이 아니다 — got rc=[$_erc]"
+
+# ── E2~E4 : cross-family(codex/gpt-5.6-sol) 가 실행으로 재현한 반례들. 판정 FAIL 이었다.
+#    전부 «자가검사가 한 번 통과했다 → 그 뒤 실제 스캔도 실행됐다» 로 확장한 초판의 맹점이다.
+_erun() { # $1=shell $2=prelude → rc
+  "$1" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\\tLANECANARY') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; $2 printf 'p\tLANECANARY\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1
+}
+for _sh in bash zsh; do
+  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP E2~E5 ($_sh 없음) — PASS 아님, 미검사다"; continue; }
+  [ "$_sh" = "zsh" ] && _cond_lanes=$((_cond_lanes + 4))
+  # E2 — `cat` 이 죽으면 빈 입력이 «신고할 것 없음»이 됐다 (반례 1)
+  _r=$(_erun "$_sh" 'cat(){ return 7; };')
+  [ "$_r" = "3" ] && ok "E2/$_sh cat 사망 → rc=3 (빈 입력이 «깨끗»으로 안 접힌다)" || bad "E2/$_sh cat 사망 rc=[$_r], 3 이어야"
+  # E3 — 🟥 외부가 가드 표식을 미리 export 하면 자가검사가 통째로 생략됐다 (반례 1b)
+  #      수리: 재진입 판별을 **호출 스택**으로 바꿨다 — 호출자가 미리 심을 수 없다
+  _r=$(_erun "$_sh" 'export _PSA_IN_SELFTEST=1; export _PSA_LIVE_OK=1; grep(){ return 127; };')
+  [ "$_r" = "3" ] && ok "E3/$_sh 가드 표식 선설정 → 여전히 rc=3 (전역 상태가 권한이 아니다)" || bad "E3/$_sh 선설정으로 우회됨 rc=[$_r]"
+  # E4 — 자가검사는 PSA_STREAM 을 카나리아로 바꿔치기하므로 «진짜 패턴이 비었는지»를 못 본다 (반례 3)
+  _r=$(_erun "$_sh" "PSA_STREAM='';")
+  [ "$_r" = "3" ] && ok "E4/$_sh 빈 PSA_STREAM → rc=3 (자가검사 통과해도 실제 패턴을 본다)" || bad "E4/$_sh 빈 STREAM rc=[$_r], 3 이어야"
+  # ★컨트롤 — 위 셋의 통과가 «전부 3 을 내서» 인지 확인. 정상 입력은 1/0 이어야 한다
+  _r=$(_erun "$_sh" '')
+  [ "$_r" = "1" ] && ok "E5/$_sh ★컨트롤 정상 양성 → rc=1 (E2~E4 가 «항상 3» 이 아니다)" || bad "E5/$_sh 컨트롤 rc=[$_r], 1 이어야"
+done
+
+# ── H 레인 : 훅이 «계기 사망(3)» 과 «유출(1)» 을 가르는가 (2026-08-21) ────────────────────
+# 🟥 왜 [실행 확인]: 초판 훅은 `if ! … | psa_scan_tagged` 로 **비영을 전부 유출로 뭉갰다.**
+#    그래서 `PUBLIC_SURFACE_OK=1` 이 **계기 사망까지 «승인된 유출»로 통과**시켰다 — 비가역
+#    표면에서 가장 나쁜 조합이다. override 는 «알고 있는 언급»을 승인하는 것이지 «안 잰
+#    표면»을 승인하는 게 아니다. 되돌림 실측: 옛 훅 rc=0 · 새 훅 rc=1.
+_HOOK="$PWD/templates/.git-hooks/pre-commit"
+if [ ! -f "$_HOOK" ] || ! command -v git >/dev/null 2>&1; then
+  echo "  SKIP H 레인 (훅 또는 git 없음) — PASS 아님, 미검사"
+else
+  _hrun() { # $1=hook path → rc  (계기를 죽인 픽스처에서 PUBLIC_SURFACE_OK=1 로 커밋 시도)
+    local T; T=$(mktemp -d); git init -q "$T"
+    ( cd "$T"
+      git config user.email t@t; git config user.name t; git config commit.gpgsign false
+      mkdir -p .githooks .claude/rules tracks/_meta scripts
+      cp "$1" .githooks/pre-commit; chmod +x .githooks/pre-commit
+      git config core.hooksPath .githooks
+      cp "$OLDPWD/.claude/rules/.public-surface-patterns.defaults" .claude/rules/ 2>/dev/null
+      cp "$OLDPWD/.claude/rules/.public-surface-patterns" .claude/rules/ 2>/dev/null
+      cp "$OLDPWD/scripts/psa_scan_lib.sh" scripts/
+      # 계기를 죽인다 — 원인은 무엇이든 좋다. 중요한 건 «안 쟀다» 가 «깨끗» 으로 안 읽히는 것
+      sed -i.bak 's/^psa_require_live() {/psa_require_live() { return 1/' scripts/psa_scan_lib.sh && rm -f scripts/psa_scan_lib.sh.bak
+      printf 'x\n' > seed.md; git add seed.md; git commit -qm seed --no-verify >/dev/null 2>&1
+      printf 'just prose\n' > probe.md; git add probe.md
+      PUBLIC_SURFACE_OK=1 git commit -qm probe >/dev/null 2>&1; echo $? )
+    rm -rf "$T"
+  }
+  _h=$(_hrun "$_HOOK")
+  [ "$_h" = "1" ] && ok "H1 계기 사망 + PUBLIC_SURFACE_OK=1 → **차단**(override 가 미측정을 안 덮는다)" \
+                  || bad "H1 계기 사망이 override 로 통과했다 rc=[$_h] — 이 수리가 되돌아갔다"
+  # ★컨트롤 — 계기가 살아 있으면 같은 픽스처가 통과해야 한다. 아니면 H1 은 «항상 막힌다» 일 뿐이다
+  _hrun_live() {
+    local T; T=$(mktemp -d); git init -q "$T"
+    ( cd "$T"
+      git config user.email t@t; git config user.name t; git config commit.gpgsign false
+      mkdir -p .githooks .claude/rules tracks/_meta scripts
+      cp "$_HOOK" .githooks/pre-commit; chmod +x .githooks/pre-commit
+      git config core.hooksPath .githooks
+      cp "$OLDPWD/.claude/rules/.public-surface-patterns.defaults" .claude/rules/ 2>/dev/null
+      cp "$OLDPWD/.claude/rules/.public-surface-patterns" .claude/rules/ 2>/dev/null
+      cp "$OLDPWD/scripts/psa_scan_lib.sh" scripts/
+      printf 'x\n' > seed.md; git add seed.md; git commit -qm seed --no-verify >/dev/null 2>&1
+      printf 'just prose\n' > probe.md; git add probe.md
+      git commit -qm probe >/dev/null 2>&1; echo $? )
+    rm -rf "$T"
+  }
+  _hl=$(_hrun_live)
+  [ "$_hl" = "0" ] && ok "H2 ★컨트롤 계기 생존 + 깨끗한 내용 → 통과 (H1 이 «항상 막힘» 이 아니다)" \
+                   || bad "H2 컨트롤 실패 rc=[$_hl] — 픽스처가 다른 이유로 막힌다, H1 판정 무효"
+fi
+
 echo "[psa single-file lanes] pass=$pass fail=$fail"
 [ "$fail" -eq 0 ] || exit 1
-[ "$pass" -ge 26 ] || { echo "  ❌ INSTRUMENT ERROR — only $pass lanes ran; expected >=26"; exit 3; }
+# 🟥 플로어는 **조건부 레인을 반영한 값**이다. 33 = zsh 없는 러너의 기저(Z1~Z4 · E2~E5/zsh 스킵).
+#    zsh 가 있으면 +8. 상수 하나로 박으면 «스킵 = 계기 오류» 가 되어 러너를 거짓 적색으로 만든다.
+#    ⚠️ 그리고 이 수식이 말하는 진짜 사실을 잊지 마라: **zsh 축은 zsh 가 있는 곳에서만 검증된다.**
+#    CI 에 zsh 를 설치한 이유가 그것이고(.github/workflows/validate.yml), 그게 없으면 이 PR 이
+#    고친 결함의 축이 CI 에서 **한 번도** 안 돌아간다.
+_floor=$((33 + _cond_lanes))
+[ "$pass" -ge "$_floor" ] || { echo "  ❌ INSTRUMENT ERROR — only $pass lanes ran; expected >=$_floor (zsh 조건부 +$_cond_lanes)"; exit 3; }
 exit 0

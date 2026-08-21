@@ -69,6 +69,10 @@ echo "── L10 CONTROL — 상태값이 오염돼도 fail-open 하지 않는�
 cat > "$T/badlib.sh" <<'STUB'
 psa_load(){ PSA_DEFAULTS_OK=oops; PSA_BAD_ROWS=0; PSA_OVERRIDE_PRESENT=1; return 0; }
 psa_require_live(){ return 0; }
+# 🟥 **테스트 더블이다 — psa 회귀를 구조적으로 못 잡는다** (2026-08-21 배선 리뷰 S-2).
+# 이 레인의 대상은 outbound-guard 의 «질의 평탄화·override·로깅» 이지 스캐너가 아니다.
+# 단위 경계로서는 정당하지만 **«psa 전수 커버»에 세면 안 된다** — 실물이 아니라 더블을 잰다
+# ([[feedback_anchor_can_be_decorative]]). 스캐너 회귀는 test_psa_singlefile_lanes.sh 가 잡는다.
 psa_scan_tagged(){ cat >/dev/null; return 0; }
 STUB
 rc10=$(PSA_LIB_FILE="$T/badlib.sh" PSA_DEFAULTS_FILE="$T/defaults" PSA_OVERRIDE_FILE="$T/override" \

@@ -356,6 +356,7 @@ else
     fi
   else
     PSA_LEAK=0
+    PSA_DEAD=0
     # NUL-delimited (regression caught by the refactor's own cross-family review): the pre-refactor
     # loop read this list with `read -r -d ''`, and the rewrite dropped back to a line-oriented read.
     # `core.quotePath=false` stops git quoting NON-ASCII names, but a path holding a backslash or a
@@ -367,7 +368,11 @@ else
       added=$(git diff --cached -- "$f" 2>/dev/null | grep -E '^\+' | sed 's/^\+//' || true)
       [ -z "$added" ] && continue
       # Per-line pass, path-tagged so the LOW file allowlist applies.
-      if ! printf '%s\n' "$added" | sed "s|^|$f	|" | psa_scan_tagged; then PSA_LEAK=1; fi
+      # 🟥 rc 를 «비영» 으로 뭉개지 마라 (cross-family, 2026-08-21): 1=유출 · 3=계기 사망.
+      #    둘을 합치면 아래 PUBLIC_SURFACE_OK 가 **계기 사망까지 «승인된 유출»로 통과**시킨다.
+      _psa_rc=0
+      printf '%s\n' "$added" | sed "s|^|$f	|" | psa_scan_tagged || _psa_rc=$?
+      case "$_psa_rc" in 0) ;; 3) PSA_DEAD=1 ;; *) PSA_LEAK=1 ;; esac
       # Split-token backstop (pre-commit ONLY — this surface is a DIFF, so a literal can be wrapped
       # mid-word across two added lines and neither line matches). TIGHT-join, no separator, so
       # "fh-\nbe" becomes "fh-be". Accepted residual, verified not a missed fix: two whitespace-
@@ -375,15 +380,31 @@ else
       # PUBLIC_SURFACE_OK escape. A sentinel separator would close the fusion but RE-OPEN the split
       # catch, which is the more important case since real literals have no internal whitespace.
       joined=$(printf '%s' "$added" | tr -d '\n\r')
-      if ! printf '%s\t%s\n' "$f" "$joined" | psa_scan_tagged >/dev/null 2>&1; then
+      _psa_rc2=0
+      printf '%s\t%s\n' "$f" "$joined" | psa_scan_tagged >/dev/null 2>&1 || _psa_rc2=$?
+      [ "$_psa_rc2" = "3" ] && PSA_DEAD=1
+      if [ "$_psa_rc2" != "0" ] && [ "$_psa_rc2" != "3" ]; then
         # Only report if the per-line pass did not already flag this file, to avoid double-reporting.
         if ! printf '%s\n' "$added" | sed "s|^|$f	|" | psa_scan_tagged >/dev/null 2>&1; then :; else
+          # 🟥 **표시 전용 — 판정 경로가 아니다** (2026-08-21 배선 리뷰 R-1). 이 파이프는 비말단이라
+          #    `$?` 가 `sed` 것이다. 그래도 되는 이유는 도달 조건이 **이미 «유출 확정»** 이고 바로
+          #    다음 줄이 `PSA_LEAK=1` 을 무조건 세우기 때문이다. 판정은 위 `_psa_rc` 3분기가 쥔다.
+          #    ⚠️ 이 주석이 없으면 다음 사람이 판정 경로로 읽고 «고친다» — 그게 이 줄을 위험하게 만든다.
           printf '%s\t%s\n' "$f" "$joined" | psa_scan_tagged | sed 's/leak —/leak (line-split) —/'
           PSA_LEAK=1
         fi
       fi
     done < <(git -c core.quotePath=false diff --cached --name-only --no-renames --diff-filter=ACMR -z 2>/dev/null || true)
-    if [ "$PSA_LEAK" -eq 1 ]; then
+    # 🟥 계기 사망은 override 대상이 **아니다.** override 는 «알고 있는 언급»을 승인하는 것이지
+    #    «안 잰 표면»을 승인하는 게 아니다. 초판은 1 과 3 을 합쳐서, PUBLIC_SURFACE_OK=1 이면
+    #    스캐너가 죽은 상태도 통과했다 — 비가역 표면에서 가장 나쁜 조합이다.
+    if [ "${PSA_DEAD:-0}" -eq 1 ]; then
+      echo "  ⛔ INSTRUMENT DEAD — the public-surface scan did NOT run (rc=3). NOT SCANNED is not clean."
+      echo "     PUBLIC_SURFACE_OK does NOT cover this. Fix the scanner, then commit:"
+      echo "       · run under bash (zsh special vars can blank PATH inside the matcher)"
+      echo "       · confirm psa_load ran and PSA_STREAM is non-empty"
+      FAILED=1
+    elif [ "$PSA_LEAK" -eq 1 ]; then
       if [ "${PUBLIC_SURFACE_OK:-0}" = "1" ]; then
         echo "  ⚠️  public-surface hit(s) allowed by PUBLIC_SURFACE_OK=1 (conscious, reviewed intent)"
         echo "$(date +%Y-%m-%dT%H:%M:%S) PUBLIC_SURFACE_OK override — branch $BRANCH — review suppressed hit(s) above" \
