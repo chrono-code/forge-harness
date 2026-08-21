@@ -1051,6 +1051,263 @@ validate_thirdparty_leg() { # $1 = marker path
   return 0
 }
 
+SOUL_PRESENT_GRACE_DATE="2026-08-21"
+validate_soul_present_leg() { # $1 = marker path
+  # ── ①영혼 존재 검사 (2026-08-21) ──────────────────────────────────────────────
+  # CLAUDE.md §자기 대조 has mandated an ①영혼 line (성공 정의 / 절대 안 함) on every marker
+  # since 2026-08-09. MEASURED on the real corpus this day, with the instrument calibrated over
+  # EIGHT spellings and two controls (`axes-run` and `axis2-engine` = 98/98): of 98 post-grace
+  # markers, 61 carry it and **37 (37.8%) carry no form of it at all**.
+  #
+  # 🟥 The first pass of that same measurement grepped only the exact `①영혼` string and returned
+  # "92.9% missing". That would have been a false alarm ([[feedback_measured_scope_vs_claimed_scope]]
+  # — hand-enumerating spellings). The union + hand-verification of one negative sample is what
+  # makes the 37 real: `.axes_23_passed_feat_target-freeze-gate_2026-08-18.marker` was opened by
+  # eye — a panel-reviewed, 28-lane, controls-alive marker with every OTHER field filled, and no
+  # soul line in any spelling.
+  #
+  # 🟥 WHY THIS IS NOT THE THING THE ①영혼 COMMENT BELOW DECLINES. That comment refuses to check
+  # «was it written BEFORE designing» — unverifiable from a file, correctly excluded, and this
+  # lane does not check it. PRESENCE is a different question and is trivially decidable. The
+  # impossible question carried the possible one out on its ticket.
+  #
+  # SCOPE — channel, not judgment. Asserts the field EXISTS and is not vacuous. Says nothing about
+  # whether the success definition is good, was honoured, or was written in advance.
+  local m="$1" n body words
+  # Grace: only markers dated on/after the grace date are required to carry it. Retroactive
+  # enforcement would block every in-flight branch, and that over-block trains `--no-verify`,
+  # which would disarm the Destructive-Op gate living in this same hook.
+  local mdate
+  mdate=$(printf '%s' "$m" | sed -nE 's/.*_([0-9]{4}-[0-9]{2}-[0-9]{2})\.marker$/\1/p')
+  # 🟥 An unparseable date used to `return 0` — fail-OPEN. The hook itself builds this filename
+  # as `..._${TODAY}.marker`, so a name without a date is unexpected, not old. Unknown is not
+  # exempt ([[feedback_not_found_is_not_zero_family]]); it falls through to the presence check.
+  [ -z "$mdate" ] || { [ "$mdate" \< "$SOUL_PRESENT_GRACE_DATE" ] && return 0; }
+  # 🟥 agy (claims axis): the comment above says the MEASUREMENT swept eight spellings; this
+  # regex carries FOUR alternatives (①영혼 · a `soul:` key · 성공[ ]?정의 · 절대 안 함). Both are
+  # true and they are different instruments — but writing only the first invites reading the
+  # second's coverage off it ([[feedback_rule_misdescribes_its_own_machine]]). The four are the
+  # ones the corpus actually uses as a FIELD; the other four measured spellings appeared only
+  # inside prose, which this leg deliberately excludes.
+  # 🟥 The soul detector must NOT read the `soul-check:` line itself. codex's alignment fix widened
+  # the pattern and G8 flipped to PASS: `soul-check: reflected(…성공정의…)` matched as its own
+  # evidence — self-referential FP ([[feedback_lane_runner_self_referential_fp]]). The claim can
+  # never be its own ground. Same reason comment/prose lines are excluded: a marker that merely
+  # SAYS 성공 정의 in narration has not declared one.
+  # 🟥 A DECLARATION, not a MENTION. First real use (isolated clone, 2026-08-21) broke this on
+  # attempt #1: this very delta's marker says «change: 마커의 ①영혼 슬롯에 소비처가 0이던 것을…»
+  # in a prose FIELD VALUE, and the leg reported "①영혼 present: 10 words" for a marker that
+  # declares nothing. Excluding `#` and `soul-check:` was not enough — any field whose value
+  # discusses the axis satisfies a substring test, and markers ABOUT this axis always will.
+  # 39 lanes, codex (diff axis) and agy (claims axis) all missed it; running it once did not
+  # ([[feedback_adversarial_review_not_substitute_for_first_use]]).
+  # So the token must sit at LINE START as the key (a leading markdown `#` is allowed — the real
+  # corpus writes «## ①영혼 — 설계 전에 쓴 …» as a heading, and P7 flipped to BLOCK when the first
+  # version of this regex forbade it. The known-pair caught that in one run).
+  # Prose inside a field VALUE can no longer vote.
+  _soul_src=$(grep -E '^[[:space:]]*#*[[:space:]]*(①영혼|soul|절대 안 함|성공 ?정의)[[:space:]]*[:—-]' "$m" 2>/dev/null \
+              | grep -vE '^[[:space:]]*soul-check[[:space:]]*:')
+  n=$(printf '%s\n' "$_soul_src" | grep -cE '①영혼|^[[:space:]]*soul:|성공 ?정의|절대 안 함'); n=${n:-0}
+  if [ "$n" -eq 0 ]; then
+    echo "  ❌ FAIL — marker carries no ①영혼 line (성공 정의 / 절대 안 함)."
+    echo "     CLAUDE.md §자기 대조 requires it on every marker. Measured 2026-08-21: 37 of 98"
+    echo "     post-grace markers had none — including panel-reviewed ones with every other"
+    echo "     field filled. Nothing read the field, so nothing noticed."
+    echo "     Write, before the design: 성공 정의 = «…». 절대 안 함 = «…»."
+    echo "     🟥 This checks PRESENCE, not provenance. «Was it written first» stays unverifiable"
+    echo "     and unchecked — see the ①영혼 comment below. Presence is not that question."
+    return 1
+  fi
+  # Non-vacuity — counted in WORDS, not characters (Korean corpus; ${#} is locale-dependent).
+  body=$(awk '/①영혼|^[[:space:]]*soul:|성공 ?정의|절대 안 함/{if (!f) f=1}
+              f && /^[[:space:]]*$/{exit}
+              f && seen && /^[[:space:]]*[A-Za-z][A-Za-z0-9_-]*:/{exit}
+              f{print; seen=1}' <<< "$_soul_src")
+  words=$(printf '%s' "$body" | wc -w | tr -d ' '); words=${words:-0}
+  # 🟥 A DECLARED ABSENCE IS A VALUE, not a gap. CLAUDE.md §자기 대조 explicitly permits
+  # «없으면 `없음`», and the first version of this leg BLOCKED a bare `soul: 없음` (2 words) while
+  # PASSING a 33-word paragraph whose content was «I did not write one». That punishes the honest
+  # form and rewards padding — [[feedback_unreachable_done_when_trains_evasion]] exactly. Found by
+  # a peer session's first real use of this gate (forge-harness-59, 2026-08-21); self-detection 0,
+  # and 41 lanes + two cross-family panels had all passed.
+  # Same shape as the sibling axes' `UNKNOWN`: recorded, not silent, and never free of a record.
+  # 🟥 `$body` — this leg's own local. The first version read `$soul_body`, which is the OTHER
+  # leg's variable name; unset here, so the case never matched and the fix was inert while the
+  # lane suite stayed green ([[feedback_unedited_parts_of_my_own_file]] · half-fix).
+  _sbare=$(printf '%s' "$body" | sed -E 's/^[[:space:]]*#*[[:space:]]*(①영혼|soul|절대 안 함|성공 ?정의)[[:space:]]*[:—-]*//' | tr -d '[:space:].·]')
+  case "$_sbare" in
+    없음|없음—|none|None|NONE|n/a|N/A|-|해당없음)
+      echo "  ⚠️  ①영혼: 없음 — declared absent. Recorded, not silent."
+      echo "     🟥 A marker that declares no success definition cannot carry"
+      echo "     soul-check: reflected(...) — there is nothing to reflect against."
+      return 0 ;;
+  esac
+  if [ "$words" -lt 6 ]; then
+    echo "  ❌ FAIL — ①영혼 line is vacuous ($words word(s)). Name the success definition AND"
+    echo "     the 절대 안 함. A one-word placeholder trains the ritual this field exists to avoid."
+    return 1
+  fi
+  echo "  ✅ ①영혼 present: $words word(s)"
+  return 0
+}
+
+validate_soul_check_leg() { # $1 = marker path
+  # ── ⓒ 격리 그라운딩 — 사전 선언으로 확장 (2026-08-21) ─────────────────────────
+  # 🟥 NOT a seventh axis. Classified against `fh_three_layer_canon.md §1-a-2`, whose
+  # discriminator is explicit: «축은 «얼마나 적대적인가»로 갈리지 않는다. «무엇을 받았는가»로
+  # 갈린다.» ⓒ 격리 그라운딩 receives «저자가 쓴 문장 + 지금의 트리» — which is, character for
+  # character, what this leg receives (①영혼 is 저자가 쓴 문장; the delta is 지금의 트리).
+  # The tense differs (사전 선언 vs 사후 주장) and tense is a posture, not an axis, exactly as
+  # that section says adversarialness is («적대성은 자세지 축이 아니다»).
+  # Precedent, in the canon itself: the author attributed 5 findings to ⓓ and two independent
+  # cross-family classifiers reclassified 3 of them — «그 셋은 축이 필요했던 게 아니라 다른 축이
+  # 놓친 것이다». Minting ⓖ would have been that mistake a second time.
+  # ⇒ ⓒ's 「받는 것」 widens to «저자가 쓴 문장(사후 주장 및 **사전 선언**)», and `soul-check:`
+  # is ⓒ's own field in the same shape `standpoint:` is ⓑ's. The six axes stay six.
+  # WHY: CLAUDE.md §자기 대조 has required an `①영혼` line (성공 정의 / 절대 안 함) on every
+  # marker since 2026-08-09, and it is written 4/4 on the real corpus. NOTHING has ever read it
+  # back. Measured this day with a control: `crossfamily` = 21 hits in this hook, `①영혼`/`soul`
+  # = 0 lines of consuming code anywhere in templates/ or scripts/; `fh_4axis_gate.md` does not
+  # even name the field. That is the half-externalization shape — a slot with zero consumers,
+  # which always reports "done" because presence is doing the judging.
+  #
+  # 🟥 The reason this hook gave for NOT checking the field answers a DIFFERENT question. Line
+  # ~1058 declines it because «did you write it BEFORE designing» is unverifiable from a file —
+  # true, and correctly excluded. But «was it then SATISFIED» is a separate question that was
+  # never asked, and it rode out on the first one's ticket.
+  #
+  # SCOPE — channel, not judgment (CLAUDE.md §Mechanization Boundary). This lane asserts
+  # properties of the RECORD: single · closed enum · non-vacuous · not wearing another axis's
+  # tokens · **and consistent with the ①영혼 line in the same file**. It never asserts the
+  # read-back reached the right conclusion. A fabricated `reflected(...)` with a fluent reason
+  # PASSES — that hole is §4-b's (cross-family reads the marker), not this lane's, and it is
+  # named here rather than papered over.
+  local m="$1" line val reason n soul_n soul_body
+  n=$(grep -cE '^[[:space:]]*soul-check:' "$m" 2>/dev/null); n=${n:-0}
+  if [ "$n" -eq 0 ]; then
+    # 🟥 A near-miss key reads as "absent" and takes the grace exit — silent, and the author
+    # believes they recorded it. Absent is legal; MISSPELLED is not.
+    if grep -qE '^[[:space:]]*(soul[ _-]?check[[:space:]]*:|soulcheck:|soul-checks:)' "$m" 2>/dev/null \
+       && ! grep -qE '^[[:space:]]*soul-check:' "$m" 2>/dev/null; then
+      echo "  ❌ FAIL — a line looks like a soul-check key but is not exactly 'soul-check:'."
+      grep -nE '^[[:space:]]*(soul[ _-]?check[[:space:]]*:|soulcheck:|soul-checks:)' "$m" | sed 's/^/       /'
+      return 1
+    fi
+    return 0   # genuinely absent — adoption is incremental, same as thirdparty:
+  fi
+  if [ "$n" -gt 1 ]; then
+    echo "  ❌ FAIL — marker carries MORE THAN ONE 'soul-check:' line."
+    grep -nE '^[[:space:]]*soul-check:' "$m" | sed 's/^/       /'
+    echo "     Readers take the first, so an appended correction is silently shadowed."
+    return 1
+  fi
+  line=$(grep -m1 -E '^[[:space:]]*soul-check:' "$m" | sed -E 's/^[[:space:]]*soul-check:[[:space:]]*//')
+  val=$(printf '%s' "$line" | sed -E 's/\(.*$//' | sed -E 's/[[:space:]]*(—|--).*$//' | sed -E 's/[[:space:]]+$//')
+
+  # Cross-axis contamination — the other three axes ask different questions.
+  case "$val" in
+    tier1|tier1b|tier2|tier2b|tier3|panel|declined|checked|none-found|peer-review|\
+DEGRADED_SINGLE_FAMILY|DEGRADED_PANEL_UNUSED|DEGRADED_NO_TARGET_ACCESS|DEGRADED_NO_ACCESS)
+      echo "  ❌ FAIL — '$val' belongs to another axis, not soul-check:."
+      echo "     standpoint = whose repo was ground truth · crossfamily = which model family reviewed"
+      echo "     thirdparty = was this already done outside · soul-check = was THIS marker's own"
+      echo "     ①영혼 (성공 정의 / 절대 안 함) read back against the delta."
+      return 1 ;;
+  esac
+
+  # Is there an ①영혼 line in this same marker, and does it carry content?
+  # 🟥 The soul detector must NOT read the `soul-check:` line itself. codex's alignment fix widened
+  # the pattern and G8 flipped to PASS: `soul-check: reflected(…성공정의…)` matched as its own
+  # evidence — self-referential FP ([[feedback_lane_runner_self_referential_fp]]). The claim can
+  # never be its own ground. Same reason comment/prose lines are excluded: a marker that merely
+  # SAYS 성공 정의 in narration has not declared one.
+  # 🟥 A DECLARATION, not a MENTION. First real use (isolated clone, 2026-08-21) broke this on
+  # attempt #1: this very delta's marker says «change: 마커의 ①영혼 슬롯에 소비처가 0이던 것을…»
+  # in a prose FIELD VALUE, and the leg reported "①영혼 present: 10 words" for a marker that
+  # declares nothing. Excluding `#` and `soul-check:` was not enough — any field whose value
+  # discusses the axis satisfies a substring test, and markers ABOUT this axis always will.
+  # 39 lanes, codex (diff axis) and agy (claims axis) all missed it; running it once did not
+  # ([[feedback_adversarial_review_not_substitute_for_first_use]]).
+  # So the token must sit at LINE START as the key (a leading markdown `#` is allowed — the real
+  # corpus writes «## ①영혼 — 설계 전에 쓴 …» as a heading, and P7 flipped to BLOCK when the first
+  # version of this regex forbade it. The known-pair caught that in one run).
+  # Prose inside a field VALUE can no longer vote.
+  _soul_src=$(grep -E '^[[:space:]]*#*[[:space:]]*(①영혼|soul|절대 안 함|성공 ?정의)[[:space:]]*[:—-]' "$m" 2>/dev/null \
+              | grep -vE '^[[:space:]]*soul-check[[:space:]]*:')
+  soul_n=$(printf '%s\n' "$_soul_src" | grep -cE '①영혼|^[[:space:]]*soul:|성공 ?정의|절대 안 함'); soul_n=${soul_n:-0}
+  # Body = the ①영혼 block only: stop at a blank line OR at the next ASCII field key. An earlier
+  # draft ran the range to EOF, so a marker reading «①영혼: 없음» followed by any other field was
+  # scored as having content — the fixture G9 caught it.
+  # 🟥 Counted in WORDS, not characters. `${#var}` on Korean text is bytes-or-chars depending on
+  # locale, and this corpus is Korean — a char threshold silently changes meaning per machine
+  # ⚠️ Honest caveat, measured: `wc -w` is NOT a human word count on Korean either («①영혼: 완주»
+  # reports 3, not 2). It is stable per-machine and monotonic, which is all a floor needs — but
+  # every threshold here was calibrated by RUNNING it, never by reasoning about word counts.
+  # ([[feedback_instrument_vs_target_and_budget]], 단위 혼동). Word count is locale-independent.
+  soul_body=$(awk '/①영혼|^[[:space:]]*soul:|성공 ?정의|절대 안 함/{if (!f) f=1}
+                   f && /^[[:space:]]*$/{exit}
+                   f && seen && /^[[:space:]]*[A-Za-z][A-Za-z0-9_-]*:/{exit}
+                   f{print; seen=1}' "$m" 2>/dev/null \
+              | sed -E '1s/^[[:space:]]*(①영혼|soul)[^[:alnum:]«]*//')
+  soul_words=$(printf '%s' "$soul_body" | wc -w | tr -d ' ')
+  soul_words=${soul_words:-0}
+
+  case "$val" in
+    UNKNOWN)
+      echo "  ⚠️  soul-check leg: UNKNOWN — 안 봤다. Recorded, not silent." ;;
+    reflected|violated|DEGRADED_NOT_RUN|DEGRADED_NO_SOUL|not-applicable)
+      case "$line" in *\(*) ;; *)
+        echo "  ❌ FAIL — '$val' without a (<grounds>) parenthetical."
+        echo "     A read-back that names neither WHAT read it nor WHAT came back is"
+        echo "     indistinguishable from not running it."
+        return 1 ;;
+      esac
+      # 🟥 Measure INSIDE the parens. The old form took everything after the first `(`, so
+      # `reflected() — <long tail>` passed on text that was never grounds (codex, diff axis).
+      reason=$(printf '%s' "$line" | sed -E 's/^[^(]*\(//; s/\)[^)]*$//')
+      # 🟥 agy (claims axis, 2026-08-21): this leg's own comment above condemns `${#var}` on
+      # Korean text and then used `${#reason}` twelve lines later — [[feedback_citing_a_rule_is_not_obeying_it]],
+      # verbatim. Inherited from the sibling legs, which does not excuse it here. Word count.
+      _rwords=$(printf '%s' "$reason" | wc -w | tr -d ' '); _rwords=${_rwords:-0}
+      if [ "$_rwords" -lt 3 ]; then
+        echo "  ❌ FAIL — '$val(...)' grounds are vacuous. Name what read the ①영혼 line back,"
+        echo "     against what, and what came back."
+        return 1
+      fi
+      # ── the consistency check that makes this lane non-decorative ──────────────
+      # Two fields in ONE record, mechanically decidable. Not a conclusion.
+      case "$val" in
+        reflected|violated)
+          if [ "$soul_n" -eq 0 ] || [ "$soul_words" -lt 6 ]; then
+            echo "  ❌ FAIL — '$val' claims the ①영혼 line was read back, but this marker has"
+            echo "     no ①영혼 line with content (found: $soul_n line(s), $soul_words word(s))."
+            echo "     🟥 Reflecting against an absent success-definition is the exact"
+            echo "     half-externalization this lane exists to catch. Write ①영혼 first,"
+            echo "     or record DEGRADED_NO_SOUL(<why>)."
+            return 1
+          fi ;;
+        DEGRADED_NO_SOUL)
+          if [ "$soul_n" -gt 0 ] && [ "$soul_words" -ge 6 ]; then
+            echo "  ❌ FAIL — 'DEGRADED_NO_SOUL' says there is nothing to reflect against, but"
+            echo "     this marker DOES carry an ①영혼 line with content ($soul_n line(s))."
+            echo "     A recorded absence contradicted by the same record is worse than silence."
+            return 1
+          fi ;;
+      esac
+      echo "  ✅ soul-check leg: $val" ;;
+    *)
+      echo "  ❌ FAIL — '$val' is not a member of the soul-check: enum."
+      echo "     Closed enum: reflected(<what came back — 어긋남 여부. NOT just who reviewed:
+     that is crossfamily's column, and duplicating it double-counts one event>) ·"
+      echo "     violated(<which half broke — 성공정의 미달 / 절대안함 위반 — and what was done>) ·"
+      echo "     DEGRADED_NOT_RUN(<why>) · DEGRADED_NO_SOUL(<why>) · UNKNOWN · not-applicable(<why>)"
+      echo "     🟥 'violated' is a legal value ON PURPOSE. A recorded violation is worth more"
+      echo "     than a hidden one, and a lane that only admits success trains erasure."
+      return 1 ;;
+  esac
+  return 0
+}
+
 
 
 # ── 4축 자기 대조 — «어느 축을 돌렸고 어느 축을 안 돌렸나» 형식 검사 ────────────
@@ -1382,7 +1639,17 @@ if [ "$GATE_MODE" = "full" ]; then
     if grep -qE '^[[:space:]]*floor-status:[[:space:]]*(sonnet-floor|below-floor)' "$MARKER"; then
       validate_defense_leg "$MARKER" || _DEFENSE_OK=0
     fi
-    if [ "$_DEFENSE_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER"; then
+    # ⓒ 사전 선언 (①영혼) — scope is EVERY marker (CLAUDE.md §자기 대조 mandates ①영혼 on all of them), so it
+    # belongs HERE and not in the load-bearing block below.
+    # 🟥 It was first wired there, exactly like `validate_defense_leg` above — the real condition
+    # would have been "load-bearing AND has a marker" while the doctrine says every marker. The
+    # note recording that precedent is ~8 lines above this one and was in the file at the time;
+    # the same defect was made one day later anyway ([[feedback_unedited_parts_of_my_own_file]]).
+    # Caught by the operator asking «배선 완료되었나?», not by a lane and not by cross-family.
+    _SOUL_OK=1
+    validate_soul_present_leg "$MARKER" || _SOUL_OK=0
+    validate_soul_check_leg "$MARKER" || _SOUL_OK=0
+    if [ "$_DEFENSE_OK" -eq 1 ] && [ "$_SOUL_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER"; then
       echo "  ✅ PASS (marker confirmed + floor/axes fields valid:"
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
     else
