@@ -18,24 +18,44 @@
 </p>
 
 <p align="center">
+  <b>有需要就交给它。同一个请求反复出现时，它会主动提议把那件事本身做出来。</b>
+</p>
+
+<p align="center">
+  你大概已经在对 Claude Code 反复说同样的话：要跑的检查、要守的规则、一次变更该有的样子。<br>
+  <b>forge-harness 把这些变成可复用的东西</b>：住在你仓库里、会自己触发的技能、闸门和 agent。<br>
+  技能刻意保持通用，在使用过程中按你的场景当场锻造。
+  <b>当同一种形状反复回来，它就提议出货</b> —— 作为独立技能，或独立框架。
+</p>
+
+---
+
+## 两分钟就能试 —— 你不必读完这份文档
+
+```bash
+claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
+claude plugin install -s user fh-meta@forge-harness
+git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
+cd ~/projects/forge-harness && claude
+```
+
+**然后输入 `hi`。** 会出现一个带编号的菜单，之后由工具引导你：选一个入口，回答几个问题，
+它会替你运行安装向导。这条线以下是需要时再查的参考资料，而不是开始前的作业。
+
+**它放大什么**：尝试的次数。试错从你身上移开，并行运行。
+**它不放大什么**：模型的天花板。框架只把模型抬到它自己的天花板，不会更高。
+**如何验证**：它公开自己的评级。五个身份，如实记录在每一次
+[发布](https://github.com/chrono-meta/forge-harness/releases)中。未变绿的那些，会指名说出还缺哪一次真实运行。
+
+---
+
+<p align="center">
+  <img src="docs/pillars.svg" alt="FORK - ADAPT - COLLABORATE - EMPOWER" width="680">
+</p>
+
+<p align="center">
+  <b>质量是杠杆，速度是结果。</b> <i>Fork 它。改名。让它成为你的。</i><br>
   <sub>如果这对你有用，⭐ 一下能帮助更多人发现它。</sub>
-</p>
-
-<p align="center">
-  <b>锻造你的 Claude Code 项目 —— 让它通过，它会更快出炉。</b><br>
-  一个实践者的 <b>元框架 (meta-harness)</b> —— 你的项目框架们所栖居的星系。<br>它抬高每个项目的 <b>下限 (floor)</b>（把设置框架化）和 <b>上限 (ceiling)</b>（加速工作），再把这些收益在你的整个项目组合中复利累积。
-</p>
-
-<p align="center">
-  <b>品质是杠杆，速度是结果。</b> 每一次变更都要挣得通过门禁的资格 ——<br>对抗 (adversarial) · 幽灵 (phantom) · 回归 (regression) —— 而 <i>正是这一点</i>让下一次变更更快。
-</p>
-
-<p align="center">
-  <i>Fork 它。改名。让它成为你的。</i>
-</p>
-
-<p align="center">
-  <img src="docs/pillars.svg" alt="FORK · ADAPT · COLLABORATE · EMPOWER" width="680">
 </p>
 
 <p align="center">

@@ -18,24 +18,48 @@
 </p>
 
 <p align="center">
-  <sub>도움이 됐다면 ⭐ 하나가 다른 사람이 찾는 데 도움이 됩니다.</sub>
+  <b>필요한 걸 시키세요. 같은 요청이 반복되면, 그걸 만들어 드리겠다고 먼저 제안합니다.</b>
 </p>
 
 <p align="center">
-  <b>당신의 Claude Code 프로젝트를 벼려서 — 통과시키면, 더 빠르게 나옵니다.</b><br>
-  실무자의 <b>메타하네스</b> — 당신의 프로젝트 하네스들이 사는 은하계.<br>각 프로젝트의 <b>바닥(floor)</b>을 올리고(설정을 하네스화) <b>천장(ceiling)</b>을 올린 뒤(작업을 가속), 그 이득을 포트폴리오 전체에 복리로 쌓습니다.
+  이미 Claude Code 에 같은 말을 반복하고 계실 겁니다. 돌려야 할 검사, 지켜야 할 규칙,
+  변경이 갖춰야 할 모양.<br>
+  <b>forge-harness 는 그걸 재사용 가능한 것으로 바꿉니다.</b> 저장소 안에 살면서 스스로 발화하는
+  스킬과 게이트와 에이전트로요.<br>
+  스킬은 일부러 범용으로 두고 쓰시는 동안 사례에 맞춰 벼립니다.
+  <b>같은 모양이 자꾸 돌아오면 그때 출하를 제안합니다</b> — 별도 스킬로, 또는 별도 하네스로.
+</p>
+
+---
+
+## 2분이면 됩니다 — 이 문서를 다 읽지 않으셔도 됩니다
+
+```bash
+claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
+claude plugin install -s user fh-meta@forge-harness
+git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
+cd ~/projects/forge-harness && claude
+```
+
+**그리고 `hi` 라고 입력하세요.** 번호가 붙은 메뉴가 뜨고 거기서부터는 도구가 안내합니다.
+문을 고르고 몇 가지에 답하면 설치 마법사까지 대신 돌려 줍니다. 이 아래는 필요할 때 찾아보는
+참고 자료이고, 시작하기 전에 읽어야 하는 숙제가 아닙니다.
+
+**증폭하는 것**: 시도 횟수입니다. 시행착오가 당신에게서 떨어져 나가 병렬로 돕니다.
+**증폭하지 않는 것**: 모델의 천장입니다. 하네스는 모델을 자기 천장까지 끌어올릴 뿐입니다.
+**확인하는 법**: 자기 등급을 공개합니다. 다섯 정체성을 정직하게,
+[릴리스](https://github.com/chrono-meta/forge-harness/releases)마다 적습니다. 초록이 아닌 칸은
+아직 없는 실제 실행이 무엇인지 이름으로 말합니다.
+
+---
+
+<p align="center">
+  <img src="docs/pillars.svg" alt="FORK - ADAPT - COLLABORATE - EMPOWER" width="680">
 </p>
 
 <p align="center">
-  <b>품질이 지렛대이고, 속도는 그 결과입니다.</b> 모든 변경은 게이트를 통과해 제 값을 증명합니다 —<br>적대(adversarial) · 팬텀(phantom) · 회귀(regression) — 그리고 <i>그것</i>이 다음 변경을 더 빠르게 만듭니다.
-</p>
-
-<p align="center">
-  <i>포크하세요. 이름을 바꾸세요. 당신의 것으로 만드세요.</i>
-</p>
-
-<p align="center">
-  <img src="docs/pillars.svg" alt="FORK · ADAPT · COLLABORATE · EMPOWER" width="680">
+  <b>품질이 지렛대이고 속도는 그 결과입니다.</b> <i>포크하세요. 이름을 바꾸세요. 당신의 것으로 만드세요.</i><br>
+  <sub>도움이 됐다면 ⭐ 하나가 다른 분이 찾는 데 도움이 됩니다.</sub>
 </p>
 
 <p align="center">

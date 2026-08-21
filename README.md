@@ -18,24 +18,48 @@
 </p>
 
 <p align="center">
-  <sub>If this is useful, a ⭐ helps others find it.</sub>
+  <b>Ask it for things. When the asking repeats, it offers to build you the thing.</b>
 </p>
 
 <p align="center">
-  <b>Forge your Claude Code projects — pass them through, they come out faster.</b><br>
-  A practitioner's <b>meta-harness</b> — the galaxy your project harnesses live in.<br>It raises each project's <b>floor</b> (harness-ify the setup) and <b>ceiling</b> (accelerate the work), then compounds the gains across your whole portfolio.
+  You already tell Claude Code the same things over and over — the checks to run, the rules to hold,
+  the shape a change has to have.<br>
+  <b>forge-harness turns that into something reusable</b>: skills, gates and agents that live in your
+  repo and fire on their own.<br>
+  Its skills stay general on purpose and get shaped to your case as you go.
+  <b>When one shape keeps coming back, it offers to ship it</b> as its own skill, or its own harness.
+</p>
+
+---
+
+## Try it in two minutes — you do not have to read this document
+
+```bash
+claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
+claude plugin install -s user fh-meta@forge-harness
+git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
+cd ~/projects/forge-harness && claude
+```
+
+**Then type `hi`.** A numbered menu appears and takes it from there — pick a door, answer a couple of
+questions, and it runs the install wizard for you. Everything below this line is reference for when you
+want it, not homework before you start.
+
+**What it amplifies** — the number of attempts; trial and error moves off you and runs in parallel.
+**What it does not** — the model's ceiling. A harness lifts a model to its own ceiling, not past it.
+**How you can check** — it grades itself in public, five identities, in every
+[release](https://github.com/chrono-meta/forge-harness/releases); the ones that are not green name
+the real run still missing.
+
+---
+
+<p align="center">
+  <img src="docs/pillars.svg" alt="FORK - ADAPT - COLLABORATE - EMPOWER" width="680">
 </p>
 
 <p align="center">
-  <b>Quality is the lever; speed is the result.</b> Every change earns its way through the gates —<br>adversarial · phantom · regression — and <i>that</i> is what makes the next change faster.
-</p>
-
-<p align="center">
-  <i>Fork it. Rename it. Make it yours.</i>
-</p>
-
-<p align="center">
-  <img src="docs/pillars.svg" alt="FORK · ADAPT · COLLABORATE · EMPOWER" width="680">
+  <b>Quality is the lever; speed is the result.</b> <i>Fork it. Rename it. Make it yours.</i><br>
+  <sub>If this is useful, a star helps others find it.</sub>
 </p>
 
 <p align="center">
@@ -59,7 +83,7 @@
 
 ---
 
-## Get started in 2 minutes
+## Requirements
 
 **Prerequisite**: Claude Code CLI — verify with `claude --version`
 
@@ -76,11 +100,8 @@ the single place a new machine can learn it. That is an improvement over nowhere
 python3 -m pip install --user pyyaml     # verify:  python3 -c 'import yaml; print(yaml.__version__)'
 ```
 
-Why this is called out rather than left implicit: a release once shipped green from a session whose
-`python3` happened to resolve to an **unrelated project's virtualenv** that had PyYAML, while the
-machine's own `python3` did not. The gate was never bypassed — it passed, and the pass simply was not
-portable. Every verdict from that gate now prints the interpreter and PyYAML version it used, so a
-green states what produced it instead of leaving the reader to assume.
+Every verdict from that gate prints the interpreter and PyYAML version it used, so a green
+states what produced it.
 
 </details>
 
@@ -148,19 +169,19 @@ misread the project's status, so they are named here rather than only in the can
 
 | Counter | Where you see it | What it means |
 |---|---|---|
-| **Package version** (currently **2.6.0**) | npm, the plugin manifests, `git tag v2.x` | *what you install.* Ordinary release numbering: fixes → patch, new assets and gate lanes → minor, a capability **class** appearing or the thing being rebuilt → major |
-| **Identity-maturity release** (currently **v0.3.0**) | the GitHub **Releases** page | *how far along the harness is.* `0.x` carries an incomplete-but-honest status **by design**; **the all-green ship is reserved for `identity-v1.0.0`** — every one of the five identities at 🟢, none 🔵/🟡/🔴 |
+| **Package version** (currently **2.7.0**) | npm, the plugin manifests, `git tag v2.x` | *what you install.* Ordinary release numbering: fixes → patch, new assets and gate lanes → minor, a capability **class** appearing or the thing being rebuilt → major |
+| **Identity-maturity release** (currently **identity-v0.4.0**) | the GitHub **Releases** page | *how far along the harness is.* `0.x` carries an incomplete-but-honest status **by design**; **the all-green ship is reserved for `identity-v1.0.0`** — every one of the five identities at 🟢, none 🔵/🟡/🔴 |
 
-🟥 **A high package number does not mean maturity.** `2.6.0` is not "ahead of" `v0.3.0`; they are not on
+🟥 **A high package number does not mean maturity.** `2.7.0` is not "ahead of" `identity-v0.4.0`; they are not on
 the same scale. The maturity track is deliberately allowed to sit at `0.x` while the package ships and
 improves, because the thing `0.x` refuses to do is **lie** — it says out loud that not every identity has
 cleared its bar yet, and each release names exactly which real run is still missing.
 
-⚠️ **Known wart, stated rather than hidden**: today both counters live in the same `vX.Y.Z` git-tag
-namespace, and only the maturity track has GitHub *Release* objects — so the Releases page shows
-`v0.3.0` as "Latest" while the shipped package is `2.6.0`. Two layers under one name is a defect this
-project keeps finding in its own gates; here it is in its own version numbers. Being fixed by giving the
-maturity track its own `identity-v*` prefix going forward. 🟥 **Not** by also publishing the package
+⚠️ **Fixed, and the wart is left on the record**: the two counters used to share one `vX.Y.Z` git-tag
+namespace, and only the maturity track had GitHub *Release* objects — so the Releases page showed
+`v0.3.0` as "Latest" while the shipped package was `2.6.0`. Two layers under one name is a defect this
+project keeps finding in its own gates; here it was in its own version numbers. The maturity track now
+carries its own `identity-v*` prefix (first such release: `identity-v0.4.0`, 2026-08-21). 🟥 **Not** by also publishing the package
 track here — that was tried on 2026-08-21 and reverted the same hour: GitHub gives exactly **one**
 "Latest" badge, so two tracks on one page compete for it, and whichever holds it defines what the repo
 says it is. Putting the package number there pushed the maturity claim — the honest core — below it.
