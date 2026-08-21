@@ -18,24 +18,48 @@
 </p>
 
 <p align="center">
+  <b>やりたいことを頼んでください。同じ依頼が繰り返されたら、それ自体を作りましょうと先に提案します。</b>
+</p>
+
+<p align="center">
+  すでに Claude Code へ同じことを繰り返し伝えているはずです。走らせる検査、守るべきルール、
+  変更が満たすべき形。<br>
+  <b>forge-harness はそれを再利用できるものに変えます。</b> リポジトリの中に住み、自分から発火する
+  スキル・ゲート・エージェントとして。<br>
+  スキルはあえて汎用のままにし、使ううちにあなたの事例へ合わせて鍛えます。
+  <b>同じ形が何度も戻ってきたら、そこで出荷を提案します</b> — 独立したスキルとして、または独立したハーネスとして。
+</p>
+
+---
+
+## 2分で試せます — この文書を読み切る必要はありません
+
+```bash
+claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
+claude plugin install -s user fh-meta@forge-harness
+git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
+cd ~/projects/forge-harness && claude
+```
+
+**そして `hi` と入力してください。** 番号付きのメニューが出て、そこからはツールが案内します。
+入口を選んでいくつか答えれば、インストールウィザードまで代わりに実行します。この線から下は
+必要になったときに見る参考資料であり、始める前の宿題ではありません。
+
+**増幅するもの**: 試行の回数です。試行錯誤があなたから離れ、並列で回ります。
+**増幅しないもの**: モデルの天井です。ハーネスはモデルを自分の天井まで引き上げるだけです。
+**確かめ方**: 自分の評価を公開します。五つのアイデンティティを正直に、
+[リリース](https://github.com/chrono-meta/forge-harness/releases)ごとに記します。緑でない欄は、
+まだ足りていない実際の実行が何かを名前で述べます。
+
+---
+
+<p align="center">
+  <img src="docs/pillars.svg" alt="FORK - ADAPT - COLLABORATE - EMPOWER" width="680">
+</p>
+
+<p align="center">
+  <b>品質が梃子であり、速度はその結果です。</b> <i>フォークしてください。名前を変えてください。あなたのものにしてください。</i><br>
   <sub>役に立ったら ⭐ が他の人の発見につながります。</sub>
-</p>
-
-<p align="center">
-  <b>あなたの Claude Code プロジェクトを鍛えて — 通せば、より速く仕上がります。</b><br>
-  実務者の<b>メタハーネス (meta-harness)</b> — あなたのプロジェクトハーネスたちが暮らす銀河。<br>各プロジェクトの<b>床 (floor)</b> を上げ（設定をハーネス化）、<b>天井 (ceiling)</b> を上げた上で（作業を加速）、その利得をポートフォリオ全体に複利で積み上げます。
-</p>
-
-<p align="center">
-  <b>品質が梃子であり、速度はその結果です。</b> あらゆる変更はゲートを通って自らの値打ちを証明します —<br>敵対的 (adversarial) · ファントム (phantom) · 回帰 (regression) — そして<i>それ</i>が次の変更をより速くします。
-</p>
-
-<p align="center">
-  <i>フォークしてください。名前を変えてください。あなたのものにしてください。</i>
-</p>
-
-<p align="center">
-  <img src="docs/pillars.svg" alt="FORK · ADAPT · COLLABORATE · EMPOWER" width="680">
 </p>
 
 <p align="center">
