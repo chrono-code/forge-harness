@@ -2393,3 +2393,15 @@
   finding: "🟥 **codex HIGH 3 · MED 1 성립, LOW 2 정당 기각 — 자력 적발 0.** HIGH#1 비인용 확장의 글로빙·단어분리로 공백 경로면 제외가 빗나감 = **fail-open, 옛 거짓 양성 재발**. HIGH#2 `./` 접두가 git 경로와 불일치하는데 러너 `-f` 게이트는 실재만 보므로 **무신호로** 실패. LOW#4·#5 는 불성립이나 **하위지적 둘이 유효**했다(조건부 export 가 부모 환경을 상속 · 레인 b 가 `not10` 만 요구해 «안 죽었다» 만 보증). HIGH#6 은 채택 안 함(판정 의미론 변경이라 분리). ★ Explore 는 **카드가 물려준 미결을 무효화**했다 — 「screener 잔여가 명시 잔여냐 보류 사유냐」는 §④ promotion criteria(08-17)가 이미 **재분류**해 뒀다(계기가 재는 것은 «조직 전파»가 아니라 «허브 내부 착지»라 그 조건을 100% 닫아도 ④ 명제는 한 글자도 안 재진다). 즉 결정할 것이 아니라 틀린 이지선다였다."
   note: "🟥 **사이드카 캘리브레이션이 필요했다.** 첫 두 codex 런이 exit 0 인데 출력이 프롬프트 에코에서 끊겼다(바이트 동일 2,123 = 비결정 아님). 「지적 없음」으로 읽지 않고 known-answer 컨트롤(2+2)을 돌려 **사이드카는 살아 있음**을 확인, 변수 하나씩 갈라 원인이 **긴 프롬프트의 2분 초과**임을 특정했다. exit 0 을 통과로 읽었으면 crossfamily 를 거짓으로 적었을 자리다. ⚠️ Explore 는 요청 밖 항목(P4-1 선행조건 미충족·프로덕션 호출부 0개·§Gate consequence 6행 중 4행 비일관)까지 냈고 그게 판정의 하중이 됐다."
   cost: "Explore 60,857 tokens (subagent_tokens) · codex ×2 는 CLI 라 미노출 = UNMEASURED · 거버너 = UNMEASURED. 🟥 합계 안 적는다"
+
+- date: 2026-08-21
+  agent: general-purpose ×4 (L3 drift · L4 connection · L5 pattern · residency ledger)
+  model: opus (orchestrator + all four legs)
+  caller: FH hub session 27a9ba28 — /harness-doctor 정기 진단 (직전 실행 2026-07-20, 캐던스 30일 초과)
+  purpose: "harness-doctor L3~L5 + 메타하네스 residency ledger 를 네 렌즈로 병렬 분해. 거버너는 L1·L1-E·푸터프린트·pointer-illusion·SKILL 크기를 직접 측정하고, 렌즈끼리 파일이 안 겹치게 스코프를 갈랐다."
+  prompt_summary: "각 레그에 계기 규율을 명시 주입 — ① known-positive/known-negative 쌍으로 계기 판별력 먼저 검정하고 못 가르면 UNCALIBRATED ② 카운트마다 손검증 1건 ③ not found = UNMEASURED, 0 아님 ④ tier 확정 금지, 후보만. L5 에는 「기록하지 않는 소스를 grep 해서 0회를 내면 그건 측정이 아니라 생성」을 명시."
+  reps: 1
+  outcome: pending
+  finding: "미착지 — 네 레그 진행 중. 거버너 자체 측정분은 확정: always-loaded 144,205자(M-tier, 임계 80k) · memory-index 25,472자(S-tier, 임계 10k)이며 **로더 하드리밋 초과로 엔트리 5건이 이 세션에 실제로 미로드**(손검증). ★ pointer-illusion 「2건」은 **둘 다 오탐**이었고 원인은 harness-doctor SKILL.md 가 들고 있는 정규식 자신 — `templates/` 접두를 떨어뜨리고 `{project}/{domain}/` 자리표시자를 실경로로 읽는다. 손검증 안 했으면 M-tier 두 건을 지어낼 자리였다."
+  note: "운영자 상시 요청(CLAUDE.local.md, lease→2026-11-09, scope=서브에이전트 디스패치)에 따라 건별 승인 없이 디스패치. 워크플로/deep-research 는 범위 밖이라 안 씀. 단위는 문자(chars)로 통일 — 로더 경고 24.9KB 가 25,472자/1024 와 정확히 일치해 로더도 문자 기준임을 확인(바이트로 쟀으면 40,657 로 과대계상)."
+  cost: "UNMEASURED (완료 알림의 subagent_tokens 로 마감 시 갱신) · 거버너 = UNMEASURED. 합계 안 적는다"

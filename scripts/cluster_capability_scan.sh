@@ -76,6 +76,31 @@ CAP_SUBDIR=".claude/capabilities"
 # 테스트·다른 배치를 위해 `FH_CLUSTER_ROOTS`(콜론 구분 절대경로 목록)로 통째 대체할 수 있다.
 PROJECTS_HOME="${FH_PROJECTS_HOME:-$HOME/projects}"
 
+# track 이름 → 레포 루트 해석은 scripts/fh_track_resolve.sh 가 단일 소스다 (2026-08-21 F-1).
+# 🟥 **이 파일이 그 라이브러리의 원본이다** — 닫힌 별칭 3종 + 별칭 표면화 + 모호거부는 여기서
+#    뽑아낸 것이고, 갈라져 있던 나머지 두 소비자(fh_session_load.sh · field_canon_preload.sh)가
+#    같은 벌을 쓰게 되는 것이 이 배선의 전부다. 이 파일의 동작은 바뀌지 않는다.
+# 라이브러리가 없으면 **수리 이전 동작**(= 아래 인라인 구현)으로 강등한다 — 다른 두 소비자와
+# 같은 형태다. 새 실패 모드를 만들지 않는다.
+_FH_TRLIB="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/fh_track_resolve.sh"
+# shellcheck source=scripts/fh_track_resolve.sh
+[ -f "$_FH_TRLIB" ] && . "$_FH_TRLIB"
+type fh_resolve_track_root >/dev/null 2>&1 || fh_resolve_track_root() {
+  local n="$1" root="$2" c hits="" first=""
+  for c in "$n" "$n-dev" "$(printf '%s' "$n" | tr '_' '-')"; do
+    [ -d "$root/$c" ] || continue
+    case " $hits " in *" $c "*) continue ;; esac
+    hits="$hits $c"; [ -n "$first" ] || first="$c"
+  done
+  local nh; nh=$(printf '%s' "$hits" | wc -w | tr -d ' ')
+  if [ "${nh:-0}" -gt 1 ]; then
+    printf '%s|AMBIGUOUS:%s' "$root/$n" "$(printf '%s' "$hits" | sed 's/^ //;s/ /,/g')"; return 0
+  fi
+  [ -n "$first" ] || { printf '%s|UNRESOLVED' "$root/$n"; return 0; }
+  [ "$first" = "$n" ] && { printf '%s|' "$root/$n"; return 0; }
+  printf '%s|alias:%s' "$root/$first" "$first"
+}
+
 _die() { printf '❌ %s\n' "$1" >&2; exit "$RC_HARNESS"; }
 
 # ── `.cap` 파일 열거 — **단 하나의 소스** ────────────────────────────────────
@@ -150,20 +175,24 @@ _enumerate_harnesses() {
 # 🟥 그래도 «조용히 추측» 하지는 않는다. 별칭은 **닫힌 목록**이고, 맞은 별칭은
 #    `_ALIAS_USED` 로 표면화된다. 여러 개가 동시에 맞으면 **고르지 않고 모호로 낸다** —
 #    둘 중 하나를 조용히 고르는 것이 이 파일이 반대하는 그 접힘이다.
+# 🟥 이 함수는 이제 **어댑터**다 — 해석은 `fh_resolve_track_root`(단일 소스)가 하고, 여기서는
+#    이 파일의 **표시 계약**으로 옮긴다. 두 계약이 미묘하게 다르기 때문에 조용히 통과시키지
+#    않는다:
+#      라이브러리  `alias:<c>`   ↔ 여기  `경로 별칭 — alias:<c>`  (OK 행의 DETAIL 로 직접 출력됨)
+#      라이브러리  `UNRESOLVED`  ↔ 여기  빈 문자열              (부재는 `_harness_status` 가
+#                                                              UNREACHABLE 로 판정한다)
+#    `AMBIGUOUS:<...>` 는 양쪽이 같은 표기이고 `_harness_status` 의 `AMBIGUOUS:*` 분기가
+#    그대로 받는다. 술어는 `dir` — 이 스캐너는 «디렉토리가 있나» 를 묻는다(git 레포 여부가
+#    아니다). 그 차이는 의도이지 갈라짐이 아니다(라이브러리 헤더 참조).
 _resolve_root() {  # $1=track 이름 → "<root>|<alias-note>"
-  local n="$1" c hits="" first="" note=""
-  for c in "$n" "$n-dev" "$(printf '%s' "$n" | tr '_' '-')"; do
-    [ -d "$PROJECTS_HOME/$c" ] || continue
-    case " $hits " in *" $c "*) continue ;; esac
-    hits="$hits $c"; [ -n "$first" ] || first="$c"
-  done
-  local nh; nh=$(printf '%s' "$hits" | wc -w | tr -d ' ')
-  if [ "${nh:-0}" -gt 1 ]; then
-    printf '%s|AMBIGUOUS:%s' "$PROJECTS_HOME/$n" "$(printf '%s' "$hits" | sed 's/^ //;s/ /,/g')"
-    return
-  fi
-  [ -n "$first" ] && [ "$first" != "$n" ] && note="경로 별칭 — alias:$first"
-  printf '%s|%s' "$PROJECTS_HOME/${first:-$n}" "$note"
+  local rr note
+  rr="$(fh_resolve_track_root "$1" "$PROJECTS_HOME" dir)"
+  note="${rr#*|}"
+  case "$note" in
+    alias:*)    printf '%s|경로 별칭 — %s' "${rr%%|*}" "$note" ;;
+    UNRESOLVED) printf '%s|' "${rr%%|*}" ;;
+    *)          printf '%s' "$rr" ;;
+  esac
 }
 
 # 한 하네스의 상태를 판정한다. 출력 한 줄: "<name>\t<STATUS>\t<n>\t<detail>"

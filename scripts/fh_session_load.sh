@@ -315,15 +315,51 @@ fi
 # 🟥 0 을 «없다» 로 렌더하지 않는다: 프로젝트 루트를 못 찾으면 그렇게 적고, 개수를 0 으로
 #    적지 않는다(부재 ≠ 0).
 _PROJ_ROOT="${FH_PROJECTS_ROOT:-$(dirname "$FH")}"
+# ── track→repo 해석: 단일 소스 = scripts/fh_track_resolve.sh ──────────────────
+# 🟥 강등 블록은 세 소비자(fh_session_load · field_canon_preload · cluster_capability_scan)에
+#    **문자 그대로 동일**해야 한다. 2026-08-21 적대검증 HIGH-2: 초판은 파일마다 별칭을
+#    1종/2종/3종으로 다르게 봤고, 그건 «강등 경로가 F-1 결함(갈라진 정규화기)의 완전한
+#    복제본» 이라는 뜻이었다. 이제 강등은 **별칭 0종 + 큰 소리**다 — 덜 유용하지만
+#    세 파일이 같은 답을 내고, 무엇보다 **조용하지 않다**. skipped 를 passed 로 렌더하지
+#    않는다는 이 저장소 규율 그대로다. [[feedback_not_found_is_not_zero_family]]
+_FH_TRLIB="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/fh_track_resolve.sh"
+# shellcheck source=scripts/fh_track_resolve.sh
+[ -f "$_FH_TRLIB" ] && . "$_FH_TRLIB"
+# 🟥 `type` 는 **존재**만 재고 **정합**은 못 잰다(잘린 파일·구버전·환경에서 export -f 된 동명
+#    함수는 전부 통과한다 — 적대검증 LOW-3). 그래서 라이브러리가 API 버전을 선언하고
+#    소비자가 그걸 확인한다. 채널을 타입으로 만드는 것이지 성실성에 기대는 게 아니다.
+if ! type fh_resolve_track_root >/dev/null 2>&1 || [ "${FH_TRACK_RESOLVE_API:-}" != "1" ]; then
+  printf '⚠️  [track-resolve] DEGRADED — fh_track_resolve.sh 부재 또는 API 불일치. 별칭 해석 없음(밑줄→하이픈·-dev 접미 미적용). 이건 «해당 없음»이 아니라 **미해석**이다.\n'
+  fh_resolve_track_root() {
+    case "${1-}" in '' |*/*|*'|'*|*'..'* ) printf '|ARGS:bad-name'; return 3 ;; esac
+    [ -n "${2-}" ] || { printf '|ARGS:empty-root'; return 3; }
+    case "${3:-dir}" in
+      git) [ -d "$2/$1/.git" ] && { printf '%s|' "$2/$1"; return 0; } ;;
+      dir) [ -d "$2/$1" ]      && { printf '%s|' "$2/$1"; return 0; } ;;
+      *)   printf '|ARGS:bad-pred'; return 3 ;;
+    esac
+    printf '%s|UNRESOLVED' "$2/$1"
+    return 1
+  }
+fi
 if [ -d "$FH/tracks" ]; then
-  _reg=""; _mapped=0; _resolved=0
+  _reg=""; _mapped=0; _resolved=0; _ambig=0
   for _t in "$FH"/tracks/*/; do
     _n=$(basename "$_t")
     case "$_n" in _*) continue ;; esac
     [ "$_n" = "*" ] && continue
     _mapped=$((_mapped + 1))
-    _d="$_PROJ_ROOT/$_n"
-    [ -d "$_d" ] || continue
+    _rr=$(fh_resolve_track_root "$_n" "$_PROJ_ROOT" dir)
+    _d="${_rr%|*}"; _note="${_rr##*|}"
+    # 🟥 모호는 «못 찾음» 이 아니다 — 여럿이 맞은 것이다. 조용히 하나를 고르지 않고 따로 센다.
+    case "$_note" in
+      AMBIGUOUS:*) _ambig=$((_ambig + 1)); continue ;;
+      UNRESOLVED)  continue ;;
+      # 🟥 ARGS = 전제 파손(빈 이름·경로 탈출·알 수 없는 술어)이지 «못 찾음» 이 아니다.
+      #    미해소로 접으면 그것도 미측정을 0 으로 렌더하는 형태다 — 따로 말한다.
+      ARGS:*)      printf '%s' "⚠️  [track-resolve] 트랙 이름 «$_n» 이 거부됐다(${_note#ARGS:}) — 이건 «레포 없음» 이 아니라 **전제 파손**이다.
+"; continue ;;
+    esac
     _resolved=$((_resolved + 1))
     # 무거운 디렉터리를 쳐낸다 — 비용 주장이 «내 머신의 내 프로젝트 집합» 위에 서 있으면
       # 안 된다(cross-family 지적). node_modules/.venv/.git 이 depth 3 안에 있으면 선형으로 는다.
@@ -341,13 +377,25 @@ if [ -d "$FH/tracks" ]; then
   # 🟥 **all-or-nothing 이면 안 된다** (cross-family 적발, 초판 결함): «전부 못 찾았을 때만»
   #    말하면 13개 중 1개만 해소되고 12개가 없을 때 그 12개가 **완전히 침묵**한다 — 이 블록이
   #    없애려는 «부재를 0으로 렌더» 를 블록 자신이 재현한다. 미해소가 하나라도 있으면 말한다.
-  _unres=$((_mapped - _resolved))
+  _unres=$((_mapped - _resolved - _ambig))
+  if [ "$_ambig" -gt 0 ]; then
+    _reg="${_reg}  ⚠️ 트랙 ${_ambig}개는 «${_PROJ_ROOT}» 밑에서 **레포 여럿이 동시에 맞았다** — 고르지 않았다. 매핑을 정리해야 한다.
+"
+  fi
   if [ "$_unres" -gt 0 ]; then
     _reg="${_reg}  ⚠️ 매핑된 트랙 ${_mapped}개 중 ${_unres}개는 «${_PROJ_ROOT}» 밑에서 실물을 못 찾았다 — 그 ${_unres}개는 «0» 이 아니라 **미측정**이다 (경로가 다르면 FH_PROJECTS_ROOT).
 "
   fi
   if [ -n "$_reg" ]; then
-    if [ "$_resolved" -gt 0 ]; then
+    # 🟥 판별자는 `_resolved` 가 아니라 **▸ 행이 실제로 있는가** 다 (적대검증 MED-2).
+    #    `_resolved` 는 SKILL.md 를 세기 **전에** 증가하고, `_sk == 0` 이면 ▸ 행이 안 들어간다.
+    #    그래서 해소된 트랙이 전부 SKILL.md 0개면 «있다» 배너가 **▸ 행 0개 위에** 붙는다 —
+    #    바로 아래 주석이 금지한 그 형태다. 이 수리는 별칭 해소를 늘리므로 그 도달성을 높인다.
+    case "$_reg" in
+      *"▸"*) _FH_HAS_ROWS=1 ;;
+      *)     _FH_HAS_ROWS=0 ;;
+    esac
+    if [ "$_FH_HAS_ROWS" -eq 1 ]; then
       echo "🧩 [cross-project skill bus] 매핑된 프로젝트에 SKILL.md 가 있다 — 파일 개수만 센 것이지 «지금 세션에서 호출 가능하다» 는 확인이 아니다."
       printf "%s" "$_reg"
       # 목록이 실제로 있을 때만 낸다. 강등(못 찾음) 케이스에 이 안내가 붙으면 «읽을 것이 있다» 는

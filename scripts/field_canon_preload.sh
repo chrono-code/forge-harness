@@ -21,6 +21,34 @@
 #
 # 종료: 항상 0 · 보고는 stdout. (비영 종료는 stdout 이 폐기되고 stderr 도 안 전달된다 —
 #       `[[feedback_hook_nonzero_exit_is_silent]]`.)
+# ── track→repo 해석: 단일 소스 = scripts/fh_track_resolve.sh ──────────────────
+# 🟥 강등 블록은 세 소비자(fh_session_load · field_canon_preload · cluster_capability_scan)에
+#    **문자 그대로 동일**해야 한다. 2026-08-21 적대검증 HIGH-2: 초판은 파일마다 별칭을
+#    1종/2종/3종으로 다르게 봤고, 그건 «강등 경로가 F-1 결함(갈라진 정규화기)의 완전한
+#    복제본» 이라는 뜻이었다. 이제 강등은 **별칭 0종 + 큰 소리**다 — 덜 유용하지만
+#    세 파일이 같은 답을 내고, 무엇보다 **조용하지 않다**. skipped 를 passed 로 렌더하지
+#    않는다는 이 저장소 규율 그대로다. [[feedback_not_found_is_not_zero_family]]
+_FH_TRLIB="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/fh_track_resolve.sh"
+# shellcheck source=scripts/fh_track_resolve.sh
+[ -f "$_FH_TRLIB" ] && . "$_FH_TRLIB"
+# 🟥 `type` 는 **존재**만 재고 **정합**은 못 잰다(잘린 파일·구버전·환경에서 export -f 된 동명
+#    함수는 전부 통과한다 — 적대검증 LOW-3). 그래서 라이브러리가 API 버전을 선언하고
+#    소비자가 그걸 확인한다. 채널을 타입으로 만드는 것이지 성실성에 기대는 게 아니다.
+if ! type fh_resolve_track_root >/dev/null 2>&1 || [ "${FH_TRACK_RESOLVE_API:-}" != "1" ]; then
+  printf '⚠️  [track-resolve] DEGRADED — fh_track_resolve.sh 부재 또는 API 불일치. 별칭 해석 없음(밑줄→하이픈·-dev 접미 미적용). 이건 «해당 없음»이 아니라 **미해석**이다.\n'
+  fh_resolve_track_root() {
+    case "${1-}" in '' |*/*|*'|'*|*'..'* ) printf '|ARGS:bad-name'; return 3 ;; esac
+    [ -n "${2-}" ] || { printf '|ARGS:empty-root'; return 3; }
+    case "${3:-dir}" in
+      git) [ -d "$2/$1/.git" ] && { printf '%s|' "$2/$1"; return 0; } ;;
+      dir) [ -d "$2/$1" ]      && { printf '%s|' "$2/$1"; return 0; } ;;
+      *)   printf '|ARGS:bad-pred'; return 3 ;;
+    esac
+    printf '%s|UNRESOLVED' "$2/$1"
+    return 1
+  }
+fi
+
 set -uo pipefail
 
 HUB="${CLAUDE_PROJECT_DIR:-${HOME:-}/projects/forge-harness}"
@@ -94,11 +122,28 @@ for name in $mapped; do
   printf '%s' "$PROMPT" | grep -qiF -- "$name" || continue   # -F: 이름의 regex 문자 오탐/미탐 방지
   [ -n "$SENT_DIR" ] && [ -e "$SENT_DIR/$name" ] && continue   # 이 세션에서 이미 띄웠다
 
-  # 레포 해석: tracks 이름 그대로 → 없으면 `-dev` 접미 (qasp → qasp-dev 실측 사례)
-  repo=""
-  for cand in "$PROJ_ROOT/$name" "$PROJ_ROOT/${name}-dev"; do
-    [ -d "$cand/.git" ] && { repo="$cand"; break; }
-  done
+  # 레포 해석은 scripts/fh_track_resolve.sh 가 단일 소스다 (2026-08-21 F-1).
+  # 여기 있던 «이름 그대로 → -dev 접미» 2종은 `tracks/the_bible`(→the-bible)을 **무음으로
+  # 버렸다** — 밑줄→하이픈 별칭이 없었기 때문이다. 같은 세션에서 cluster_capability_scan.sh 는
+  # 그걸 풀고 있었으므로, 갈라진 정규화기가 «한쪽만 통과하는 입력» 을 만든 형태였다.
+  # 술어는 `git` 을 유지한다 — 이 훅은 정본 파일을 읽히므로 실제 레포여야 한다.
+  rr=$(fh_resolve_track_root "$name" "$PROJ_ROOT" git)
+  repo="${rr%|*}"; rnote="${rr##*|}"
+  case "$rnote" in
+    UNRESOLVED)  continue ;;
+    ARGS:*)
+      printf '⚠️  [field-canon] 트랙 이름 «%s» 거부(%s) — «레포 없음» 이 아니라 **전제 파손**이다.\n' \
+        "$name" "${rnote#ARGS:}"
+      continue ;;
+    # 🟥 여럿이 맞으면 고르지 않는다 — 어느 레포의 정본을 실었는지 모르게 되는 게 더 나쁘다.
+    #    그러나 **고르지 않는 것과 말하지 않는 것은 다르다** (적대검증 MED-3). 라이브러리가
+    #    이 값을 «사람이 매핑을 정리해야 한다» 로 정의했는데 그 판정을 사람에게 안 전달하면
+    #    판정이 없는 것과 같다 — 이 훅의 계약은 「항상 exit 0 · stdout 보고」라 말할 자리가 있다.
+    AMBIGUOUS:*)
+      printf '⚠️  [field-canon] 트랙 «%s» 에 레포가 여럿 맞는다(%s) — 고르지 않았다. 정본을 안 실었으니 «없음»이 아니라 **미해석**이다. 매핑을 정리해라.\n' \
+        "$name" "${rnote#AMBIGUOUS:}"
+      continue ;;
+  esac
   [ -n "$repo" ] || continue
 
   # **실재하는 것만** 싣는다. 없는 파일을 가리키면 다음 사람이 그 지시를 못 믿게 된다.
