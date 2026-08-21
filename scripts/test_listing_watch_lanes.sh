@@ -108,5 +108,55 @@ n=$(grep -c . "$SB/tracks/_meta/.listing_watch_state.tsv" 2>/dev/null || echo 0)
 # ── L12: 라벨 개수를 실어 ["a,b"] 와 ["a","b"] 를 가른다 ──
 case "$s9" in *"	"[0-9]*:*) ok "L12 라벨 필드가 «개수:목록» 형태" ;; *) ng "L12" "N:labels" "$s9" ;; esac
 
+# ── L13/L14: 🟥 **반대 플랫폼 흉내** — 이 둘이 이 스위트의 하중선이다.
+#    2026-08-21 실측: 로컬(macOS) 16/16 초록인데 **CI(리눅스)에서 L7·L9 가 죽었다.**
+#    원인 둘 다 «한 플랫폼에서만 나는» 형태였다:
+#      ⓐ `stat -f %m` 은 GNU 에서 **실패가 아니라 성공하며 파일시스템 정보를 뱉는다**
+#         → `||` 폴백이 안 타고 산술식이 깨진다
+#      ⓑ grep 패턴의 `\t` 를 GNU grep 은 **리터럴 t** 로 읽는다 → FAILED 보고가 0건
+#    로컬 초록이 증거가 못 된다는 뜻이므로, **여기서 반대 플랫폼을 스텁으로 만든다.**
+mkstub state
+printf 'walkinglabs/x\t33\tpr\tchrono-meta/forge-harness\n' > "$SB/tracks/_meta/listing_watch_channels.tsv"
+rm -f "$SB/tracks/_meta/.listing_watch_state.tsv"
+
+# L13: `stat -f` 가 «성공하면서 쓰레기» 를 내는 플랫폼(=GNU)에서도 스로틀이 산다
+cat > "$SB/bin/stat" <<'STUB'
+#!/usr/bin/env bash
+# GNU 흉내: -f 는 성공하며 파일시스템 정보(비숫자)를 낸다 · -c %Y 만 mtime
+if [ "$1" = "-f" ]; then echo "  ID: deadbeef Namelen: 255  Type: ext2/ext3"; exit 0; fi
+if [ "$1" = "-c" ]; then echo 1000000000; exit 0; fi
+exit 1
+STUB
+chmod +x "$SB/bin/stat"
+run --force >/dev/null 2>&1            # 스냅샷 생성
+o=$(run 2>&1)                          # --force 없음 → 스로틀이 조용해야
+case "$o" in
+  *"syntax error"*|*"ext2"*) ng "L13 GNU-stat 흉내에서 스로틀 붕괴" "(빈 출력)" "$o" ;;
+  "") ok "L13 GNU-stat 흉내에서도 스로틀 정상 (비숫자 mtime 방어)" ;;
+  *) ng "L13" "(빈 출력)" "$o" ;;
+esac
+rm -f "$SB/bin/stat"
+
+# L14: grep 패턴의 `\t` 를 리터럴 t 로 읽는 플랫폼(=GNU grep)에서도 FAILED 가 보고된다
+#      → 실제 탭을 쓰는지 확인. 스크립트가 `\t` 를 패턴에 쓰면 여기서 죽는다.
+cat > "$SB/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+chmod +x "$SB/bin/gh"
+cat > "$SB/bin/grep" <<'STUB'
+#!/usr/bin/env bash
+# GNU 흉내: 패턴 안의 백슬래시-t 는 «리터럴 t» 다 (탭이 아니다)
+args=(); for a in "$@"; do case "$a" in *'\t'*) a="${a//\\t/t}" ;; esac; args+=("$a"); done
+exec /usr/bin/grep "${args[@]}"
+STUB
+chmod +x "$SB/bin/grep"
+printf 'r/x\t1\tpr\t-\n' > "$SB/tracks/_meta/listing_watch_channels.tsv"
+rm -f "$SB/tracks/_meta/.listing_watch_state.tsv"
+run --force >/dev/null 2>&1
+o=$(run --force 2>&1)
+case "$o" in *"읽지 못했다"*|*FAILED*) ok "L14 GNU-grep 흉내에서도 FAILED 보고 (실제 탭 사용)" ;; *) ng "L14 grep \\t 이식성" "FAILED 보고" "${o:-（무출력）}" ;; esac
+rm -f "$SB/bin/grep"
+
 printf '\nLISTING_WATCH_LANES: %d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1

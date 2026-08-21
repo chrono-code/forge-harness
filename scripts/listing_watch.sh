@@ -37,6 +37,24 @@ done
 
 say() { printf '%s\n' "$*"; }
 
+# 🟥 **`stat -f %m` 을 «먼저» 쓰면 리눅스에서 조용히 깨진다** — GNU stat 의 `-f` 는
+#    «파일시스템 정보»라 **실패가 아니라 성공하며 다른 값을 뱉고**, 그래서 `||` 폴백이 안 탄다.
+#    CI 가 실제로 그렇게 잡았다(`Type: ext2/ext3 … syntax error in expression`).
+#    ⇒ 순서를 뒤집는 것으로 끝내지 않고 **숫자인지 검증**한다. 순서만 바꾸면 반대 플랫폼에서
+#    같은 얼굴이 다시 난다. `[[feedback_wiring_surfaces_hidden_failures]]`
+_mtime() {
+  local m
+  m=$(stat -c %Y "$1" 2>/dev/null)
+  case "$m" in ''|*[!0-9]*) m=$(stat -f %m "$1" 2>/dev/null) ;; esac
+  case "$m" in ''|*[!0-9]*) m=0 ;; esac
+  printf '%s' "$m"
+}
+
+# 🟥 grep 패턴의 `\t` 는 **이식되지 않는다** — GNU grep 은 리터럴 `t` 로 읽어 0건이 되고,
+#    그러면 「FAILED 를 매번 보고한다」는 규율이 리눅스에서만 조용히 죽는다(CI 적발).
+#    실제 탭 문자를 만들어 `-F` 로 쓴다.
+TAB=$(printf '\t')
+
 # 🟥 테스트 seam: 레인이 «gh 없는 호스트» 를 흉내내려고 PATH 를 깎으면 호스트에 따라
 #    결과가 갈린다(리눅스의 /usr/bin 에 gh 가 있을 수 있다 — cross-family 지목).
 #    명령 이름을 주입 가능하게 두면 레인이 호스트와 무관해진다.
@@ -102,7 +120,7 @@ fi
 # ── 스로틀: 24h 안에 돌았으면 조용히 넘어간다 ────────────────────────────
 if [ "$FORCE" != "1" ] && [ -f "$STATE" ]; then
   now=$(date +%s)
-  mt=$(stat -f %m "$STATE" 2>/dev/null || stat -c %Y "$STATE" 2>/dev/null || echo 0)
+  mt=$(_mtime "$STATE")
   if [ $(( (now - mt) / 3600 )) -lt "$THROTTLE_H" ]; then exit 0; fi
 fi
 
@@ -145,12 +163,12 @@ fi
 # 🟥 `grep -c ... || echo 0` 을 쓰지 않는다: grep -c 는 무매치에서 **"0" 을 출력하고 exit 1** 이라
 #    폴백이 "0\n0" 을 만들고 `[` 가 «integer expression expected» 로 죽는다(내 수리가 낸 결함).
 #    `[[feedback_pipefail_fallback_disarms_guard]]` 일가 — 값을 먼저 잡고 따로 판정한다.
-NFAIL=$(grep -c '\tFAILED\t' "$NEW" 2>/dev/null)
+NFAIL=$(grep -cF "${TAB}FAILED${TAB}" "$NEW" 2>/dev/null)
 case "$NFAIL" in ''|*[!0-9]*) NFAIL=0 ;; esac
 if [ "$NFAIL" -gt 0 ]; then
   say ""
   say "  ⚠️  [listing-watch] 채널 $NFAIL 개를 **읽지 못했다**(FAILED) — «변화 없음» 이 아니다."
-  grep '\tFAILED\t' "$NEW" 2>/dev/null | while IFS= read -r l; do say "       $(printf '%s' "$l" | cut -f1)"; done
+  grep -F "${TAB}FAILED${TAB}" "$NEW" 2>/dev/null | while IFS= read -r l; do say "       $(printf '%s' "$l" | cut -f1)"; done
   say "       흔한 원인: gh 인증 만료(\`gh auth status\`) · 레포/번호 오타 · 비공개 전환."
   say "       🟥 이 줄이 안 보일 때까지는 그 채널의 상태를 **모르는 것**이다."
 fi
