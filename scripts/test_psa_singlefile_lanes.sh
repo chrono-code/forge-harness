@@ -291,7 +291,11 @@ case "$out" in *SURVIVED*) ok "L21b caller survives the attribute case" ;; *) ba
 #    **둘 다 출하되고**(npm pack 산출물로 확인), 그 스킬 본문은 무가드 psa_scan_tagged 직접
 #    호출을 지시하며, macOS 기본 셸은 zsh 다. ⇒ 소비자 스킬 경로가 같은 상태였다.
 # 🟥 `bash -n`/`zsh -n` 은 못 잡는다 — 문법이 아니라 런타임 의미론이다. 실행으로만 성립한다.
+# 🟥 조건부 레인 수를 세어 둔다. 플로어를 상수로 박으면 zsh 없는 러너에서 «INSTRUMENT ERROR»
+#    가 난다 — 실제로 CI(ubuntu-latest, zsh 미설치)에서 그렇게 났다. 스킵은 실패가 아니다.
+_cond_lanes=0
 if command -v zsh >/dev/null 2>&1; then
+  _cond_lanes=$((_cond_lanes + 4))
   _ztmp=$(mktemp -d)
   printf 'contains LANECANARY here\n' > "$_ztmp/pos.md"
   printf 'clean prose\n' > "$_ztmp/neg.md"
@@ -335,7 +339,8 @@ _erun() { # $1=shell $2=prelude → rc
   "$1" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\\tLANECANARY') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; $2 printf 'p\tLANECANARY\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1
 }
 for _sh in bash zsh; do
-  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP E2~E4 ($_sh 없음) — PASS 아님"; continue; }
+  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP E2~E5 ($_sh 없음) — PASS 아님, 미검사다"; continue; }
+  [ "$_sh" = "zsh" ] && _cond_lanes=$((_cond_lanes + 4))
   # E2 — `cat` 이 죽으면 빈 입력이 «신고할 것 없음»이 됐다 (반례 1)
   _r=$(_erun "$_sh" 'cat(){ return 7; };')
   [ "$_r" = "3" ] && ok "E2/$_sh cat 사망 → rc=3 (빈 입력이 «깨끗»으로 안 접힌다)" || bad "E2/$_sh cat 사망 rc=[$_r], 3 이어야"
@@ -403,5 +408,11 @@ fi
 
 echo "[psa single-file lanes] pass=$pass fail=$fail"
 [ "$fail" -eq 0 ] || exit 1
-[ "$pass" -ge 40 ] || { echo "  ❌ INSTRUMENT ERROR — only $pass lanes ran; expected >=40"; exit 3; }
+# 🟥 플로어는 **조건부 레인을 반영한 값**이다. 33 = zsh 없는 러너의 기저(Z1~Z4 · E2~E5/zsh 스킵).
+#    zsh 가 있으면 +8. 상수 하나로 박으면 «스킵 = 계기 오류» 가 되어 러너를 거짓 적색으로 만든다.
+#    ⚠️ 그리고 이 수식이 말하는 진짜 사실을 잊지 마라: **zsh 축은 zsh 가 있는 곳에서만 검증된다.**
+#    CI 에 zsh 를 설치한 이유가 그것이고(.github/workflows/validate.yml), 그게 없으면 이 PR 이
+#    고친 결함의 축이 CI 에서 **한 번도** 안 돌아간다.
+_floor=$((33 + _cond_lanes))
+[ "$pass" -ge "$_floor" ] || { echo "  ❌ INSTRUMENT ERROR — only $pass lanes ran; expected >=$_floor (zsh 조건부 +$_cond_lanes)"; exit 3; }
 exit 0
