@@ -356,6 +356,31 @@ for _sh in bash zsh; do
   [ "$_r" = "1" ] && ok "E5/$_sh ★컨트롤 정상 양성 → rc=1 (E2~E4 가 «항상 3» 이 아니다)" || bad "E5/$_sh 컨트롤 rc=[$_r], 1 이어야"
 done
 
+# ── G/F 레인 : cross-family 반례 2·4 (2026-08-21, 2차) ──────────────────────────────────
+# 🟥 둘 다 «자가검사가 통과했으니 그 뒤 스캔도 실행됐다» 는 확장의 잔재다.
+#   G = 진짜 패턴이 깨졌을 때. 자가검사는 **자기 카나리아 패턴**을 쓰므로 구조적으로 못 본다.
+#       실측 도달: 패턴 파일에 깨진 정규식 한 줄 → 그 행만 조용히 아무것도 안 잡고 rc=0 «깨끗».
+#   F = 자가검사 판정 자체의 위조. 초판은 파이프 최종 rc 하나만 봐서 «생산자 실패의 1» 과
+#       «스캐너가 유출을 찾음의 1» 이 합쳐졌다 — 실패하는 awk 가 카나리아를 뱉으면 통과했다.
+for _sh in bash zsh; do
+  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP G/F ($_sh 없음) — PASS 아님, 미검사다"; continue; }
+  _cond_lanes=$((_cond_lanes + 0))
+  _gp() { "$1" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\\t%s') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; printf 'p\\t%s\\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1; }
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\t[unclosed') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; printf 'p\t[unclosed here\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "3" ] && ok "G1/$_sh 깨진 정규식 → rc=3 (조용한 미스캔이 «깨끗»으로 안 접힌다)" || bad "G1/$_sh 깨진 정규식 rc=[$_r], 3 이어야"
+  # ★컨트롤 — 정상 패턴은 여전히 1/0 을 낸다(G1 이 «항상 3» 이 아니다)
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tOKTOK') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; printf 'p\tOKTOK\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "1" ] && ok "G2/$_sh ★컨트롤 정상 패턴 → rc=1" || bad "G2/$_sh 컨트롤 rc=[$_r], 1 이어야"
+  # F — 실패하는 생산자가 카나리아를 뱉어도 «살아있음» 이 아니어야
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; awk(){ printf 'PSA_SELFTEST_CANARY\n'; return 1; }; psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "F1/$_sh 실패한 생산자의 카나리아 → 자가검사 «살아있음» 아님(rc=$_r)" || bad "F1/$_sh 자가검사 판정이 위조됐다 rc=0"
+  # ★컨트롤 — 정상 환경에서 psa_require_live 는 살아있다고 해야 한다
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "0" ] && ok "F2/$_sh ★컨트롤 정상 자가검사 → rc=0 (F1 이 «항상 실패» 가 아니다)" || bad "F2/$_sh 컨트롤 rc=[$_r], 0 이어야"
+  _cond_lanes=$((_cond_lanes + 0))
+  [ "$_sh" = "zsh" ] && _cond_lanes=$((_cond_lanes + 4))
+done
+
 # ── H 레인 : 훅이 «계기 사망(3)» 과 «유출(1)» 을 가르는가 (2026-08-21) ────────────────────
 # 🟥 왜 [실행 확인]: 초판 훅은 `if ! … | psa_scan_tagged` 로 **비영을 전부 유출로 뭉갰다.**
 #    그래서 `PUBLIC_SURFACE_OK=1` 이 **계기 사망까지 «승인된 유출»로 통과**시켰다 — 비가역
@@ -406,6 +431,201 @@ else
                    || bad "H2 컨트롤 실패 rc=[$_hl] — 픽스처가 다른 이유로 막힌다, H1 판정 무효"
 fi
 
+# ── N 레인 : cross-family 3라운드 반례 P1~P5 (2026-08-21) ────────────────────────────────
+# 🟥 세 라운드가 같은 얼굴이었다 — **상태를 의미로 확장**. rc=0 을 «유효», «분리했다» 를
+#    «생산이 옳다», «자가검사 통과» 를 «그 뒤 스캔도 실행» 으로 읽었다. N 레인은 그 축을 친다.
+for _sh in bash zsh; do
+  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP N1/N2/N4/N5 ($_sh 없음) — PASS 아님, 미검사다"; continue; }
+  # N1 — P1: 입력을 읽지도 않고 rc=0 으로 «고정» 카나리아를 뱉는 위조 생산자
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       awk(){ printf 'psa/selftest\tPSA_SELFTEST_CANARY\n'; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "N1/$_sh rc=0 위조 생산자 → «살아있음» 아님 (nonce 불일치, rc=$_r)" \
+                   || bad "N1/$_sh 자가검사가 rc=0 위조에 뚫렸다 — P1 이 안 닫혔다"
+  # N1b — P1 의 **문자열 대조** 를 따로 친다. N1(고정 카나리아)은 nonce 만으로도 막히므로
+  #       대조문이 없어도 초록이었다(되돌림 실측 → 적색 0). 이 레인은 «입력은 읽었는데
+  #       태그가 틀린» 생산자를 쓴다 — nonce 는 통과하고 대조문만이 잡는다.
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       awk(){ for _a; do :; done; printf 'WRONGPREFIX\t%s\n' \"\$(cat \"\$_a\")\"; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "N1b/$_sh 입력은 읽되 태그가 틀린 생산자 → «살아있음» 아님 (rc=$_r)" \
+                   || bad "N1b/$_sh 태그 대조가 없다 — 생산자가 무엇을 뱉든 통과한다"
+  # N2 ★컨트롤 — 정상 환경에서는 여전히 살아있다고 해야 한다 (N1 이 «항상 실패» 가 아니다)
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "0" ] && ok "N2/$_sh ★컨트롤 정상 자가검사 → rc=0" || bad "N2/$_sh 컨트롤 rc=[$_r], 0 이어야"
+  # N4 — P4: 판별력 없는 패턴(빈·^·a*)은 거부되고 정상 패턴만 남는다
+  _T=$(mktemp -d); printf 'HIGH\t\nHIGH\t^\nHIGH\ta*\nHIGH\tREALSECRET\n' > "$_T/def"; : > "$_T/ovr"
+  _r=$("$_sh" -c ". '$LIB'; export PSA_DEFAULTS_OK=1; psa_load '$_T/def' '$_T/ovr' >/dev/null 2>&1;
+       printf '%s/%s\n' \"\$(printf '%s' \"\$PSA_STREAM\" | grep -c .)\" \"\$PSA_BAD_ROWS\"" 2>/dev/null | tail -1)
+  [ "$_r" = "1/3" ] && ok "N4a/$_sh 무판별 패턴 3행 거부, 정상 1행 생존 ($_r)" \
+                    || bad "N4a/$_sh 유효행/거부행=[$_r], 1/3 이어야 — P4 가 안 닫혔다"
+  # N4b ★컨트롤 — 거부가 «전부 버리기» 가 아니다: **깨끗한** 패턴 파일이면 정상 검출한다.
+  #    🟥 초판은 위 «혼합» 파일로 rc=1 을 기대했는데, R4-6 이후 그 파일은 bad_rows>0 이라
+  #    rc=3(부분집합=미측정)이 정답이다. 컨트롤은 깨끗한 파일로 분리한다.
+  printf 'HIGH\tREALSECRET\n' > "$_T/clean"
+  _r=$("$_sh" -c ". '$LIB'; export PSA_DEFAULTS_OK=1; PSA_ALLOWLIST=/dev/null; psa_load '$_T/clean' '$_T/ovr' >/dev/null 2>&1;
+       printf 'p\tREALSECRET here\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "1" ] && ok "N4b/$_sh ★컨트롤 깨끗한 패턴 파일 → 정상 검출 rc=1" \
+                  || bad "N4b/$_sh 컨트롤 rc=[$_r], 1 이어야 — 거부가 과했다"
+  # N4c — R4-6: **부분 로드된 집합은 «깨끗»도 «유출»도 말할 수 없다.** cross-family 4라운드가
+  #    `SECRET|^$` 한 행이 떨어진 집합에서 `SECRET` 입력이 rc=0 «깨끗» 을 내는 것을 실측했다.
+  _r=$("$_sh" -c ". '$LIB'; export PSA_DEFAULTS_OK=1; PSA_ALLOWLIST=/dev/null; psa_load '$_T/def' '$_T/ovr' >/dev/null 2>&1;
+       printf 'p\tREALSECRET here\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "3" ] && ok "N4c/$_sh 행이 떨어진 부분집합 → rc=3 (부분 로드는 미측정)" \
+                  || bad "N4c/$_sh 부분집합 rc=[$_r], 3 이어야 — R4-6 이 안 닫혔다"
+  rm -rf "$_T"
+  # N5 — P5: 백슬래시가 든 경로가 증거에 그대로 남는다 (zsh 의 echo 가 해석하던 자리)
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tSEEKRET') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       printf 'dir\\\\two\tSEEKRET\n' | psa_scan_tagged 2>&1 | grep -c 'dir\\\\two'" 2>/dev/null | tail -1)
+  [ "$_r" = "1" ] && ok "N5/$_sh 백슬래시 경로가 증거에 보존된다" \
+                  || bad "N5/$_sh 증거 손상 (일치=[$_r]) — P5 가 안 닫혔다"
+  [ "$_sh" = "zsh" ] && _cond_lanes=$((_cond_lanes + 7))
+done
+
+# R 레인 : cross-family 4라운드 반례 (2026-08-21, 수리에 대한 재검)
+# 🟥 이 라운드의 교훈은 **「수리가 새 결함의 주된 출처」**다 — P3 를 스캔 경로에서만 고치고
+#    로더 경로로 전파를 안 봤고(R4-1), 「정확한 문자열 대조」가 후행 개행에 뚫렸다(R4-3).
+for _sh in bash zsh; do
+  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP R1/R2/R3 ($_sh 없음) — PASS 아님, 미검사다"; continue; }
+  _RT=$(mktemp -d); printf 'HIGH\tREALSECRET\n' > "$_RT/def"; : > "$_RT/ovr"
+  # R1 — psa_load 가 `set -e` 호출자를 죽이지 않는다 (정상 패턴은 빈 입력에 rc=1 을 낸다)
+  _r=$("$_sh" -c "set -e; . '$LIB'; psa_load '$_RT/def' '$_RT/ovr' >/dev/null 2>&1; echo SURVIVED" 2>/dev/null | tail -1)
+  [ "$_r" = "SURVIVED" ] && ok "R1/$_sh set -e 호출자가 psa_load 를 살아서 통과" \
+                        || bad "R1/$_sh psa_load 가 errexit 호출자를 죽인다 [$_r] — P3 전파 미완"
+  # R2 — fallback nonce 가 생산자 인자에서 유도되지 않는다
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       head(){ return 1; };
+       awk(){ for _a; do :; done; _d=\${_a%/*}; _d=\${_d##*/}; _d=\$(printf %s \"\$_d\" | tr -cd 'A-Za-z0-9');
+              printf 'psa/selftest\tPSA_SELFTEST_CANARY_%s\n' \"\$_d\"; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "R2/$_sh urandom 부재 fallback 이 경로에서 유도 안 됨 (rc=$_r)" \
+                   || bad "R2/$_sh fallback nonce 가 인자에서 유도된다 — 위조 통과"
+  # R3 — 정답 줄 + 후행 빈 줄은 «바이트 동일» 이 아니다 ($(...) 가 후행 개행을 지운다)
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       awk(){ for _a; do :; done; printf 'psa/selftest\t%s\n\n\n' \"\$(cat \"\$_a\")\"; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "R3/$_sh 후행 빈 줄이 붙은 산출 → 통과 안 됨 (rc=$_r)" \
+                   || bad "R3/$_sh 후행 개행이 대조를 뚫었다 — 「바이트 동일」이 아니다"
+  rm -rf "$_RT"
+  [ "$_sh" = "zsh" ] && _cond_lanes=$((_cond_lanes + 3))
+done
+
+# S 레인 : cross-family 5라운드 반례 (2026-08-21). 🟥 **4라운드 수리 자체가 낸 결함들**이다.
+for _sh in bash zsh; do
+  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP S1/S2 ($_sh 없음) — PASS 아님, 미검사다"; continue; }
+  # S1 — 엔트로피 출처가 둘 다 없으면 «약한 nonce» 가 아니라 **미측정**이다.
+  #      4라운드 fallback(`$RANDOM$RANDOM$$$SECONDS`)은 생산자가 같은 셸에서 재계산해 통과했다.
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       head(){ return 1; }; openssl(){ return 1; };
+       awk(){ for _a; do :; done; _n=\$(printf '%s%s%s%s' \"\${RANDOM:-}\" \"\${RANDOM:-}\" \"\$\$\" \"\${SECONDS:-}\" | tr -cd 'A-Za-z0-9');
+              printf 'psa/selftest\tPSA_SELFTEST_CANARY_%s\n' \"\$_n\"; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "S1/$_sh 엔트로피 부재 → 예측가능 nonce 로 통과 안 됨 (rc=$_r)" \
+                   || bad "S1/$_sh 생산자가 재계산한 nonce 로 통과했다 — 추측 가능한 nonce 는 nonce 가 아니다"
+  # S2 — 생산자는 `$tmpd/canary` 를 인자로 받으므로 `$tmpd` 를 안다. 기대값이 그 안에 있으면 덮인다.
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1;
+       awk(){ for _a; do :; done; _d=\${_a%/*}; _n=\$(cat \"\$_a\");
+              printf 'wrong/path\t%s\n' \"\$_n\" > \"\$_d/expect\";
+              printf 'wrong/path\t%s\n' \"\$_n\"; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "S2/$_sh 생산자가 기대값 파일을 덮어써도 통과 안 됨 (rc=$_r)" \
+                   || bad "S2/$_sh 기대값이 생산자 사정권에 있다 — cmp 가 자기 자신과 비교했다"
+  # T1 — R6-1: `cmp` 가 함수로 가려져도 대조가 무력화되지 않는다 (`command cmp`)
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1 PSA_BAD_ROWS=0;
+       cmp(){ return 0; };
+       awk(){ for _a; do :; done; printf 'WRONGPREFIX\t%s\n' \"\$(cat \"\$_a\")\"; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "T1/$_sh cmp 함수 가림 → 통과 안 됨 (rc=$_r)" \
+                   || bad "T1/$_sh 대조가 셸 함수로 무력화됐다 — command 우회가 없다"
+  # T2 — R6-2: 생산자가 stdout 은 틀리게 쓰고 tagged 를 정답 파일 심링크로 바꿔치기
+  _r=$("$_sh" -c ". '$LIB'; PSA_STREAM=\$(printf 'HIGH\tX'); export PSA_STREAM PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1 PSA_BAD_ROWS=0;
+       awk(){ for _a; do :; done; _d=\${_a%/*}; _n=\$(cat \"\$_a\");
+              printf 'WRONGPREFIX\t%s\n' \"\$_n\";
+              printf 'psa/selftest\t%s\n' \"\$_n\" > \"\$_d/alt\"; ln -sf alt \"\$_d/tagged\"; return 0; };
+       psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "T2/$_sh tagged 심링크 스왑 → 통과 안 됨 (rc=$_r)" \
+                   || bad "T2/$_sh 비교 대상이 생산자가 실제로 쓴 파일이 아니다"
+  [ "$_sh" = "zsh" ] && _cond_lanes=$((_cond_lanes + 4))
+done
+# S3 — dash 는 `$'"'"'\t'"'"'` 를 리터럴로 읽어 정상 행이 통째로 떨어졌다(bad=1 stream=[]).
+#      그건 «패턴이 없다» 가 아니라 **미측정**이므로 로드 자체를 거부한다.
+if command -v dash >/dev/null 2>&1; then
+  _ST=$(mktemp -d); printf 'HIGH\tREALSECRET\n' > "$_ST/def"; : > "$_ST/ovr"
+  _r=$(dash -c ". '$LIB'; psa_load '$_ST/def' '$_ST/ovr' >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "3" ] && ok "S3 dash → psa_load rc=3 (조용한 빈 스트림이 아니라 명시적 미측정)" \
+                  || bad "S3 dash psa_load rc=[$_r], 3 이어야 — 무능한 셸이 «패턴 없음» 으로 접힌다"
+  # S3b ★컨트롤 — 같은 파일로 bash 는 정상 로드 (S3 가 «항상 거부» 가 아니다)
+  _r=$(bash -c ". '$LIB'; psa_load '$_ST/def' '$_ST/ovr' >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "0" ] && ok "S3b ★컨트롤 bash 는 같은 파일을 정상 로드 → rc=0" \
+                  || bad "S3b 컨트롤 rc=[$_r], 0 이어야 — 셸 검사가 과차단이다"
+  rm -rf "$_ST"
+  _cond_lanes=$((_cond_lanes + 2))
+else
+  echo "  SKIP S3/S3b (dash 없음) — PASS 아님, 미검사다"
+fi
+
+# N3 — 🟥 **교차조건 레인**: `set -e` × 실패 생산자. codex 가 「세 라운드가 공유한 갭」으로 지목한 것.
+#      한 조건씩 보면 둘 다 통과하는데, 겹치면 복원문에 **도달하지 못하고** PSA_STREAM 이
+#      카나리아인 채로 남는다. EXIT trap 으로 «중단돼도» 상태를 회수한다 —
+#      ⚠️ `|| true` 를 붙이면 errexit 가 꺼져서 계기 자체가 죽는다(첫 판이 그랬다).
+#      bash 전용: zsh 는 `-c` + errexit 중단에서 EXIT trap 이 발화하지 않아 회수 채널이 없다(미검사).
+_N3=$(mktemp -d)
+bash -c "set -e; . '$LIB'; PSA_STREAM=ORIGINAL; PSA_ALLOWLIST=/dev/null; PSA_DEFAULTS_OK=1;
+  trap 'printf \"%s\" \"\$PSA_STREAM\" > '$_N3'/v' EXIT
+  awk(){ return 1; }
+  psa_require_live >/dev/null 2>&1" >/dev/null 2>&1
+# portability-noqa: 이 파일은 set -e 가 아니다 — 린트가 잡은 `set -e` 는 위 `bash -c` 문자열 «안»의 것이고
+#                   그건 자식 셸의 설정이다. 파일 스코프 판별의 오탐이며, 그 오탐 자체가 N3 가 재현하는 결함이다.
+_r=$(cat "$_N3/v" 2>/dev/null); rm -rf "$_N3"
+[ "$_r" = "ORIGINAL" ] && ok "N3 ★교차조건 set -e × 실패 생산자 → PSA_STREAM 복원됨" \
+                       || bad "N3 교차조건에서 복원 미도달 — PSA_STREAM=[$_r] (카나리아 잔류 = P3 미해결)"
+
+# N6 — P2: outbound guard 의 override 가 «미측정» 까지 통과시키면 안 된다.
+#      🟥 첫 판 픽스처는 `FH=` 로 뿌리를 바꾸려 했는데 그 변수는 스크립트가 자기 것으로 계산한다
+#         → 가드가 **실제 레포를 스캔하고 깨끗하다고 통과했다**. 죽은 픽스처였다.
+#         가드가 이미 제공하는 주입점(PSA_LIB_FILE / PSA_DEFAULTS_FILE / PSA_OVERRIDE_FILE)을 쓴다.
+# 🟥 이 블록은 **조건부**다 — `outbound_query_guard.sh` 는 npm `files[]` 에 없어서
+#    **소비자 설치본에는 존재하지 않는다.** 초판은 조건부인데 `_cond_lanes` 에 안 세서,
+#    포장본에서 `pass=80 < floor 84` 로 **거짓 INSTRUMENT ERROR** 를 냈다(실측 rc=3).
+#    정적으로는 안 보였고 **포장본에서 실행하자마자** 나왔다 — standpoint 실행 팔이 잡은 것.
+_GUARD="$REPO_ROOT/scripts/outbound_query_guard.sh"
+if [ -f "$_GUARD" ]; then
+  _cond_lanes=$((_cond_lanes + 4))
+  _S6=$(mktemp -d)
+  # 스텁 라이브러리: 앞단 게이트는 전부 통과시키고 **스캔만 rc=3(미측정)** 을 내게 한다.
+  # 이래야 P2 가 고친 «그 분기»(RC 판정 직후의 override)에 실제로 도달한다.
+  cat > "$_S6/lib_unmeasured.sh" <<'STUB'
+psa_load() { PSA_DEFAULTS_OK=1; PSA_BAD_ROWS=0; PSA_OVERRIDE_PRESENT=1; return 0; }
+psa_require_live() { return 0; }
+psa_scan_tagged() { return 3; }
+STUB
+  # 대조 스텁: 같은 모양인데 스캔이 rc=1(유출을 «봤다») 을 낸다
+  sed 's/return 3/return 1/' "$_S6/lib_unmeasured.sh" > "$_S6/lib_leak.sh"
+  _n6() { OUTBOUND_QUERY_OK=1 PSA_LIB_FILE="$1" bash "$_GUARD" "some outbound question" >/dev/null 2>&1; echo $?; }
+  _r=$(_n6 "$_S6/lib_unmeasured.sh")
+  [ "$_r" = "3" ] && ok "N6a override + 스캔 미측정(rc=3) → 여전히 차단 (rc=3)" \
+                  || bad "N6a OUTBOUND_QUERY_OK=1 이 미측정을 승인했다 rc=[$_r] — P2 가 안 닫혔다"
+  # N6b ★컨트롤 — 같은 override 가 «본» 히트(rc=1)에서는 여전히 통과해야 한다
+  #      (N6a 가 «override 를 통째로 죽였다» 가 아님을 보인다)
+  _r=$(_n6 "$_S6/lib_leak.sh")
+  [ "$_r" = "0" ] && ok "N6b ★컨트롤 override + 히트(rc=1) → 통과 (override 가 죽지 않았다)" \
+                  || bad "N6b 컨트롤 rc=[$_r], 0 이어야 — 과차단이다"
+  # R5 — rc=2 는 «유출 발견» 이 아니라 **미측정** 이다. 초판은 exit 1 로 오분류했다.
+  printf '%s\n' 'psa_load(){ PSA_DEFAULTS_OK=1; PSA_BAD_ROWS=0; PSA_OVERRIDE_PRESENT=1; return 0; }' \
+                 'psa_require_live(){ return 0; }' 'psa_scan_tagged(){ return 2; }' > "$_S6/lib_rc2.sh"
+  _r=$(_n6 "$_S6/lib_rc2.sh")
+  [ "$_r" = "3" ] && ok "R5 스캐너 rc=2 → 미측정(3) 으로 분류 (유출 1 로 접히지 않는다)" \
+                  || bad "R5 rc=2 가 [$_r] 로 분류됐다, 3 이어야"
+  # N6c ★컨트롤 — override 없이 미측정이면 당연히 차단 (N6a 가 override 덕이 아님을 가른다)
+  _r=$(PSA_LIB_FILE="$_S6/lib_unmeasured.sh" bash "$_GUARD" "some outbound question" >/dev/null 2>&1; echo $?)
+  [ "$_r" = "3" ] && ok "N6c ★컨트롤 override 없는 미측정 → 차단 (rc=3)" \
+                  || bad "N6c 컨트롤 rc=[$_r], 3 이어야"
+  rm -rf "$_S6"
+else
+  echo "  SKIP N6a/N6b/N6c/R5 (outbound_query_guard.sh 부재 — 배포 산출물) — PASS 아님, 미검사다"
+fi
+
 echo "[psa single-file lanes] pass=$pass fail=$fail"
 [ "$fail" -eq 0 ] || exit 1
 # 🟥 플로어는 **조건부 레인을 반영한 값**이다. 33 = zsh 없는 러너의 기저(Z1~Z4 · E2~E5/zsh 스킵).
@@ -413,6 +633,6 @@ echo "[psa single-file lanes] pass=$pass fail=$fail"
 #    ⚠️ 그리고 이 수식이 말하는 진짜 사실을 잊지 마라: **zsh 축은 zsh 가 있는 곳에서만 검증된다.**
 #    CI 에 zsh 를 설치한 이유가 그것이고(.github/workflows/validate.yml), 그게 없으면 이 PR 이
 #    고친 결함의 축이 CI 에서 **한 번도** 안 돌아간다.
-_floor=$((33 + _cond_lanes))
+_floor=$((52 + _cond_lanes))
 [ "$pass" -ge "$_floor" ] || { echo "  ❌ INSTRUMENT ERROR — only $pass lanes ran; expected >=$_floor (zsh 조건부 +$_cond_lanes)"; exit 3; }
 exit 0
