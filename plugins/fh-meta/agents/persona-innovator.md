@@ -164,11 +164,36 @@ Phase 3 above carries the owner's **naming** algorithm. This phase carries the o
 sessions wrote down afterwards: `~/.claude/projects/…/*.jsonl`, **69 sessions / 2026-07-22–08-21**,
 **433 operator utterances**, semantically classified. **54 interventions claimed · ~43 estimated
 after a 5-sample hand-check (1 false positive) · full hand-verification NOT done.**
+🟥 **CORRECTED 2026-08-21 — that census read 21% of its own corpus and called it 전수.** A full
+re-scan of the same directory with the same discriminator returns **168 sessions · 1,703 operator
+utterances** (uuid-deduplicated; ~1% contamination hand-checked: `<bash-input>` / `<command-message>`,
+17 of 1,703). The census's own note recorded **169MB**, and `du -sh` on that directory is **817MB** —
+the ratio was written down and never compared. **So «54» is a count over a fifth of the corpus, not a
+census.** Do not cite it alone. If the 12% rate holds, the true intervention count is nearer **200**.
+The shapes and the class distribution below are unaffected in *direction* (they were derived from a
+random-in-practice fifth), but every absolute number on this page is a lower bound.
 Detail + the seal comparison: `tracks/_meta/RESULT_2026-08-21_intervention-corpus.md`.
 
 🟥 **The dominant class is NOT "you didn't search the world."** Measured distribution:
 `판단결함 32 (59%) · 내부미조회 9 · 외부미조회 6 (11%) · 범위겨냥 6`. A design that treats this
 as a *search* trigger is aiming at an 11% slice — the first draft of this capability did exactly that.
+
+**Prior art (2026-08-21) — this task has a published benchmark; price the capability against it.**
+Wu et al., *"User Feedback in Human-LLM Dialogues: A Lens to Understand Users But Noisy as a Learning
+Signal"*, EMNLP 2025 main (`arXiv:2507.23158`). Numbers read from the PDF text, not from a summary:
+automatic feedback identification with a purpose-built GPT-4o-mini prompt scores **P 61.1 / R 35.9**
+in the *dense* setting (label every turn — the realistic one) and **P 100.0 / R 69.2** in the *sparse*
+setting (the feedback turn is pointed out in advance); inter-annotator agreement **Cohen κ = 0.70
+(binary) / 0.74 (three-way) / 0.60 (fine-grained)** over 54 cross-annotated conversations.
+⇒ Two consequences. **(a)** A weak separation here is the task's difficulty, not this rule set being
+unusually bad — quote precision against **P61/R36**, never against a vacuum. **(b)** Their conclusion
+(*noisy as a learning signal*) converges independently with residual (0) below.
+🟥 **Do not collapse the two tasks.** They read the user's turn and judge post-hoc; this phase predicts
+*before* the user speaks, from the session's own acts, with the next human turn structurally excluded.
+Ours is strictly harder and that difference is the net-new angle — normalizing it away both overstates
+the prior art and invalidates any direct number comparison.
+🟥 Provenance of this paragraph: the world was consulted **only after the operator asked whether it had
+been**; zero external lookups preceded the design. That is identity ④'s measured gap, not a footnote.
 
 ### The ten shapes — a session in this state is about to be stopped
 
@@ -274,10 +299,24 @@ kills the capability (cross-family MED). Repeat suggestions dedupe by shape, not
 check. The operator's bar for this capability is exactly that: *"'쎄함'을 감지하고 사람에게
 「한번 확인해볼까?」 라고 제안하는 것만 가능해도 성공이다."*
 
-⚠️ **Named residuals.** (0) **False-positive rate is UNMEASURED.** The 18% figure is the rejection
-rate of one census's *claims* — it is **not** these rules' precision. Per-rule fires/TP/FP on a fixed
-session holdout has not been run, so «does this fire on every session» is an open question, not a
-settled one. (0-b) Tier M has **no executable definitions** — «N seconds», «same subject»,
+⚠️ **Named residuals.** (0) **MEASURED 2026-08-21 — and it did not pass its pre-registered bar.**
+(The 18% figure below is the rejection rate of one census's *claims*; it never was these rules'
+precision.) A sealed pre-registration (`sha256 8414a44d…`, re-verified at opening) ran the 41 rules
+against **44 windows** — 22 immediately preceding an operator intervention, 22 preceding an approval —
+with blinding enforced by file boundary (the rule-evaluator never receives the next human turn; the
+labeler never receives the rules). Result: **12 of 41 rules ever fired · 2 discriminate**
+(`J2` +4, `M10` +3) · **10 fired below the +3 line** (J1 · J17 · M2 · J4 · J12 · M1 · J6 · M4 · J18 ·
+M3 — «did not clear the bar in this sample», **not** the same bucket as dead) · **29 never fired at
+all**, 14 of them Tier M. The pre-registered stop condition **«no separation» HIT** (median difference
++0.5 vs a required +2.0).
+🟥 **The pre-registration itself was defective and that is recorded, not hidden**: a median is a poor
+statistic on a 0–1 sparse count. A post-hoc binary comparison (any rule fires: POS 82% vs NEG 50%,
+Fisher p=0.055) suggests signal — **it does not overturn the verdict**, and claiming it would require
+replication under a *new* pre-registration naming that statistic in advance. Current status:
+**signal possible, not established.**
+⚠️ Scope of that run: **in-sample** (no out-of-sample corpus exists — sessions in other repos are
+one-shot dispatches with no preceding window), which makes it a *favourable* arm: failing it is
+conclusive, passing it would not have been. Detail: `tracks/_meta/RESULT_2026-08-21_intervention-precision.md`. (0-b) Tier M has **no executable definitions** — «N seconds», «same subject»,
 «alternate route», «conditional marker» are undefined; an evaluator schema, window and no-data
 verdict must precede any wiring. (a) Tier M is written but **not wired** — no hook evaluates it yet; both
 tiers currently run on invocation. (b) Neither census hand-verified in full: transcripts 5/54
