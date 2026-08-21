@@ -18,14 +18,21 @@ Everything below is **copyable**. None of it is a secret. The principles are the
 FH treats a project like steel — heat, shape, and shock, in named movements. The metaphor is literal,
 not decoration:
 
-| Movement | What it does | Today |
+**Three at the anvil:**
+
+| The smith's word | What it does | Today |
 |---|---|---|
 | **Forge** | shape the raw project into a harness — raise its floor | `install-wizard`, harness-ify |
 | **Quench** | harden it by attack — the cold pass leaves standing only what is sound | `steel-quench`, `phantom-quench` |
 | **Temper** | take the brittleness back out of the hardened asset | `steel-quench` **Wave-T** + `templates/temper_check.sh` |
-| → **Accelerate** | a blade that survived the forge cuts faster — pass, then run | `goal-quench` · *Pass → Accelerate* |
 
-All four movements now ship. **Temper** spent its first months named-but-unbuilt — deliberately, per
+**⟹ And then it accelerates.** A blade that survived the forge cuts faster — `goal-quench`,
+*Pass → Accelerate*. Three at the anvil, and speed is what those three **produce**; it is not a
+fourth thing you do at the anvil. Quality is the lever, speed is the result.
+
+Every command named above ships today. (These are the smith's words — a **vocabulary**, not a stage
+list, and a different layer from the three-stage process, the four engines, the four-axis commit gate
+and the six verification axes. Do not count them against those.) **Temper** spent its first months named-but-unbuilt — deliberately, per
 principle 5 — and shipped only after measurement runs on independent quench convergences validated that
 the check flags over-hardening without punishing simplification. Quenched steel is hard but brittle;
 no smith ships it un-tempered, and now neither does FH: after convergence, Wave-T measures the complexity
