@@ -357,10 +357,25 @@ PPRANGES
       [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] || exit 1
     fi
     if [ "${_pp_count:-0}" -gt 0 ]; then
-      if printf '%s\n' "$_pp_added" | awk '
+      # 🟥 rc 를 «비영» 으로 뭉개지 마라 (cross-family, 2026-08-21): 1=유출 · 3=계기 사망.
+      #    합치면 아래 PUBLIC_SURFACE_OK 가 **계기 사망까지 승인**한다 — push 는 비가역이다.
+      _pp_rc=0
+      printf '%s\n' "$_pp_added" | awk '
            /^\+\+\+ b\// { f = substr($0, 7); next }
            /^\+/         { print f "\t" substr($0, 2) }
-         ' | psa_scan_tagged; then
+         ' | psa_scan_tagged || _pp_rc=$?
+      if [ "$_pp_rc" = "3" ]; then
+        echo ""
+        echo "══════════════════════════════════════════════"
+        echo " ⛔ FH Pre-Publish Gate (pre-push) — INSTRUMENT DEAD, scan did NOT run"
+        echo "══════════════════════════════════════════════"
+        echo "  rc=3 = NOT SCANNED. That is not «no token found» — nothing was measured."
+        echo "  PUBLIC_SURFACE_OK does NOT cover this: an override approves a KNOWN mention,"
+        echo "  never an unmeasured surface. Fix the scanner first (run under bash; psa_load)."
+        echo "══════════════════════════════════════════════"
+        exit 1
+      fi
+      if [ "$_pp_rc" = "0" ]; then
         echo "  ✅ FH Pre-Publish: no operator-private token in the TEXT added by ${_pp_count} commit(s)"
         echo "     (not covered: annotated-tag messages · binary blobs — named residuals)"
       else

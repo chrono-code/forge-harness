@@ -208,9 +208,73 @@ psa_detect_operator_context() {
 # Why path-tagged input: the LOW allowlist is per FILE, so a scanner that flattens content loses the
 # only information needed to apply it. The push copy did exactly that and blocked its own first real
 # push on a companion-store name inside the script whose job is to sync to the companion store.
+# _psa_in_selftest — «지금 psa_require_live 안에서 불린 것인가»를 **호출 스택**으로 판별한다.
+# 🟥 변수 표식을 쓰면 안 된다: 외부가 `_PSA_IN_SELFTEST=1` 을 미리 export 하는 것만으로
+#    자가검사가 통째로 생략된다(cross-family 반례 1b, 실행 재현). 전역 상태를 권한 표식처럼
+#    믿는 형태다. 호출 스택은 **호출자가 미리 심을 수 없다.**
+# bash=FUNCNAME · zsh=funcstack. 둘 다 없으면 판별 불가이므로 **재진입이 아니라고 답한다** —
+# 그러면 자가검사가 한 번 더 돌 뿐(무한재귀는 psa_require_live 가 이 함수를 한 겹만 부르므로
+# 발생하지 않는다), 반대로 «재진입이다」로 접으면 그게 fail-open 이다.
+_psa_in_selftest() {
+  local _st=""
+  # shellcheck disable=SC2154
+  if [ -n "${FUNCNAME[*]:-}" ]; then _st=" ${FUNCNAME[*]} "
+  elif [ -n "${funcstack[*]:-}" ]; then _st=" ${funcstack[*]} "
+  else return 1; fi
+  case "$_st" in *" psa_require_live "*) return 0 ;; esac
+  return 1
+}
+
 psa_scan_tagged() {
-  local input hit=0 row sev re path body tok
-  input=$(cat)
+  # 🟥 `path` 를 지역선언하지 마라 — zsh 에서 `path` 는 `PATH` 와 **tied 된 특수 배열**이라
+  #    `local path` 하는 순간 그 스코프의 `PATH` 가 빈 문자열이 되고, 바로 다음 줄의
+  #    `$(cat)` 부터 `command not found: cat` 으로 죽는다. 그런데 이 함수의 계약이
+  #    「빈 입력 = 신고할 것 없음 = return 0」이라 **계기 사망이 «깨끗한 스캔»과 바이트 단위로
+  #    같은 출력**이 된다 — 이 저장소가 이름 붙인 «미측정을 0으로 렌더» 의 가장 조용한 얼굴이다.
+  #    실측 2026-08-21: zsh 에서 known-positive·known-negative 가 **둘 다 rc=0** 이었다.
+  #    형제 특수변수(`fpath` `status` `argv` `cdpath` …)도 같은 함정이다.
+  local input hit=0 row sev re _psa_path body tok
+
+  # ── E: 진입 생존성 가드 (2026-08-21, cross-family FAIL 판정 후 재작성) ─────────────
+  # 🟥 **초판 E 는 fail-open 을 못 닫았다.** codex/gpt-5.6-sol 이 반례 6개를 전부 실행으로
+  #    재현했고 판정은 FAIL 이었다. 초판의 구조적 맹점: **«자가검사가 한 번 통과했다»를
+  #    «그 뒤의 실제 스캔도 실행됐다»로 확장**한 것. 그 사이엔 시간·전역상태·파이프라인
+  #    상태라는 단절점이 셋 있다. 재작성이 닫는 것과 못 닫는 것을 아래에 이름으로 적는다.
+  #
+  # 🟥 **캐시 제거.** 초판은 `_PSA_LIVE_OK` 로 프로세스당 1회만 검사했다 — 첫 양성 뒤
+  #    grep 을 죽이면 같은 양성이 rc=0 이 됐다(codex 재현). 그리고 **캐시는 뚫린 쪽(긴
+  #    스킬 세션)에서만 위험하고 안전한 쪽(짧은 훅)에서만 이득**이라 방향이 반대였다.
+  #    비용은 **실측했다: psa_require_live 1회 ≈ 64ms** (훅 경로 최대 4회 = 0.26초).
+  #    초판은 이 비용을 **안 재고** 캐시를 정당화했다 — 그게 진짜 결함이었다.
+  #
+  # 🟥 **재진입 표식은 `local` 로 «동적 스코프»에 둔다.** 초판은 전역 변수를 권한 표식처럼
+  #    믿어서, 외부가 `_PSA_IN_SELFTEST=1` 을 미리 export 하면 자가검사가 **통째로 생략**됐다
+  #    (codex 재현: `grep(){ return 127; }` 상태에서 known-positive 가 rc=0 무출력).
+  #    `local` 선언은 외부 값을 **가리고**, 함수가 끝나면 **자동 복구**된다 — unset 실패나
+  #    시그널·트랩으로 값이 남는 경로가 없어진다.
+  if ! _psa_in_selftest; then
+    # 🟥 실제 패턴 스트림을 여기서 본다. 자가검사는 PSA_STREAM 을 카나리아로 **바꿔치기**
+    #    하므로 «진짜 패턴이 비었거나 깨졌는지»를 구조적으로 못 본다(codex 반례 3).
+    if [ -z "${PSA_STREAM:-}" ]; then
+      echo "  ❌ INSTRUMENT DEAD — PSA_STREAM is empty; nothing to match against. NOT SCANNED."
+      echo "  ❌ INSTRUMENT DEAD — PSA_STREAM is empty; NOT SCANNED (call psa_load first)." >&2
+      return 3
+    fi
+    if ! psa_require_live >/dev/null 2>&1; then
+      echo "  ❌ INSTRUMENT DEAD — psa_scan_tagged self-test failed. NOT SCANNED."
+      echo "  ❌ INSTRUMENT DEAD — psa_scan_tagged self-test failed. NOT SCANNED." >&2
+      echo "     A 0 from this scanner is UNMEASURED, not clean. Re-run under bash." >&2
+      return 3
+    fi
+  fi
+
+  # 🟥 `cat` 의 상태를 버리지 마라 (codex 반례 1). 초판은 `input=$(cat)` 로 대입만 하고
+  #    rc 를 버려서, cat 이 죽어 입력이 비면 그게 곧 «신고할 것 없음»이 됐다.
+  if ! input=$(cat); then
+    echo "  ❌ INSTRUMENT DEAD — could not read stdin. NOT SCANNED."
+    echo "  ❌ INSTRUMENT DEAD — could not read stdin. NOT SCANNED." >&2
+    return 3
+  fi
   [ -n "$input" ] || return 0
   while IFS= read -r row; do
     case "$row" in ''|\#*) continue;; esac
@@ -218,15 +282,15 @@ psa_scan_tagged() {
     sev="${row%%$'\t'*}"
     while IFS= read -r line; do
       [ -z "$line" ] && continue
-      path="${line%%$'\t'*}"; body="${line#*$'\t'}"
+      _psa_path="${line%%$'\t'*}"; body="${line#*$'\t'}"
       # EVERY match on the line. Taking only the first let a documented placeholder earlier on the
       # line shield a real token later on it.
       while IFS= read -r tok; do
         [ -z "$tok" ] && continue
         printf '%s' "$tok" | grep -qiE "$PSA_PLACEHOLDER" && continue
-        if [ "$sev" = "LOW" ] && psa_low_allowlisted "$path"; then continue; fi
-        if psa_pair_allowlisted "$path" "$tok"; then continue; fi
-        echo "  ❌ $sev leak — ${path}: '$tok'"
+        if [ "$sev" = "LOW" ] && psa_low_allowlisted "$_psa_path"; then continue; fi
+        if psa_pair_allowlisted "$_psa_path" "$tok"; then continue; fi
+        echo "  ❌ $sev leak — ${_psa_path}: '$tok'"
         hit=1
       done <<PSA_TOK
 $(printf '%s' "$body" | grep -oiE "$re" 2>/dev/null || true)
