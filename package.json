@@ -233,6 +233,9 @@
     "scripts/gate_anchor_check.sh",
     "scripts/portability_lint.sh",
     "scripts/rtk_gross_ablation.sh",
-    ".claude/capabilities"
+    ".claude/capabilities",
+    "scripts/prior_art_prompt.sh",
+    "scripts/test_prior_art_prompt_lanes.sh",
+    "templates/settings.PriorArt.snippet.json"
   ]
 }
