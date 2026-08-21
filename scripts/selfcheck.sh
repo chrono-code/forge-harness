@@ -1261,6 +1261,19 @@ else
   fail=1
 fi
 
+# prior-art prompt (T2) — 새 메커니즘을 쓰기 직전 «내부·외부·숙고» 를 모델 컨텍스트에 넣는 훅.
+# 레인의 다수가 **음성**이다: 이 훅의 사활은 막는 것이 아니라 소음이 아닌 것이다.
+if [ ! -f scripts/prior_art_prompt.sh ]; then
+  _absent_subject_verdict "test_prior_art_prompt_lanes.sh" "scripts/prior_art_prompt.sh" || fail=1
+elif [ -f scripts/test_prior_art_prompt_lanes.sh ]; then
+  if ! bash scripts/test_prior_art_prompt_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_prior_art_prompt_lanes.sh: prior_art_prompt.sh present but its anchor is missing"
+  fail=1
+fi
+
 # outbound-query 위생 린트 — 나가는 질의에 내부 토큰이 실렸는지. 레인이 이 가드의 fail-closed
 # 분기 4개(라이브러리 부재·defaults 부재·override 부재·상태값 오염)에 각각 짝을 갖는다.
 if [ ! -f scripts/outbound_query_guard.sh ]; then
