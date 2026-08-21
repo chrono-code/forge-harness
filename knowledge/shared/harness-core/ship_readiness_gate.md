@@ -109,10 +109,56 @@ Score with the same triangulation the 2026-07-14 audit used — no single-source
    novice-vocabulary intents, scored on whether the right skill/gate fires. Salience-only ≠ measured.
 
 ## Versioning policy — the formal release track
-The formal release tag is **independent of the npm package version**. The npm version (currently in the
-`1.4.x` range) is the **plugin-cache lockstep number** — it bumps on every shipped-asset change so Codex/
+The formal release tag is **independent of the npm package version**. The npm version (**2.6.0** as of
+2026-08-21; ⚠️ this parenthetical said `1.4.x` until then — a version number written into prose goes
+stale silently and reads as fact, so verify it against `package.json` before citing) is the
+**plugin-cache lockstep number** — it bumps on every shipped-asset change so Codex/
 marketplace cache-invalidate; it is not a maturity claim. The **formal identity-maturity release starts at
 `v0.1.0`**. Do not conflate the two counters; a high npm number does not make the harness mature.
+
+🟥 **Tag namespace — the two counters must not share one (added 2026-08-21, operator-approved).**
+They did, and it broke the public surface: both tracks used `vX.Y.Z`, only the maturity track had
+GitHub *Release* objects, so the Releases page advertised **`v0.3.0` (2026-08-16) as "Latest"** while
+the shipped package was **2.6.0**. A visitor could not tell which number was newer or what either meant.
+
+This is the same defect class this repo keeps finding in its gates — **two layers, one name** (a CI
+`paths:` filter read as the local hook; a leg scoped to load-bearing changes read as scoped to every
+marker, both measured 2026-08-21). The fix is never "merge the layers"; the two counters measure
+genuinely different quantities and collapsing them destroys the maturity signal. The fix is to stop
+sharing the name:
+
+```
+maturity track   identity-v0.4.0 onward       (v0.1.0 · v0.2.0 · v0.3.0 keep their names)
+package track    v2.6.0 onward, unchanged     tags only — NO GitHub Release objects (see below)
+```
+
+🟥 **The Releases page carries the maturity track ONLY — and this was measured, not assumed.**
+On 2026-08-21 a Release object was created for `v2.6.0` to make "Latest" reflect what ships. It was
+deleted the same hour, by operator decision, because it solved the wrong half: **GitHub gives exactly
+one "Latest" badge**, so two tracks on one page compete for it and the holder defines what the repo
+announces. The package number took the headline and pushed the maturity claim under it. The misreading
+that prompted it was already closed by the cheaper half — a one-line header on the existing release
+bodies. ⇒ **package releases live in `CHANGELOG.md` and the registry, not here.** The `v2.x` tags
+remain (a deleted Release does not delete its tag — verified).
+
+🟥 **Read every bare `vX.Y.Z` in THIS section as the maturity track — and from v0.4.0 that means the
+tag is `identity-vX.Y.Z`.** So the all-green ship below is the tag **`identity-v1.0.0`**, not `v1.0.0`;
+a bare `v1.0.0` would now be ambiguous with the package track (already past `v2.x`, so it will never
+mint one — but "will never collide" is not the same as "is unambiguous to a reader").
+⚠️ Renaming the prefix without carrying it to the milestone is exactly the half-fix this repo keeps
+recording — the rule lands and the thing the rule points at does not follow
+(`[[feedback_half_fix_propagation_boundary]]`). Caught by a peer session, not by the author, on the
+same day the rename was written.
+⚠️ Deliberately **not** rewritten: `fh-gate v1.0.0` (a different package), the CHANGELOG's record of a
+past version normalization (history), and CATALOG entries — checked one by one before editing. A
+blanket substitution would have corrupted all three.
+
+⚠️ **Existing tags are NOT renamed.** Retagging deletes and recreates a public ref that release bodies
+and inbound links already point at — an irreversible operation on a public surface, so the
+Destructive-Op gate applies to this repo's own tags. The cheap equivalent is a one-line header on the
+existing release bodies stating which track they belong to. (The v0.3.0 body already says it —
+*"independent of the npm plugin-cache number"* — but four paragraphs down, where the Releases list does
+not show it. Gate-locality: if it is not where the reader is, it is not there.)
 
 **The `0.x` ↔ `1.0` mapping (refined 2026-07-14, informed operator decision).** Semver `0.x` explicitly
 means *early / not-yet-complete*, so the formal track maps cleanly onto the identity gate:
@@ -120,7 +166,7 @@ means *early / not-yet-complete*, so the formal track maps cleanly onto the iden
   (≥1 identity 🟢 by real artifact) and an *honest, evidence-scored status for the rest* — NOT when every
   identity is green. `v0.1.0` makes **no all-green claim**; its release notes carry the real per-identity
   status (🟢/🟡/🔴). This is the baseline *from which* all-green is tracked, not the all-green ship itself.
-- **`v1.0.0` = the all-green ship.** The original "ship only when every identity is 🟢" condition maps to
+- **`identity-v1.0.0` = the all-green ship.** The original "ship only when every identity is 🟢" condition maps to
   **v1.0.0**, not v0.1.0. A 🟡/🔴 blocks *v1.0*, and names exactly what real run is missing — it does not
   block the honest v0.1.0 baseline.
 
