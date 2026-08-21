@@ -28,7 +28,7 @@
 # (the confidentiality gate blocked the first draft of sync-to-be.sh's fix for hardcoding one
 # directly; `git grep` showed zero prior occurrences anywhere in this repo, i.e. a genuinely new
 # leak, not an already-accepted pattern). Sibling identity instead comes from a LOCAL, gitignored
-# config file (`.git/info/exclude`, same convention as `.fh-be-tracks.local`) — `key=value` lines,
+# config file (`.git/info/exclude`, same convention as the sibling's own local tracks config) — `key=value` lines,
 # read as DATA (never sourced as shell, to avoid handing arbitrary code execution to a config file):
 # HUB_HEADER_MATCH (a prefix of the sibling's CLAUDE.md first line), HUB_SUFFIX, HUB_NAME.
 
@@ -53,7 +53,7 @@ fh_resolve_hub_identity() {
       # internal spaces — HUB_SUFFIX/HUB_NAME become directory-name fragments, so a stray trailing
       # CR from a CRLF-authored file silently mints a second namespace, reproduced in review); the
       # header-match text keeps internal spaces (it legitimately contains them) and only a trailing
-      # CR is stripped, matching the sibling `.fh-be-tracks.local` reader's own trim (line ~338 of
+      # CR is stripped, matching the sibling's local-tracks-config reader's own trim (line ~338 of
       # sync-to-be.sh) applied to the field that actually needs it.
       _fh_hub_id_get() {
         [ -f "$idfile" ] || return 0
@@ -72,6 +72,12 @@ fh_resolve_hub_identity() {
       ;;
   esac
   TM="tracks-meta$HUB_SUFFIX"; TA="tracks-audit$HUB_SUFFIX"; TCH="tracks-chamber$HUB_SUFFIX"
-  TR="tracks$HUB_SUFFIX"; MMD="memory$HUB_SUFFIX"; HO="hub-owner$HUB_SUFFIX"
+  TR="tracks$HUB_SUFFIX"; MMD="memory$HUB_SUFFIX"
+  # NOTE: the operator-private area's directory name is deliberately NOT set here.
+  #   This file ships in the PUBLIC npm package (files[]), and that name is an operator-private
+  #   token in that context — the same reason the sibling hub's name is read from local config
+  #   rather than hardcoded (see the header). The only consumer is sync-to-be.sh, which does NOT
+  #   ship, so it defines the name itself. Measured 2026-08-21: the pre-publish confidentiality
+  #   scan blocked `npm publish` on this exact literal.
   return 0
 }

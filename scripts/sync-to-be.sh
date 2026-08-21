@@ -84,6 +84,11 @@ if ! fh_resolve_hub_identity; then
   echo "[sync-to-be] refuse: \$FH ($FH) is not a recognized hub — abort" >&2
   exit 10
 fi
+# The operator-private area's directory name lives HERE, not in fh_hub_identity.sh — that file
+# ships in the public npm package and this name is an operator-private token there (the pre-publish
+# confidentiality scan blocked `npm publish` on it, 2026-08-21). This script does not ship, and it
+# is the only consumer of $HO, so the name belongs at the consumer.
+HO="hub-owner$HUB_SUFFIX"
 
 # Cross-hub mutual exclusion (Wave-1 review, pmh-dev#68 [S]; lock ordering hardened by codex
 # cross-family review [A]). Before HUB_SUFFIX, a non-FH hub always refused above and never reached
