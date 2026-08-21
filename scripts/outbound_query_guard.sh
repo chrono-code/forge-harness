@@ -84,8 +84,26 @@ fi
 # 로 읽으므로, 질의에 개행+탭이 있으면 **토큰이 path 필드로 들어가 스캔 대상에서 빠진다.**
 # 실제 우회 경로였다. 한 레코드로 눌러 넣는다.
 Q_FLAT="$(printf '%s' "$Q" | tr '\n\t\r' '   ')"
-OUT="$(printf 'outbound-query\t%s' "$Q_FLAT" | psa_scan_tagged 2>&1)"; RC=$?
+# 🟥 P3 동형: 조건문 안의 대입이라야 `set -e` 아래서 안 죽는다.
+if OUT="$(printf 'outbound-query\t%s' "$Q_FLAT" | psa_scan_tagged 2>&1)"; then RC=0; else RC=$?; fi
+# 🟥 P2 (cross-family 3라운드): 초판은 «비영이면 override 로 통과» 였다. 그러면 **rc=3 미측정**
+#    까지 승인된 것처럼 지나간다 — pre-commit·pre-push 에서 닫은 바로 그 구멍이 **세 번째
+#    호출부에 그대로** 있었고, 나는 그것을 「호출부 셋 다 닫혔다」고 적었다(전수 주장이 틀렸다).
+#    override 는 «봤고 괜찮다» 는 뜻이라 **본 것(rc=1)에만** 쓸 수 있다. 안 본 것(rc=3)엔 못 쓴다.
+# 🟥 R4-4/5: 판정점을 **하나로** 만든다. 초판은 «rc=3 선차단» + «override 에 `-le 1` 조건»
+#    두 겹이었는데, 앞이 막아버려 뒤 술어는 **되돌려도 레인이 안 빨개졌다**(장식 앵커).
+#    그리고 rc=2 는 어느 쪽도 안 잡아 **«유출 발견»(exit 1)으로 오분류**됐다 — 안 본 것을
+#    본 것으로 렌더하는 방향이다. 「측정된 값」은 0 과 1 뿐이고 **나머지는 전부 미측정**이다.
+case "$RC" in
+  0|1) ;;
+  *) echo "🚫 OUTBOUND BLOCKED — 스캐너가 측정값을 안 냈다 (rc=$RC). NOT SCANNED 는 깨끗함이 아니다." >&2
+     echo "   OUTBOUND_QUERY_OK 로도 통과 못 한다 — 승인은 «봤다» 는 뜻이고, 이건 안 본 것이다." >&2
+     echo "$OUT" >&2
+     exit 3 ;;
+esac
 if [ "$RC" -ne 0 ] || [ -n "$OUT" ]; then
+  # 여기 도달했다는 것은 위 `case` 에 의해 RC ∈ {0,1} 이 **구조적으로 보장**된 상태다.
+  # 초판의 `&& [ "$RC" -le 1 ]` 는 그래서 중복이었고, 중복은 앵커가 안 붙는다 — 지운다.
   if [ "${OUTBOUND_QUERY_OK:-0}" = "1" ]; then
     printf '%s\tOUTBOUND_QUERY_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${Q:0:60}" \
       >> "$FH/tracks/_meta/.outbound_query_override_log" 2>/dev/null || true

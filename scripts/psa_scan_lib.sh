@@ -112,7 +112,19 @@ psa_low_allowlisted() {
 # Prints diagnostics for every degraded state; sets the flags above. NEVER exits — the caller owns
 # the degrade direction, because it differs by surface (see the header).
 psa_load() {
-  local defaults="$1" override="$2" raw ov
+  local defaults="$1" override="$2" raw ov _tabtest
+  # 🟥 R5-3: 이 라이브러리는 `$'\t'` (ANSI-C quoting) 에 의존한다 — **POSIX 가 아니다.**
+  #    dash 에서는 리터럴 `$\t` 로 읽혀 정상 행이 «TAB 없음» 으로 떨어지고, 스트림이 통째로
+  #    비면서 **bad=1 · stream=[] 로 조용히 무력화**됐다(cross-family 실측). 그건 미측정이지
+  #    「패턴이 없다」가 아니다. 지원 범위는 bash/zsh 이고, 그걸 산문이 아니라 여기서 확인한다.
+  #    판별은 길이다 — 실측: bash/zsh `len=1`(진짜 TAB) · dash `len=3`(리터럴 `$\t`).
+  _tabtest=$'\t'
+  if [ "${#_tabtest}" -ne 1 ]; then
+    echo "  ❌ INSTRUMENT DEAD — this shell does not support \$'\\t' (ANSI-C quoting)." >&2
+    echo "     psa_scan_lib.sh requires bash or zsh. Re-run under one of them; NOT SCANNED." >&2
+    PSA_STREAM=""; PSA_DEFAULTS_OK=0; PSA_OVERRIDE_PRESENT=0; PSA_BAD_ROWS=1
+    return 3
+  fi
   PSA_STREAM=""; PSA_DEFAULTS_OK=0; PSA_OVERRIDE_PRESENT=0; PSA_BAD_ROWS=0
 
   # Layer 1 — committed defaults. This file ships with the repo, so missing/unreadable/empty is a
@@ -156,9 +168,21 @@ $ov"; PSA_OVERRIDE_PRESENT=1
       echo "  ❌ unusable pattern row (no TAB between severity and regex): ${line%%$'\t'*}"
       PSA_BAD_ROWS=$((PSA_BAD_ROWS+1)); continue
     fi
-    printf '' | grep -E "$re" >/dev/null 2>&1; rc=$?    # 0/1 = compiled; >=2 = regex error
+    # 🟥 R4-1: 여기도 `cmd; rc=$?` 였다 — P3 를 스캔 경로에서만 고치고 **로더 경로로 전파를 안 봤다**.
+    #    정상 패턴은 빈 입력에 rc=1 을 내므로 `set -e` 호출자는 psa_load 에서 죽는다(선재, 양 셸 실측).
+    if printf '' | grep -E "$re" >/dev/null 2>&1; then rc=0; else rc=$?; fi    # >=2 = regex error
     if [ "$rc" -ge 2 ]; then
       echo "  ❌ unusable pattern (invalid regex) — this detector would match nothing: [${line%%$'\t'*}]"
+      PSA_BAD_ROWS=$((PSA_BAD_ROWS+1)); continue
+    fi
+    # 🟥 P4 (선재 결함): 판별력 없는 패턴을 거부한다 — 빈 패턴 · `^` · `a*` · `SECRET|^$`.
+    #    모든 입력에 매치하므로 검출기로 **쓸 수 없는데** 초판 로더는 유효로 받아들였다.
+    #    🟥 그리고 이 검사는 **위의 컴파일 검사로는 못 한다**: `printf ''` 는 줄을 0개 주므로
+    #    grep 이 매치할 대상 자체가 없어 **어떤 패턴이든 rc=1** 이다(실측). 위 주석의
+    #    「0 = 컴파일됨」은 도달 불가능한 값을 서술한 것이었다. 빈 «줄» 을 따로 먹인다.
+    if printf '\n' | grep -E "$re" >/dev/null 2>&1; then rc=0; else rc=$?; fi
+    if [ "$rc" -eq 0 ]; then
+      echo "  ❌ unusable pattern (matches the EMPTY string — no discrimination): [${line%%$'\t'*}]"
       PSA_BAD_ROWS=$((PSA_BAD_ROWS+1)); continue
     fi
     valid="$valid
@@ -260,6 +284,18 @@ psa_scan_tagged() {
       echo "  ❌ INSTRUMENT DEAD — PSA_STREAM is empty; NOT SCANNED (call psa_load first)." >&2
       return 3
     fi
+    # 🟥 R4-6: **부분 로드된 패턴 집합으로 «깨끗»을 말하지 않는다.** 초판은 이것을 «호출자
+    #    계약»으로 두었고(헤더가 그렇게 적어뒀다), cross-family 가 그 계약을 안 지키는 호출자를
+    #    실측 재현했다 — `SECRET|^$` 한 행이 떨어져 나간 집합으로 `SECRET` 입력이 rc=0 «깨끗».
+    #    산문 계약을 라이브러리 층으로 내린다: 안 실린 검출기가 있으면 그건 미측정이다.
+    #    (psa_load 를 안 부른 호출자는 PSA_BAD_ROWS 가 미설정이고, 그 경로는 위 빈-스트림
+    #     검사가 이미 잡는다. `case` 로 보는 이유는 비수치 오염에서 fail-open 하지 않기 위해서다.)
+    case "${PSA_BAD_ROWS:-0}" in
+      0) ;;
+      *) echo "  ❌ INSTRUMENT DEAD — ${PSA_BAD_ROWS} pattern row(s) were dropped; the detector set is PARTIAL. NOT SCANNED."
+         echo "  ❌ INSTRUMENT DEAD — ${PSA_BAD_ROWS} pattern row(s) dropped — a partial set cannot report clean." >&2
+         return 3 ;;
+    esac
     if ! psa_require_live >/dev/null 2>&1; then
       echo "  ❌ INSTRUMENT DEAD — psa_scan_tagged self-test failed. NOT SCANNED."
       echo "  ❌ INSTRUMENT DEAD — psa_scan_tagged self-test failed. NOT SCANNED." >&2
@@ -285,7 +321,8 @@ psa_scan_tagged() {
     #    실측 도달 경로: 패턴 파일에 **깨진 정규식**이 한 줄 있으면 그 행만 조용히 아무것도
     #    안 잡고 스캔은 rc=0 «깨끗» 을 낸다. 자가검사는 자기 카나리아 패턴을 쓰므로
     #    **진짜 패턴의 깨짐을 구조적으로 못 본다** — 그래서 여기서 봐야 한다.
-    _line_hits=$(printf '%s\n' "$input" | grep -iE "$re" 2>/dev/null); _lg=$?
+    # 🟥 P3 동형: grep 의 정상 «미매치»(rc=1)가 `set -e` 호출자를 죽인다.
+    if _line_hits=$(printf '%s\n' "$input" | grep -iE "$re" 2>/dev/null); then _lg=0; else _lg=$?; fi
     if [ "$_lg" -gt 1 ]; then
       echo "  ❌ INSTRUMENT DEAD — grep failed (rc=$_lg) on pattern: $re"
       echo "  ❌ INSTRUMENT DEAD — grep failed (rc=$_lg) on pattern: $re" >&2
@@ -297,7 +334,7 @@ psa_scan_tagged() {
       _psa_path="${line%%$'\t'*}"; body="${line#*$'\t'}"
       # EVERY match on the line. Taking only the first let a documented placeholder earlier on the
       # line shield a real token later on it.
-      _tok_hits=$(printf '%s' "$body" | grep -oiE "$re" 2>/dev/null); _tg=$?
+      if _tok_hits=$(printf '%s' "$body" | grep -oiE "$re" 2>/dev/null); then _tg=0; else _tg=$?; fi
       if [ "$_tg" -gt 1 ]; then
         echo "  ❌ INSTRUMENT DEAD — grep -o failed (rc=$_tg) on pattern: $re"
         echo "  ❌ INSTRUMENT DEAD — grep -o failed (rc=$_tg) on pattern: $re" >&2
@@ -308,7 +345,9 @@ psa_scan_tagged() {
         printf '%s' "$tok" | grep -qiE "$PSA_PLACEHOLDER" && continue
         if [ "$sev" = "LOW" ] && psa_low_allowlisted "$_psa_path"; then continue; fi
         if psa_pair_allowlisted "$_psa_path" "$tok"; then continue; fi
-        echo "  ❌ $sev leak — ${_psa_path}: '$tok'"
+        # 🟥 P5: zsh 의 `echo` 는 백슬래시를 해석한다 — 경로 `dir\two` 가 탭으로 변해
+        #    증거 문자열이 손상됐다(실측). fail-open 은 아니나 증거는 증거여야 한다.
+        printf '  ❌ %s leak — %s: \x27%s\x27\n' "$sev" "${_psa_path}" "$tok"
         hit=1
       done <<PSA_TOK
 $_tok_hits
@@ -367,15 +406,42 @@ _psa_can_assign() {
 #     the caller's shell before the restore line. Status capture is now inside an `if`.
 psa_require_live() {
   local saved_stream saved_allow saved_stream_set saved_allow_set tmpd out rc _canary
+  local _nonce _tag_rc
   saved_stream="${PSA_STREAM-}"; saved_allow="${PSA_ALLOWLIST-}"
   saved_stream_set=""; saved_allow_set=""
   [ "${PSA_STREAM+x}" = "x" ] && saved_stream_set=1
   [ "${PSA_ALLOWLIST+x}" = "x" ] && saved_allow_set=1
   tmpd=$(mktemp -d 2>/dev/null) || { echo "  ❌ INSTRUMENT DEAD — mktemp unavailable." >&2; return 1; }
+  # 🟥 P1 (cross-family 3라운드): 카나리아가 **고정 문자열**이면, 입력을 읽지도 않고
+  #    그 문자열을 rc=0 으로 뱉는 위조 생산자가 자가검사를 통과한다. 세 라운드가 공유한
+  #    얼굴 —「상태(rc=0)를 의미(생산이 유효하다)로 확장」— 의 마지막 잔재다.
+  #    실행마다 새 nonce 를 만들면 **하드코딩된 위조는 그 값을 알 수 없다.**
+  _nonce=$(head -c 12 /dev/urandom 2>/dev/null | od -An -tx1 2>/dev/null | tr -d ' \n')
+  # 🟥 **신뢰 경계 — 여기서 라운드를 멈추는 이유(2026-08-21, 6라운드 후 판정).**
+  #    이 자가검사가 막는 것: 생산자가 **깨졌거나**(awk 부재·crash·출력 훼손), **PATH 로
+  #    가려졌거나**(외부 바이너리 shadowing), 입력을 **안 읽고** 고정/유도값을 뱉는 경우.
+  #    이 자가검사가 **못** 막는 것: 이 라이브러리를 **소싱한 셸 안에서 함수를 정의할 수 있는**
+  #    상대. 그 상대는 `psa_scan_tagged(){ return 0; }` 한 줄이면 끝이라 nonce·cmp·심링크를
+  #    아무리 조여도 소용이 없다 — **이미 신뢰 안쪽**이다. 6라운드 반례 둘이 정확히 그 부류였고
+  #    (`cmp(){ return 0; }` · `ln -sf` 로 tagged 바꿔치기), 값싼 두 수리(`command cmp` ·
+  #    심링크 거부)는 했지만 **그 축을 닫았다고 주장하지 않는다.**
+  # 🟥 R5-1: **fallback 을 없앴다.** 5라운드 실측 —
+  #      `${tmpd##*/}` 파생 → 생산자가 경로를 인자로 받으므로 유도 가능 (4라운드에서 교체)
+  #      `${RANDOM}${RANDOM}$$${SECONDS}` → **생산자가 같은 셸에서 그대로 재계산해 통과**(zsh 실측 rc=0),
+  #      `RANDOM`/`SECONDS` 가 unset 이면 사실상 `$$` 하나라 `ps` 로도 읽힌다(bash 실측 rc=0)
+  #    ⇒ 「예측 불가한 값」은 **커널 엔트로피에서만** 나온다. 못 얻으면 그건 약한 nonce 가 아니라
+  #      **미측정**이다. 두 번째 출처(openssl)까지 시도하고, 그것도 없으면 fail-closed.
+  [ -n "$_nonce" ] || _nonce=$(openssl rand -hex 12 2>/dev/null | tr -cd 'A-Za-z0-9')
+  if [ -z "$_nonce" ]; then
+    echo "  ❌ INSTRUMENT DEAD — no kernel entropy source (/dev/urandom, openssl); cannot mint an unguessable nonce." >&2
+    echo "     A guessable nonce is not a weaker probe, it is NO probe — a producer can replay it." >&2
+    rm -rf "$tmpd" 2>/dev/null || :
+    return 1
+  fi
   # Round 4 refuted the round-3 fix: `|| :` does NOT rescue an assignment to a readonly variable —
   # bash aborts the shell before the `||` is ever considered. So the only safe move is to REFUSE
   # before mutating anything. Detected, reported as DEAD, and the caller survives.
-  _canary=$(printf 'HIGH\tPSA_SELFTEST_CANARY')
+  _canary=$(printf 'HIGH\tPSA_SELFTEST_CANARY_%s' "$_nonce")
   if ! _psa_can_assign PSA_STREAM "$_canary" || ! _psa_can_assign PSA_ALLOWLIST /dev/null; then
     echo "  ❌ INSTRUMENT DEAD — PSA_STREAM/PSA_ALLOWLIST cannot take the values the self-test needs." >&2
     echo "     (readonly, or an attribute such as \`declare -i\` that rejects the value)" >&2
@@ -385,23 +451,47 @@ psa_require_live() {
   fi
   PSA_STREAM="$_canary"
   PSA_ALLOWLIST=/dev/null
-  printf 'PSA_SELFTEST_CANARY\n' > "$tmpd/canary" 2>/dev/null
+  printf 'PSA_SELFTEST_CANARY_%s\n' "$_nonce" > "$tmpd/canary" 2>/dev/null
   # 🟥 생산자와 매처를 **분리해서** 상태를 각각 본다 (cross-family 반례 4, 2026-08-21).
   #    초판은 `awk … | psa_scan_tagged` 한 파이프의 최종 rc 만 봤는데, 그러면
   #    **«생산자 실패의 rc=1»** 과 **«스캐너가 유출을 찾음의 rc=1»** 이 같은 값으로 합쳐진다.
   #    실측 위조: 실패하는 `awk` 가 카나리아 행을 인쇄하고 `return 1` 하게 만들면
   #    양 셸에서 `psa_require_live` 가 **rc=0(살아있음)** 을 냈다. 즉 자가검사 판정 자체가
   #    위조 가능했다. 태깅 결과를 먼저 **물질화**하고 그 rc 를 따로 확인한다.
-  _tagged=$(awk -v P="psa/selftest" '{print P "\t" $0}' "$tmpd/canary" 2>&1); _tag_rc=$?
-  if [ "$_tag_rc" -ne 0 ] || [ -z "$_tagged" ]; then
+  # 🟥 P3: `x=$(cmd); rc=$?` 는 `set -e` 아래서 **셸을 즉시 죽인다** — 아래 복원문과
+  #    `rm -rf` 에 도달하지 못하고 PSA_STREAM 이 **카나리아인 채로 남는다**(실측, bash).
+  #    조건문 안의 대입은 errexit 면제다.
+  # 🟥 R4-3: `$(...)` 는 **후행 개행을 지운다** — 정답 줄 뒤에 빈 줄을 아무리 붙여도
+  #    문자열 비교가 통과했다(실측 rc=0). 「정확한 문자열 대조」라고 적어놓고 정확하지 않았다.
+  #    생산자 출력을 **파일로 물질화**해서 `cmp` 로 바이트 비교한다. stderr 는 따로 받는다.
+  if awk -v P="psa/selftest" '{print P "\t" $0}' "$tmpd/canary" > "$tmpd/tagged" 2>"$tmpd/err"; then _tag_rc=0; else _tag_rc=$?; fi
+  # 🟥 P1: 상태(rc)만이 아니라 **내용**을 대조한다. 생산자가 «입력을 읽어서 태깅했는가» 는
+  #    rc 로 알 수 없고, nonce 를 포함한 정확한 문자열 일치로만 알 수 있다.
+  # 🟥 R5-2: 초판은 기대값도 `$tmpd/expect` 파일에 뒀는데, **생산자는 `$tmpd/canary` 를 인자로
+  #    받으므로 `$tmpd` 를 알고 expect 를 덮어쓸 수 있다** — 틀린 바이트를 양쪽에 써넣으면
+  #    `cmp` 가 통과했다(양 셸 실측 rc=0). 기대값은 **프로세스 안에만** 두고 파이프로 먹인다.
+  #    (`cmp file -` 는 stdin 을 두 번째 피연산자로 읽는다. cmp 부재는 rc≠0 → fail-closed, 실측.)
+  # 🟥 R6-1: `cmp` 를 셸이 해석하면 **함수로 가려진다** — `cmp(){ return 0; }` 하나로 대조가
+  #    통째로 무력화됐다(양 셸 실측 rc=0). `command` 는 함수를 건너뛴다.
+  # 🟥 R6-2: 생산자는 `$tmpd` 를 알므로 stdout 에는 틀린 바이트를 쓰고 `tagged` 를 **정답 파일로
+  #    가는 심링크로 바꿔치기**할 수 있다(양 셸 실측 rc=0). 비교 대상이 «awk 가 실제로 쓴 파일»
+  #    인지 먼저 확인한다 — 심링크가 아닌 보통 파일이어야 한다.
+  if [ -L "$tmpd/tagged" ] || [ ! -f "$tmpd/tagged" ]; then
     rm -rf "$tmpd" 2>/dev/null || :
     if [ -n "${saved_stream_set:-}" ]; then PSA_STREAM="$saved_stream"; else unset PSA_STREAM; fi
     if [ -n "${saved_allow_set:-}" ]; then PSA_ALLOWLIST="$saved_allow"; else unset PSA_ALLOWLIST; fi
-    echo "  ❌ INSTRUMENT DEAD — the self-test PRODUCER (awk) failed (rc=$_tag_rc)." >&2
-    echo "     A canary printed by a failing producer is not evidence the matcher ran." >&2
+    echo "  ❌ INSTRUMENT DEAD — the self-test output was replaced (symlink or non-regular file)." >&2
     return 1
   fi
-  if out=$(printf '%s\n' "$_tagged" | psa_scan_tagged 2>&1); then
+  if [ "$_tag_rc" -ne 0 ] || ! printf 'psa/selftest\tPSA_SELFTEST_CANARY_%s\n' "$_nonce" | command cmp -s "$tmpd/tagged" -; then
+    rm -rf "$tmpd" 2>/dev/null || :
+    if [ -n "${saved_stream_set:-}" ]; then PSA_STREAM="$saved_stream"; else unset PSA_STREAM; fi
+    if [ -n "${saved_allow_set:-}" ]; then PSA_ALLOWLIST="$saved_allow"; else unset PSA_ALLOWLIST; fi
+    echo "  ❌ INSTRUMENT DEAD — the self-test PRODUCER did not tag this run's nonce (rc=$_tag_rc)." >&2
+    echo "     A canary printed by a failing — or input-ignoring — producer is not evidence the matcher ran." >&2
+    return 1
+  fi
+  if out=$(psa_scan_tagged < "$tmpd/tagged" 2>&1); then
     rc=0
   else
     rc=$?
@@ -413,7 +503,7 @@ psa_require_live() {
   if [ -n "${saved_stream_set:-}" ]; then PSA_STREAM="$saved_stream"; else unset PSA_STREAM; fi
   if [ -n "${saved_allow_set:-}" ]; then PSA_ALLOWLIST="$saved_allow"; else unset PSA_ALLOWLIST; fi
   case "$out" in
-    *PSA_SELFTEST_CANARY*) [ "$rc" -eq 1 ] && return 0 ;;
+    *"PSA_SELFTEST_CANARY_$_nonce"*) [ "$rc" -eq 1 ] && return 0 ;;
   esac
   echo "  ❌ INSTRUMENT DEAD — the scanner did not report a synthetic known-positive." >&2
   echo "     self-test rc=$rc out=[$out]" >&2
