@@ -18,26 +18,21 @@
 </p>
 
 <p align="center">
-  <b>forge-harness is a forge for repeated intent — and the place harnesses are born.</b>
+  <b>A meta-harness with the quality gates built in.</b>
 </p>
 
 <p align="center">
-  The things you keep re-asking Claude Code for become skills, gates and agents that live in your repo
-  and fire on their own.<br>
-  <b>What that buys you: the trial and error comes off you and runs in parallel.</b>
-</p>
-
-<p align="center">
-  <b>Ask it for things. When the asking repeats, it offers to build you the thing.</b>
+  Projects, skills, harnesses — building them, checking them, speeding them up: you ask for it here.<br>
+  It does not simply hand the result back. It puts the work past several checks that fail in
+  <i>different</i> ways first.<br>
+  <b>And when the same request keeps coming back, it builds you the harness that does it for you.</b>
 </p>
 
 <p align="center">
   You already tell Claude Code the same things over and over — the checks to run, the rules to hold,
-  the shape a change has to have.<br>
-  <b>forge-harness turns that into something reusable</b>: skills, gates and agents that live in your
-  repo and fire on their own.<br>
-  Its skills stay general on purpose and get shaped to your case as you go.
-  <b>When one shape keeps coming back, it offers to ship it</b> as its own skill, or its own harness.
+  the shape a change has to have. That is the part that becomes reusable, and it keeps its general
+  form on purpose so it can be shaped to your case as you go.<br>
+  <sub>What grows is the number of attempts: the trial and error comes off you and runs in parallel.</sub>
 </p>
 
 ---
