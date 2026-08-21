@@ -394,6 +394,12 @@ and *parallelism* (reacts to surface size: can one context hold it?). Do not mul
                           riding it does not make that axis see what it cannot see
 ```
 
+> 📖 **From here down is for whoever wants to go further — it is not needed to start using this.**
+> If you came to install it and get going, the two-minute section at the top is the whole job; you can
+> stop here and come back when a check surprises you. What follows is the reasoning behind the gates,
+> written for someone already running the hub. Unfamiliar words →
+> [`GLOSSARY.md`](knowledge/shared/GLOSSARY.md).
+
 **The six verification axes** — where "we reviewed it" usually turns out to mean only the first of them.
 
 🟥 **Axes are not divided by *how adversarial* they are. They are divided by *what they were given*.**
