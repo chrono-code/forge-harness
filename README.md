@@ -51,11 +51,14 @@ cd ~/projects/forge-harness && claude
 used. A numbered menu appears and takes it from there — pick a door, answer a couple of questions, and
 it runs the install wizard for you.
 
-<sub>🟥 <b>Honest about that last part</b>: matching your language is a prose rule with no mechanical
-gate behind it, and it does not always hold. Blind floor-tier runs on 2026-08-21 got Japanese right 3/3
-and Chinese 1/5 (the misses came back in Korean or English), so if it answers in the wrong language,
-just say so — it will switch. The residual is written up in <code>CLAUDE.md</code> §Voice/Tone rather
-than smoothed over.</sub>
+<sub>🟥 <b>Honest about that last part</b>: matching your language is a prose rule with nothing
+mechanical behind it, so it does not always hold. Measured blind at the floor tier on 2026-08-21, on a
+<b>clean clone like the one you just made</b>: Chinese and Korean greetings both came back fully
+translated, door labels included. On the maintainer's own machine — which pins a default language —
+Chinese landed only 1 time in 5, which is why this note exists at all. What is still shaky is whether
+the menu fires: one greeting variant produced no menu. If it answers in the wrong language, or skips
+the menu, just say so — it will switch. Written up in <code>CLAUDE.md</code> §Voice/Tone rather than
+smoothed over.</sub>
 
 Everything below this line is reference for when you want it, not homework before you start.
 
@@ -63,9 +66,11 @@ Everything below this line is reference for when you want it, not homework befor
 
 - **What it does not** — the model's ceiling. A harness lifts a model to its own ceiling, not past it.
 
-- **How you can check** — it grades itself in public. Five identities, honestly, in every
-  [release](https://github.com/chrono-meta/forge-harness/releases). Any square that is not green names
-  the real run that is still missing.
+- **How you can check** — it grades itself in public. It names **five things it claims to be**
+  (harness cluster · project incubator · governance gate · frontier → org propagation · amplifier) and grades each
+  one honestly in every [release](https://github.com/chrono-meta/forge-harness/releases). Any square
+  that is not green names the real run that is still missing.
+  <sub>Each of the five is spelled out further down, under «The five identities».</sub>
 
 ---
 
