@@ -771,3 +771,76 @@ standpoint.
   third-party axis's *exclusive* yield at **2 of 15** findings. Both were boundary-crossing
   (a rule the other project had already abandoned; another repo importing the changed file) —
   which is why it earns its place on large-and-irreversible surfaces and nowhere else.
+
+---
+
+## §Q0-Evidence — 「shipped 여부는 판별자가 아니다」의 실측과 인용 경고
+
+> CLAUDE.md 는 Q0 의 **규칙(ⓐⓑⓒ + pre-push 결박)**만 상주로 갖는다. 아래는 그 근거·경고다.
+> salience-split 2026-08-21.
+
+🟥 **Settle the TARGET CLASS(es) before the tier — §7's `Q0`, added 2026-08-17 (operator decision).**
+A consumer install **is** another harness; what the enum scopes is not who *receives* the change but
+where it has to be **executed**. Q0 is **not first-match — it can return more than one target, and
+each owes its own tier**: ⓐ a **named peer** whose local repo carries the changed surface, or which
+the cluster registry / a `scripts/adapters/` entry names (decide by that test, not from a name list)
+→ the enum as written · ⓑ the delta changes **consumer-visible behavior** (what a consumer's gate
+blocks or passes, what their session is told to do, what an install receives) → target = a *clean
+install of the packed artifact*, and it binds **now, pre-push — never deferred to the eventual
+release** · ⓒ neither → `not-applicable`. 🟥 Do **not** read «no cross-repo consumer contract» as
+«this file is not shipped» — measured, **194/200 recent non-merge commits touch a shipped path (97%,
+all 6 exceptions hand-verified)**, so shipped-ness cannot be the discriminator; the behavior clause
+is. Pricing the axis at that rate is the **over-triggering** §7's own Trigger paragraph rejects.
+⚠️ 97% measures **the reach of the discarded shipped-path argument**, not the applicability rate —
+how often ⓑ actually fires is **unmeasured in both tails** (it could also land near-universal, which
+would be a rubber stamp — watch the next 20 markers). 🟥 Do **not** cite
+`[[feedback_unreachable_done_when_trains_evasion]]` here: that memory concerns an unreachable *pass
+condition*, and `not-applicable` is an *exemption* — the direction inverts. Three marker-audit legs all failed at that reading;
+they were **not** decorrelated (same family · same prompt · same canon) so that is one observation,
+not three. ⚠️ The consumer-install arm's *presence* half is mechanized at ship time; its
+**execution** half (extract the tarball, run the gate, record command + output) has **no lane** —
+do it by hand, and do not cite that arm as mechanized.
+
+## §Standpoint-Execution-Evidence — 실행 하중 · 철회 · 명명 충돌 · 2026-08-20 정정
+
+> CLAUDE.md 는 판별 규칙(**명령과 출력을 댈 수 있나 → tier2, 못 대면 tier1b**)만 상주로 갖는다.
+> 아래는 그 근거와 이 문단이 두 번 틀렸던 기록이다. salience-split 2026-08-21.
+
+🟥 **The execution is the load-bearing half** (operator decision 2026-08-16): a static standpoint
+read competes with cross-family review for the same defect classes and mostly loses — *running the
+target harness locally, to completion*, is the part with no substitute. Measured on one delta the
+same day: static read found 1, running the target's own suite found 2 more, one of which printed
+neither `FAIL` nor `❌` and was unreachable by any read. So **`tier2`+ asserts something was RUN** —
+if the review only read, it is `tier1b`, and `tier1b` is deliberately the weak rung so that
+recording it honestly surfaces that the execution arm is still owed. (Broken on the day it was
+written — a static read was recorded as `tier2` because `tier1b` did not yet exist; a missing rung
+gets filled by the next one up rather than staying empty.) Naming note: this collides in
+English with FH's own persona/viewpoint sense of "standpoint" (`fh-meta:beginner`/`main-player`/
+`expert`) — a different axis (which persona reviews, not whose repo is ground truth); kept as-is,
+not renamed, but do not conflate the two. 🟥 **CORRECTED 2026-08-20 — this paragraph used to say
+`standpoint:` was "Prose-only today — no pre-commit hook or fixture suite validates this field yet".
+That is FALSE and was false in this same file**: `validate_standpoint_leg()` lives in
+`templates/.git-hooks/pre-commit` and is called from the marker block, and its fixture suite
+`scripts/test_marker_standpoint_lanes.sh` is wired through `scripts/selfcheck.sh`. (🟥 **Grep the
+names, do not trust line numbers** — the first version of this correction cited `:798`/`:1575` and a
+commit landed the same hour that moved them to `:878`/`:1665`. A hardcoded anchor in prose is a
+phantom waiting for the next edit.) §자기 대조
+above already said so (PR #429), so **one file carried both claims at once** and a reader landed on
+whichever they reached first. Found by the residency-ledger pass, not by a lane — no check compares
+a rule's self-description against the machinery it describes, which is why a stale "we have not
+built this yet" is the quietest form of drift: it reads as honest modesty and it suppresses use of a
+control that already exists. **What is validated is the ENUM** — measured by varying ONE variable at a
+time, because the first version of this correction varied two and mis-attributed the result:
+`banana(qasp)` → blocked (enum) · `tier2` without parens → blocked (enum) · `tier2(qasp)` with **no**
+execution grounds → **passes with a warning** · with grounds → passes. 🟥 So the first fix's claim
+that "grounds are non-empty" are checked **over-shot, and a different-family reviewer caught it**:
+the `tier2`+ execution grounds are **advisory**. Two residuals remain and both are real — grounds are
+not enforced, and whether `tier2` is *true* is still self-attested. What was wrong was only the claim
+that nothing validated the field at all. Three artifacts, one carrying two
+independent trials (forge-harness PR #368, a sibling field harness's PR #8 reps=3 and its
+known-answer trial, qasp-dev PR #161 as adjacent corroboration) crossed this repo's own evidence
+bar the same day this was formalized — including one caught by this session's own qasp PR #161
+review, not fed in externally, and a second live demonstration the same day when a cross-harness
+standpoint review of this very section caught real residency and citation defects in the first
+draft (fixed in the same commit that added this line).
+

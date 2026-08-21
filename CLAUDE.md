@@ -400,47 +400,26 @@ so `--admin` after a completed review is the normal route, not a shortcut).
 feature-branch push passes untouched, override honored — over-blocking would just train the override
 into muscle memory and disarm it.
 
-> **Two layers, and which one is the floor**: the **hard floor is server-side** — this repo now runs
-> `enforce_admins: true` with `required_approving_review_count: 0` (set 2026-07-20; the count must be
-> `0`, because enabling `enforce_admins` while it is `1` locks a solo operator out of merging their
-> own PRs — self-approval is impossible). The hook is the **shift-left layer**: it fails at push time
-> and prints the actual remedy, and it keeps holding if the server setting is ever relaxed. It is
-> deliberately not the floor — a client-side hook is bypassable with `--no-verify`.
-> *Origin*: before that change the server had `enforce_admins: false`, so an admin push *satisfied*
-> the rule and merely printed `Bypassed rule violations` — a notice, not a block. A rule that
-> announces its own bypass is not a floor.
-> ✅ **Retraction — the server-side force-push surface is CLOSED, and the way it was misread is the
-> durable part.** An earlier version of this block said `allow_force_pushes` on `main` was "still
-> `true`", that two API writes "did not persist", and that the **server-side** history-rewrite
-> surface therefore "remains open". The field reading was correct; the conclusion was not.
-> **Branch protection is two independent layers — legacy protection and rulesets coexist, and the
-> strictest wins** — so a field on the protection object is never the effective answer by itself.
-> Measured on this repo 2026-08-09: `GET /repos/{owner}/{repo}/rules/branches/main` returns
-> `non_fast_forward` from ruleset `main-no-force-push` — `enforcement: active`,
-> `current_user_can_bypass: never`, `bypass_actors: []`, live since 2026-07-25 — while the legacy
-> object still reports `allow_force_pushes: true`. The two API writes that "did not persist" were
-> writing to the layer that does not govern *this* outcome while the stricter ruleset is active — not
-> a layer that is inert in general: disable or retarget the ruleset and the legacy toggle governs
-> again. **Read BOTH layers before declaring any branch surface open or closed** — `/rules/branches/
-> {branch}` shows only what the *rulesets* impose, and `/branches/{branch}/protection` only what
-> *legacy protection* imposes; neither is the effective view alone. A protection-object field read by
-> itself misjudged this three times ([[reference_github_protection_two_layers]]).
-> **Scope of the retraction, stated narrowly on purpose**: it covers *force-push / non-fast-forward*,
-> which is what `non_fast_forward` blocks. Branch **deletion** is a separate rule and is closed on the
-> other layer (`allow_deletions: false`, same GET). PR-routing is likewise a different field —
-> `required_pull_request_reviews` present with `enforce_admins: true` — not something
-> `required_status_checks` says anything about.
-> ⚠️ A *different* residual on `main` is still real and must not be folded into the one just
-> retracted — but the residual's own description was itself stale and needed correction on
-> 2026-08-12 (live re-check, `[[reference_github_protection_two_layers]]`): legacy
-> `required_status_checks.contexts` is **`["validate"]`**, not `[]` — a green `validate` check IS
-> required before a PR can merge, and `GET /rules/branches/main` carries no competing
-> `required_status_checks` rule, so the legacy field is the effective one here. `validate`
-> (`.github/workflows/validate.yml`) is a **separate job from Axis 1** (`regression-guard.yml`) —
-> Axis 1 is still not required, see the 4-axis section below. The gap on `validate` is
-> `strict: false`: that check re-runs on every push to the PR branch, but nothing re-forces it
-> against a **moving** main after it last ran — so a check that passed can still land behind
-> concurrent merges it never saw.
+> **Two layers, and which one is the floor.** The **hard floor is server-side**: this repo runs
+> `enforce_admins: true` with `required_approving_review_count: 0` (the count must be `0`, or a solo
+> operator is locked out of merging their own PRs). The pre-push hook is the **shift-left layer** — it
+> fails at push time and prints the remedy — deliberately not the floor, since a client-side hook is
+> bypassable with `--no-verify`.
+>
+> 🟥 **Branch protection is TWO independent layers — legacy protection and rulesets coexist, and the
+> strictest wins.** A field on the protection object is **never** the effective answer by itself.
+> Read **both** before declaring any branch surface open or closed:
+> `GET /repos/{owner}/{repo}/rules/branches/{branch}` (rulesets) **and**
+> `GET /repos/{owner}/{repo}/branches/{branch}/protection` (legacy). Reading one alone misjudged this
+> repo **three times** ([[reference_github_protection_two_layers]]).
+>
+> ⚠️ **Live residual on `main`**: `required_status_checks.strict: false` — the required `validate` check
+> re-runs on every push to the PR branch, but nothing re-forces it against a **moving** main, so a green
+> check can land behind concurrent merges it never saw. And `validate` is **not** Axis 1.
+
+> **Detail**: See `knowledge/shared/harness-core/claude_md_gate_details.md §Branch-Protection-Two-Layers`
+> — the force-push retraction and why it was narrow, which surface each layer actually governs, and the
+> three misreadings — read before asserting that any branch surface is open or closed.
 
 ## Permission-Denial Guidance (When Auto-Mode Blocks an Action)
 
@@ -601,65 +580,35 @@ runtime (local wiring visible, not independent) · `tier3(<harness>)` a *differe
 target harness ran it · `not-applicable` · degrade triad `DEGRADED_NO_TARGET_ACCESS` could-not /
 `DEGRADED_NOT_RUN` did-not / `UNKNOWN` did-not-look — same shape as `crossfamily:`'s triad,
 **distinct literal values**, do not reuse crossfamily's tokens).
-🟥 **Settle the TARGET CLASS(es) before the tier — §7's `Q0`, added 2026-08-17 (operator decision).**
+🟥 **Settle the TARGET CLASS(es) before the tier — §7's `Q0` (operator decision 2026-08-17).**
 A consumer install **is** another harness; what the enum scopes is not who *receives* the change but
-where it has to be **executed**. Q0 is **not first-match — it can return more than one target, and
-each owes its own tier**: ⓐ a **named peer** whose local repo carries the changed surface, or which
-the cluster registry / a `scripts/adapters/` entry names (decide by that test, not from a name list)
-→ the enum as written · ⓑ the delta changes **consumer-visible behavior** (what a consumer's gate
-blocks or passes, what their session is told to do, what an install receives) → target = a *clean
-install of the packed artifact*, and it binds **now, pre-push — never deferred to the eventual
-release** · ⓒ neither → `not-applicable`. 🟥 Do **not** read «no cross-repo consumer contract» as
-«this file is not shipped» — measured, **194/200 recent non-merge commits touch a shipped path (97%,
-all 6 exceptions hand-verified)**, so shipped-ness cannot be the discriminator; the behavior clause
-is. Pricing the axis at that rate is the **over-triggering** §7's own Trigger paragraph rejects.
-⚠️ 97% measures **the reach of the discarded shipped-path argument**, not the applicability rate —
-how often ⓑ actually fires is **unmeasured in both tails** (it could also land near-universal, which
-would be a rubber stamp — watch the next 20 markers). 🟥 Do **not** cite
-`[[feedback_unreachable_done_when_trains_evasion]]` here: that memory concerns an unreachable *pass
-condition*, and `not-applicable` is an *exemption* — the direction inverts. Three marker-audit legs all failed at that reading;
-they were **not** decorrelated (same family · same prompt · same canon) so that is one observation,
-not three. ⚠️ The consumer-install arm's *presence* half is mechanized at ship time; its
-**execution** half (extract the tarball, run the gate, record command + output) has **no lane** —
-do it by hand, and do not cite that arm as mechanized.
-🟥 **The execution is the load-bearing half** (operator decision 2026-08-16): a static standpoint
-read competes with cross-family review for the same defect classes and mostly loses — *running the
-target harness locally, to completion*, is the part with no substitute. Measured on one delta the
-same day: static read found 1, running the target's own suite found 2 more, one of which printed
-neither `FAIL` nor `❌` and was unreachable by any read. So **`tier2`+ asserts something was RUN** —
-if the review only read, it is `tier1b`, and `tier1b` is deliberately the weak rung so that
-recording it honestly surfaces that the execution arm is still owed. (Broken on the day it was
-written — a static read was recorded as `tier2` because `tier1b` did not yet exist; a missing rung
-gets filled by the next one up rather than staying empty.) Naming note: this collides in
-English with FH's own persona/viewpoint sense of "standpoint" (`fh-meta:beginner`/`main-player`/
-`expert`) — a different axis (which persona reviews, not whose repo is ground truth); kept as-is,
-not renamed, but do not conflate the two. 🟥 **CORRECTED 2026-08-20 — this paragraph used to say
-`standpoint:` was "Prose-only today — no pre-commit hook or fixture suite validates this field yet".
-That is FALSE and was false in this same file**: `validate_standpoint_leg()` lives in
-`templates/.git-hooks/pre-commit` and is called from the marker block, and its fixture suite
-`scripts/test_marker_standpoint_lanes.sh` is wired through `scripts/selfcheck.sh`. (🟥 **Grep the
-names, do not trust line numbers** — the first version of this correction cited `:798`/`:1575` and a
-commit landed the same hour that moved them to `:878`/`:1665`. A hardcoded anchor in prose is a
-phantom waiting for the next edit.) §자기 대조
-above already said so (PR #429), so **one file carried both claims at once** and a reader landed on
-whichever they reached first. Found by the residency-ledger pass, not by a lane — no check compares
-a rule's self-description against the machinery it describes, which is why a stale "we have not
-built this yet" is the quietest form of drift: it reads as honest modesty and it suppresses use of a
-control that already exists. **What is validated is the ENUM** — measured by varying ONE variable at a
-time, because the first version of this correction varied two and mis-attributed the result:
-`banana(qasp)` → blocked (enum) · `tier2` without parens → blocked (enum) · `tier2(qasp)` with **no**
-execution grounds → **passes with a warning** · with grounds → passes. 🟥 So the first fix's claim
-that "grounds are non-empty" are checked **over-shot, and a different-family reviewer caught it**:
-the `tier2`+ execution grounds are **advisory**. Two residuals remain and both are real — grounds are
-not enforced, and whether `tier2` is *true* is still self-attested. What was wrong was only the claim
-that nothing validated the field at all. Three artifacts, one carrying two
-independent trials (forge-harness PR #368, a sibling field harness's PR #8 reps=3 and its
-known-answer trial, qasp-dev PR #161 as adjacent corroboration) crossed this repo's own evidence
-bar the same day this was formalized — including one caught by this session's own qasp PR #161
-review, not fed in externally, and a second live demonstration the same day when a cross-harness
-standpoint review of this very section caught real residency and citation defects in the first
-draft (fixed in the same commit that added this line).
+where it has to be **executed**. Q0 is **not first-match — it can return more than one target, and each
+owes its own tier**: ⓐ a **named peer** whose local repo carries the changed surface, or which the
+cluster registry / a `scripts/adapters/` entry names → the enum as written · ⓑ the delta changes
+**consumer-visible behavior** (what a consumer's gate blocks or passes, what their session is told to do,
+what an install receives) → target = a *clean install of the packed artifact*, and it binds **now,
+pre-push — never deferred to the eventual release** · ⓒ neither → `not-applicable`.
+🟥 Do **not** read «no cross-repo consumer contract» as «this file is not shipped» — shipped-ness is
+**not** the discriminator; the behavior clause is. ⚠️ The consumer-install arm's *presence* half is
+mechanized at ship time; its **execution** half has **no lane** — do it by hand, and never cite that arm
+as mechanized.
 
+> **Detail**: See `knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §Q0-Evidence`
+> — the 97% shipped-path measurement and what it does *not* say, plus two citation warnings that
+> three marker-audit legs got wrong — read before citing any number from this paragraph.
+
+🟥 **The execution is the load-bearing half** (operator decision 2026-08-16). A static standpoint read
+competes with cross-family review for the same defect classes and mostly loses; *running the target
+harness locally, to completion*, is the part with no substitute. **So `tier2`+ asserts something was RUN**
+— the discriminator is mechanical: **name the command you ran and the output you saw.** Cannot name one →
+`tier1b`, always. Reading the target's real files, however cold, is `tier1b`; that rung is deliberately
+the weak one so that recording it honestly surfaces that the execution arm is still owed.
+
+> **Detail**: See `knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §Standpoint-Execution-Evidence` — the measured
+> one-delta comparison, the two RETRACTED citations this paragraph used to carry, the English naming
+> collision with FH's persona sense of "standpoint", and the 2026-08-20 correction about what the hook
+> actually validates (the enum, not the grounds) — read before citing this paragraph's evidence or
+> claiming what `standpoint:` enforces.
 > **Detail**: See `knowledge/shared/harness-core/field_verdict_crossfamily_gate.md` — the discretion
 > principle, the four-faces failure signature, why same-family review misses it, the full gate
 > mechanics, the n=7 qasp field evidence incl. the **9 default-toward-PASS holes across 3 harnesses**
@@ -1047,19 +996,15 @@ dispatching.** ⓐ the user saying not to, *in this environment* — a veto of *
 Under a conditional, silence is not permission. ⓐ is FH's own default being withdrawn by its owner;
 ⓑ is a sentence in a layer FH does not author. Do not read them as one operation.
 
-⚠️ **Neither direction has a confirmed hook-level floor. Say that plainly rather than implying one.**
-```
-opening    salience only for the POSTURE. The prohibition met in the field is CONDITIONAL,
-           which changes what "override" even means — see the measured block below.
-blocking   ALSO not hook-enforced. `SubagentStart` fires on spawn but is **context-only** —
-           it cannot block, exit 2 only surfaces stderr, and it has no decision field
-           (official hooks reference, read 2026-08-08). It can INJECT context at the moment
-           of dispatch, which is better-placed salience than this file, but still salience.
-UNVERIFIED whether a `permissions` deny entry or a `PreToolUse` matcher can target subagent
-           spawning at all — the reference does not name a tool for it, and this repo has no
-           precedent. **Do not cite a blocking mechanism until someone runs the known pair**
-           (configure the deny, attempt a dispatch, observe). Until then: unverified, not absent.
-```
+⚠️ **Neither direction has a confirmed hook-level floor — say that plainly rather than implying one.**
+Opening (the posture) is salience-only. Blocking is **also** not hook-enforced: `SubagentStart` fires on
+spawn but is **context-only** — it cannot block and has no decision field. Whether a `permissions` deny
+entry or a `PreToolUse` matcher can target subagent spawning at all is **UNVERIFIED** — unverified, not
+absent. 🟥 **Do not cite a blocking mechanism until someone runs the known pair.**
+
+> **Detail**: See `knowledge/shared/harness-core/dispatch_conditional_prohibition.md §Hook-Floor-Unverified`
+> — the per-direction table and what each `UNVERIFIED` line covers — read before claiming any floor here.
+
 **The conditional line, and what a session must do about it.** Some runtimes ship the default
 *"Do not call the AgentTool unless the user requested it"* (with a workflows/deep-research twin).
 Measured 2026-08-09 on this machine: it is **not** a hard-coded constant and **not** global — it is
@@ -1126,14 +1071,10 @@ instruction-shaped. A self-test the session administers to itself is the thing �
 > order, the model-bundle gate, the calibrated where-it-is-not table, and the reproduction commands.
 > **Read it before citing any of these numbers or claiming the line is absent from a surface.**
 
-An earlier draft of this very block asserted "a `SubagentStart` hook can deny, and a denial there is a
-real floor." That was false, taken on trust from an adjacent session and written here before the
-reference was read. A second draft, on 2026-08-09, then wrote that the constant's call site "needs
-binary inspection, which was blocked" — **also false**: three plain `grep` calls resolved it, and an
-adversarial reviewer demonstrated that by doing it. Declaring something unmeasurable before trying the
-cheap tool is [[feedback_impossible_verdict_may_be_unread_half]]; the honest label is *"not yet
-measured,"* never *"blocked."* A blind target-tier sim then read it back correctly — which shows a sim measures
-whether text is *followable*, never whether it is *true*. Both checks are needed; neither substitutes.
+🟥 **This block has been wrong twice, both times by asserting more machinery than existed.**
+> **Detail**: See `knowledge/shared/harness-core/dispatch_conditional_prohibition.md §Retraction-SubagentStart` — both retractions and
+> what each teaches (*"not yet measured"* is the honest label, never *"blocked"*) — read before adding a
+> mechanism claim to this section.
 
 So "default-active" is a **posture, not a guarantee**. Measured 2026-08-08: a session running under
 exactly that system-prompt instruction worked alone for a full session and dispatched only at the two
@@ -1169,28 +1110,17 @@ Three execution paths:
 
 **Why not Agent View by default**: Agent View introduces worktree isolation (blocks settings.json writes, Stop hook timing differs), session context gaps (session card stale content bug), and path friction — with no benefit unless the user is actively managing multiple agent sessions. Parallel agents via `Agent` tool work identically in a standard session.
 
-**Fourth reason — gate-integrity in a worktree, and the answer is CONDITIONAL on how `core.hooksPath`
-was set (measured 2026-08-05, both arms).** Do not carry a single verdict here; the two installs
-behave differently:
+**Fourth reason — gate-integrity in a worktree, and it is CONDITIONAL on how `core.hooksPath` was set.**
+With the **relative** form every FH doc installs, the worktree runs **its own copy** of the hook — editing
+that copy there disables the gate for that worktree (measured 2026-08-05: marker-less FH-asset commit
+succeeded). With a hand-set **absolute** path it runs the main tree's copy and the bypass does not exist.
+Separately and in **both** arms the *evidence* side breaks: `tracks/` is gitignored, so the Axis 2+3 marker
+and Axis 4 manifest are **structurally absent** — fail-closed, but a gate that **cannot** be satisfied is
+what trains the bypass.
 
-| `core.hooksPath` | Which hook actually runs in a worktree | Consequence |
-|---|---|---|
-| **relative** — `templates/.git-hooks`, the form every FH doc installs (`CHEATSHEET.md`, `.claude/rules/fh_4axis_gate.md`, `install-wizard`, `self_evolution_routine.md`) | the **worktree's own copy** | Editing that copy *inside the worktree* disables the gate for that worktree — measured: neutralized hook → FH-asset commit with no marker succeeded (`rc=0`). The verifier becomes the verified, and the edit is invisible to `git status` in the main tree. |
-| **absolute** — a hand-set full path (this operator's machine; **not** what any doc tells you to run) | the **main tree's copy** | A worktree-local edit has no effect; a known-positive is blocked there exactly as in the main tree (`rc=1`). |
-
-An earlier draft of this section reported only the absolute-path arm and declared the
-"worktree bypasses the gates" hypothesis *refuted* — from **n=1 on a non-canonical setting**, with a
-do-not-revisit label attached. The relative-path arm, which is what everyone else runs, reproduces
-the bypass. Freezing a conclusion is a defect when the measurement did not cover the shipped
-configuration.
-
-Separately and in **both** arms, the **evidence side** breaks: `tracks/` is gitignored, so it does not
-follow into a worktree, so the Axis 2+3 marker and the Axis 4 `edit_manifest.yaml` are *structurally
-absent* — an FH-asset commit in a worktree fails on evidence it has no way to have. That degrades
-fail-closed (correct), but a gate that **cannot** be satisfied is what trains the bypass. Note the
-hook itself prints `mkdir -p …/tracks/_meta` on that failure, i.e. the actor's own error message
-teaches the marker-creation path — so "just don't fabricate it" is prose sitting under a machine
-instruction pointing the other way.
+> **Detail**: See `knowledge/shared/harness-core/dispatch_conditional_prohibition.md §Worktree-Gate-Integrity` — the two-arm table with
+> exit codes, and why an earlier draft declared the bypass *refuted* from n=1 on a non-shipped setting —
+> read only when you must determine which arm your own install is on.
 
 **Therefore: do not commit FH assets from a worktree.** Not "carry the evidence in carefully" — a
 carried marker and a fabricated one are byte-identical, so *marker provenance* is unenforceable by
@@ -1337,36 +1267,24 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
        `package.json`) → Pre-Publish gate → `npm publish` → `git tag vX.Y.Z` at publish. **Propose, don't
        auto-publish.** (Why lockstep — Codex caches on plugin.json version — + drift-check + tag-drift caveat → §detail below.)
 
-       🟥 **WHICH DIGIT — operator decision 2026-08-17, and it is deliberately NOT strict semver.**
-       There was no policy before this line, which is why one session proposed three different bumps
-       for the same delta on three different (and each individually defensible) grounds. Decide by
-       **what the number tells a reader**, not by whether anything technically broke:
+       🟥 **WHICH DIGIT — 운영자 결정(2026-08-17). 의도적으로 strict semver 가 아니다.**
+       판단 기준은 **무엇이 기술적으로 깨졌나**가 아니라 **번호가 읽는 이에게 무엇을 말하나**다.
 
-       | Bump | Reserved for (operator's own wording, 2026-08-17) |
+       | major `+1.0.0` | ⓐ 완전히 새로 지음 · ⓑ 정체성 **다섯이 «전부» 🟢**(= `identity-v1.0.0` 급 사건. 🟥 하나가 🟢 로 올라선 순간이 **아니고**, 정체성 등급은 npm 이 나르는 신호가 **아니다**) · ⓒ capability **class** 가 생기거나 교체됨. 🟥 **이미 있던 게이트를 조인 것에는 절대 안 쓴다** |
        |---|---|
-       | **major** `+1.0.0` | **any one of three**: ⓐ **완전히 새로 지음** — rebuilt from scratch, not extended · ⓑ **정체성이 확립됨** — 🟥 **다섯이 «전부» 🟢** 인 순간이지 하나가 🟢 로 올라선 순간이 아니다(운영자 결정 2026-08-21). 초판은 *"an identity of the five … actually standing 🟢"* 였고 **「하나만 초록이어도 major」로 읽혔다** — 실제로 그날 ②가 🟢 로 판정되면서 3.0.0 후보로 올라왔고, 그 애매함이 그때 닫혔다. 🟥 그리고 **정체성 등급은 npm 이 나르는 신호가 아니다** — 그건 `identity-v*` 계보의 사건이고, npm 이 또 나르면 같은 날 고친 「두 계보 한 이름」 결함을 번호에서 재생산한다. ⇒ major-ⓑ 는 **`identity-v1.0.0` 과 같은 사건**을 가리킨다 · ⓒ **기능이 혁신적으로 변경되거나 늘어남** — a capability *class* appears or is replaced, not a capability instance. 🟥 **Never** for tightening a gate that already existed |
-       | **minor** `+0.1.0` | 미들급 — new assets, new gate lanes, doctrine that changes behavior; **including changes that break a consumer's gate acceptance**, which then carry a mandatory `BREAKING (gate):` line |
-       | **patch** `+0.0.1` | 트리비아급 — fixes, wiring, docs that change no behavior |
+       | **minor** `+0.1.0` | 새 자산 · 새 게이트 레인 · 행동을 바꾸는 교리. **소비자의 게이트 수용을 깨는 변경도 여기** — 대신 `BREAKING (gate):` 줄이 의무 |
+       | **patch** `+0.0.1` | 수정 · 배선 · 행동 무변경 문서 |
 
-       **The discriminator between major-ⓒ and minor**: *class* vs *instance*. A sixth Wave-1 attack
-       angle is an instance → minor. An attack-angle **registry** where none existed is a class → major.
-       Today's delta is instances and tightenings throughout, which is why it is 2.1.0 and not 3.0.0
-       even though it breaks a gate acceptance.
+       🟥 **major-ⓒ 와 minor 의 판별자 = *class* 냐 *instance* 냐.** Wave-1 공격각 하나 추가 =
+       instance → minor. 공격각 **레지스트리**가 없던 자리에 생김 = class → major.
 
-       **Why gate-tightenings are minor here, stated so it is not mistaken for hiding a break**: what
-       breaks is the **record format of a gitignored local marker**, not an API or the consumer's code;
-       the hook prints exactly what to write instead; and the blast radius needs the consumer to have
-       installed the hook AND be making a load-bearing change AND have used the specific old form.
-       Against that, strict semver would burn a major on every gate we tighten — this repo took 2.0.0
-       for a publish-freshness gate one day and would have taken 3.0.0 for a commit gate the next.
-       **A major number that arrives monthly stops meaning anything**, and the milestone it should be
-       reserved for would have no word left.
+       ⚠️ **의무**: 게이트 수용을 깨는 minor 는 릴리스 설명 **과** CHANGELOG 에
+       `BREAKING (gate): <무엇이 이제 막히나> — <한 줄 처방>` 를 반드시 싣는다. 이 줄이 없으면
+       이 정책은 그냥 «minor 에 파괴적 변경을 묻는 것»이다. 2026-08-17 부터 적용, 소급 아님.
 
-       ⚠️ **The condition that makes this honest, and it is not optional**: a minor that breaks gate
-       acceptance MUST carry `BREAKING (gate): <what now blocks> — <the one-line remedy>` in the
-       release description AND the CHANGELOG. Without it this policy is just burying breaks in minors.
-       **Applies from 2026-08-17 forward, not retroactively** (2.0.0 was the same class and is left
-       as-is rather than rewritten).
+       > **Detail**: See `knowledge/shared/harness-core/claude_md_gate_details.md §Version-Digit-Policy`
+       > — 왜 strict semver 가 아닌지, 3.0.0 이 될 뻔한 판례, 게이트-조임을 minor 로 두는 근거와
+       > 그 정직성 조건 — **버전 자릿수를 실제로 정할 때 읽어라.**
   → ④-c Handoff lifecycle (cross-machine continuity) — when a durable **result artifact lands** this
        session (mechanical hint: a new `*result*`/`*signal*`/`*_run_*` file in your companion store or
        `tracks/`), do two things: **(a) ④-c stamps** any `"run this/start here"` run-handoff whose

@@ -370,3 +370,93 @@ sessions (no FH asset modification) never see this notice — the Sonnet default
 > `knowledge/shared/harness-core/capability_escalation_consent.md` — the negotiated-consent protocol
 > (UAP `sidecar_consent`/`floorup_consent`) that decides ask-once vs. no-surprise floor-up/sidecar use.
 > This notice is the passive advisory; that doc is the active escalation gate.
+
+---
+
+## §Version-Digit-Policy — 어느 자릿수를 올리나 (CLAUDE.md §Session-Close ④-b 상세)
+
+> **왜 여기 있나**: 이 판단은 **버전을 올릴 때만** 필요하다 — 매 세션 마감이 아니다.
+> CLAUDE.md 는 규칙(3값 + 판별자 + `BREAKING (gate):` 의무)만 상주로 갖고, 아래 근거·판례를
+> 여기서 읽는다. salience-split 2026-08-21.
+
+🟥 **WHICH DIGIT — operator decision 2026-08-17, and it is deliberately NOT strict semver.**
+There was no policy before this line, which is why one session proposed three different bumps
+for the same delta on three different (and each individually defensible) grounds. Decide by
+**what the number tells a reader**, not by whether anything technically broke:
+
+| Bump | Reserved for (operator's own wording, 2026-08-17) |
+|---|---|
+| **major** `+1.0.0` | **any one of three**: ⓐ **완전히 새로 지음** — rebuilt from scratch, not extended · ⓑ **정체성이 확립됨** — 🟥 **다섯이 «전부» 🟢** 인 순간이지 하나가 🟢 로 올라선 순간이 아니다(운영자 결정 2026-08-21). 초판은 *"an identity of the five … actually standing 🟢"* 였고 **「하나만 초록이어도 major」로 읽혔다** — 실제로 그날 ②가 🟢 로 판정되면서 3.0.0 후보로 올라왔고, 그 애매함이 그때 닫혔다. 🟥 그리고 **정체성 등급은 npm 이 나르는 신호가 아니다** — 그건 `identity-v*` 계보의 사건이고, npm 이 또 나르면 같은 날 고친 「두 계보 한 이름」 결함을 번호에서 재생산한다. ⇒ major-ⓑ 는 **`identity-v1.0.0` 과 같은 사건**을 가리킨다 · ⓒ **기능이 혁신적으로 변경되거나 늘어남** — a capability *class* appears or is replaced, not a capability instance. 🟥 **Never** for tightening a gate that already existed |
+| **minor** `+0.1.0` | 미들급 — new assets, new gate lanes, doctrine that changes behavior; **including changes that break a consumer's gate acceptance**, which then carry a mandatory `BREAKING (gate):` line |
+| **patch** `+0.0.1` | 트리비아급 — fixes, wiring, docs that change no behavior |
+
+**The discriminator between major-ⓒ and minor**: *class* vs *instance*. A sixth Wave-1 attack
+angle is an instance → minor. An attack-angle **registry** where none existed is a class → major.
+Today's delta is instances and tightenings throughout, which is why it is 2.1.0 and not 3.0.0
+even though it breaks a gate acceptance.
+
+**Why gate-tightenings are minor here, stated so it is not mistaken for hiding a break**: what
+breaks is the **record format of a gitignored local marker**, not an API or the consumer's code;
+the hook prints exactly what to write instead; and the blast radius needs the consumer to have
+installed the hook AND be making a load-bearing change AND have used the specific old form.
+Against that, strict semver would burn a major on every gate we tighten — this repo took 2.0.0
+for a publish-freshness gate one day and would have taken 3.0.0 for a commit gate the next.
+**A major number that arrives monthly stops meaning anything**, and the milestone it should be
+reserved for would have no word left.
+
+⚠️ **The condition that makes this honest, and it is not optional**: a minor that breaks gate
+acceptance MUST carry `BREAKING (gate): <what now blocks> — <the one-line remedy>` in the
+release description AND the CHANGELOG. Without it this policy is just burying breaks in minors.
+**Applies from 2026-08-17 forward, not retroactively** (2.0.0 was the same class and is left
+as-is rather than rewritten).
+
+---
+
+## §Branch-Protection-Two-Layers — 서버측 보호의 2층 구조와 세 번의 오판
+
+> CLAUDE.md 는 결론만 상주로 갖는다: **통합 브랜치는 PR 전용 · 하드 플로어는 서버측 ·
+> 브랜치 표면을 판정하려면 두 API 를 **모두** 읽어라.** 아래는 그 근거와, 한쪽만 읽어서
+> 세 번 오판한 기록이다. salience-split 2026-08-21.
+
+> **Two layers, and which one is the floor**: the **hard floor is server-side** — this repo now runs
+> `enforce_admins: true` with `required_approving_review_count: 0` (set 2026-07-20; the count must be
+> `0`, because enabling `enforce_admins` while it is `1` locks a solo operator out of merging their
+> own PRs — self-approval is impossible). The hook is the **shift-left layer**: it fails at push time
+> and prints the actual remedy, and it keeps holding if the server setting is ever relaxed. It is
+> deliberately not the floor — a client-side hook is bypassable with `--no-verify`.
+> *Origin*: before that change the server had `enforce_admins: false`, so an admin push *satisfied*
+> the rule and merely printed `Bypassed rule violations` — a notice, not a block. A rule that
+> announces its own bypass is not a floor.
+> ✅ **Retraction — the server-side force-push surface is CLOSED, and the way it was misread is the
+> durable part.** An earlier version of this block said `allow_force_pushes` on `main` was "still
+> `true`", that two API writes "did not persist", and that the **server-side** history-rewrite
+> surface therefore "remains open". The field reading was correct; the conclusion was not.
+> **Branch protection is two independent layers — legacy protection and rulesets coexist, and the
+> strictest wins** — so a field on the protection object is never the effective answer by itself.
+> Measured on this repo 2026-08-09: `GET /repos/{owner}/{repo}/rules/branches/main` returns
+> `non_fast_forward` from ruleset `main-no-force-push` — `enforcement: active`,
+> `current_user_can_bypass: never`, `bypass_actors: []`, live since 2026-07-25 — while the legacy
+> object still reports `allow_force_pushes: true`. The two API writes that "did not persist" were
+> writing to the layer that does not govern *this* outcome while the stricter ruleset is active — not
+> a layer that is inert in general: disable or retarget the ruleset and the legacy toggle governs
+> again. **Read BOTH layers before declaring any branch surface open or closed** — `/rules/branches/
+> {branch}` shows only what the *rulesets* impose, and `/branches/{branch}/protection` only what
+> *legacy protection* imposes; neither is the effective view alone. A protection-object field read by
+> itself misjudged this three times ([[reference_github_protection_two_layers]]).
+> **Scope of the retraction, stated narrowly on purpose**: it covers *force-push / non-fast-forward*,
+> which is what `non_fast_forward` blocks. Branch **deletion** is a separate rule and is closed on the
+> other layer (`allow_deletions: false`, same GET). PR-routing is likewise a different field —
+> `required_pull_request_reviews` present with `enforce_admins: true` — not something
+> `required_status_checks` says anything about.
+> ⚠️ A *different* residual on `main` is still real and must not be folded into the one just
+> retracted — but the residual's own description was itself stale and needed correction on
+> 2026-08-12 (live re-check, `[[reference_github_protection_two_layers]]`): legacy
+> `required_status_checks.contexts` is **`["validate"]`**, not `[]` — a green `validate` check IS
+> required before a PR can merge, and `GET /rules/branches/main` carries no competing
+> `required_status_checks` rule, so the legacy field is the effective one here. `validate`
+> (`.github/workflows/validate.yml`) is a **separate job from Axis 1** (`regression-guard.yml`) —
+> Axis 1 is still not required, see the 4-axis section below. The gap on `validate` is
+> `strict: false`: that check re-runs on every push to the PR branch, but nothing re-forces it
+> against a **moving** main after it last ran — so a check that passed can still land behind
+> concurrent merges it never saw.
+
