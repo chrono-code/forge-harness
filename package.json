@@ -220,6 +220,7 @@
     "scripts/judgment_circuit_lint.sh",
     "scripts/novelty_claim_check.sh",
     "templates/settings.Compaction.snippet.json",
+    "scripts/fh_hub_identity.sh",
     "scripts/fh_track_resolve.sh",
     "scripts/test_track_resolve_lanes.sh",
     "scripts/field_canon_preload.sh",

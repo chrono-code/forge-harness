@@ -233,7 +233,7 @@ psa_scan_tagged() {
   #    같은 출력**이 된다 — 이 저장소가 이름 붙인 «미측정을 0으로 렌더» 의 가장 조용한 얼굴이다.
   #    실측 2026-08-21: zsh 에서 known-positive·known-negative 가 **둘 다 rc=0** 이었다.
   #    형제 특수변수(`fpath` `status` `argv` `cdpath` …)도 같은 함정이다.
-  local input hit=0 row sev re _psa_path body tok
+  local input hit=0 row sev re _psa_path body tok _line_hits _tok_hits _lg _tg
 
   # ── E: 진입 생존성 가드 (2026-08-21, cross-family FAIL 판정 후 재작성) ─────────────
   # 🟥 **초판 E 는 fail-open 을 못 닫았다.** codex/gpt-5.6-sol 이 반례 6개를 전부 실행으로
@@ -280,11 +280,29 @@ psa_scan_tagged() {
     case "$row" in ''|\#*) continue;; esac
     re="${row#*$'\t'}"; [ "$re" = "$row" ] && continue
     sev="${row%%$'\t'*}"
+    # 🟥 grep 상태를 «매치 없음» 으로 접지 마라 (cross-family 반례 2, 2026-08-21).
+    #    `2>/dev/null || true` 는 rc 0(매치)·1(없음)·**2 이상(계기 오류)**을 하나로 뭉갠다.
+    #    실측 도달 경로: 패턴 파일에 **깨진 정규식**이 한 줄 있으면 그 행만 조용히 아무것도
+    #    안 잡고 스캔은 rc=0 «깨끗» 을 낸다. 자가검사는 자기 카나리아 패턴을 쓰므로
+    #    **진짜 패턴의 깨짐을 구조적으로 못 본다** — 그래서 여기서 봐야 한다.
+    _line_hits=$(printf '%s\n' "$input" | grep -iE "$re" 2>/dev/null); _lg=$?
+    if [ "$_lg" -gt 1 ]; then
+      echo "  ❌ INSTRUMENT DEAD — grep failed (rc=$_lg) on pattern: $re"
+      echo "  ❌ INSTRUMENT DEAD — grep failed (rc=$_lg) on pattern: $re" >&2
+      echo "     A broken pattern row scans NOTHING and reads as clean. NOT SCANNED." >&2
+      return 3
+    fi
     while IFS= read -r line; do
       [ -z "$line" ] && continue
       _psa_path="${line%%$'\t'*}"; body="${line#*$'\t'}"
       # EVERY match on the line. Taking only the first let a documented placeholder earlier on the
       # line shield a real token later on it.
+      _tok_hits=$(printf '%s' "$body" | grep -oiE "$re" 2>/dev/null); _tg=$?
+      if [ "$_tg" -gt 1 ]; then
+        echo "  ❌ INSTRUMENT DEAD — grep -o failed (rc=$_tg) on pattern: $re"
+        echo "  ❌ INSTRUMENT DEAD — grep -o failed (rc=$_tg) on pattern: $re" >&2
+        return 3
+      fi
       while IFS= read -r tok; do
         [ -z "$tok" ] && continue
         printf '%s' "$tok" | grep -qiE "$PSA_PLACEHOLDER" && continue
@@ -293,10 +311,10 @@ psa_scan_tagged() {
         echo "  ❌ $sev leak — ${_psa_path}: '$tok'"
         hit=1
       done <<PSA_TOK
-$(printf '%s' "$body" | grep -oiE "$re" 2>/dev/null || true)
+$_tok_hits
 PSA_TOK
     done <<PSA_LINES
-$(printf '%s\n' "$input" | grep -iE "$re" 2>/dev/null || true)
+$_line_hits
 PSA_LINES
   done <<PSA_PAT
 $PSA_STREAM
@@ -368,8 +386,22 @@ psa_require_live() {
   PSA_STREAM="$_canary"
   PSA_ALLOWLIST=/dev/null
   printf 'PSA_SELFTEST_CANARY\n' > "$tmpd/canary" 2>/dev/null
-  # Same pipeline shape as psa_scan_file: awk tags the file, psa_scan_tagged matches it.
-  if out=$(awk -v P="psa/selftest" '{print P "\t" $0}' "$tmpd/canary" 2>&1 | psa_scan_tagged 2>&1); then
+  # 🟥 생산자와 매처를 **분리해서** 상태를 각각 본다 (cross-family 반례 4, 2026-08-21).
+  #    초판은 `awk … | psa_scan_tagged` 한 파이프의 최종 rc 만 봤는데, 그러면
+  #    **«생산자 실패의 rc=1»** 과 **«스캐너가 유출을 찾음의 rc=1»** 이 같은 값으로 합쳐진다.
+  #    실측 위조: 실패하는 `awk` 가 카나리아 행을 인쇄하고 `return 1` 하게 만들면
+  #    양 셸에서 `psa_require_live` 가 **rc=0(살아있음)** 을 냈다. 즉 자가검사 판정 자체가
+  #    위조 가능했다. 태깅 결과를 먼저 **물질화**하고 그 rc 를 따로 확인한다.
+  _tagged=$(awk -v P="psa/selftest" '{print P "\t" $0}' "$tmpd/canary" 2>&1); _tag_rc=$?
+  if [ "$_tag_rc" -ne 0 ] || [ -z "$_tagged" ]; then
+    rm -rf "$tmpd" 2>/dev/null || :
+    if [ -n "${saved_stream_set:-}" ]; then PSA_STREAM="$saved_stream"; else unset PSA_STREAM; fi
+    if [ -n "${saved_allow_set:-}" ]; then PSA_ALLOWLIST="$saved_allow"; else unset PSA_ALLOWLIST; fi
+    echo "  ❌ INSTRUMENT DEAD — the self-test PRODUCER (awk) failed (rc=$_tag_rc)." >&2
+    echo "     A canary printed by a failing producer is not evidence the matcher ran." >&2
+    return 1
+  fi
+  if out=$(printf '%s\n' "$_tagged" | psa_scan_tagged 2>&1); then
     rc=0
   else
     rc=$?

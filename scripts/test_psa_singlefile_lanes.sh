@@ -356,6 +356,31 @@ for _sh in bash zsh; do
   [ "$_r" = "1" ] && ok "E5/$_sh ★컨트롤 정상 양성 → rc=1 (E2~E4 가 «항상 3» 이 아니다)" || bad "E5/$_sh 컨트롤 rc=[$_r], 1 이어야"
 done
 
+# ── G/F 레인 : cross-family 반례 2·4 (2026-08-21, 2차) ──────────────────────────────────
+# 🟥 둘 다 «자가검사가 통과했으니 그 뒤 스캔도 실행됐다» 는 확장의 잔재다.
+#   G = 진짜 패턴이 깨졌을 때. 자가검사는 **자기 카나리아 패턴**을 쓰므로 구조적으로 못 본다.
+#       실측 도달: 패턴 파일에 깨진 정규식 한 줄 → 그 행만 조용히 아무것도 안 잡고 rc=0 «깨끗».
+#   F = 자가검사 판정 자체의 위조. 초판은 파이프 최종 rc 하나만 봐서 «생산자 실패의 1» 과
+#       «스캐너가 유출을 찾음의 1» 이 합쳐졌다 — 실패하는 awk 가 카나리아를 뱉으면 통과했다.
+for _sh in bash zsh; do
+  command -v "$_sh" >/dev/null 2>&1 || { echo "  SKIP G/F ($_sh 없음) — PASS 아님, 미검사다"; continue; }
+  _cond_lanes=$((_cond_lanes + 0))
+  _gp() { "$1" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\\t%s') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; printf 'p\\t%s\\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1; }
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\t[unclosed') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; printf 'p\t[unclosed here\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "3" ] && ok "G1/$_sh 깨진 정규식 → rc=3 (조용한 미스캔이 «깨끗»으로 안 접힌다)" || bad "G1/$_sh 깨진 정규식 rc=[$_r], 3 이어야"
+  # ★컨트롤 — 정상 패턴은 여전히 1/0 을 낸다(G1 이 «항상 3» 이 아니다)
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tOKTOK') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; printf 'p\tOKTOK\n' | psa_scan_tagged >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "1" ] && ok "G2/$_sh ★컨트롤 정상 패턴 → rc=1" || bad "G2/$_sh 컨트롤 rc=[$_r], 1 이어야"
+  # F — 실패하는 생산자가 카나리아를 뱉어도 «살아있음» 이 아니어야
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; awk(){ printf 'PSA_SELFTEST_CANARY\n'; return 1; }; psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" != "0" ] && ok "F1/$_sh 실패한 생산자의 카나리아 → 자가검사 «살아있음» 아님(rc=$_r)" || bad "F1/$_sh 자가검사 판정이 위조됐다 rc=0"
+  # ★컨트롤 — 정상 환경에서 psa_require_live 는 살아있다고 해야 한다
+  _r=$("$_sh" -c ". '$LIB'; export PSA_STREAM=\$(printf 'HIGH\tX') PSA_ALLOWLIST=/dev/null PSA_DEFAULTS_OK=1; psa_require_live >/dev/null 2>&1; echo \$?" 2>/dev/null | tail -1)
+  [ "$_r" = "0" ] && ok "F2/$_sh ★컨트롤 정상 자가검사 → rc=0 (F1 이 «항상 실패» 가 아니다)" || bad "F2/$_sh 컨트롤 rc=[$_r], 0 이어야"
+  _cond_lanes=$((_cond_lanes + 0))
+  [ "$_sh" = "zsh" ] && _cond_lanes=$((_cond_lanes + 4))
+done
+
 # ── H 레인 : 훅이 «계기 사망(3)» 과 «유출(1)» 을 가르는가 (2026-08-21) ────────────────────
 # 🟥 왜 [실행 확인]: 초판 훅은 `if ! … | psa_scan_tagged` 로 **비영을 전부 유출로 뭉갰다.**
 #    그래서 `PUBLIC_SURFACE_OK=1` 이 **계기 사망까지 «승인된 유출»로 통과**시켰다 — 비가역
@@ -413,6 +438,6 @@ echo "[psa single-file lanes] pass=$pass fail=$fail"
 #    ⚠️ 그리고 이 수식이 말하는 진짜 사실을 잊지 마라: **zsh 축은 zsh 가 있는 곳에서만 검증된다.**
 #    CI 에 zsh 를 설치한 이유가 그것이고(.github/workflows/validate.yml), 그게 없으면 이 PR 이
 #    고친 결함의 축이 CI 에서 **한 번도** 안 돌아간다.
-_floor=$((33 + _cond_lanes))
+_floor=$((37 + _cond_lanes))
 [ "$pass" -ge "$_floor" ] || { echo "  ❌ INSTRUMENT ERROR — only $pass lanes ran; expected >=$_floor (zsh 조건부 +$_cond_lanes)"; exit 3; }
 exit 0
