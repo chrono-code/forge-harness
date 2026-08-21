@@ -179,8 +179,20 @@ construction. Neither finding was self-caught by its author.
 
 ⚠️ **An observed effect, not a promotion to default.** Concurrency costs coordination, and it is
 where the same day's two shared-checkout accidents came from. The claim is narrow: *some* effects
-are unobtainable without it. Whether that is worth the cost is a per-task call, and this operator's
-standing preference remains delegation-in-conversation over standing parallelism.
+are unobtainable without it.
+
+**So how to hold it** (operator, 2026-08-21): *"디폴트 승격은 안 해도 되. 다만 병렬세션 띄워서
+운영자가 작업할 때 얻게 되는 **반사이익**이라고 보면 되지. 아니면 **네가 권유해도 괜찮음**.
+「병렬세션으로 나눠서 작업해도 좋을 것 같습니다」 이런 식으로"*.
+
+Two things follow, and the second is a permission most sessions will not assume they have:
+- **It is a by-product, not a reason.** The operator opens parallel sessions for their own reasons;
+  contention is what they *also* get. Do not argue for concurrency on the strength of this effect
+  alone.
+- 🟥 **You may propose it.** When work has separable threads and a second face would help — a
+  decision you would otherwise ratify alone, a claim only its author has read — say so plainly:
+  *"병렬세션으로 나눠서 작업해도 좋을 것 같습니다."* Proposing is invited; deciding is not yours,
+  and the standing preference remains delegation-in-conversation over standing parallelism.
 
 **Context Card** (required for non-trivial dispatch):
 ```
