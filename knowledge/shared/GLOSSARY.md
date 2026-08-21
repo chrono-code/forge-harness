@@ -99,4 +99,48 @@ detail-pointer resolution gate at commit time.
 
 ---
 
-*Updated: 2026-08-20*
+## Recurring never-do invariants — names that point at machines
+
+Every 4-axis marker carries a `절대 안 함` line: what the author committed, before designing, not to
+do. **68 of them exist in this repo's marker corpus and no two are worded alike**, so the same
+invariant is re-invented in fresh words each time, a later marker cannot cite an earlier one, and none
+of them point at the machine that already enforces them.
+
+This section gives the recurring ones a name. **A name here is a pointer to an existing mechanism, not
+a rule.** It says *"this is already blocked over there"* — never *"this is what you must write."*
+
+| Name | The invariant | Where it is already enforced |
+|---|---|---|
+| **NEVER-unmeasured-as-pass** | An absence, a skipped step, or a dead instrument is not a zero and is not a pass | `psa_scan_lib.sh` rc triad (0 clean · 1 hit · 3 **not scanned**) · `_absent_subject_verdict` (named SKIP, not silence) · the `DEGRADED_*` triads on `crossfamily:` / `standpoint:` / `soul-check:` — *could not* · *did not* · *did not look* stay three values |
+| **NEVER-loosen-to-pass** | Do not relax a verdict, widen an exception, or blanket-mute to get green | `scripts/degrade_direction_scan.sh` — ⚠️ **advisory by design**, never a solo block: a commit is a reversible surface, and over-blocking trains `--no-verify`, which would disarm the Destructive-Op gate in the same hook |
+| **NEVER-residency-leak** | Company identifiers, internal names, and operator-private tokens do not cross into public-tracked content | pre-commit confidentiality scan · `public_surface_scan_files.sh` at `prepublishOnly` · `/public-surface-audit` |
+| **NEVER-new-surface** | Do not mint a new file, trigger, gate, or skill when an existing one can carry it | 🟥 **no machine, correctly.** `/asset-placement-gate` advises; the judgment stays human |
+| **NEVER-freeze-the-verdict** | Do not encode a *conclusion* in code — only properties of the record | 🟥 **no machine, and there must not be one.** A checker for this would itself be the thing it forbids |
+
+### Three rules that keep this from becoming a ceiling
+
+1. **Names point at machines, not at correctness.** An entry answers *"where is this already caught?"*
+   If the answer is "nowhere, and that is right", say so — two rows above do exactly that.
+2. **It is open, and nothing enforces it.** A marker may cite a name or write free prose; free prose is
+   where the next name comes from. 🟥 The moment this becomes an enum a hook validates, an unfamiliar
+   invariant gets folded into the nearest existing row — the normalization reflex `CLAUDE.md
+   §Envelope-Boundary Discipline` exists to counter, and the harness stops learning new *classes*.
+3. **Loose on purpose, so it strengthens as models do** (operator, 2026-08-21). This harness is not
+   built to make a weak model shuffle through a checklist. Tight coupling would cap the strong model at
+   whatever the list froze. ⚠️ **This does not touch `sonnet_floor_doctrine.md`** — the two are
+   different axes and conflating them is the two-layers-one-name defect this repo keeps recording:
+   the floor is about a base op being **reachable** at the floor tier; this rule is about not building
+   a **ceiling** above it. A name pointing at an existing mechanism is reachable *and* uncapped.
+
+**Evidence, stated at its real strength**: the four clusters come from a hand-grouped pass over the 68
+`절대 안 함` lines (concept clusters, not string match — string dedup returns ~1 each because the
+wording never repeats; a control token returned 0). Counts: unmeasured-as-pass **7** · loosen-to-pass
+**7** · new-surface **4** · freeze-the-verdict **4** · residency **4**.
+🟥 **What was NOT measured: the cost of not having these names.** No case was counted where a marker
+should have cited an earlier one and could not. The reason to add this is the orchestration argument —
+you cannot route what has no name — which is a design argument, not a measurement. Do not cite this
+section as evidence that the absence caused harm.
+
+---
+
+*Updated: 2026-08-21*

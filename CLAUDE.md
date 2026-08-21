@@ -71,6 +71,18 @@ core invariants never melt). The nursery also **verifies what it births**: harne
 
 ## Core Reference Documents (Consult First)
 
+> 🟥 **내부 용어가 처음이면 `knowledge/shared/GLOSSARY.md` 를 먼저 열어라.** 이 파일은
+> `Sonnet-floor` · `Mode D` · `6축` · `triad-consistency` 같은 말을 **설명 없이** 쓴다 — 사전이
+> 따로 있기 때문이다. 다른 계열 콜드리드(2026-08-21)가 이 문서 최대 진입장벽으로 *"그들만의
+> 메타 용어가 맥락 없이 쏟아진다"* 를 지목했는데, **사전은 있었고 이 문서가 그걸 안 가리켰다**
+> — gate-locality 문제였지 용어 문제가 아니다. GLOSSARY 는 반복되는 **never-do 불변식의 이름**도
+> 나른다(§Recurring never-do invariants).
+>
+> **왜 상주인가**: 트리거가 «지금 내부 용어를 모르고 쓰려 한다» 는 **의도**라 경로 스코핑이 불가능
+> 하다 — 어느 파일을 읽을 때 발화하는지가 정해지지 않는다. §Where a rule lives 의 세 자리 중
+> **첫째(상주)만** 이 트리거를 잡는다. 오류 메시지 자리는 행동이 막힐 때만 읽히는데, 용어를 모르는
+> 것은 아무것도 막지 않는다.
+
 Four foundational assets for hub operations. **Mandatory pre-reference** before new design, protocol proposals, or framework extensions.
 
 | Document | Nature | Role |

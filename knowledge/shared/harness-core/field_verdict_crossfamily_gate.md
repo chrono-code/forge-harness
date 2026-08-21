@@ -771,3 +771,86 @@ standpoint.
   third-party axis's *exclusive* yield at **2 of 15** findings. Both were boundary-crossing
   (a rule the other project had already abandoned; another repo importing the changed file) —
   which is why it earns its place on large-and-irreversible surfaces and nowhere else.
+
+---
+
+## §8 External prior-art anchors — the ⓓ ledger, and why it exists here
+
+`thirdparty:` asks *"was this claimed-new thing already done outside this repo?"* Answering it needs
+somewhere for the answers to accumulate. **There was nowhere.** The daily digest kept naming a landing
+spot — *"the prior-art corpus"*, *"`field_verdict_crossfamily_gate.md §external anchors`"* — and
+**neither existed**; grep across tracked knowledge returns the phrases only inside the digests that
+propose them. So the same items surfaced on 2026-08-17, again on 2026-08-20, and did not land either
+time (hand-verified: repo-wide grep for those IDs → 0 hits outside the digests themselves, with a live
+control on the same files). This section is that missing spot. It lives **here** rather than in a new
+file because ⓓ's field is specified in this document and a new asset would trip
+`NEVER-new-surface` (`GLOSSARY.md §Recurring never-do invariants`).
+
+🟥 **Every row records DIRECTION, and that is the load-bearing column.** Prior art that *agrees* with
+an FH claim and prior art that *undercuts* one are both prior art, and a ledger holding only one kind
+reads as cherry-picking however honest each individual row is. Yesterday's entry was a counter; today's
+two corroborate — writing that asymmetry down is the point.
+
+| ID | Title (verbatim, re-resolved) | Direction | What it touches |
+|---|---|---|---|
+| [`arXiv:2608.17528`](https://arxiv.org/abs/2608.17528) | *Agent Lightning v1.0: Towards Harnessed Agentic RL* (2026-08-18, cs.AI) | **corroborates** | FH's standing claim that the harness persists and owns the loop. Abstract, verbatim: *"the harness, rather than the training engine, owns the environment interaction loop"* — and it arrives from RL training, a direction FH does not work in. Reports *"41.8% to 56.4%, a 14.6-point absolute gain"* on SWE-bench Verified |
+| [`arXiv:2608.18565`](https://arxiv.org/abs/2608.18565) | *SemaPLC: A Project-Grounded, Verification-Gated Agent Harness for PLC Code Generation* (2026-08-19, cs.SE) | **corroborates (direction only)** | `CLAUDE.md §Skeleton, Not Muscle` and the `standpoint:` `tier1b`/`tier2` split — gains show up in dynamic behavioral testing on live systems, i.e. verification by execution. ⚠️ **Scope honestly**: PLC generation has a compiler and a live rig, so "execution" there is cheap and unambiguous; FH's `tier2` asks a session to run *another harness's* suite. It corroborates the direction, **not** the rung design |
+| [`arXiv:2608.06301`](https://arxiv.org/abs/2608.06301) | HarnessOpt-Bench (surfaced 2026-08-17) | **counter** | an LLM is handed a target agent's seed harness plus graded eval feedback — i.e. harness construction treated as an optimizable search problem, which cuts against "the harness is the durable, human-authored layer" |
+
+**Provenance of the two 2026-08-21 rows**: both IDs were opened at `arxiv.org/abs/{id}` during this
+edit and the title, date, category and quoted phrases above are what those pages say — not a re-render
+of the digest's summary. ⚠️ The HarnessOpt-Bench row is carried forward from the 2026-08-17 digest and
+was **not** re-resolved here; its title is given without the verbatim marker for that reason.
+
+### §8-b Sister assets — external tools on a surface FH already owns
+
+ⓓ also fires on **tools**, not only papers, and the protocol
+(`knowledge/shared/rules/sister_asset_protocol.md`) requires the record to run **both ways**: what to
+import, and what FH could contribute back. A one-way "here is a competitor" note is not compliance.
+
+Surfaced by the 2026-08-21 digest as *"two token-reduction tools are trending — re-run the
+no-reinvention check on `/context-doctor`'s territory."* 🟥 **The digest's one-line summaries of both
+were wrong in ways that flip the verdict**, so each was opened at source before judging:
+
+| Tool | Digest said | Source says | Axis |
+|---|---|---|---|
+| [`NanoNets/Graft`](https://github.com/NanoNets/Graft) | *"hooks that cut **grep** tokens by 42%"* | not grep — a **context-loading** benchmark, *"162 runs, two repos"*, cold Claude Code vs with-graft. Mechanically it builds a tree-sitter symbol graph (`graft/.graph/wiring.json`) so exploration is cheaper | **③ pre-built structural index** |
+| [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) | *"skill reducing token usage by 65%"* | 65% is **output-only, skill mode**. The whole-session figure is *"33.2% fewer provider-reported input tokens"* via a local **proxy** that detects payload type and compresses selectively | **② command-output filtering** |
+
+Splitting by axis is what makes the verdict decidable — `/context-doctor` declares two:
+
+```
+①  footprint exclusion     .claudeignore                      ours
+②  output filtering        rtk (per-command proxy)            ours — and now contested
+③  pre-built index         (none)                             🟥 genuinely empty
+```
+
+⇒ **"nothing covers this" was half stale.** ② has a competitor; ③ is a real gap. Judging from the
+digest's wording would have produced the opposite answer — *"cuts grep tokens"* collides head-on with
+rtk, while *"builds a code graph"* is a different axis entirely.
+
+**② — keep rtk, register caveman as a same-axis alternative.** 🟥 Its own honesty note is the useful
+import: *"the skill adds ~1–1.5k input tokens per turn … whole-session savings are smaller … and can go
+net-negative on already-terse workloads."* That is `[[feedback_lossy_reduction_binding_constraint_only]]`
+(lossy reduction only when tokens are the binding constraint) reached independently, with a benchmark
+behind it. ⚠️ **Adoption precondition, non-negotiable**: its engine *"retains top/bottom search hits,
+drops middle results."* Pointed at a **gate's input** that is `NEVER-unmeasured-as-pass` — the dropped
+middle is unscanned surface rendered as clean. Any adoption must exempt verdict inputs.
+
+**③ — register the gap, do NOT build.** Three preconditions are unmet: FH has never measured how many
+tokens exploration actually costs here; this corpus is mostly markdown, where a tree-sitter symbol graph
+may not transfer; and `[[feedback_evidence_threshold_build_discipline]]` blocks building while the
+*constraint itself* is unverified. **Register, measure, then decide — in that order.**
+
+**What FH could contribute back (the direction the protocol says not to skip)**: neither tool separates
+*measurement inputs* from *display outputs*. FH's rule that a filter must never sit on a gate's input —
+and the `0 / 1 / 3` verdict triad that keeps a dead instrument from rendering as clean — is exactly the
+failure mode a selective-compression proxy invites. That is a proposal worth writing up if either
+project takes outside input.
+
+**How to use a row**: cite it in a marker's `thirdparty:` line as
+`checked(<what you searched>, <what came back>)`. A row's presence is **not** a verdict on the FH claim
+it touches — ⓓ returns evidence, and 🟥 the blind reclassification recorded in `§5` is the reason to be
+careful here: of five findings an author attributed to ⓓ, two independent out-of-family classifiers put
+**three** on other axes. Prior art being *findable* is not the same as prior art having been *what the
+axis was needed for*.

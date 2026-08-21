@@ -229,6 +229,24 @@ HN N items + arxiv N items collected
 ## Immediate Application Candidates
 [Copy Step 2 "FH Immediate Application Candidates" items here]
 
+> 🟥 **A candidate must name a landing spot that EXISTS. Do not invent one.**
+> Measured 2026-08-21: the same two prior-art items surfaced on 08-17 and again on 08-20 and landed
+> **neither time** (repo-wide grep for their IDs → 0 hits outside the digests, live control on the same
+> files). The cause was not neglect — the digests named *"the prior-art corpus"* and
+> *"`field_verdict_crossfamily_gate.md §external anchors`"*, and **neither existed.** A run that
+> invents its own landing spot produces a candidate nobody can close, and the loop then reports the
+> pipeline as "never closed" when what actually happens is **surfaced repeatedly, closeable never**.
+>
+> Known spots, verified present:
+> ```
+> external prior art        knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §8
+> recurring never-do names  knowledge/shared/GLOSSARY.md §Recurring never-do invariants
+> a rule that must fire     the always-loaded layer · a gate's own error message · a hook
+>                           (README §Where a rule lives — pick the seat by WHEN it must fire)
+> ```
+> If a candidate has no existing home, say so in the candidate itself — *"no landing spot; proposing
+> one is part of the work"* — rather than naming a plausible path. A plausible path is a phantom.
+
 ## Processing Status
 - [ ] Pending review
 ```
