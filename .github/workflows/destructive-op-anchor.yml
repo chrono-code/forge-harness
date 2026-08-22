@@ -1,0 +1,145 @@
+name: Destructive-Op Anchor
+
+# ── WHY THIS WORKFLOW EXISTS ──────────────────────────────────────────────────────────────────
+# CLAUDE.md §Destructive-Op Gate names templates/.git-hooks/pre-push as the MECHANICAL FLOOR for
+# the git-side irreversible surfaces (remote branch delete · force / non-ff push · tag delete).
+# Its known-pair anchors existed but were re-run in only two places, both of which are the
+# author's own machine: the local pre-commit hook (and only when the diff happens to touch the
+# guard files) and `npm test`.
+#
+# Measured 2026-08-22:
+#   • scripts/prepush_guard_check.sh (20 pairs)   — NOT referenced by scripts/selfcheck.sh, so it
+#     never ran in CI. Invoked only by pre-commit, conditionally on the diff touching the hook.
+#   • templates/predelete_check.test.sh (6 lanes) — was executed by NOTHING until the 'Anchor 3/3'
+#     step below. Structurally invisible to scripts/lane_runner_check.sh, whose suite glob is
+#     `scripts/*.sh` matching `test_*|*_lanes`; this file is `templates/*.test.sh` and falls outside
+#     its field of view. That is why the lane-runner reported all-wired while this suite had no
+#     runner at all — the detector is not wrong, its scope is a name convention, and this file is
+#     outside it.
+#     ⚠️ Two self-descriptions in this block were wrong on 2026-08-22 and are corrected here rather
+#     than silently: "executed by NOTHING" became false the moment this workflow added the step (a
+#     present-tense claim about a state the file itself changes), and the wired count read "62/62"
+#     when the lane-runner reports 66 suites / 66 wired. Re-measured, not re-asserted.
+#     🟥 THE ORPHAN CAN RETURN SILENTLY, and the guard for that is NOT here. If this workflow is
+#     deleted, the two `scripts/test_*` anchors below are caught (lane_runner_check.sh globs
+#     .github/workflows/*.yml as a caller surface, and selfcheck.sh runs it inside the required
+#     `validate` check) — but predelete_check.test.sh is not, because nothing can see it. Stage ⑥
+#     of scripts/test_prepush_destructive_liveness.sh asserts it still has a REACHABLE executing
+#     runner. "Reachable" is load-bearing and was added 2026-08-22 R2: the counter scans BOTH
+#     `.github/workflows/*.yml` and `*.yaml` (GitHub executes both, so renaming THIS file would
+#     have read as ORPHANED while CI kept running it) plus package.json scripts, and it discards
+#     text that names the runner but never runs it — a `workflow_dispatch`-only trigger, an
+#     `if: false` step, or (R3) a `push:` key that is not actually inside the `on:` block. Each rule
+#     has its own known pair in ⑥-cal, in BOTH directions.
+#     🟥 SCOPE, STATED SO IT IS NOT READ AS MORE: stage ⑥ is a COMMON-FORM MATCHER over workflow and
+#     script text, not a YAML or shell semantics analyzer, and it does not claim its rejection list
+#     is complete — an R2 comment did claim that and R3 falsified it in one try. What it misses is
+#     enumerated in that file under §NAMED LIMITS (expression-valued `if:`, job-level `if:`,
+#     `needs:`/`workflow_call` indirection, never-matching `paths:` filters, shell dead code). It
+#     folds unrecognised shapes to NOT-reachable, so its errors surface as a loud false ORPHAN
+#     rather than as a silent green. ⑥ guards that the step below still EXISTS; only the step
+#     itself, by running, establishes that the subject actually executes.
+#
+# The failure mode being closed is the one an anchor cannot report about itself: a gate that is
+# silently broken while its anchor still exists. An anchor that only re-runs on the author's
+# machine can tell you the gate was correct once; it cannot tell you it is correct now. The
+# irreversible surfaces are exactly where "once, somewhere else" is not good enough.
+#
+# ── WHY IT RUNS ON EVERY PUSH, NOT ON A paths: FILTER ─────────────────────────────────────────
+# A paths: filter would re-run these anchors only when the guard's own files change — i.e. exactly
+# when the author is already thinking about the guard. The regressions worth catching come from
+# somewhere else: a shared library the hook sources, a helper script it calls, a runner image
+# change. Both prior fail-opens in this hook were authored while repairing something else, and
+# `bash -n` passed on one of them (a `${...}` bad substitution is a RUNTIME fault). So: always.
+# Cheap to do — public repo, three local suites, no network.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  destructive-op-anchor:
+    name: Destructive-Op known-pair re-execution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Git identity for throwaway fixture repos
+        run: |
+          # Every suite below builds mktemp repos and commits into them. Each sets its own
+          # per-repo user.email/user.name, but a runner with no global identity makes any missed
+          # spot fail with a confusing "please tell me who you are" that reads like a lane failure.
+          git config --global user.email "ci@example.com"
+          git config --global user.name  "ci"
+          git --version
+
+      - name: Anchors present (fail-closed — an absent anchor is never a pass)
+        run: |
+          # A missing suite is HARNESS_ERROR, not a skip. `not found` is not `0`: rendering an
+          # absent instrument as a clean run is the exact defect these anchors exist to prevent,
+          # and it is the cheapest place for it to reappear.
+          missing=0
+          for f in scripts/test_prepush_destructive_lanes.sh \
+                   scripts/prepush_guard_check.sh \
+                   templates/predelete_check.test.sh \
+                   templates/.git-hooks/pre-push \
+                   templates/predelete_check.sh; do
+            if [ -f "$f" ]; then
+              echo "  present: $f"
+            else
+              echo "::error::HARNESS_ERROR — required anchor or subject missing: $f"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ]
+
+      - name: 'Anchor 1/3 — pre-push destructive-op verdict (12 known pairs)'
+        run: |
+          # Known pairs for the hook's inline per-ref verdict: force/non-ff, branch delete
+          # REVIEW/CHECK/SAFE, integration-branch PROTECTED, tag delete, unresolvable base, and
+          # the DESTRUCTIVE_OP_OK override + its log. Known-negatives included on purpose: a
+          # blanket-deny gate would pass every positive lane and be useless, and over-blocking
+          # trains the override that disarms the gate.
+          bash scripts/test_prepush_destructive_lanes.sh
+
+      - name: 'Anchor 2/3 — pre-push publish-boundary guards (20 known pairs)'
+        run: |
+          # Sibling surface on the same hook: confidentiality content scan over the commits a push
+          # would publish, main-PR-only, tag/version, stacked-branch advisory. Ran in CI for the
+          # first time here.
+          bash scripts/prepush_guard_check.sh
+
+      - name: 'Anchor 3/3 — predelete_check enumerate tool (6 lanes)'
+        run: |
+          # The operator's enumerate tool from CLAUDE.md's "enumerate → recover → destroy" order.
+          # No hook executes it (CLAUDE.md says so explicitly), which makes it MORE important that
+          # its own regression lanes re-run: nothing else would notice it rotting.
+          bash templates/predelete_check.test.sh
+
+      - name: Anchor liveness control (a green suite must be capable of going red)
+        run: |
+          # 🟥 THE CONTROL. Every anchor above can pass because the gate is healthy — or because
+          # the suite stopped testing anything. Those are byte-identical in a green log, and the
+          # second is how an anchor becomes decorative. This step disables one guard ON A COPY and
+          # requires the suite to go RED on the specific lane that guard backs. If it stays green,
+          # the anchors above certified nothing and this job says so.
+          #
+          # Seven stages. ①–③ are the decorative-anchor probe above; ④–⑦ were added 2026-08-22:
+          #   ④ portability   — the suite still runs on git < 2.28 (no `init -b`), measured with a
+          #                     shim that is itself known-pair calibrated
+          #   ⑤ setup-loudness— an unbuildable fixture aborts with HARNESS_ERROR and scores ZERO
+          #                     lanes. It used to score six, off the real working tree, because
+          #                     `cd ""` is a no-op success in bash
+          #   ⑥ orphan        — templates/predelete_check.test.sh still has a runner matching the
+          #                     reachable-invocation FORM (.yml + .yaml + package.json surfaces;
+          #                     manual-only, `if: false`, and a `push:` outside the `on:` block do
+          #                     not count). 12 known pairs, both directions. A form matcher, not a
+          #                     semantics analyzer — limits enumerated in the script
+          #   ⑦ containment   — a full suite run leaves the real repo byte-identical
+          #                     (status · HEAD · refs · tags · index)
+          #
+          # Kept as a script rather than inline YAML so it also runs LOCALLY, before the push —
+          # CLAUDE.md §Local Execution First: CI confirms, it does not discover.
+          bash scripts/test_prepush_destructive_liveness.sh

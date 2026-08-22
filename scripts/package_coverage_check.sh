@@ -127,6 +127,40 @@ ACCEPTED_ABSENT=(
   #     「출하된 레인의 **주체**가 출하되나」를 안 본다. 그 갭은 아직 안 닫혔다(명시 잔여).
   "scripts/test_satellite_publish_gate_lanes.sh"
   "scripts/test_satellite_profile_schema_lanes.sh"
+  #   · 2026-08-22, 파괴적-op 앵커 배선이 만든 셋. **같은 선례의 재현이고, 이 검사기가 또 잡았다** —
+  #     `test_prepush_destructive_lanes.sh` 를 files[] 에 넣고 `selfcheck.sh` 의 pair-표에 전체
+  #     경로 두 줄을 쓴 순간, 그 두 파일이 이름 대는 것들이 팬텀이 됐다. 위 블록이 예고한 그대로다.
+  #     ⓐ test_prepush_destructive_liveness.sh — 일부러 안 싣는다. 7단계 중 둘이 **레포-개발 전용
+  #       컨트롤**이라 소비자 install 에서 정직할 수 없다: ⑥ orphan 은 주체
+  #       `templates/predelete_check.test.sh` 가 미출하라 **부재로 FAIL**(옳지 않은 red), ⑦
+  #       containment 는 소비자 트리가 보통 git work tree 가 아니라 **잴 게 없다**. 싣게 하려면
+  #       패키지-모드 라우팅을 그 두 단계에 심어야 하는데 그건 소비자에게 값이 없는 코드다.
+  #     ⓑ 🟥 **철회 — 이 자리에 있던 `test_new_code_anchor_lanes.sh` 항목을 뺐다.** 그 항목이
+  #       필요했던 유일한 이유는 `test_prepush_destructive_lanes.sh` 의 한 주석이 그 파일을 경로로
+  #       인용했기 때문인데, **그 인용이 이번 라운드에 재조준됐다**(추적되는 선례로). 단독 착지
+  #       준비 중 발견 — 안 고쳤으면 **커밋되지 않는 파일을 가리키는 팬텀 참조**를 출하할 뻔했다.
+  #       인용이 사라지면 예외도 사라져야 한다. **소비되지 않는 예외는 다음 진짜 누락을 삼킨다.**
+  #     ⓒ templates/predelete_check.test.sh — 주체 `templates/predelete_check.sh` 는 **출하되는데**
+  #       이 앵커는 안 나간다. 🟥 위 test_chamber_run_lanes 와 **같은 모양의 빚**이고, 클린한 답이
+  #       아니다. 여기 등재하는 이유도 같다: files[] 추가는 소비자-대면 변경이라 false-FAIL 이
+  #       없음을 tarball 모드로 따로 증명해야 하는데, 이 델타는 **배선 델타**다. 카드로 이월.
+  "scripts/test_prepush_destructive_liveness.sh"
+  #     🟥 ⓒ 는 **철회했다 — cross-family R2 지적이 맞았다.** 초판이
+  #       `templates/predelete_check.test.sh` 를 여기 넣고 «위 chamber 건과 같은 빚» 이라고 적었는데,
+  #       그 둘은 같지 않다: chamber 는 «주체가 출하되는데 앵커가 안 나간다» 를 **빚으로 남긴** 것이고,
+  #       여기 등재는 그 빚을 **침묵시킨다**. 이 목록의 뜻은 「출하 안 하는 게 옳다」이지
+  #       「출하해야 하는데 아직 안 했다」가 아니다. 후자를 여기 넣으면 **다음 사람이 같은 누락을
+  #       만나도 이 예외에 걸려 안 보인다** — 지적 원문: *"A future shipped reference to this same
+  #       missing anchor will also be accepted, not surfaced."*
+  #       ⇒ `files[]` 에 실었다. 주체 `templates/predelete_check.sh` 가 이미 출하되므로 소비자는
+  #       자기 enumerate 도구를 검증할 수 있게 되고, 부수로 liveness stage ⑥ 의 오탐(주체 부재로
+  #       ORPHANED)도 닫힌다.
+  #     ⓓ 🟥 **그리고 ⓑ 의 사유를 쓰자 그 사유가 팬텀을 만들었다.** 위 주석이 주체 이름을
+  #       경로로 적는데 **이 파일 자신이 shipped 문서**라, 「안 싣는 이유」를 설명한 행위가
+  #       곧 「shipped 문서가 미출하 경로를 가리킴」이 됐다. 계기가 자기 수리를 잡은 것이고,
+  #       위 블록이 예고한 형태(*전체 경로를 shipped 파일에 쓰면 팬텀이 된다*)의 **3차 재현**이다.
+  #       주체 자신도 같은 사유로 등재한다 — 신규 게이트 둘은 **이 레포 전용**이다(추가 파일을
+  #       이 레포 레인 코퍼스에 대고 판정한다). 소비자 트리엔 판정 대상이 없다.
   "scripts/residency_closure_scan.py"
   "scripts/test_residency_closure_lanes.sh"
   # ── The two settings destinations, surfaced 2026-08-13 by fixing this file's own extractor ────
