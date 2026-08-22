@@ -1,0 +1,106 @@
+# caller-zero-ratchet — blocks a NEWLY callerless production script.
+#
+# Transplant of qasp's `caller-zero-ratchet` CI job (synergy scan 2026-08-22, pair T2). The property
+# that matters is that the verdict is keyed on WHICH scripts are callerless against a committed
+# baseline, never on HOW MANY — a count-keyed gate passes when you wire one and add another.
+#
+# WHY A SEPARATE WORKFLOW AND NOT A STEP IN validate.yml:
+#   validate.yml is a REQUIRED check on main. A brand-new gate that has never run against a real PR
+#   should not be able to wedge the merge queue on its first false positive. This runs on its own,
+#   advisory-by-position (not in required contexts) until it has a few green PRs behind it, and
+#   promoting it is a deliberate operator decision — not something this file can grant itself.
+#
+# 🟥 IT RUNS ON LINUX AND IS AUTHORED ON macOS. That split is the point: this repo has measured a
+# regex that meant different things to BSD and GNU grep, green locally and dead in CI, on the arm
+# that was supposed to fail closed. The lanes run here for the same reason the checker does.
+name: caller-zero-ratchet
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'bin/**'
+      - 'templates/.git-hooks/**'
+      - 'templates/*.json'
+      - '.claude/capabilities/**'
+      - 'package.json'
+      # 🟥 EVERY workflow, not just this one. The scanner treats `.github/workflows/*.yml` and
+      # `*.yaml` as runner surfaces, so a PR that deletes a script's ONLY dispatch out of
+      # validate.yml removes a caller — and under the old filter (which named this file alone)
+      # this job did not run on that PR. The trigger surface and the scanned surface have to be
+      # the same set, or the gate is blind on exactly the diffs that create the debt it hunts.
+      - '.github/workflows/**'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ratchet:
+    runs-on: ubuntu-latest
+    steps:
+      # 🟥 fetch-depth: 0 IS LOAD-BEARING, NOT A CONVENIENCE. The shrink-only half of the ratchet
+      # diffs the `baseline:` section against the base commit; the default depth-1 checkout has no
+      # base to diff against, and the checker would then correctly report `shrink-only: UNMEASURED`
+      # — a green job that measured nothing. It also supplies the remote-tracking ref the next step
+      # merge-bases against, and the history the HEAD~1 fallback needs. Paired with the
+      # FH_RATCHET_REQUIRE_BASE the next step COMPUTES (it is no longer hardcoded to '1' here: the
+      # step emits require=1 whenever it found a base, and require=0 only in the one case where no
+      # earlier commit exists at all, which it announces with a ::warning::).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 🟥 THE BASE IS NAMED HERE, NOT LEFT TO THE CHECKER'S AUTO-RESOLVER.
+      # Cross-family reproduction 2026-08-22 (codex/gpt-5.5): on `push` to main, GITHUB_BASE_REF is
+      # unset and `origin/main` resolves to the checked-out HEAD, so the checker compared the commit
+      # with ITSELF and printed "shrink-only ENFORCED" over a commit that added both a callerless
+      # script AND its `baseline:` line. Detached and shallow checkouts have the same shape. The
+      # checker now refuses a HEAD base under FH_RATCHET_REQUIRE_BASE=1, and this step supplies the
+      # base that makes the comparison real rather than merely making the job red.
+      #
+      # WHY MERGE-BASE AND NOT `pull_request.base.sha` ON PRs. base.sha is the base branch tip as of
+      # PR creation; a PR checkout is the MERGE ref, so it already contains whatever main gained
+      # since. Diffing against the stale tip would report main's own changes as this PR's additions —
+      # a false block, on the PASS-side-is-safe reasoning's opposite side. merge-base against the
+      # CURRENT base branch asks the question the gate actually means: does this PR add an entry that
+      # is not on the base branch now. base.sha stays as the fallback for when the remote-tracking
+      # ref is unavailable.
+      # 🟥 THE BODY OF THIS STEP IS A SCRIPT, NOT A `run:` BLOCK, AND THAT IS THE POINT.
+      # It was ten inline lines, and no lane can execute a `run:` block — so the one component that
+      # decides whether this gate measures anything had no anchor on it, and carried an A-grade
+      # fail-open through three review rounds: a base NAMED by the event but missing from the
+      # checkout (the force-push shape) was silently replaced by HEAD~1, and the checker then
+      # printed "shrink-only ENFORCED" over a one-commit window. Reproduced on a three-commit
+      # fixture before the extraction; the resolver's header carries the two arms verbatim, and
+      # lanes L24–L26 in scripts/test_script_caller_ratchet_lanes.sh hold it closed.
+      # It now degrades CLOSED (exit 3) instead of substituting a different comparison.
+      - name: resolve an immutable base
+        id: base
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: bash scripts/ratchet_base_resolve.sh
+
+      # Lanes FIRST. A checker whose known pair has not been executed is not an instrument, and a
+      # green ratchet verdict from an unexercised checker is the fail-open this whole class of gate
+      # exists to prevent. If the lanes go red, the verdict below means nothing and the job stops.
+      - name: known-pair lanes (fixture roots, never this tree)
+        run: bash scripts/test_script_caller_ratchet_lanes.sh
+
+      # This is the merge boundary, so the shrink-only comparison degrades CLOSED here: if the base
+      # cannot be resolved the job errors (exit 2) instead of printing a labelled UNMEASURED and
+      # passing. The env var is set HERE and nowhere else — a developer's machine keeps the
+      # non-blocking labelled form on purpose, because an over-blocking local gate trains
+      # `--no-verify` and disarms the pre-commit hooks that share that channel.
+      - name: caller-zero ratchet
+        run: bash scripts/script_caller_ratchet.sh --list
+        env:
+          FH_RATCHET_BASE_REF: ${{ steps.base.outputs.base }}
+          FH_RATCHET_REQUIRE_BASE: ${{ steps.base.outputs.require }}
+
+      # Not `continue-on-error` and not `|| true`: an instrument that is allowed to fail silently
+      # reports a clean tree whenever it breaks. Exit 2 (instrument error) is as red as exit 1.

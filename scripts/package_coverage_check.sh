@@ -163,6 +163,26 @@ ACCEPTED_ABSENT=(
   #       이 레포 레인 코퍼스에 대고 판정한다). 소비자 트리엔 판정 대상이 없다.
   "scripts/residency_closure_scan.py"
   "scripts/test_residency_closure_lanes.sh"
+  # ── caller-zero-ratchet, 2026-08-22. 셋 다 **싣는 것이 틀렸다** — 「아직 안 실었다」가 아니다 ──
+  # 이 게이트는 「production 스크립트에 디스패처가 있나」를 **이 레포의 러너 표면**에 대고 판정한다.
+  # 그 표면의 하나가 `.github/workflows/**` 이고, **워크플로 디렉터리는 files[] 에 없다.** 그러므로
+  # 소비자 트리에서 이 검사기를 돌리면 워크플로에서만 디스패치되는 스크립트들이 전부 caller 0 으로
+  # 떨어지고, 그것들은 소비자의 `caller_zero_baseline.txt` 에 선언돼 있지 않으므로 **UNDECLARED →
+  # exit 1**. 즉 출하하면 **모든 신선한 설치에서 100% 적색**이다 — CLAUDE.md 가 「모든 새 install 을
+  # 막는 게이트는 엄격한 게이트가 아니라 우회 훈련기」라고 못박은 그 형태이고, 바로 위
+  # outbound_query_guard 블록과 **같은 사유**다.
+  # 앵커도 같이 안 나간다. 주체 부재라는 짝 규칙 말고 **자기 자신의 사유가 하나 더 있다**: 마지막
+  # 레인(L27)이 `.github/workflows/caller-zero-ratchet.yml` 을 읽어 워크플로가 리졸버를 인라인으로
+  # 되돌리지 않았는지 본다. 그 파일이 없는 트리에서 그 레인은 **부재를 결함으로 읽어 적색**이 된다.
+  # 🟥 위 ⓒ 의 교훈은 여기 **해당하지 않는다**: 저건 「주체는 출하되는데 앵커만 빠진」 빚이었고,
+  # 여기는 주체·앵커·베이스리졸버가 **셋 다** 소비자에게 판정 대상이 없다. 침묵시키는 게 아니라
+  # 애초에 그쪽 트리에 질문이 없다.
+  # ⚠️ 명시 잔여: 그래서 이 게이트는 **이 레포에서만** 회귀를 막는다. 소비자 설치본의
+  # built-but-not-wired 는 이것으로 안 잡히고, 그걸 잡으려면 러너 표면 목록을 패키지 모드로
+  # 라우팅하는 별도 설계가 필요하다 — 안 했다.
+  "scripts/script_caller_ratchet.sh"
+  "scripts/ratchet_base_resolve.sh"
+  "scripts/test_script_caller_ratchet_lanes.sh"
   # ── The two settings destinations, surfaced 2026-08-13 by fixing this file's own extractor ────
   # These were invisible until the `js|json` alternation below was corrected: every `.json`
   # reference in every shipped doc was being truncated to `.js`, a path that exists nowhere, so
