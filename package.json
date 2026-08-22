@@ -167,6 +167,7 @@
     "scripts/psa_scan_lib.sh",
     "scripts/test_psa_singlefile_lanes.sh",
     "scripts/session_close_check.sh",
+    "scripts/test_peer_worktree_detect_lanes.sh",
     "scripts/utterance_landing_check.sh",
     "scripts/test_dispatch_log_lanes.sh",
     "scripts/memory_link_check.py",
