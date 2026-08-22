@@ -8,6 +8,51 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+### [2.8.0] — 2026-08-22
+
+**자릿수 근거 (minor)**: 새 게이트 레인 · 행동을 바꾸는 교리 · 소비자 install 동작 변경.
+major 아님(정체성 다섯이 전부 🟢 도, capability class 신설도 아니다).
+**`BREAKING (gate)` 없음** — 새로 등록되는 훅은 `exit 0` 로 끝나는 표면화 훅이고 아무것도 차단하지 않는다.
+
+#### 🟥 install-wizard 가 PriorArt 스니펫을 «항상 조용히 SKIP» 하고 있었다
+
+`templates/settings.PriorArt.snippet.json` 이 형제 스니펫 넷과 달리 `project_settings_json`
+래퍼 없이 출하되고 있었고, install-wizard 머지 코드는 그 키가 없으면
+`SKIP (no project_settings_json) … continue` 로 건너뛴다.
+⇒ **이 훅은 install-wizard 를 돌려도 한 번도 등록된 적이 없었다.**
+전수 실측: Compaction·FieldCanon·PreToolUse·SessionStart 래퍼 O · PriorArt 혼자 부재.
+
+**소비자 영향**: 이제 install-wizard 가 이 훅을 실제로 등록한다. 새 메커니즘을 짓기 직전에
+「책장 먼저, 없으면 도서관」을 표면화하는 PreToolUse 훅이고, **차단하지 않는다**.
+
+회귀 앵커: `scripts/test_wizard_snippet_merge_lanes.sh` 에 **SHIP-1**(출하 스니펫 전수 스키마,
+0개 스캔 시 FAIL — 부재를 통과로 안 렌더) + **SHIP-2**(판별력 컨트롤) 신설. 되돌림 3단 검증됨.
+
+#### door ④ 가 하네스 레벨 이식쌍을 기본값으로 낸다 — Step 3-b
+
+`cross-ecosystem-synergy-detection` 이 «설치된 플러그인/스킬» 층만 냈다. 매핑 트랙 2+ 환경에서
+**매핑된 필드 하네스끼리의 거버넌스 이식쌍**을 조건부 기본값으로 낸다. 발화 트리거 4행(단독 호출)
++ Done When 2행(`harness-error` 는 NON-PASS, 세 번째 허용 상태가 아니다).
+⚠️ 재발 N=2 로 **이 레포 임계(N≥3) 미달**이며 **운영자 지시로** 기계화했다. 본문에 명시.
+
+#### 「워크트리에서 4축 증거가 구조적으로 부재」 철회
+
+`pre-commit` 이 `--git-common-dir` 로 메인 트리 증거를 잡는다(2026-08-18 수리, 08-22 첫 실사용).
+🟥 **운영 규칙은 불변 — 워크트리에서 FH 자산을 커밋하지 않는다.** 남은 것은 성립한 근거가 아니라
+열린 위험 영역이고 이유로 열거하지 않는다(초판이 열거했다가 적대검증에서 추가 주장 대부분에 결함).
+
+#### 정체성 ④ 트리거 재정의 (운영자)
+
+「의문 표명」 예시 넷 → **요청·질문·제안 ∧ «조금이라도» 불확실**의 곱. ①은 채널·②는 판정.
+결말 셋 신설: **숙고만으로 닫힘** / 책장 / 도서관.
+
+#### 기타
+
+디스패치 원장 3엔트리(66건 무기록 해소) · README 4언어 · `listing_watch.sh` · 3층 정본 ·
+`docs/ETHOS.md` (2.7.0 이후 누적).
+
+---
+
 ## Plugin Level
 
 ### [2.7.0] — 2026-08-21
