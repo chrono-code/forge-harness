@@ -164,6 +164,8 @@
     "scripts/test_degrade_scan_shell_probes.sh",
     "scripts/gate_pathspec_check.sh",
     "scripts/prepush_guard_check.sh",
+    "templates/predelete_check.test.sh",
+    "scripts/test_prepush_destructive_lanes.sh",
     "scripts/psa_scan_lib.sh",
     "scripts/test_psa_singlefile_lanes.sh",
     "scripts/session_close_check.sh",

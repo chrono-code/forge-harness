@@ -536,6 +536,8 @@ for _pair in \
   "scripts/degrade_probe_capability.sh|scripts/test_capability_entrypoint_shipping.sh" \
   "scripts/chamber_run.sh|scripts/test_chamber_run_lanes.sh" \
   "scripts/destructive_pre_gate.sh|scripts/test_destructive_pre_gate_lanes.sh" \
+  "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_lanes.sh" \
+  "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_liveness.sh" \
   "scripts/env_purity_scan.sh|scripts/test_env_purity_lanes.sh" \
   "scripts/frontier_digest_daily.sh|scripts/test_frontier_digest_retry.sh" \
   "scripts/knowledge_seam_check.sh|scripts/test_knowledge_seam_lanes.sh" \
