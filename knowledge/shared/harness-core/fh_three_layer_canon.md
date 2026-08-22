@@ -92,7 +92,20 @@ tags: [canon, three-layer, engines, identity, verification-axes]
 > 「전량 무효화」 전제 자체도 별도로 반증돼 있다 — 훅은 **오늘·이 브랜치 마커 한 개만** 검증하므로
 > 190건 중 차단 0·재해석 51이었다(`CLAUDE.md` §명칭 충돌).
 >
-> **남은 어긋남은 하나뿐** — `standpoint:` 값의 enum 을 **검증하는 코드가 아직 0줄**이다.
+> **남은 어긋남은 하나뿐** — `standpoint:` 값의 **`tier2`+ 실행 grounds** 가 advisory 라는 것이다.
+> 🟥 **RETRACTED 2026-08-23 — 이 줄은 «값의 enum 을 검증하는 코드가 아직 0줄이다» 라고 적고
+> 있었고, 그건 거짓이었다. 그리고 이 자리의 거짓이 다른 어느 자리보다 나빴다** — enum 이 바로
+> **차단하는 절반**이라, 하필 닫혀 있는 쪽을 「0줄」이라 부른 것이다. 실측(2026-08-23, 컨트롤
+> 동반): `templates/.git-hooks/pre-commit` 의 `validate_standpoint_leg()` 는 **86줄**, `:1953` 에서
+> 호출되어 `FAILED=1` 로 커밋을 차단하고, 그 안의 `return 1` **6개**가 ⓐ `standpoint:` 줄 부재
+> ⓑ 중복 `standpoint:` 줄 ⓒ enum 비-멤버 값 ⓓ `crossfamily:` 토큰 오염 ⓔ 근거 없는
+> `not-applicable` ⓕ 근거 없는 `DEGRADED_*`/`UNKNOWN` 을 막는다(레인 =
+> `scripts/test_marker_standpoint_lanes.sh`). **advisory 인 것은 딱 한 칸** — `tier2`+ 가
+> «실행을 명명했는가» 를 못 채우면 `⚠️` 만 찍고 `return 1` 을 안 한다(훅 스스로 *"Advisory by
+> design"*). **왜 그렇게 적혔나**: 2026-08-20 에 이 거짓을 잡은 정정이 다섯 자리를 훑었는데
+> **이 파일은 그 목록에 없었다** — 목록 자체가 불완전했던 반쪽-픽스다
+> (`[[feedback_half_fix_propagation_boundary]]`). 🟥 **논지는 안 바뀐다**: 닫힌 것은 여전히
+> **«형식»이지 «진위»가 아니다.**
 > 옛 배열로 쓴 줄을 기계가 **조용히 다른 축으로 읽으며 오류를 내지 않는다** — 그래서 옛 마커를
 > 읽을 때는 날짜부터 본다. 산문으로 논할 때는 언제나 §1-a-2 의 6축을 쓴다.
 >
@@ -351,7 +364,12 @@ axes-run: ⓐ~ⓕ         마커 날짜 ≥ 2026-08-17 이면 pre-commit 이 **�
 axes-run: a/b/c/d      그 이전 날짜의 마커는 옛 네 글자 그대로 (소급 강제 없음)
 standpoint:            ⓑ 는 **자기 필드**가 정본이고, `axes-run` 은 `ⓑ=→standpoint` 포인터만 든다
                        (이중 기록 회피). 포인터가 있는데 그 줄이 비면 **죽은 포인터로 차단**
-                       ⚠️ 🟥 **값 자체의 enum 검증은 여전히 0줄** — 이게 남은 잔여다
+                       ✅ 값의 **enum 은 닫혀 있고 차단한다** — pre-commit 의
+                          `validate_standpoint_leg()` (함수명으로 grep 해라; 행번호는 드리프트한다).
+                          그 안의 `return 1` 6개가 막는다. 레인 = test_marker_standpoint_lanes.sh
+                       ⚠️ 남은 잔여는 **`tier2`+ 의 실행 grounds 뿐** — 미달 시 ⚠️ 만 찍고 통과
+                       🟥 **RETRACTED 2026-08-23**: 이 칸은 «값 자체의 enum 검증은 여전히 0줄»
+                          이라 적고 있었고 거짓이었다 — enum 이 바로 차단하는 절반이다. 위 §95 참조
 ⓓ 3자 대면             ✅ 기록할 자리가 생겼다 (`ⓓ=`)
 ```
 🟥 **판별자는 마커 파일명의 날짜다**(`< 2026-08-17` = 옛 4축). 표기를 가른 이유는 미관이 아니라

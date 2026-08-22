@@ -494,11 +494,29 @@ cross-family reviewer flagged the second, the first fell out of checking it).** 
 *"`standpoint:` has **zero** matches in that hook"* and *"§Marker required fields in
 `.claude/rules/fh_4axis_gate.md` does not yet list `standpoint:` either"*. Both are false as of this
 date: `grep -c standpoint templates/.git-hooks/pre-commit` → **15**, and the hook *does* enforce one
-property (when `axes-run` carries `ⓑ=→standpoint`, the `standpoint:` line must exist and be non-empty
-— `pre-commit:780-782`); `.claude/rules/fh_4axis_gate.md` lists the field at **§133 and §192**.
-**What is still true is the narrower claim**: the *value* is unvalidated — «the line exists» is
-enforced, «the value is right» is deliberately reserved (§Mechanization Boundary). Do not read the
-corrected sentence as "now mechanized"; read it as "the channel is checked, the judgment is not".
+property (when `axes-run` carries `ⓑ=→standpoint`, the `standpoint:` line must exist and be non-empty);
+`.claude/rules/fh_4axis_gate.md` lists the field in **§Marker axis fields**.
+⚠️ **Line/section numbers were removed from the two citations above on 2026-08-23** — they read
+`pre-commit:780-782` and `§133 and §192`, and by that date `:780` had drifted into the *`crossfamily:`
+panel* logic, i.e. the citation pointed at the wrong axis entirely. Cite by **function name and
+section title**; this file has now been burned by drifting line numbers twice.
+🟥 **A third sentence stood here and it was ALSO false — corrected 2026-08-23.** It read: *"What is
+still true is the narrower claim: the **value** is unvalidated — «the line exists» is enforced, «the
+value is right» is deliberately reserved."* That over-corrected in the pessimistic direction a second
+time. **The value is not unvalidated.** Re-measured with controls: `validate_standpoint_leg()` in
+`templates/.git-hooks/pre-commit` (**86 lines**; its single call site sets `FAILED=1` on failure —
+grep the function name, not a line number) blocks on **six** distinct `return 1` conditions — a missing `standpoint:` line, a
+duplicated one, a value outside the closed enum, a `crossfamily:` token contaminating this axis, a
+bare `not-applicable`, and a bare `DEGRADED_*`/`UNKNOWN`. Lanes: `scripts/test_marker_standpoint_lanes.sh`.
+**What is actually reserved is one narrow slot**: for `tier2`+ the «did you name a command you ran»
+grounds test emits `⚠️` and **does not** return 1 — the hook labels it *"Advisory by design"*. So the
+accurate three-way split is: **enum → blocked · non-vacuity of grounds → blocked · truth of the value,
+and execution-naming on `tier2`+ → not checked.** Do not read this as "now mechanized"; read it as
+**"the channel is checked in more places than this file used to admit, and the judgment is still not
+checked at all"**.
+**Why it kept getting written wrong**: each correction fixed the sentence in front of it and restated
+the residual from memory rather than re-running the probe, so the pessimistic version regenerated
+itself one paragraph later ([[feedback_repair_is_the_main_defect_source]]).
 The distinction this stale text destroyed is exactly the one that matters here, and it destroyed it
 in the *pessimistic* direction — under-claiming coverage is not a safe error either, because it
 invites someone to rebuild a lane that already exists. This is the honest current state, not a placeholder apology: the field exists so a

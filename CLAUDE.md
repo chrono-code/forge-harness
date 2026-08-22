@@ -50,7 +50,7 @@ core invariants never melt). The nursery also **verifies what it births**: harne
 > 4-Axis Auto-Gate 와 **같은 트리거**이므로 새 트리거도 새 파일도 만들지 않는다 — 기록 자리는
 > **4축 마커의 기존 필드**(`axis2-*` · `axis3-*` · `residual`)다.
 > **마커에 반드시 남는 3줄** ① **①영혼** — 설계 *전에* 쓴 «성공 정의 / 절대 안 함»(없으면 `없음`)
-> · ② **돌린 축과 안 돌린 축을 각각 이름으로.** 마커 `axes-run` 은 **2026-08-17 부로 여섯 글자**를 요구한다 — **기호 키**(ⓐ계열 · ⓑ입장 · ⓒ격리 그라운딩 · ⓓ3자대면 · ⓔ첫실사용 · ⓕ되돌림). 그 전 날짜의 마커는 옛 **ASCII 네 글자**(a·b·c·d) 그대로다. 🟥 **두 배열은 같은 글자가 다른 축을 가리킨다** — 옛 `b`=첫실사용은 지금 **ⓔ**, 옛 `d`=되돌림은 지금 **ⓕ** 라서, 옛 줄을 그대로 옮기면 축 둘이 조용히 뒤바뀌고 아무 오류도 안 난다. **어느 배열인지는 마커 파일명의 날짜로 판별한다**(`< 2026-08-17` = 옛 4축). ⚠️ **표기법은 판별자가 아니다** — 초판이 «기호 키를 보면 6축인 줄 안다» 고 적었는데 **코퍼스 실측이 반증했다**: axes-run 보유 53건 중 기호 키가 4건인데 그중 **2건이 2026-08-10 자이면서 옛 4축 의미로 기호를 쓴다**(`ⓑ 첫실사용` · `ⓓ 되돌림` — 현 배열에선 각각 ⓔ·ⓕ), 혼용도 1건 있다. 훅은 그 셋을 안 읽으므로 커밋은 안 막지만 **감사자의 grep 은 거기서 틀린 답을 낸다**. ⓑ입장은 값을 여기 적지 않고 **`standpoint:` 자기 필드**를 가리킨다(`ⓑ=→standpoint`, 그 줄이 비면 죽은 포인터라 차단). 즉 산문 정본과 기계가 **축 개수로는 맞았고**, 남은 어긋남은 `standpoint:` 값을 **검증하는 코드가 아직 0줄**이라는 것 하나다(명시된 잔여). 형식 정본 = `.claude/rules/fh_4axis_gate.md §Marker axis fields`
+> · ② **돌린 축과 안 돌린 축을 각각 이름으로.** 마커 `axes-run` 은 **2026-08-17 부로 여섯 글자**를 요구한다 — **기호 키**(ⓐ계열 · ⓑ입장 · ⓒ격리 그라운딩 · ⓓ3자대면 · ⓔ첫실사용 · ⓕ되돌림). 그 전 날짜의 마커는 옛 **ASCII 네 글자**(a·b·c·d) 그대로다. 🟥 **두 배열은 같은 글자가 다른 축을 가리킨다** — 옛 `b`=첫실사용은 지금 **ⓔ**, 옛 `d`=되돌림은 지금 **ⓕ** 라서, 옛 줄을 그대로 옮기면 축 둘이 조용히 뒤바뀌고 아무 오류도 안 난다. **어느 배열인지는 마커 파일명의 날짜로 판별한다**(`< 2026-08-17` = 옛 4축). ⚠️ **표기법은 판별자가 아니다** — 초판이 «기호 키를 보면 6축인 줄 안다» 고 적었는데 **코퍼스 실측이 반증했다**: axes-run 보유 53건 중 기호 키가 4건인데 그중 **2건이 2026-08-10 자이면서 옛 4축 의미로 기호를 쓴다**(`ⓑ 첫실사용` · `ⓓ 되돌림` — 현 배열에선 각각 ⓔ·ⓕ), 혼용도 1건 있다. 훅은 그 셋을 안 읽으므로 커밋은 안 막지만 **감사자의 grep 은 거기서 틀린 답을 낸다**. ⓑ입장은 값을 여기 적지 않고 **`standpoint:` 자기 필드**를 가리킨다(`ⓑ=→standpoint`, 그 줄이 비면 죽은 포인터라 차단). 즉 산문 정본과 기계가 **축 개수로는 맞았고**, 남은 어긋남은 `standpoint:` 값의 **grounds** 한 칸이다. 🟥 **초판은 여기에 «값을 검증하는 코드가 아직 0줄»이라고 적었는데 그건 거짓이었다 — 2026-08-23 정정(RETRACTED).** 실측: `templates/.git-hooks/pre-commit` 의 `validate_standpoint_leg()` 는 **86줄**이고 `:1953` 에서 호출되어 `FAILED=1` 로 **커밋을 차단한다**(레인 = `scripts/test_marker_standpoint_lanes.sh`, 실재). 정확한 잔여는 「0줄」보다 훨씬 좁고, **그 구분을 접으면 안 된다**: ⓐ **enum 은 닫혀 있고 차단한다** — 함수 안 `return 1` **6개**(`standpoint:` 줄 부재 · 중복 `standpoint:` 줄 · enum 비-멤버 값 · `crossfamily:` 토큰 오염 · 근거 없는 `not-applicable` · 근거 없는 `DEGRADED_*`/`UNKNOWN`). ⓑ **`tier2`+ 의 «실행을 명명했는가» grounds 검사만 advisory** 다 — 미달이면 `⚠️` 를 찍고 `return 1` 을 **안 한다**(훅 스스로 *"Advisory by design"* 이라 적는다). 즉 이 줄은 「grounds 는 미검증」이라 적었어야 참이었다. **왜 그렇게 적혔나**: 2026-08-20 정정이 «enum 은 닫혔고 grounds 는 advisory» 로 이미 들어왔는데(§Standpoint-Execution-Evidence 포인터 줄이 그대로 적고 있다) **이 줄만 옛 서술로 남았다** — 같은 파일이 자기 자신과 어긋난 반쪽-픽스 전파경계다(`[[feedback_half_fix_propagation_boundary]]`). 🟥 **이 문단의 논지는 바뀌지 않는다** — 닫힌 것은 여전히 **«형식»이지 «진위»가 아니고**, 자평·게임 가능성은 그대로 열려 있다. 오히려 좁아진 만큼 정확해졌다. 형식 정본 = `.claude/rules/fh_4axis_gate.md §Marker axis fields`
 > · ③ **각 축의 컨트롤과 그 생사**. 축을 «돌렸다»의 **최소 증거 = 컨트롤이 살아 있는 실행 출력**
 > 이다 — 안 고른 이유만 적은 것은 준수가 아니다.
 > **비용 경계**: 넷을 매번 다 돌리지 않는다. 실패 모드에 맞춰 **고른다**.
@@ -838,21 +838,43 @@ force-push, scrub of tracked history, bulk deletion of session records / tracks 
 
 **Mechanical floor (pre-push hook — git-side surfaces)**: at *push* time, **remote branch/ref deletion**
 and **force / non-fast-forward push** are enforced **mechanically** by `templates/.git-hooks/pre-push` —
-it runs the per-ref verdict above and **blocks** unless `DESTRUCTIVE_OP_OK=1` (an explicit, logged operator
+it computes the same per-ref verdict **in its own code** (it does *not* shell out to step 1's script) and
+**blocks** unless `DESTRUCTIVE_OP_OK=1` (an explicit, logged operator
 acknowledgment, used *after* enumerate + recover). It closes the **honest-weak-model** gap (a forgotten
 prose gate is now stopped); it does **not** close the injected/adversarial one — the hard floor there is
 **server-side branch protection**. Non-git surfaces are out of its scope.
 
-**Degrade direction**: per the Surface-Class Degrade Invariant above, if `predelete_check.sh` is missing
-or errors, this irreversible surface **fails closed** — the pre-push hook blocks (enumerate by hand or
-take the explicit `DESTRUCTIVE_OP_OK=1` override); a tooling-down enumerate step never silently degrades
-into "just delete it."
+**Degrade direction**: per the Surface-Class Degrade Invariant above, this irreversible surface **fails
+closed** — `templates/.git-hooks/pre-push` computes the per-ref verdict **itself, inline**, and blocks
+every CHECK/REVIEW branch delete, every force / non-fast-forward push, and every ref it cannot classify
+(unfetched remote tip → `CANNOT CLASSIFY` → block). The **only** way past is the explicit, logged
+`DESTRUCTIVE_OP_OK=1` override, taken *after* enumerate + recover. A destroy step never silently
+degrades into "just delete it."
+
+🟥 **RETRACTED 2026-08-23 — this paragraph used to hang that fail-closed on the wrong actor.** It read:
+*"if `predelete_check.sh` is missing or errors, this irreversible surface fails closed — the pre-push
+hook blocks"*. That causal claim is **false**: the hook has **never called that script**, so the
+script's absence or failure changes the hook's behavior by exactly nothing. 🟥 **The fail-closed
+principle itself is untouched** — what is withdrawn is only the false attribution of who enforces it.
+**Why it was written that way**: the next paragraph's 2026-08-20 correction landed *beside* this
+sentence instead of *replacing* it, leaving two consecutive paragraphs contradicting each other in the
+resident layer ([[feedback_half_fix_propagation_boundary]]).
+>
+> **Why this retraction is resident rather than in a detail file** (residency-admission answer): a
+> retraction only works where the false claim was read. This one lived in the always-loaded layer, so a
+> session that loads only `CLAUDE.md` — the common case — would otherwise still read "the script enforces
+> it" and act on a floor that does not exist. Moving the correction behind a pointer would rebuild the
+> exact defect it names: a correction landing *beside* the sentence instead of *replacing* it. The
+> resident cost is four sentences; the alternative is a resident falsehood about an irreversible surface.
+
 🟥 **Read that precisely — the floor is the HOOK, not this script.** `templates/.git-hooks/pre-push`
-implements the per-ref verdict **inline**; it does not call `predelete_check.sh`. Measured 2026-08-20
-(control: the same scan finds `session_close_check` wired in that hook): every in-repo reference to
-`predelete_check.sh` is a **mention, not an execution** — `pre-push:408` lists the path inside a *grep
-pattern*, `destructive_pre_gate.sh:191` *prints the command* as advisory text, and `selfcheck.sh:192`
-runs `bash -n` on it. So the script is the **operator's enumerate tool**, and step 1 above is a human
+implements the per-ref verdict **inline**; it does not call `predelete_check.sh`. Measured 2026-08-20,
+re-measured 2026-08-23 (control: the same scan finds `session_close_check` wired in that hook at
+`:540`, as `_SC_OUT=$(bash "$REPO_ROOT/scripts/session_close_check.sh" …)`; known-negative: a nonsense
+token returns rc=1, no hits): every in-repo reference to `predelete_check.sh` is a **mention, not an
+execution** — `pre-push:423` lists the path inside a *grep pattern* (it was `:408` when this was first
+measured; line numbers drift, the function names do not), `destructive_pre_gate.sh:191` *prints the
+command* as advisory text, and `selfcheck.sh:192` runs `bash -n` on it. So the script is the **operator's enumerate tool**, and step 1 above is a human
 step that the machinery reminds you of rather than performs. Stating it the other way round is the
 "prose-invoked floor" the 4-axis marker spec calls M-tier when a rule claims a floor its script has
 no caller for — this section does not make that claim, and this note keeps it from drifting into one.
