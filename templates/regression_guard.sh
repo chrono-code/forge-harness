@@ -216,6 +216,44 @@ echo "REGRESSION_GUARD vs $BASE_REF${HEAD_REF:+ ($HEAD_REF)}"
 echo "Files changed: $(echo "$CHANGED" | wc -l | tr -d ' ')"
 echo "----"
 
+# ── deleted-file set, asked of git DIRECTLY (2026-08-22) ────────────────────────────────────
+# This guard used to infer "deleted" from a FAILED READ (`read_after "$f" >/dev/null || continue`
+# plus `[ -z "$(read_after "$f")" ] && continue`). That is the absence-assertion idiom this repo
+# keeps closing: three different states — *deleted* (intentional), *emptied to 0 bytes* (the
+# strongest possible content loss), and *unreadable* (instrument error) — were folded into ONE
+# branch, and the folded direction was PASS.
+#
+# Measured 2026-08-22 in a disposable repo, `--staged`, one variable at a time:
+#   CONTROL   harmless addition to a SKILL.md      rc=0  M-tier 0  ✅ PASS
+#   POSITIVE  its `## Done When` section deleted   rc=2  M-tier 2  ❌ BLOCK   (instrument discriminates)
+#   🟥        the SAME file truncated to 0 bytes   rc=0  M-tier 0  ✅ PASS    (everything lost, green)
+# CLAUDE.md classifies a skill with no `Done When` as harness-doctor L2 M-tier; a skill with
+# NOTHING passed.
+#
+# The prescription is not new — it is this file's OWN header (lines 12-19): exit 0 means PASS *or*
+# not-checked, and the two are separated by a typed channel, never by silence. Line 263 was
+# violating the contract printed at the top of the file it lives in.
+#
+# So deletion is now decided by `--diff-filter=D` — git's own answer to "was this deleted?" — and
+# the other two states get their own verdicts. The original comment's intent is preserved exactly:
+# a real deletion is still skipped, because a real deletion is still intentional.
+if [ "$STAGED_MODE" -eq 1 ]; then
+  DELETED=$(git diff --cached --name-only --diff-filter=D -- "${GUARD_PATHSPEC[@]}" 2>/dev/null)
+elif [ -z "$HEAD_REF" ]; then
+  DELETED=$(git diff --name-only --diff-filter=D "$BASE_REF" -- "${GUARD_PATHSPEC[@]}" 2>/dev/null)
+else
+  DELETED=$(git diff --name-only --diff-filter=D "$BASE_REF" "$HEAD_REF" -- "${GUARD_PATHSPEC[@]}" 2>/dev/null)
+fi
+# Empty-input behaviour, asked explicitly rather than inherited: DELETED="" means "nothing was
+# deleted", so is_deleted returns 1 for every path — no file is silently exempted by an empty set.
+# The failure direction of a broken DELETED computation is therefore fail-CLOSED: real deletions
+# stop matching, their after-side read fails, and they surface as loud instrument errors instead of
+# quietly passing.
+is_deleted() {
+  [ -n "$DELETED" ] || return 1
+  printf '%s\n' "$DELETED" | grep -qxF -- "$1"
+}
+
 read_before() { git show "$BASE_REF:$1" 2>/dev/null; }
 read_after() {
   if [ "$STAGED_MODE" -eq 1 ]; then git show ":$1" 2>/dev/null   # staged blob from the index
@@ -260,9 +298,43 @@ resolve_tombstone_target() {
 }
 
 for f in $CHANGED; do
-  # Skip if file deleted (deletion is intentional, not regression)
-  read_after "$f" > /dev/null 2>&1 || continue
-  [ -z "$(read_after "$f")" ] && continue
+  # ① Deletion is intentional, not regression — and it is now git that says so (see is_deleted).
+  if is_deleted "$f"; then
+    verbose "skipped '$f': git reports it DELETED in this diff — intentional removal, not content loss"
+    continue
+  fi
+
+  after_probe=$(read_after "$f"); read_rc=$?
+
+  # ② Not deleted, yet unreadable → the instrument failed on this file. NOT a pass.
+  if [ "$read_rc" -ne 0 ]; then
+    echo
+    echo "=== $f ==="
+    echo "  ❌ M-TIER  instrument error: file is in the diff, git does NOT report it deleted, and its"
+    echo "            after-side blob could not be read (rc=$read_rc). NOT CHECKED — an unchecked file"
+    echo "            is not a passing file."
+    M_TIER=$((M_TIER + 1))
+    continue
+  fi
+
+  # ③ Not deleted, readable, and EMPTY. Split by direction so an over-block is not traded for the
+  #    fail-open: content that existed and is now gone is the regression this guard is for; a file
+  #    that was already empty is suspicious but is not a *loss*, so it warns instead of blocking.
+  if [ -z "$after_probe" ]; then
+    echo
+    echo "=== $f ==="
+    if [ -n "$(read_before "$f")" ]; then
+      echo "  ❌ M-TIER  emptied: after-side content is 0 bytes while the before side had content."
+      echo "            Total content loss is the strongest regression this guard exists to catch."
+      echo "            If removal is the intent, DELETE the file — a real deletion is skipped."
+      M_TIER=$((M_TIER + 1))
+    else
+      echo "  ⚠️  S-TIER  empty file in a gated path (before side was empty/absent too) — not content"
+      echo "            loss, so it does not block, but an empty gated asset is rarely intended."
+      S_TIER=$((S_TIER + 1))
+    fi
+    continue
+  fi
 
   echo
   echo "=== $f ==="

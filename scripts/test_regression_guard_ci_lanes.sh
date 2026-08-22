@@ -166,5 +166,129 @@ else
   echo "  ❌ revert probe            neutralization was a no-op — the probe measured nothing"; FAIL=1
 fi
 
+echo "== script lanes — deleted vs emptied vs unreadable (the folded-branch fail-open) =="
+# WHY (measured 2026-08-22, disposable repo, --staged, one variable at a time):
+# the guard inferred "deleted" from a FAILED READ —
+#     read_after "$f" > /dev/null 2>&1 || continue
+#     [ -z "$(read_after "$f")" ] && continue
+# — folding *deleted* (intentional), *emptied to 0 bytes* (total content loss) and *unreadable*
+# (instrument error) into one branch whose direction is PASS:
+#     CONTROL   harmless addition                 rc=0  M-tier 0  ✅ PASS
+#     POSITIVE  its `## Done When` deleted        rc=2  M-tier 2  ❌ BLOCK   ← instrument discriminates
+#     🟥        the SAME file truncated to 0 B    rc=0  M-tier 0  ✅ PASS    ← everything lost, green
+# CLAUDE.md classifies a skill missing `Done When` as harness-doctor L2 M-tier; a skill with
+# NOTHING passed. The fix asks git directly (`--diff-filter=D`) and gives the other two states
+# their own verdicts — which is what this guard's OWN header (lines 12-19) already prescribed:
+# exit 0 means PASS *or* not-checked, separated by a typed channel, never by silence.
+G=$T/gr; mkdir -p "$G"
+if git init -q "$G" 2>/dev/null; then
+  git -C "$G" config user.email lane@local; git -C "$G" config user.name lane
+  mkdir -p "$G/plugins/x/skills/y" "$G/templates"
+  cat > "$G/plugins/x/skills/y/SKILL.md" <<'EOF'
+---
+name: y
+description: y skill
+---
+
+## Execution Steps
+1. do
+
+## Done When
+- done
+
+## Triggers
+- "y"
+EOF
+  cp "$GUARD" "$G/templates/regression_guard.sh"
+  git -C "$G" add -A >/dev/null 2>&1
+  git -C "$G" commit -qm base >/dev/null 2>&1
+  BASE_TREE=$(git -C "$G" rev-parse HEAD)
+
+  greset() { git -C "$G" reset -q --hard "$BASE_TREE" >/dev/null 2>&1; git -C "$G" clean -qfd >/dev/null 2>&1; }  # noqa: destructive-op (disposable lane repo)
+  grun() { # $1=guard path ; echoes "rc|<matched verdict line>"
+    local out rc
+    out=$(cd "$G" && bash "$1" --staged 2>&1); rc=$?
+    printf '%s|%s' "$rc" "$(printf '%s\n' "$out" | grep -E 'M-TIER|S-TIER' | head -1)"
+  }
+  glane() { # $1=id $2=expected rc $3=substring('' = none) $4=guard path
+    local r rc msg ok=1
+    r=$(grun "$4"); rc="${r%%|*}"; msg="${r#*|}"
+    [ "$rc" = "$2" ] || ok=0
+    [ -z "$3" ] || printf '%s' "$msg" | grep -qF -- "$3" || ok=0
+    if [ "$ok" -eq 1 ]; then
+      printf '  ✅ %-28s rc=%s  %s\n' "$1" "$rc" "$(printf '%s' "$msg" | cut -c1-56)"
+    else
+      printf '  ❌ %-28s expected rc=%s /%s/, got rc=%s %s\n' "$1" "$2" "$3" "$rc" "$msg"; FAIL=1
+    fi
+  }
+  GP="$G/templates/regression_guard.sh"
+
+  # G1 — over-block control: an ordinary edit must stay green (a guard that blocks everything is
+  # not a strict guard, it trains --no-verify on the hook that also holds the Destructive-Op gate).
+  greset; printf '\n- extra\n' >> "$G/plugins/x/skills/y/SKILL.md"
+  git -C "$G" add -A >/dev/null 2>&1; glane G1-control-harmless 0 "" "$GP"
+
+  # G2 — known-positive: the instrument must still discriminate on the defect it always caught.
+  greset
+  python3 - "$G/plugins/x/skills/y/SKILL.md" <<'PY'
+import sys
+p = sys.argv[1]
+# Read BEFORE opening for write: `open(p,"w")` truncates, and Python evaluates it before the
+# inner read — the first draft of this fixture did exactly that and silently emptied the file,
+# so the known-positive lane measured the emptied-file branch instead of the section-drop one.
+c = open(p, encoding="utf-8").read()
+open(p, "w", encoding="utf-8").write(c.replace("## Done When\n- done\n\n", ""))
+PY
+  git -C "$G" add -A >/dev/null 2>&1; glane G2-done-when-deleted 2 "Done When" "$GP"
+
+  # G3 — THE HOLE: same file, truncated to zero bytes. Must now BLOCK as content loss.
+  greset; : > "$G/plugins/x/skills/y/SKILL.md"
+  git -C "$G" add -A >/dev/null 2>&1; glane G3-truncated-to-zero 2 "emptied" "$GP"
+
+  # G4 — over-block guard for the ORIGINAL comment's intent: a real deletion is still intentional
+  # and must still pass. Fixing the fail-open by blocking legitimate deletions is not a fix.
+  greset; git -C "$G" rm -q plugins/x/skills/y/SKILL.md >/dev/null 2>&1
+  glane G4-real-deletion-passes 0 "" "$GP"
+
+  # G5 — a NEW empty gated file is not content loss (nothing existed to lose), so it warns rather
+  # than blocks. Direction split on purpose: S-tier surfaces it, M-tier would over-block.
+  greset; mkdir -p "$G/plugins/x/skills/z"; : > "$G/plugins/x/skills/z/SKILL.md"
+  git -C "$G" add -A >/dev/null 2>&1; glane G5-new-empty-warns 1 "S-TIER" "$GP"
+
+  # revert probe — neutralize ONLY the emptied-file M-tier increment. G3 must go green again
+  # (reproducing the closed hole exactly) while G2 stays red: the branch, not its neighbours.
+  awk '
+    /M-TIER  emptied:/ { seen = 1 }
+    seen && /M_TIER=\$\(\(M_TIER \+ 1\)\)/ { print "      :"; seen = 0; next }
+    { print }
+  ' "$GP" > "$T/guard_neutered.sh"
+  if diff -q "$GP" "$T/guard_neutered.sh" >/dev/null; then
+    echo "  ❌ revert probe (emptied)     neutralization was a no-op — the probe measured nothing"; FAIL=1
+  else
+    greset; : > "$G/plugins/x/skills/y/SKILL.md"; git -C "$G" add -A >/dev/null 2>&1
+    r=$(grun "$T/guard_neutered.sh"); rc_n="${r%%|*}"
+    greset
+    python3 - "$G/plugins/x/skills/y/SKILL.md" <<'PY'
+import sys
+p = sys.argv[1]
+# Read BEFORE opening for write: `open(p,"w")` truncates, and Python evaluates it before the
+# inner read — the first draft of this fixture did exactly that and silently emptied the file,
+# so the known-positive lane measured the emptied-file branch instead of the section-drop one.
+c = open(p, encoding="utf-8").read()
+open(p, "w", encoding="utf-8").write(c.replace("## Done When\n- done\n\n", ""))
+PY
+    git -C "$G" add -A >/dev/null 2>&1
+    r2=$(grun "$T/guard_neutered.sh"); rc_k="${r2%%|*}"
+    if [ "$rc_n" = "0" ] && [ "$rc_k" = "2" ]; then
+      echo "  ✅ revert probe (emptied)     disarmed → G3 passes again (rc=0), G2 still blocks (rc=2)"
+    else
+      echo "  ❌ revert probe (emptied)     expected G3 rc=0 / G2 rc=2, got $rc_n / $rc_k"; FAIL=1
+    fi
+  fi
+  greset
+else
+  printf '  ⚠️  %-28s git init unavailable — lanes SKIPPED (not passed)\n' "G-empty-vs-deleted"
+fi
+
 [ $FAIL -eq 0 ] && { echo "✅ all regression-guard CI lanes behave"; exit 0; }
 echo "❌ regression-guard CI lane regression"; exit 1
