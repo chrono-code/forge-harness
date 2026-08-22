@@ -98,15 +98,26 @@ Everything below this line is reference for when you want it, not homework befor
 | You repeat the same setup across projects | Connect once to the hub, share across all projects |
 | Team AI know-how lives only in people's heads | Codify it so everyone shares it |
 | You want AI to get *better* as work accumulates | Skills and patterns compound session over session |
-| You need a governance layer for AI-generated code | `fh-gate` wraps any coding agent as a post-generation gate |
+| You need a governance layer for AI-generated code | `fh-gate` wraps any coding agent as a post-generation gate — `npx --package @chrono-meta/fh-gate fh-gate` |
 
 > **This document is for humans.** AI operating rules → `CLAUDE.md` · Command reference → `CHEATSHEET.md`
+
+**Which entry path is for you?**
+
+| You are… | Start with |
+|---|---|
+| Solo dev, one project, just trying it | [`templates/starter_profile.md`](templates/starter_profile.md) — one command, curated first-five skills |
+| Multiple projects, want the compounding hub | Clone the hub (quickstart above) |
+| CI / non-Claude runtime, gates only | `npx --package @chrono-meta/fh-gate fh-gate` (zero-install governance gate) |
+| Prefer `brew` over `npx`/`npm` | `brew tap chrono-meta/forge-harness && brew install forge-harness` — same 100%-parity content, different install UX (community tap; not yet in Homebrew Core, so `brew search` won't find it without the tap first) |
 
 ---
 
 ## Requirements
 
-**Prerequisite**: Claude Code CLI — verify with `claude --version`
+**Prerequisite** — this applies to the **hub** and **plugin-only** paths, not to every row of the table
+above: Claude Code CLI, verify with `claude --version`. The **gates-only** row is a separate path and
+does not go through this quickstart — it is the one `npx` line in that row.
 
 <details><summary><b>Optional: one gate needs Python + PyYAML</b> — <code>npm test</code> is red without it</summary>
 
@@ -174,15 +185,6 @@ cd ~/projects/{your-project} && claude
 > Each skill runs the same in isolation; what's missing is the orchestration that makes them compound
 > across sessions. Clone the hub (above) when you want the full set, not just the tools.
 
-**Which entry path is for you?**
-
-| You are… | Start with |
-|---|---|
-| Solo dev, one project, just trying it | [`templates/starter_profile.md`](templates/starter_profile.md) — one command, curated first-five skills |
-| Multiple projects, want the compounding hub | Clone the hub (quickstart above) |
-| CI / non-Claude runtime, gates only | `npx --package @chrono-meta/fh-gate fh-gate` (zero-install governance gate) |
-| Prefer `brew` over `npx`/`npm` | `brew tap chrono-meta/forge-harness && brew install forge-harness` — same 100%-parity content, different install UX (community tap; not yet in Homebrew Core, so `brew search` won't find it without the tap first) |
-
 ---
 
 ## Two version numbers, and they measure different things
@@ -192,10 +194,10 @@ misread the project's status, so they are named here rather than only in the can
 
 | Counter | Where you see it | What it means |
 |---|---|---|
-| **Package version** (currently **2.7.0**) | npm, the plugin manifests, `git tag v2.x` | *what you install.* Ordinary release numbering: fixes → patch, new assets and gate lanes → minor, a capability **class** appearing or the thing being rebuilt → major |
+| **Package version** (currently **2.8.0** — hardcoded here, so a release must update this cell by hand; the lockstep bump does not reach it) | npm, the plugin manifests, `git tag v2.x` | *what you install.* Ordinary release numbering: fixes → patch, new assets and gate lanes → minor, a capability **class** appearing or the thing being rebuilt → major |
 | **Identity-maturity release** (currently **identity-v0.4.0**) | the GitHub **Releases** page | *how far along the harness is.* `0.x` carries an incomplete-but-honest status **by design**; **the all-green ship is reserved for `identity-v1.0.0`** — every one of the five identities at 🟢, none 🔵/🟡/🔴 |
 
-🟥 **A high package number does not mean maturity.** `2.7.0` is not "ahead of" `identity-v0.4.0`; they are not on
+🟥 **A high package number does not mean maturity.** `2.8.0` is not "ahead of" `identity-v0.4.0`; they are not on
 the same scale. The maturity track is deliberately allowed to sit at `0.x` while the package ships and
 improves, because the thing `0.x` refuses to do is **lie** — it says out loud that not every identity has
 cleared its bar yet, and each release names exactly which real run is still missing.
