@@ -139,6 +139,12 @@ if [ -z "${CLAUDE_CODE_CHILD_SESSION:-}${CLAUDE_CODE_AGENT:-}" ] && [ "${FH_PEER
   : # solo/top-level surface — ①-c is out of scope here, and silence is the correct output
 else
 PEER_LIVE=0; PEER_UNKNOWN=0; PEER_STALE=0; PEER_SPARE=0; PEER_IDS=""
+# Two more counters, added 2026-08-22. WHY they are SEPARATE values and not one bucket: a peer whose
+# cwd resolves to a DIFFERENT repo has been placed — excluding it is a measurement. A peer whose cwd
+# resolves to no repo at all has NOT been placed, and folding that into the same number would render
+# an unmeasured thing as a decided one (not-found != zero, one level up from line 170's case).
+PEER_OTHERREPO=0   # placed, and it is somebody else's repo → correctly excluded, stays quiet
+PEER_OFFTREE=0     # cwd READ but placeable in neither this repo nor any repo → must not read as 0
 SOCK_DIR="${FH_PEER_SOCK_DIR:-/tmp/cc-socks}"
 # Self-exclusion must walk the ANCESTOR chain, not compare `$$`. This script is a grandchild of the
 # session process that owns the socket, so `$$` never matches it — measured: the first run counted
@@ -155,6 +161,27 @@ _peer_cwd() { # $1=pid → cwd on stdout, empty if unresolvable
   command -v lsof >/dev/null 2>&1 || return 0
   lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1
 }
+# Repo identity, NOT directory prefix. Measured 2026-08-22 (probe_2026-08-22_A2_replication.md):
+# `--show-toplevel` yields the WORKTREE's own path, and a worktree by definition lives outside the
+# main tree — so `"$FH"/*` prefix matching fails STRUCTURALLY for every worktree of this repo, in
+# both directions. From the main tree it silently dropped the worktree peer (no counter moved at
+# all); from a worktree it printed a confident "✅ no live peer" with three live same-repo sessions
+# running. `git rev-parse --git-common-dir` returns the MAIN tree's .git from inside any worktree,
+# which is exactly the equality this question needs — the same property templates/.git-hooks/pre-commit
+# already relies on to reach evidence from a worktree.
+#   ⚠️ It can return a RELATIVE path (plain '.git' when run at a repo root — measured here, git 2.50),
+#   so the raw output of the main tree and of its own worktree DIFFER as strings. Normalising to an
+#   absolute real path is not tidiness; comparing raw output would reproduce the very bug being fixed.
+_repo_id() { # $1=dir → absolute real path of the repo's COMMON .git, empty if not placeable in a repo
+  ( cd "$1" 2>/dev/null || exit 0
+    _c=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
+    [ -n "$_c" ] || exit 0
+    cd "$_c" 2>/dev/null || exit 0
+    pwd -P )
+}
+# Computed once. Empty = $FH itself is not inside a git repo; then repo-identity cannot decide
+# anything and every off-prefix peer falls through to PEER_OFFTREE (unplaceable), never to "absent".
+FH_REPO_ID="$(_repo_id "$FH")"
 if [ -d "$SOCK_DIR" ]; then
   for _s in "$SOCK_DIR"/*.sock; do
     [ -e "$_s" ] || continue
@@ -174,6 +201,26 @@ if [ -d "$SOCK_DIR" ]; then
     fi
     case "$_pcwd" in
       "$FH"|"$FH"/*) PEER_LIVE=$((PEER_LIVE+1)); PEER_IDS="$PEER_IDS $_pid" ;;
+      *)
+        # The `default` arm that was missing until 2026-08-22. Every peer that reaches here has a
+        # READ cwd that is not under $FH, and previously left the loop without touching a single
+        # counter — so the ladder below could not tell it from "there was nobody". Three outcomes,
+        # and the point is that they are three, not two.
+        _prepo="$(_repo_id "$_pcwd")"
+        if [ -n "$FH_REPO_ID" ] && [ "$_prepo" = "$FH_REPO_ID" ]; then
+          # Same repo, different worktree — a real peer of THIS harness. The case this fix exists for.
+          PEER_LIVE=$((PEER_LIVE+1)); PEER_IDS="$PEER_IDS $_pid"
+        elif [ -n "$_prepo" ]; then
+          # Placed in a DIFFERENT repo. Excluding it is a measurement, so it stays quiet on purpose:
+          # warning here would nag every close about unrelated projects, and an advisory that fires
+          # on every close trains skimming past the lines that matter.
+          PEER_OTHERREPO=$((PEER_OTHERREPO+1))
+        else
+          # cwd read, but it belongs to no repo we can name (or $FH is not in a repo). UNPLACEABLE —
+          # routed to the existing UNPLACEABLE branch below rather than to a new verdict of its own.
+          PEER_OFFTREE=$((PEER_OFFTREE+1))
+        fi
+        ;;
     esac
   done
 else
@@ -207,11 +254,17 @@ elif [ "$PEER_LIVE" -gt 0 ]; then
   echo "     2026-08-09: 2 of 5 notices were held while the card already claimed all 5 informed."
   echo "     Record ANSWERS, not sends, and put the unanswered count in the card."
   [ "$PEER_UNKNOWN" -gt 0 ] && echo "     + $PEER_UNKNOWN live session(s) whose directory is UNKNOWN (counted, not dismissed)"
-elif [ "$PEER_UNKNOWN" -gt 0 ]; then
-  echo "⚠️  ①-c 0 peers placed in this harness, but $PEER_UNKNOWN live session(s) are UNPLACEABLE"
+  [ "$PEER_OFFTREE" -gt 0 ] && echo "     + $PEER_OFFTREE live session(s) whose directory belongs to NO repo (counted, not dismissed)"
+elif [ "$PEER_UNKNOWN" -gt 0 ] || [ "$PEER_OFFTREE" -gt 0 ]; then
+  echo "⚠️  ①-c 0 peers placed in this harness, but $((PEER_UNKNOWN+PEER_OFFTREE)) live session(s) are UNPLACEABLE"
+  echo "     ($PEER_UNKNOWN with no readable cwd · $PEER_OFFTREE whose cwd belongs to no repo)"
   echo "     — treat as possible peers and ask; do not read this as 'closing alone'."
 else
-  echo "✅ ①-c no live peer in this harness (${PEER_STALE} stale · ${PEER_SPARE} pre-warmed spare(s) ignored)"
+  # The parenthetical must account for EVERY kind that was dropped, not only the flattering ones.
+  # Before 2026-08-22 it listed stale+spare while silently discarding same-repo worktree peers, so
+  # "0 stale · 0 spare" read as "three kinds swept, all empty" at the exact moment three real peers
+  # had been thrown away. A green line is only allowed to be green about what it actually counted.
+  echo "✅ ①-c no live peer in this harness (${PEER_STALE} stale · ${PEER_SPARE} pre-warmed spare(s) · ${PEER_OTHERREPO} in other repo(s) — all placed)"
 fi
 
 fi
