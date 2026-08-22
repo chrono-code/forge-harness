@@ -129,9 +129,56 @@ esac
 #    날짜로 degrade(침묵이 아니라 «덜 자주» 쪽).
 _SID_SAFE=$(printf '%s' "${SID:-}" | tr -cd 'A-Za-z0-9_-')
 STAMP="${CLAUDE_PROJECT_DIR:-.}/.claude/.prior_art_prompted_${_SID_SAFE:-$(date +%Y%m%d)}"
-[ -f "$STAMP" ] && exit 0
+
+# ③-b 🟥 **세션당 1회로는 T2 를 구조적으로 못 잡는다** (실측 2026-08-22, 한 세션 전수 재생).
+# 이 훅의 존재 이유는 이 파일 머리가 적어둔 «T2 = 컨텍스트가 길어진 뒤 **또** 새로 빌드업할 때» 인데,
+# 스탬프가 세션 스코프면 그 «또» 가 영원히 억제된다. 한 세션(08:29~13:33)에서 새 메커니즘 3건이
+# 08:38 · 13:06 · 13:07 에 났고, 세션당 1회는 **첫 건만** 띄웠다 — 억제된 둘이 정확히 T2 다.
+# ⇒ 시간 재무장으로 바꾼다. 마지막 **발화** 시각에서 N초가 지나면 다시 무장한다.
+#
+# 🟥 N 은 임의로 골랐다. 이 값은 데이터가 정한 것이 아니다 — 같은 실측에서 **N=1h·2h·4h 가 전부
+#    같은 결과(2 발화)** 를 냈다. 즉 **데이터가 N 을 판별하지 않았다**, n=1 세션이고, 그 세션의
+#    간극이 4.5시간이라 임계에 둔감했을 뿐이다. §Mechanization Boundary 의 «오늘의 판단을 내일의
+#    천장으로 굳히지 마라» 에 걸리는 자리라, 상수를 박는 대신 **아래 로그를 남겨서 다음 세션들이
+#    실제 분포를 쌓게 한다.** N 재정은 그 로그 위에서만 해라 — 이 주석을 지우지 말고.
+# 왜 «대상 파일당 1회» 가 아닌가: 같은 실측에서 13:06 `mapped_tracks.sh` 와 13:07 그 레인 스위트는
+#    **한 메커니즘**이다. 파일당이면 13:07 이 같은 메커니즘을 재질문하는 **오발화**가 된다. 이 파일
+#    머리가 «오발화는 미발화보다 훨씬 비싸다(소음 = 자기무력화 경로)» 라고 못박은 방향과 반대다.
+PRIOR_ART_REARM_SECONDS="${PRIOR_ART_REARM_SECONDS:-7200}"   # 2h — 위 단락이 이 값의 출처이자 한계다
+
+# 시계는 주입 가능하다 — 픽스처가 4.5시간을 실시간으로 기다릴 수는 없다. 테스트 시임일 뿐이고
+# 억제를 **끄지는** 못한다(값을 넣어도 아래 산술을 그대로 통과해야 한다).
+_NOW="${PRIOR_ART_NOW:-$(date +%s)}"
+case "$_NOW" in ''|*[!0-9]*) _NOW=$(date +%s) ;; esac
+
+_LAST=""
+if [ -f "$STAMP" ]; then
+  _LAST=$(cat "$STAMP" 2>/dev/null | tr -cd '0-9')
+fi
+
+# 로그. 🟥 발화만이 아니라 **억제도** 남긴다 — 「몇 건 억제」만 세면 그것이 옳은 억제였는지 못
+# 가른다. 그래서 무엇을(파일명) · 직전 발화로부터 얼마나(초) 를 같이 적는다.
+# 실패해도 판정은 안 바뀐다(로깅은 게이트가 아니다).
+_PA_LOG="${CLAUDE_PROJECT_DIR:-.}/.claude/.prior_art_events.tsv"
+_pa_log() { # $1=FIRE|SUPPRESS  $2=elapsed-or-dash
+  mkdir -p "$(dirname "$_PA_LOG")" 2>/dev/null || true
+  printf '%s\t%s\t%s\t%s\t%s\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)" "$1" "${_SID_SAFE:-nosid}" "$2" "$FILE" \
+    >> "$_PA_LOG" 2>/dev/null || true
+}
+
+if [ -n "$_LAST" ]; then
+  _ELAPSED=$(( _NOW - _LAST ))
+  if [ "$_ELAPSED" -lt "$PRIOR_ART_REARM_SECONDS" ]; then
+    _pa_log SUPPRESS "$_ELAPSED"
+    exit 0
+  fi
+  _pa_log FIRE "$_ELAPSED"
+else
+  _pa_log FIRE -
+fi
 mkdir -p "$(dirname "$STAMP")" 2>/dev/null || true
-: > "$STAMP" 2>/dev/null || true
+printf '%s\n' "$_NOW" > "$STAMP" 2>/dev/null || true
 
 MSG="🔎 새 메커니즘을 쓰려는 참이다 ($(basename "$FILE")). 짓기 전에 **책장부터, 없으면 도서관** —
 안 했으면 지금 하고, 했으면 이 줄은 무시해라.

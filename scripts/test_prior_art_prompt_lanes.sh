@@ -123,6 +123,54 @@ chk "C1 입력이 JSON 이 아니면 무음 exit 0" \
     "$(printf 'not json' | bash "$H" >/dev/null 2>&1; echo $?)" 0
 chk "C2 file_path 없으면 무음" "$(printf '{"tool_input":{}}' | bash "$H" 2>/dev/null | wc -c | tr -d ' ')" 0
 
+echo "── T2 재무장 (2026-08-22): 세션당 1회가 T2 를 구조적으로 못 잡던 자리 ──"
+# 🟥 실측 기반 픽스처다. 한 세션에서 새 메커니즘 3건이 08:38 · 13:06 · 13:07 에 났고, 세션당 1회는
+# 첫 건만 띄웠다. 뒤의 둘이 정확히 이 훅이 존재 이유로 적어둔 T2 다. 시각은 주입한다 —
+# 4.5시간을 실시간으로 기다리는 앵커는 아무도 안 돌린다.
+_T1=1787387902   # 08:38:22Z
+_T2=1787404013   # 13:06:53Z  (+16111s = 4h28m)
+_T3=1787404067   # 13:07:47Z  (+54s — T2 와 **같은 메커니즘**: 스크립트와 그 레인 스위트)
+DT=$(mktemp -d); export CLAUDE_PROJECT_DIR="$DT"
+_fire() { # $1=NOW $2=name → 발화면 1
+  printf '{"session_id":"t2rearm","tool_input":{"file_path":"%s/scripts/%s"}}' "$DT" "$2" \
+    | PRIOR_ART_NOW="$1" bash "$H" 2>/dev/null | grep -c additionalContext | tr -d ' '
+}
+chk "T2-1 첫 메커니즘 → 발화"                       "$(_fire $_T1 m1.sh)" 1
+chk "T2-2 4h28m 뒤 새 메커니즘 → **재발화** (이 수리의 요점)" "$(_fire $_T2 m2.sh)" 1
+chk "T2-3 54초 뒤 같은 메커니즘의 레인 → 억제 (과발화 방지)"  "$(_fire $_T3 m3.sh)" 0
+# 과차단 컨트롤 — 메커니즘 하나짜리 평범한 세션에서 발화가 1회를 넘지 않는다.
+rm -f "$DT/.claude/.prior_art_prompted_"* "$DT/.claude/.prior_art_events.tsv"
+_n=$(( $(_fire $_T1 solo.sh) + $(_fire $((_T1+60)) solo_b.sh) + $(_fire $((_T1+120)) solo_c.sh) ))
+chk "T2-4 과차단 컨트롤: 한 버스트(2분 내 3파일) → 발화 총 1회" "$_n" 1
+# 로그가 실제로 남는가 — 이 상수(N)를 다음에 재정할 유일한 근거다.
+rm -f "$DT/.claude/.prior_art_prompted_"* "$DT/.claude/.prior_art_events.tsv"
+_fire $_T2 g1.sh >/dev/null; _fire $_T3 g2.sh >/dev/null   # T2→T3 = 54s, 억제 구간
+chk "T2-5 로그에 FIRE 와 SUPPRESS 가 둘 다 남는다" \
+    "$(awk -F'\t' '{print $2}' "$DT/.claude/.prior_art_events.tsv" 2>/dev/null | sort -u | tr '\n' ',' )" "FIRE,SUPPRESS,"
+chk "T2-6 억제 로그가 경과초와 파일명을 같이 싣는다 (옳은 억제였는지 가르려면 필요)" \
+    "$(awk -F'\t' '$2=="SUPPRESS" && $4 ~ /^[0-9]+$/ && $5 ~ /g2\.sh$/ {n++} END{print n+0}' "$DT/.claude/.prior_art_events.tsv" 2>/dev/null)" 1
+unset CLAUDE_PROJECT_DIR; rm -rf "$DT"
+
+echo "── 특성화: 인용부호 안 텍스트를 빌드로 읽는다 (오발화 5번째 얼굴) ──"
+# 🟥 2026-08-22 실측: 훅을 시험하려고 `echo` 인자 **안에** 픽스처 문자열을 넣은 호출에서 발화했다.
+# 이 파일 머리가 센 cross-family 오발화 4종(tee 경계 · `2>` · 리포트가 .sh · 미확장 변수)의 **5번째**다.
+# 🟥 이 레인은 «현재 동작»을 박는 특성화 레인이고, **수리됐다는 주장이 아니다.** 지금은 의도적으로
+#    미수리다 — 인용 문맥을 정규식으로 가르는 것은 비싸고 표본이 1이다.
+#    ⚠️ 다음 사람에게: 정규식을 **넓히면** 이 클래스가 더 나빠진다. 이 줄이 그때 걸린다.
+#       그리고 이 오발화를 실제로 **고쳤다면** 기대값을 1 → 0 으로 뒤집고 이 주석을 지워라.
+# 픽스처는 실물에서 왔다 — 초판은 이스케이프가 뭉개져 «침묵» 이 나왔고, 그건 결함이 사라진 게
+# 아니라 **재현을 못 한 것**이었다. 그래서 heredoc 으로 원문 그대로 넣는다.
+# 🟥 자기 CLAUDE_PROJECT_DIR 를 반드시 준다. 초판은 안 줘서 스탬프가 **레포 안**에 쌓였고,
+#    2회차부터 «침묵» 이 나왔다 — 탐지기가 아니라 스탬프가 억제한 것이라 결함이 사라진 것처럼
+#    보였다. 계기가 자기 부작용에 오염되는 형태이고, 레인이 idempotent 하지 않다는 뜻이다.
+_QD=$(mktemp -d)
+_QJ=$(mktemp); cat > "$_QJ" <<'QEOF'
+{"session_id":"q1","tool_input":{"command":"echo \"cat > scripts/not_real.sh <<EOF\""}}
+QEOF
+chk "Q1 [특성화·미수리] 인용문 안 텍스트에 발화한다" \
+    "$(CLAUDE_PROJECT_DIR="$_QD" bash "$H" < "$_QJ" 2>/dev/null | grep -c additionalContext | tr -d ' ')" 1
+rm -f "$_QJ"; rm -rf "$_QD"
+
 echo
 if [ "$FAIL" -eq 0 ]; then echo "════ prior-art-prompt lanes: $PASS passed · 0 failed ════"; exit 0
 else echo "🟥 prior-art-prompt lanes: $FAIL 실패 / $((PASS+FAIL))"; exit 1; fi
