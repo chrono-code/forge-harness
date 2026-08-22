@@ -1136,9 +1136,20 @@ Three execution paths:
 With the **relative** form every FH doc installs, the worktree runs **its own copy** of the hook — editing
 that copy there disables the gate for that worktree (measured 2026-08-05: marker-less FH-asset commit
 succeeded). With a hand-set **absolute** path it runs the main tree's copy and the bypass does not exist.
-Separately and in **both** arms the *evidence* side breaks: `tracks/` is gitignored, so the Axis 2+3 marker
-and Axis 4 manifest are **structurally absent** — fail-closed, but a gate that **cannot** be satisfied is
-what trains the bypass.
+🟥 **RETRACTED 2026-08-22.** This said the marker and manifest are *structurally absent* in a
+worktree. They are not: `templates/.git-hooks/pre-commit` resolves evidence through
+`git rev-parse --git-common-dir`, which returns the **main tree's** `.git` from inside a worktree.
+Measured in a clean worktree with the known-negative established first (its own `tracks/` = skeleton
+only; `$REPO_ROOT/tracks/_meta/edit_manifest.yaml` NOT FOUND, `$EVIDENCE_ROOT/...` FOUND — the two
+roots disagree, so the probe discriminates).
+**The operating rule is UNCHANGED: do not commit FH assets from a worktree.** Its remaining **open risk areas** — not
+established grounds — are marker provenance, concurrent manifest append, and a copy of `tracks/` that
+appears in a worktree from an unattributed source. They are **deliberately not enumerated as reasons
+here**; an earlier draft enumerated
+them and adversarial review found a defect in nearly every added claim. ⚠️ **Reachable is not automatic**: the hook *reads* `$EVIDENCE_ROOT`, but a
+worktree session writing by relative path lands in the worktree's own `tracks/`, not the main tree's.
+The gate is satisfiable — its failure message prints the absolute `MARKER_DIR` to write to — but the
+routing is the author's job, not the tool's.
 
 > **Detail**: See `knowledge/shared/harness-core/dispatch_conditional_prohibition.md §Worktree-Gate-Integrity` — the two-arm table with
 > exit codes, and why an earlier draft declared the bypass *refuted* from n=1 on a non-shipped setting —

@@ -2482,3 +2482,69 @@
     셸 능력 검사 초판이 bash/zsh 과차단 · **장식 앵커 2건**)."
   cost: "codex 4판 82,892 + 93,170 + 145,876 + 55,286 = **377,224 (기계 출처)** ·
     agy = 미측정(죽은 계기) · 거버너 = UNMEASURED. 🟥 합계 안 적는다."
+
+- date: 2026-08-22
+  agent: general-purpose ×4 · fh-meta:challenger ×2 (거버너 직접 디스패치)
+  model: opus (전부 상속) · 1건만 sonnet 핀(README 드리프트 — 기계적 대조라 티어 무관 판단)
+  caller: FH hub session 0c0a5afd — Orca 재도입 실측 + 워크트리 증거주장 철회 델타
+  purpose: "Lane A(①-c peer 판별) · Lane B(워크트리 배선 소실) · 챌린저 1R·2R(철회 델타 적대검증) ·
+    Lane D(README 정체성 드리프트) · Lane F(트랜스크립트 토큰 계상)"
+  outcome: accepted
+  finding: "🟥 **위임의 값이 산출이 아니라 «내가 못 보는 것»에서 났다 — 오늘도.**
+    ① 챌린저 1R 이 내 실측의 **판별력 0** 을 지목(오염된 워크트리에서 재서 수리 전 코드로도 통과).
+       자력 적발 0. 그 오염된 표를 이미 **세 파일에 3중으로 박은 뒤**였다.
+    ② 챌린저 2R 신규 S=2 A=8 B=4 — **과반이 1R 수리가 새로 넣은 문장**.
+       potency stable → 「안 떨어지면 줄여라」 발동, 191줄 → 41줄 축소.
+    ③ Lane B 가 내 1차 실측을 **반증**(tracks/ 는 워크트리에 있다 — 사본 747개).
+    ④ Lane F **UNCALIBRATED** — known-pair 4건 재현 실패. 대신 더 큰 걸 냈다:
+       `subagent_tokens` 는 소비량이 아니라 **컨텍스트 크기**이고 실제 4필드 합 대비 **16.4배 과소**.
+       §Expedition 계측 ③ 이 이 값을 그대로 적으라 하는데 축 명시가 없다."
+  note: "🟥 **훅은 오늘 66건을 셌는데 내가 직접 띄운 건 6건이다.** 차이는 서브에이전트 내부
+    팬아웃으로 보이나 **미검증**이다 — 낱개 복원이 불가해서 클래스로 묶고 실측 카운트를 붙였다
+    (규칙이 허용하는 형태). 🟥 그리고 이 원장 자체가 **오늘 세션 내내 비어 있었다** —
+    close-check 이 push 때 적발했다. CLAUDE.md 가 이 floor 를 만든 사건(20+ 디스패치 무기록)의
+    재현이고, 이번엔 66건이다. 기록 시점은 «직후» 여야 하는데 **마감에 몰아 썼다.**"
+  cost: "subagent_tokens 기계 출처: 135,161 + 198,214 + 188,760 + 185,184 + 173,250 + 193,671
+    = 1,074,240. 🟥 단 Lane F 실측대로 이 값은 **소비가 아니라 컨텍스트 크기**다 —
+    소비로 읽지 마라. 거버너 = UNMEASURED. 합계 안 적는다."
+
+- date: 2026-08-22
+  agent: peer 워크트리 세션 ×5 (Claude Code, SendMessage 로 조종)
+  model: "각 세션 자기 설정 — **거버너가 못 정한다** (실측 — 남의 세션 모델 핀 불가)"
+  caller: FH hub session 0c0a5afd — 거버너-레인 형태 첫 본격 운용
+  purpose: "probe-peer-detect(①-c 블라인드 재현) · probe-binding-loss(체감 결손) ·
+    clean-wt(EVIDENCE_ROOT 반쪽-픽스) · probe-xfam-agy(비-CC 브리지 프로브) ·
+    identity4-green(정체성 ④ 초록 원정, 진행중)"
+  outcome: accepted
+  finding: "**서브에이전트가 구조적으로 못 하는 것을 했다.** ⓐ 블라인드 재현 — A2 가 A 의 산출을
+    안 보고 같은 두 결함에 수렴 ⓑ **자기 계기 오염을 자력 적발** — clean-wt 이 첫 명령 전에
+    tracks/ 가 8→752 로 채워진 걸 스스로 잡고 `git archive` 로 pristine arm 을 따로 세웠다
+    (내가 아까 못 한 것) ⓒ 결함 자리(:176)와 발현 자리(:213-214)의 분리.
+    🟥 다만 **peer 도 나와 같은 계열이라 ⓐ축(계열)은 못 채운다** — 사본 생성 주체를
+    나·Lane B·Lane E 셋이 각자 다른 범인으로 단언하고 셋 다 반증됐다. 같은 사각이었다."
+  note: "채널 실측: `SendMessage` 가 **툴 라운드 사이에 자동 도착**하고 사람 개입이 없었다
+    (peer 자기보고 + 회신 도착 양방향 확인). 기록된 3/4 폐기 사례와 다른 결과라 일반화 금지 —
+    「오늘 이 구성에서는 도착했다」. 🟥 그리고 **비-CC 런타임은 이 브리지에 안 잡힌다** —
+    agy 를 워크트리에 실제로 띄웠고(pid 69134), `/tmp/cc-socks/` 소켓 전수가 claude 였다.
+    컨트롤 생존(기존 CC 레인은 같은 실행에서 잡힘). 사전등록 예측대로 FAIL."
+  cost: "UNMEASURED — 거버너가 peer 세션 소비를 못 읽는다. 단 Lane F 가 트랜스크립트는
+    남는다는 것까지 확인했다(워크스페이스 경로 기반 디렉터리) — 다음엔 잴 수 있다."
+
+- date: 2026-08-22
+  agent: codex/gpt-5.5 ×3 시도 · agy ×2 (cross-family 사이드카)
+  model: gpt-5.5 (codex) / antigravity 기본 (agy)
+  caller: FH hub session 0c0a5afd — 철회 델타 1·2차 + Step 3-b
+  purpose: "축소 전/후 델타의 주장 검증 + Step 3-b degrade 방향"
+  outcome: accepted
+  finding: "🟥 **계열을 나눈 값이 실물로 났다** — agy 가 「모순 없음」이라 판정한 자리에서
+    codex 가 모순 2건을 찾았다(marker provenance open/closed 불일치 · 철회된 이유가 현재 이유로 잔존).
+    Step 3-b 에서는 codex 가 **degrade-direction 결함** 1건 — `harness-error` 를 mandatory-pass
+    허용 상태에 넣어 오류가 pass 로 읽히는 형태. 전건 반영."
+  note: "🟥 **agy 는 붙여넣은 diff 를 검증했지 레포를 안 열었다** — 산출의 파일 링크가
+    `~/.gemini/config/...` 를 가리켰다. **논증 검증으로는 유효, 레포상태 검증으로는 아니다.**
+    이 구분을 안 하면 「타계열 0건」이 과신이 된다.
+    codex 운용 메모: 1차 2분 타임아웃 · 2차 `--skip-git-repo-check` 없어 rc=1 · 3차 성공.
+    메모리 기록대로 **항상 stdin `-` + `--skip-git-repo-check`** 로 띄워야 한다."
+  cost: "codex 3판 CLI 출력 기준: 38,275 + 19,522 + (1차 미완) · agy = CLI 미출력.
+    🟥 합계 안 적는다."
+

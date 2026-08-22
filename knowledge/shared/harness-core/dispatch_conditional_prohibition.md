@@ -158,10 +158,22 @@ do-not-revisit label attached. The relative-path arm, which is what everyone els
 the bypass. Freezing a conclusion is a defect when the measurement did not cover the shipped
 configuration.
 
-Separately and in **both** arms, the **evidence side** breaks: `tracks/` is gitignored, so it does not
-follow into a worktree, so the Axis 2+3 marker and the Axis 4 `edit_manifest.yaml` are *structurally
-absent* — an FH-asset commit in a worktree fails on evidence it has no way to have. That degrades
-fail-closed (correct), but a gate that **cannot** be satisfied is what trains the bypass. Note the
+🟥 **RETRACTED 2026-08-22.** This said the marker and manifest are *structurally absent* in a
+worktree. They are not: `templates/.git-hooks/pre-commit` resolves evidence through
+`git rev-parse --git-common-dir`, which returns the **main tree's** `.git` from inside a worktree.
+Measured in a clean worktree with the known-negative established first (its own `tracks/` = skeleton
+only; `$REPO_ROOT/tracks/_meta/edit_manifest.yaml` NOT FOUND, `$EVIDENCE_ROOT/...` FOUND — the two
+roots disagree, so the probe discriminates).
+**The operating rule is UNCHANGED: do not commit FH assets from a worktree.** Its remaining **open risk areas** — not
+established grounds — are marker provenance, concurrent manifest append, and a copy of `tracks/` that
+appears in a worktree from an unattributed source. They are **deliberately not enumerated as reasons
+here**; an earlier draft enumerated
+them and adversarial review found a defect in nearly every added claim. ⚠️ **Reachable is not automatic**: the hook *reads* `$EVIDENCE_ROOT`, but a
+worktree session writing by relative path lands in the worktree's own `tracks/`, not the main tree's.
+The gate is satisfiable — its failure message prints the absolute `MARKER_DIR` to write to — but the
+routing is the author's job, not the tool's.
+⚠️ The `core.hooksPath` two-arm table above is a separate axis (hook substitution) and is untouched.
+One observation from the retracted paragraph survives on its own: note the
 hook itself prints `mkdir -p …/tracks/_meta` on that failure, i.e. the actor's own error message
 teaches the marker-creation path — so "just don't fabricate it" is prose sitting under a machine
 instruction pointing the other way.

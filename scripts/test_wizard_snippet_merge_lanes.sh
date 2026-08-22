@@ -282,6 +282,46 @@ SessionStart REGISTRATION of the script that reports on them. So the wizard's un
 message (GAP 1) is never contradicted by anything, and the check whose job is announcing an unwired \
 machine can itself be unwired silently."
 
+# ── SHIP-1/2: 출하되는 모든 스니펫이 머지 코드가 읽는 키를 갖고 있나 (2026-08-22 신설) ─────
+# 🟥 왜 이 레인이 뒤늦게 생겼나 — 이 파일은 «머지 코드가 옳게 동작하나» 만 재고 있었고,
+#    «출하물이 그 코드가 읽는 모양인가» 는 아무도 안 봤다. 그 사이
+#    templates/settings.PriorArt.snippet.json 이 project_settings_json 래퍼 **없이** 출하됐고,
+#    머지 코드는 그 키가 없으면 `SKIP (no project_settings_json)` 로 **조용히 건너뛴다**.
+#    결과: install-wizard 를 돌려도 그 훅은 **한 번도 등록된 적이 없었다.**
+#    실측 2026-08-22: 스니펫 5개 중 4개 래퍼 O · PriorArt 만 부재(전수, 컨트롤 = 나머지 넷).
+#    ⇒ 레인이 «구현» 만 보고 «출하물» 을 안 보면 이 클래스는 영원히 초록이다.
+echo
+echo "── SHIP: shipped-snippet schema conformance ──"
+_ship_total=0; _ship_bad=0
+for _snip in "$ROOT"/templates/settings.*.snippet.json; do
+  [ -f "$_snip" ] || continue
+  _ship_total=$((_ship_total+1))
+  if ! python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if isinstance(d.get('project_settings_json'),dict) else 1)" "$_snip" 2>/dev/null; then
+    _ship_bad=$((_ship_bad+1))
+    _fail "SHIP-1 $(basename "$_snip") has no dict 'project_settings_json' — install-wizard will SKIP it silently"
+  fi
+done
+if [ "$_ship_total" -eq 0 ]; then
+  # 부재를 통과로 렌더하지 않는다 — 0 개를 스캔하고 PASS 하면 계기가 죽은 것이다
+  _fail "SHIP-1 scanned ZERO snippets — instrument dead, not a pass (glob or ROOT wrong)"
+elif [ "$_ship_bad" -eq 0 ]; then
+  _pass "SHIP-1 all $_ship_total shipped snippet(s) carry a dict 'project_settings_json'"
+fi
+
+# SHIP-2 컨트롤 — 이 검사가 실제로 판별하나. 래퍼를 뗀 픽스처는 반드시 걸려야 한다.
+_ctl=$(mktemp -t fh_ship_ctl.XXXXXX) || _ctl=""
+if [ -n "$_ctl" ]; then
+  printf '%s\n' '{"hooks":{"PreToolUse":[]}}' > "$_ctl"
+  if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if isinstance(d.get('project_settings_json'),dict) else 1)" "$_ctl" 2>/dev/null; then
+    _fail "SHIP-2 CONTROL — a wrapper-less fixture PASSED the check; the check does not discriminate"
+  else
+    _pass "SHIP-2 CONTROL — wrapper-less fixture is caught (check discriminates)"
+  fi
+  rm -f "$_ctl"
+else
+  _fail "SHIP-2 CONTROL could not run (mktemp failed) — reported as a gap, not a pass"
+fi
+
 echo
 echo "──────────────────────────────────────────────"
 if [ "$FAILED" -ne 0 ]; then

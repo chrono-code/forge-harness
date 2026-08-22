@@ -40,7 +40,9 @@
 #   🟥 근본 해결이 아니다. 이건 **완화책**이다. 공유 체크아웃은 미커밋 워킹트리 혼입/유실도
 #      낳고(그건 커밋 게이트로 안 닫힌다), 근본 처방은 **세션당 worktree** 다.
 #      (worktree 를 쓰면 이 claim 도 자동으로 트리별로 갈린다 — `--git-dir` 이 갈리므로.
-#       단 FH 자산 커밋은 worktree 에서 4축 증거가 구조적으로 부재하다는 별개 문제가 있다.)
+#       단 FH 자산 커밋은 worktree 에서 따로 하지 마라. 🟥 「4축 증거가 구조적으로 부재」라는
+#       옛 이유는 2026-08-22 철회다(pre-commit 의 evidence-root 가 --git-common-dir 로 메인 트리를
+#       잡는다). 규칙은 그대로이고 남은 근거는 열려 있다 — CLAUDE.md §Agent Dispatch Operation.)
 #
 # 🟥 TOCTOU 잔여 (cross-family 지적, 미해결): `check` 와 git 이 실제로 ref 를 갱신하는 순간
 #    사이에 창이 있다. 그 사이 peer 가 switch 하면 이 게이트를 통과한 채 사고가 난다.
