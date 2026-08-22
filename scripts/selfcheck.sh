@@ -543,6 +543,7 @@ _LANE_TO=""; command -v timeout >/dev/null 2>&1 && _LANE_TO="timeout 300"
 for _pair in \
   "scripts/degrade_probe_capability.sh|scripts/test_capability_entrypoint_shipping.sh" \
   "scripts/chamber_run.sh|scripts/test_chamber_run_lanes.sh" \
+  "scripts/chamber_candidate_collect.sh|scripts/test_chamber_sig_lanes.sh" \
   "scripts/destructive_pre_gate.sh|scripts/test_destructive_pre_gate_lanes.sh" \
   "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_lanes.sh" \
   "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_liveness.sh" \

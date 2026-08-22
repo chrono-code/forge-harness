@@ -137,6 +137,7 @@
     "plugins/fh-meta/CHANGELOG.md",
     "knowledge/shared/learnings/subagent_invocations_log.yaml",
     "scripts/chamber_candidate_collect.sh",
+    "scripts/test_chamber_sig_lanes.sh",
     "scripts/chamber_witness.sh",
     "scripts/digest_landing_check.sh",
     "scripts/relay_channel.sh",
