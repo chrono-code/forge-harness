@@ -39,6 +39,13 @@ Automatically discovers cross-invocable pairs in environments with multiple inst
 | "My tools feel disconnected and inconvenient" | Detect namespace/cwd fragmentation |
 | "Wouldn't combining these plugins be more powerful?" | Explore component combination synergies |
 | "I feel like there's synergy here — find it" | Automatic cross-invocation pair discovery |
+| "Do my harnesses have synergy with each other?" | **Step 3-b standalone** — harness-level scan |
+| "Can I transplant a governance pattern from another project?" | **Step 3-b standalone** |
+| "Could I bring that project's gate over here?" | **Step 3-b standalone** |
+| "하네스끼리 시너지" · "거버넌스 패턴 이식" · "다른 프로젝트 게이트 가져올 수 있나" | **Step 3-b standalone** |
+
+> **Step 3-b fires standalone.** The last four rows call that step alone; they do not require the full
+> door-④ pass. A request about *harnesses* is not a request about *installed plugins*.
 
 ## Processing Steps (7-step)
 
@@ -89,6 +96,34 @@ Call mechanism compatibility:
 - **Agent**: Can be called directly as `{component-name}:{agent-name}` via subagent_type
 - **Hook**: Auto-triggered (no direct cross-component calls)
 - **MCP**: Per-tool calls (namespace separated)
+
+### Step 3-b. Harness-level pattern-transplant scan (conditional default)
+
+**Condition**: 2+ mapped field-harness tracks exist under `tracks/` (underscore-prefixed meta dirs
+such as `_meta`/`_audit`/`_contrib`/`_chamber` do not count). Otherwise skip with one line.
+
+Steps 1–3 look at **installed plugins/skills**. This step looks one layer up: the **governance
+mechanisms of the mapped field harnesses themselves** — verification axes, verdict enums, gate exit
+codes, persona systems — and finds pairs where one harness's mechanism is transplantable into another.
+
+- Read each mapped track's **canon** (`CLAUDE.md` / `README.md`), not its code. Field-harness
+  vocabulary must not be normalized into general concepts — that is this repo's habitual failure.
+- Emit **transplantable pairs only**: the two must share the *same problem shape*. Merely overlapping
+  subject matter is excluded.
+- 🟥 Declare the read depth. "Read the top ~150 lines of CLAUDE.md" is a different claim from "read the
+  file"; say which, and mark anything not opened as **unverified**, never as absent.
+- Store under its **own section** in the Step 6 result file, separate from the skill/agent pair table —
+  the two layers answer different questions and merging them hides which one produced a finding.
+
+> **Boundary with Step 7**: Step 7 (proactive) may *trigger* Step 3-b; it does not replace its scan.
+> Step 7 decides *when to offer*, Step 3-b decides *what to read and which transplant pairs come out*.
+>
+> **Why this is a default and not an extra**: door ④ was run live on 2026-08-21 and 2026-08-22 and both
+> times produced only the skill/agent layer, while the operator was asking for this one. The wiring
+> existed; its target was pinned to the old object. Provenance: `tracks/_meta/fh_signal_2026-08-21_unused-skills-are-unwired.md`
+> (cause ⓓ) and `tracks/_meta/fh_signal_2026-08-22_operator.md`.
+> ⚠️ **Mechanized at N=2 by explicit operator instruction; do not count as threshold-triggered
+> mechanization** (`[[feedback_mechanize_at_repetition_prose_before]]`).
 
 ### Step 4. Synergy Grade Derivation (★~★★★)
 
@@ -245,6 +280,8 @@ External users automatically derive their own inventory via Step 1 `installed_pl
 | Condition | Check class |
 |---|---|
 | Steps 1~6 completed | **mandatory-pass** |
+| **Step 3-b reported as `run(n pairs)` or `skipped(<2 mapped tracks)`** — never silently omitted; read depth declared per track | **mandatory-pass** |
+| **`harness-error` is a NON-PASS, not a third accepted state.** Reporting the error satisfies the anti-silence rule and nothing else — it does not clear this row. Surface it and stop; do not let a status string stand in for a result | **mandatory-pass** |
 | Synergy ranking table (★~★★★) output | **mandatory-pass** |
 | **Step 7 state reported as one of `run` / `not-configured` / `harness-error`** — never silently omitted, and `harness-error` never reported as a skip | **mandatory-pass** |
 | Step 5 drift reported as `MATCH / DRIFTED / DRIFT-UNKNOWN(n=…)`, with `DRIFT-UNKNOWN` excluded from the match count; Step 2 `ABSENT` asset classes carried through as `ABSENT`, not `0` | **measured** (counts come from the Step 1/2 output, not from recall) |
