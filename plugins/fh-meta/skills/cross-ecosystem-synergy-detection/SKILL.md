@@ -43,6 +43,8 @@ Automatically discovers cross-invocable pairs in environments with multiple inst
 | "Can I transplant a governance pattern from another project?" | **Step 3-b standalone** |
 | "Could I bring that project's gate over here?" | **Step 3-b standalone** |
 | "하네스끼리 시너지" · "거버넌스 패턴 이식" · "다른 프로젝트 게이트 가져올 수 있나" | **Step 3-b standalone** |
+| "이 하네스에 시너지 몰아줘" · "focus the synergy on this one" · "이거 하나 집중해서 강화" | **focus mode** — Step 3-b **+ Step 3-c by default** |
+| "밖에도 이런 거 있나" · "더 강화할 방법 있어?" · "is there prior art that would make this stronger?" | **Step 3-c** |
 
 > **Step 3-b fires standalone.** The last four rows call that step alone; they do not require the full
 > door-④ pass. A request about *harnesses* is not a request about *installed plugins*.
@@ -124,6 +126,79 @@ codes, persona systems — and finds pairs where one harness's mechanism is tran
 > (cause ⓓ) and `tracks/_meta/fh_signal_2026-08-22_operator.md`.
 > ⚠️ **Mechanized at N=2 by explicit operator instruction; do not count as threshold-triggered
 > mechanization** (`[[feedback_mechanize_at_repetition_prose_before]]`).
+
+### Step 3-c. Outward pass — strengthen the pairs (identity ④ loop)
+
+**Condition (default is scoped, not always-on)**: runs by default only in **focus mode** — when the
+operator names one harness to concentrate synergy on. In whole-environment mode it is **offered, not
+run** (operator, 2026-08-22: *"로컬 내 플젝 간 시너지는 딱히 영향이 크게 없겠지만 이후 세션에는 또
+새로운 정보를 얻을 수 있겠지"* — worth doing, not worth doing every time).
+
+This is identity ④ (**프런티어 답습**) applied to synergy, and its purpose is the same as that
+identity's: **block reinvention.** 📚 *bookshelf = don't rebuild what we already have* ·
+🌍 *library = don't rebuild what the world already made.*
+
+**The loop** — ② is a judgment and stays with the session; no hook decides it:
+
+```
+Steps 1–3-b produced pairs (📚 bookshelf: our own components + mapped harnesses)
+      ↓  ② is there ANYTHING you cannot assert confidently about a pair?
+         (threshold is «even slightly» — «I'm fairly sure» is the setting where this never fires)
+      ↓  three outcomes, and COUNT THEM SEPARATELY
+   ⓐ closed by thinking     — **no tool call was made**; reasoning settled it
+   ⓑ closed at the bookshelf — **a Read/Grep against local canon actually ran** and answered it
+   ⓒ went to the library     — an outward call was made (below)
+```
+🟥 **The three are separated by TOOL CALLS, not by how it felt.** ⓐ = zero calls · ⓑ = a local read
+happened · ⓒ = an outward call happened. Written that way the split is checkable against the session's
+own tool history instead of being self-reported — which is what an earlier draft left it as.
+⚠️ **Never fold ⓐ into ⓑ.** «I already knew it from the bookshelf» with no Read is **ⓐ**, not ⓑ.
+Folding inflates the "closed at the bookshelf" column, and that column is the one that says whether
+this loop works at all.
+
+**Record it per pair, not as a total.** A bare `run(2/3/1)` cannot be checked — it says the three were
+counted without showing which pair went where. Step 3-c emits a **pair ledger**:
+
+```
+pair | what I could not assert | outcome ⓐ/ⓑ/ⓒ/withheld | bookshelf pointer or query shape | note
+```
+and the arithmetic has to close: **ⓐ + ⓑ + ⓒ + withheld == in-scope pair count.** A pair that appears
+in no row is a dropped pair, not a passing scan.
+
+**Two result types — keep them apart** (they feed different steps):
+- `strengthener` — a technique or prior art that makes an existing pair better. **This is what
+  Step 3-c is for.**
+- `equivalent-risk` — the outside already has the whole thing. That is **Step 6's question**, not this
+  one; hand it down rather than acting on it here. Mixing them is how «강화» quietly becomes «폐기».
+
+**Residency — narrow, and stated at its real size.**
+Searching does **not** leak by itself. The only **semantic payload we intentionally send** is the query
+string — ⚠️ not the only surface at all (account and tool logs, which results were opened, any follow-up
+fetch path all exist); it is the one carrying meaning we chose. And the natural way to look for prior art
+is already abstract — nobody searches for a technique by typing their own repo name.
+So this is one careless-phrasing case, not a reason to fear the step:
+- **Keep harness names, repo names, paths and internal codenames out of the query.** Send the **problem
+  shape** — «a gate whose verdict is a typed enum, transplanted into a repo that greps prose».
+- It bites unevenly: some mapped harnesses are **company assets**, and `internal repo/asset names` is on
+  the residency prohibition list by name. Public ones are not. **Check which side a pair sits on before
+  wording the query**, rather than treating every name as equally sensitive.
+- A pair that genuinely cannot be abstracted without naming a private asset stays home — record
+  `outward: withheld (residency)`, a *recorded* skip rather than a silent one.
+- Results come back and are matched to pairs **locally**; the matching never goes out.
+
+**What comes back, and what it is for**: not «who else built this» trivia — a **prior art or a
+technique that would make an existing pair stronger**. If the outward pass produces no such thing,
+that is a normal result: record `outward: run, 0 applicable`. 🟥 Do **not** manufacture a finding to
+justify having looked.
+
+**Boundary with Step 6** — do not merge these, they answer opposite questions:
+
+| | question | when |
+|---|---|---|
+| **Step 3-c** (this) | *is there something outside that would **strengthen** these pairs?* | during derivation |
+| **Step 6** «Confirm absence of equivalent external tools» | *does an equivalent already exist, i.e. are we **reinventing**?* | at persistence |
+
+Both are «external»; only one of them is asking whether to keep going.
 
 ### Step 4. Synergy Grade Derivation (★~★★★)
 
@@ -281,6 +356,9 @@ External users automatically derive their own inventory via Step 1 `installed_pl
 |---|---|
 | Steps 1~6 completed | **mandatory-pass** |
 | **Step 3-b reported as `run(n pairs)` or `skipped(<2 mapped tracks)`** — never silently omitted; read depth declared per track | **mandatory-pass** |
+| **Step 3-c closes as exactly one of `run(ⓐ=N ⓑ=N ⓒ=N)` · `offered(whole-environment mode)` · `withheld(residency)`** — 🟥 **there is deliberately no open `skipped(<reason>)` value.** A free-text reason is an escape hatch: «skipped — pair obvious» would satisfy a presence check while doing none of the work. Deciding a lookup is unnecessary is not a skip, it is **ⓐ**, and it gets counted. A lookup or tool **failure** closes as `external-error` — a **NON-PASS**, never one of the three above | **mandatory-pass** |
+| **Step 3-c pair ledger closes: `ⓐ + ⓑ + ⓒ + withheld == in-scope pair count`**, and ⓐ/ⓑ/ⓒ are assigned by tool-call evidence (none / local read / outward call), not by recollection | **measured** (counts come from the ledger and the session's tool history, not from memory) |
+| **Step 3-c queries carried problem shapes, not harness/repo/path names** — and any pair that genuinely could not be abstracted is recorded as `withheld (residency)`, never dropped silently | **mandatory-pass** |
 | **`harness-error` is a NON-PASS, not a third accepted state.** Reporting the error satisfies the anti-silence rule and nothing else — it does not clear this row. Surface it and stop; do not let a status string stand in for a result | **mandatory-pass** |
 | Synergy ranking table (★~★★★) output | **mandatory-pass** |
 | **Step 7 state reported as one of `run` / `not-configured` / `harness-error`** — never silently omitted, and `harness-error` never reported as a skip | **mandatory-pass** |
