@@ -16,8 +16,10 @@ FH agents ship under `plugins/*/agents/` through the plugin channel. `.claude/ag
 field-project local/override slot, not FH's shipping location. Skills straddle both layers: their
 methodology is portable, while their automatic invocation is Claude-native.
 
-The methodology layer is Codex-compatible beta. Gemini, Codex, and other runtimes can apply it by
-replacing hooks and native dispatch with manual invocation.
+The methodology layer is Codex-compatible, marked **beta** in the *validation-maturity* sense
+(external validation is still thin — see §Beta-removal), not in the *scope* sense: partial
+automation-layer support is the design, not an unfinished state. Gemini, Codex, and other runtimes
+can apply it by replacing hooks and native dispatch with manual invocation.
 
 Directory names do not determine publication residency:
 
@@ -201,12 +203,17 @@ gate (`fh-gate`). `fh-goal` is for non-interactive one-shot runs followed automa
 
 ## §Beta-removal
 
+🟥 **"Beta" here means ⓑ validation maturity (external evidence is thin), never ⓐ scope.** Partial
+automation-layer support under Codex is the design, not an unfinished state, so it is not something
+these conditions complete. Canonical statement of the split: `docs/codex-compat.md §Beta removal`.
+Every condition below is a ⓑ condition.
+
 | Condition | Status |
 |---|---|
 | Known-limitations document published at `docs/codex-compat.md` | Done |
 | At least 5 externally validated M1 skill runs from non-authors | Pending |
 | At least 1 external Codex user confirms methodology reproduction | Pending |
-| README badge removes `beta` | Blocked on the external conditions |
+| ~~README badge removes `beta`~~ | **RETRACTED 2026-08-23 — no longer a condition.** The `Codex-beta · help validate` badge was removed from all four READMEs that day (operator decision); the condition named an artifact that no longer exists. Beta status now lives in the `Status:` header of `docs/codex-compat.md`, which the READMEs link to. Struck through, not deleted — a dropped condition and a met one must not look alike. |
 
 Internal author validation does not satisfy the external conditions. The author validated
 `phantom-quench` against a phantom-seeded fixture and `asset-placement-gate` against a duplicate-skill

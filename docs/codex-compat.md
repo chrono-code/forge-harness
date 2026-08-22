@@ -1,6 +1,7 @@
 # Codex Compatibility — Known Limitations & Validated Patterns
 
-> Status: **beta**. This document is a beta-removal condition (see
+> Status: **beta** — in the *validation-maturity* sense (ⓑ below), not the *scope* sense (ⓐ). This
+> document is a beta-removal condition (see
 > `knowledge/shared/harness-core/agents_md_runtime_details.md §Beta-removal`). It lists what works,
 > what breaks, and what to expect when applying forge-harness (FH) methodology through OpenAI Codex
 > (`codex exec`) instead of Claude Code.
@@ -130,11 +131,18 @@ The sibling pattern for Gemini is `gemini -p "$(cat <skill+artifact>)"`. Outside
 
 ## Beta removal — remaining (external-blocked)
 
+🟥 **"Beta" can mean two different things here, and only one of them is a condition to be completed.**
+
+| Sense | What it says | Is it a removal condition? |
+|---|---|---|
+| ⓐ **Scope** — partial support | The automation layer (hooks, sub-agent dispatch, slash commands) is Claude-Code-native *by construction*. Codex runs the methodology layer plus adapters. | **No.** This is the intended two-layer boundary, not a gap to be closed — the READMEs say exactly that. 100% parity is not a state this document is working toward, so do not write completion conditions against it. |
+| ⓑ **Validation maturity** — thin external evidence | Everything validated so far is author-run (see the M1 table above). No non-author has reproduced it. | **Yes.** This is what the `Status: beta` header means, and **every condition in the table below is a ⓑ condition.** |
+
 | Condition | Status |
 |---|---|
 | Known limitation list published (this doc) | ✅ done (2026-06-04) |
 | 5+ externally validated M1 skill runs (not FH author) | ⬜ pending — needs external Codex users |
 | At least 1 external Codex user confirms methodology reproduces | ⬜ pending — needs external Codex users |
-| README badge updated (`Codex-compatible` without `beta`) | ⬜ blocked on the two above |
+| ~~README badge updated (`Codex-compatible` without `beta`)~~ | 🚫 **RETRACTED 2026-08-23 — no longer a condition.** The `Codex-beta · help validate` badge was removed from all four README variants that day (operator decision), so this condition named an artifact that no longer exists — a completion condition pointing at nothing. Beta status is now carried by this document's own `Status:` header, which every README links to from its Codex section. Struck through rather than deleted: a silently dropped condition is indistinguishable from one that was quietly met. |
 
 To report a validated run, open an issue at `chrono-meta/forge-harness` with label `codex-validation`.
