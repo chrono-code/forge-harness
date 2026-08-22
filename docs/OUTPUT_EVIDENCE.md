@@ -69,6 +69,15 @@
   Measurement-integrity items applied: display-name pin (partial — Agent-tool binding, family-
   discriminated self-report), reps≥3 (not triggered — zero borderline verdicts), discriminating-probe
   (failed at instrument level — ceiling — flagged, not hidden). Single-session, pre-registered rubric.
+- **A day inside the gates, self-applied** (2026-08-22): one ordinary working day audited against its own
+  records — [`GATE_DAY.md`](GATE_DAY.md). Six merged commits, six 4-axis markers. The gates blocked the
+  author **seven** times with **zero** self-catches; an eighth defect was found late by CI, which is itself
+  a violation of this repo's own "CI is a backstop, never the discovery mechanism" rule. Per-axis: the most
+  any delta burned was **4 of 6 axes**, the least **0**, and **no delta burned all six** — so "we verify
+  every change on six axes" is false as a claim about that day, and what is actually shipped is the typed
+  record of which axes ran. Includes what the day cost in honesty (a retracted completeness claim, a
+  191→41-line evidence cut, an `UNCALIBRATED` left standing) and four self-failures with a person as the
+  subject. Attested from gitignored operating records; three of the commands are reproducible by any reader.
 - **Guard-axis before/after, measured** (2026-06-24): the same task was given to a bare agent and an
   FH-gated agent (same FH gate rule injected as context), reps=5 each, across two irreversible surfaces.
   On log cleanup (Destructive-Op Gate) the bare arm deletes on first run — 0/5 safe-default — while the
@@ -102,7 +111,9 @@ rather than only synthetic ones.
 
 ## What this evidence does *not* establish
 
-- No claim of scaled external adoption or longitudinal results — the project is 12 days old.
+- No claim of scaled external adoption or longitudinal results — the project's age is the §Pace row above,
+  not a number pinned here. (This line read "12 days old" long after that had stopped being true; a
+  duplicated constant goes stale independently of the table it duplicates.)
 - Experimental results are worked examples, **not** benchmarks; reproduce before relying on them.
 - The cold-pass gain is the base model's own ability surfaced by isolation, **not** an accuracy engine FH adds.
 
