@@ -211,11 +211,39 @@ So: **the enum is closed and enforced; the execution grounds for `tier2`+ are AD
 still record `tier2` without naming a command and pass with a warning — that is the real remaining
 gap, and it is narrower than "validated by nothing" and wider than "grounds are required". Neither
 earlier sentence was accurate, and the accurate one required varying one variable at a time.
-🟥 **This same false claim stood in FIVE places**, not three — `CLAUDE.md` (twice), here, `AGENTS.md`,
-and `field_verdict_crossfamily_gate.md`. Fixing one and stopping is the half-fix propagation failure;
-fixing three and stopping was the same failure one round later. The question is never "is this
-sentence wrong" but **"where else does this sentence live"** — and the answer came from a
-different-family reviewer, not from me.
+🟥 **This same false claim stood in ~~three~~ ~~FIVE~~ → EIGHT passages across SIX files, and the
+count itself has now been wrong three times — corrected 2026-08-23.** The line first said three, was
+corrected to FIVE (`CLAUDE.md` twice, here, `AGENTS.md`, `field_verdict_crossfamily_gate.md`), and
+**that enumeration was also incomplete and partly unexecuted** — while a *different* file
+(`harness_incubator_doctrine.md`) was independently counting the same propagation as **six documents**
+on the same day. Two counts of one propagation, in one repo, neither matching. A widened-vocabulary re-scan (the earlier sweeps grepped
+only `0줄|zero lines`, i.e. **the repair's own vocabulary** — `[[feedback_lane_vocabulary_blind_to_its_own_fix]]`)
+found:
+
+| # | Passage | State when re-scanned 2026-08-23 |
+|---|---|---|
+| 1 | `CLAUDE.md` §자기 대조 (the axes-run paragraph) | 🟥 **still false** — listed as fixed, never was. Fixed 2026-08-23 |
+| 2 | `CLAUDE.md` §Standpoint-Execution-Evidence pointer | ✅ correct since 2026-08-20 |
+| 3 | here (§`standpoint:`) | ✅ correct since 2026-08-20 |
+| 4 | `AGENTS.md` §markers | ✅ correct since 2026-08-20 |
+| 5 | `field_verdict_crossfamily_gate.md` | 🟥 **still false in different words** — its own correction re-introduced the claim as *"the **value** is unvalidated"*. Fixed 2026-08-23 |
+| 6 | `fh_three_layer_canon.md` §95 | 🟥 **never on the list at all.** Fixed 2026-08-23 |
+| 7 | `fh_three_layer_canon.md` §354 (the field table) | 🟥 **never on the list at all.** Fixed 2026-08-23 |
+| 8 | `harness_incubator_doctrine.md` (cites the claim as its day-one-walk example) | ✅ corrected 2026-08-20 — **and it is the file whose own tally said «six documents»**, counting itself. This list did not count it. Reconciled here |
+
+**Excluded on purpose, not missed**: `plugins/fh-meta/CHANGELOG.md` carries the claim inside a dated
+release entry. A changelog records what was believed at ship time; rewriting it would destroy the
+history this repo's correction discipline depends on. It is listed here instead.
+
+**Three lessons, and the third is new.** ⑴ Fixing one and stopping is the half-fix propagation
+failure; fixing three and stopping was the same failure one round later; **enumerating five and
+executing three is that failure wearing a checklist.** ⑵ The question is never "is this sentence
+wrong" but **"where else does this sentence live"** — and both times the answer came from a
+different-family reviewer, not from me. ⑶ 🟥 **A propagation sweep must not be run in the vocabulary
+of the thing it is fixing.** Sites 5–7 survived three rounds because they said *"unvalidated"*,
+*"검증하는 코드가 아직 0줄"* inside a fenced table, and *"the value is unvalidated"* — none of which a
+grep for the first site's phrasing reaches. **Widen the axis before declaring a sweep complete, and
+say which terms you searched.**
 
 **`thirdparty:` — ⓓ3자 대면의 자기 필드 (2026-08-17 신설).** ⓑ가 `standpoint:` 를 갖는 것과
 같은 형태다: `axes-run` 에는 포인터(`ⓓ=→thirdparty`)만 두고 값은 이 필드가 나른다.
