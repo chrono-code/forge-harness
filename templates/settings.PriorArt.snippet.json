@@ -1,15 +1,44 @@
 {
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Write|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/prior_art_prompt.sh\""
-          }
-        ]
-      }
-    ]
+  "_README": [
+    "prior-art 프롬프트 훅 스니펫 — install-wizard 가 사용자 로컬 .claude/settings.json 에 머지하는",
+    "tracked SOURCE 다. 이 레포의 .claude/settings*.json 은 전부 gitignored 라 **훅 등록 자체를",
+    "tracked 로 둘 수 없다.** 머지 단계가 없으면 훅은 돌지 않는다 —",
+    "**스크립트를 출하하는 것과 배선하는 것은 같은 명제가 아니다.**",
+    "",
+    "🟥 왜 이 래퍼가 뒤늦게 생겼나 (2026-08-22 실측, 컨트롤 동반):",
+    "  이 파일은 형제 스니펫 넷과 달리 `project_settings_json` 래퍼 **없이** 출하되고 있었다.",
+    "  install-wizard 의 실제 머지 코드(install-wizard/SKILL_detail.md:642-645)는 그 키가 없으면",
+    "    print(\"SKIP (no project_settings_json)\", ...); continue",
+    "  로 **조용히 건너뛴다.** 즉 이 훅은 「아직 안 돌렸다」가 아니라",
+    "  **「install-wizard 를 돌려도 항상 스킵돼서 한 번도 등록된 적이 없다」** 였다.",
+    "  전수 실측: Compaction·FieldCanon·PreToolUse·SessionStart = 래퍼 O · PriorArt = 혼자 부재.",
+    "  머지 코드를 그대로 복사해 실행한 수리 전/후 대조로 SKIP→등록 전이를 확인했다.",
+    "  ⇒ built_but_not_wired 보다 나쁘다. **설치기가 자기 출하물을 조용히 건너뛰는** 형태다.",
+    "  회귀 앵커: scripts/test_wizard_snippet_merge_lanes.sh 의 전수 래퍼 검사(이 수리와 같이 들어갔다).",
+    "",
+    "무엇을 하나: 새 메커니즘을 짓기 직전에 «책장 먼저, 없으면 도서관» 을 띄운다.",
+    "정체성 ④(프런티어 답습)의 **빌드 시점 격발 표면**이다.",
+    "🟥 명시된 잔여: matcher 가 `Write|Bash` 라도 **auto-mode 세션이 heredoc 으로 파일을 만드는",
+    "경로는 Bash 로 잡히지만**, 그 안에서 실제로 새 메커니즘을 짓는지까지는 훅이 모른다.",
+    "표면화까지가 훅의 몫이고 판정은 사람/세션이 한다 — 판정하는 훅을 만들면",
+    "§Mechanization Boundary 가 금하는 «결론을 단언하는 체크»가 된다.",
+    "",
+    "PRIVATE PATH 없음 → .claude/settings.json(프로젝트 로컬)에 속한다.",
+    "머지하되 덮어쓰지 마라: 기존 PreToolUse 엔트리를 보존하고 스크립트 이름을 키로 FH 것만 교체."
+  ],
+  "project_settings_json": {
+    "hooks": {
+      "PreToolUse": [
+        {
+          "matcher": "Write|Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/prior_art_prompt.sh\""
+            }
+          ]
+        }
+      ]
+    }
   }
 }
