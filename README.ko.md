@@ -96,15 +96,28 @@ cd ~/projects/forge-harness && claude
 | 프로젝트마다 같은 설정을 반복한다 | 허브에 한 번 연결하면 모든 프로젝트가 공유 |
 | 팀의 AI 노하우가 사람 머릿속에만 있다 | 코드로 박아 모두가 공유 |
 | 작업이 쌓일수록 AI가 *더 나아지길* 원한다 | 스킬과 패턴이 세션을 거듭하며 복리로 쌓임 |
-| AI가 생성한 코드에 거버넌스 층이 필요하다 | `fh-gate`가 어떤 코딩 에이전트든 생성-후 게이트로 감쌈 |
+| AI가 생성한 코드에 거버넌스 층이 필요하다 | `fh-gate`가 어떤 코딩 에이전트든 생성-후 게이트로 감쌈 — `npx --package @chrono-meta/fh-gate fh-gate` |
 
 > **이 문서는 사람을 위한 것입니다.** AI 운영 규칙 → `CLAUDE.md` · 명령어 레퍼런스 → `CHEATSHEET.md`
+
+**어느 진입 경로가 당신에게 맞나?**
+
+| 당신은… | 여기서 시작 |
+|---|---|
+| 1인 개발자, 프로젝트 하나, 일단 써보는 중 | [`templates/starter_profile.md`](templates/starter_profile.md) — 명령 하나, 엄선된 첫 5개 스킬 |
+| 프로젝트 여럿, 복리 허브를 원함 | 허브 클론(위 «2분이면 됩니다» 절) |
+| CI / 비-Claude 런타임, 게이트만 | `npx --package @chrono-meta/fh-gate fh-gate` (무설치 거버넌스 게이트) |
+| `npx`/`npm`보다 `brew`를 선호 | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 100% 동일한 내용, 설치 UX만 다름(커뮤니티 탭; 아직 Homebrew Core에 없어서 탭을 먼저 추가하지 않으면 `brew search`로는 안 잡힙니다) |
 
 ---
 
 ## 2분 만에 시작하기
 
-**전제 조건**: Claude Code CLI — `claude --version`으로 확인
+이 전제는 **허브·플러그인 경로**에 한하고, **위 표의 모든 행에 적용되는 것이 아닙니다.**
+아래 3단계가 「2분」의 전부입니다. 전제는 Claude Code CLI 하나뿐이고(`claude --version`으로 확인),
+플러그인 설치와 허브 클론은 그 3단계 안에 들어 있습니다.
+Claude Code를 쓰지 않고 게이트만 필요하다면 이 3단계 대신 `fh-gate` 한 줄로 갑니다(위 표의 「CI /
+비-Claude 런타임」 행, 그리고 아래 «AI 생성 코드를 위한 거버넌스 층» 절).
 
 <details><summary><b>선택: 게이트 하나가 Python + PyYAML을 필요로 합니다</b> — 없으면 <code>npm test</code>가 빨갛습니다</summary>
 
@@ -174,15 +187,6 @@ cd ~/projects/{your-project} && claude
 > 맥락(`tracks/` 메모리 축적, `harvest-loop` 학습; 방법론 층)이 빠집니다.
 > 각 스킬은 고립돼서도 동일하게 작동하지만, 빠지는 것은 그것들을 세션에 걸쳐 복리로 만드는
 > 오케스트레이션입니다. 도구만이 아니라 전체 세트를 원하면 허브를 클론하세요(위 참조).
-
-**어느 진입 경로가 당신에게 맞나?**
-
-| 당신은… | 여기서 시작 |
-|---|---|
-| 1인 개발자, 프로젝트 하나, 일단 써보는 중 | [`templates/starter_profile.md`](templates/starter_profile.md) — 명령 하나, 엄선된 첫 5개 스킬 |
-| 프로젝트 여럿, 복리 허브를 원함 | 허브 클론(위 빠른 시작) |
-| CI / 비-Claude 런타임, 게이트만 | `npx --package @chrono-meta/fh-gate fh-gate` (무설치 거버넌스 게이트) |
-| `npx`/`npm`보다 `brew`를 선호 | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 100% 동일한 내용, 설치 UX만 다름(커뮤니티 탭; 아직 Homebrew Core에 없어서 탭을 먼저 추가하지 않으면 `brew search`로는 안 잡힙니다) |
 
 ---
 

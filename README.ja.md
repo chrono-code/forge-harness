@@ -99,15 +99,28 @@ cd ~/projects/forge-harness && claude
 | プロジェクトごとに同じ設定を繰り返す | ハブに一度つなげば全プロジェクトで共有 |
 | チームの AI ノウハウが人の頭の中にしかない | コードに刻んで全員で共有 |
 | 作業が積み上がるほど AI が*より良く*なってほしい | スキルとパターンがセッションを重ねて複利で積み上がる |
-| AI が生成したコードにガバナンス層が必要だ | `fh-gate` がどんなコーディングエージェントでも生成後ゲートで包む |
+| AI が生成したコードにガバナンス層が必要だ | `fh-gate` がどんなコーディングエージェントでも生成後ゲートで包む — `npx --package @chrono-meta/fh-gate fh-gate` |
 
 > **この文書は人間のためのものです。** AI 運用ルール → `CLAUDE.md` · コマンドリファレンス → `CHEATSHEET.md`
+
+**どの入口があなた向きか?**
+
+| あなたは… | ここから始める |
+|---|---|
+| 個人開発者、プロジェクト1つ、まず試したい | [`templates/starter_profile.md`](templates/starter_profile.md) — コマンド1つ、厳選された最初の5つのスキル |
+| プロジェクトが複数、複利で積み上がるハブが欲しい | ハブをクローン（上の«2分で試せます»の節） |
+| CI / 非 Claude ランタイム、ゲートだけ欲しい | `npx --package @chrono-meta/fh-gate fh-gate`（インストール不要のガバナンスゲート） |
+| `npx`/`npm` より `brew` がいい | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 内容は100%同一、インストール体験だけが違います（コミュニティ tap; まだ Homebrew Core には入っていないので、先に tap しないと `brew search` では見つかりません） |
 
 ---
 
 ## 2分で始める
 
-**前提条件**: Claude Code CLI — `claude --version` で確認
+この前提は**ハブ・プラグイン経路**に限られ、**上の表のすべての行に当てはまるわけではありません。**
+下の3ステップが「2分」のすべてです。前提は Claude Code CLI ひとつだけで（`claude --version` で確認）、
+プラグインのインストールとハブのクローンはその3ステップの中に入っています。
+Claude Code は使わずゲートだけが必要なら、この3ステップの代わりに `fh-gate` の
+1行で済みます（上の表の「CI / 非 Claude ランタイム」の行、そして下の «AI 生成コードのためのガバナンス層» の節）。
 
 <details><summary><b>任意: 1つのゲートが Python + PyYAML を必要とします</b> — 無いと <code>npm test</code> が赤くなります</summary>
 
@@ -179,15 +192,6 @@ cd ~/projects/{your-project} && claude
 > 方法論層）です。
 > 各スキルは孤立していても同じように動きます。抜けるのは、それらをセッションをまたいで複利にする
 > オーケストレーションのほうです。道具だけでなく全体セットが欲しくなったら、ハブをクローンしてください（上記参照）。
-
-**どの入口があなた向きか?**
-
-| あなたは… | ここから始める |
-|---|---|
-| 個人開発者、プロジェクト1つ、まず試したい | [`templates/starter_profile.md`](templates/starter_profile.md) — コマンド1つ、厳選された最初の5つのスキル |
-| プロジェクトが複数、複利で積み上がるハブが欲しい | ハブをクローン（上のクイックスタート） |
-| CI / 非 Claude ランタイム、ゲートだけ欲しい | `npx --package @chrono-meta/fh-gate fh-gate`（インストール不要のガバナンスゲート） |
-| `npx`/`npm` より `brew` がいい | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 内容は100%同一、インストール体験だけが違います（コミュニティ tap; まだ Homebrew Core には入っていないので、先に tap しないと `brew search` では見つかりません） |
 
 ---
 

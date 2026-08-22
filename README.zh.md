@@ -94,15 +94,27 @@ cd ~/projects/forge-harness && claude
 | 你在每个项目里重复相同的设置 | 一次连接到中枢，跨所有项目共享 |
 | 团队的 AI 经验只留在个人脑子里 | 把它编码固化，让所有人共享 |
 | 你希望工作越积累，AI 越 *变好* | 技能与模式随会话逐次复利累积 |
-| 你需要给 AI 生成的代码一层治理 | `fh-gate` 把任何编码 agent 包裹为一道生成后门禁 |
+| 你需要给 AI 生成的代码一层治理 | `fh-gate` 把任何编码 agent 包裹为一道生成后门禁 —— `npx --package @chrono-meta/fh-gate fh-gate` |
 
 > **本文档面向人类。** AI 运行规则 → `CLAUDE.md` · 命令参考 → `CHEATSHEET.md`
+
+**哪条入口适合你？**
+
+| 你是…… | 从这里开始 |
+|---|---|
+| 单人开发者，一个项目，只想先试试 | [`templates/starter_profile.md`](templates/starter_profile.md) —— 一条命令，一份精选的头五个技能 |
+| 有多个项目，想要那个复利累积的中枢 | 克隆中枢（见上面的«两分钟就能试»一节） |
+| CI / 非 Claude 运行时，只要门禁 | `npx --package @chrono-meta/fh-gate fh-gate`（零安装的治理门禁） |
+| 比起 `npx`/`npm` 更习惯 `brew` | `brew tap chrono-meta/forge-harness && brew install forge-harness` —— 内容 100% 一致，只是安装体验不同（社区 tap；尚未进入 Homebrew Core，所以不先加 tap 的话 `brew search` 找不到它） |
 
 ---
 
 ## 2 分钟上手
 
-**前置条件**：Claude Code CLI —— 用 `claude --version` 确认
+这个前置只限于**中枢与插件路径**，**并不适用于上表的每一行。**
+下面三步就是"两分钟"的全部。前置只有 Claude Code CLI 一个（用 `claude --version` 确认），插件安装
+与中枢克隆都包含在这三步里。如果你不用 Claude Code、只需要那道门禁，那就不走
+这三步，一行 `fh-gate` 即可（见上表"CI / 非 Claude 运行时"那一行，以及下面的«面向 AI 生成代码的治理层»一节）。
 
 <details><summary><b>可选：有一道门禁需要 Python + PyYAML</b> —— 少了它 <code>npm test</code> 是红的</summary>
 
@@ -167,15 +179,6 @@ cd ~/projects/{your-project} && claude
 > `CLAUDE.md` 治理（主动引导、4 轴门禁、模式分支；自动化层）和复利式上下文（`tracks/` 记忆
 > 累积、`harvest-loop` 学习；方法论层）。每个技能在隔离状态下运行效果相同；缺的是让它们在
 > 会话之间复利累积的那层编排。当你想要完整套装而不只是工具时，请克隆中枢（见上）。
-
-**哪条入口适合你？**
-
-| 你是…… | 从这里开始 |
-|---|---|
-| 单人开发者，一个项目，只想先试试 | [`templates/starter_profile.md`](templates/starter_profile.md) —— 一条命令，一份精选的头五个技能 |
-| 有多个项目，想要那个复利累积的中枢 | 克隆中枢（见上面的快速上手） |
-| CI / 非 Claude 运行时，只要门禁 | `npx --package @chrono-meta/fh-gate fh-gate`（零安装的治理门禁） |
-| 比起 `npx`/`npm` 更习惯 `brew` | `brew tap chrono-meta/forge-harness && brew install forge-harness` —— 内容 100% 一致，只是安装体验不同（社区 tap；尚未进入 Homebrew Core，所以不先加 tap 的话 `brew search` 找不到它） |
 
 ---
 
