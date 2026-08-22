@@ -501,6 +501,19 @@ repo's own bar. So the softened README wording stays correct; only its *reason* 
   ⚠️ `open` 은 macOS 전용이다 — FH 는 npm 배포물이라 그걸 기본값으로 두면 안 된다.
   운용 상세(허용 코퍼스 · 모르면 「못 찾음」)는 `/fh` Step 3.5.
 
+🔨 **대장간 어휘를 문 부제에 넣지 마라 — 2026-08-22 에 넣어보고 실측으로 물렀다.**
+브랜드·교리 층(README · `docs/ETHOS.md`)에서는 대장간 은유가 3단 공정과 맞물리고 **거기서는 맞다**.
+문은 다르다 — **읽는 자리가 아니라 고르는 자리**이고, 여기서는 «무엇을 하나»가 은유를 이긴다.
+**실측 (플로어 티어 블라인드, 레포 밖 cwd, reps=3 × 2팔)**:
+라우팅은 **안 깨졌다** — 선택지 개수·«등록하고 싶다»→① ·«점검하고 싶다»→③ 이 ARM/CONTROL **3/3 동일**.
+🟥 그런데 «헷갈리는 것»에서 ARM 만 **3/3 전부 대장간 어휘를 지목**했다(*"실제로 어떤 동작인지
+짐작이 안 됨"*). **부제는 라우팅을 안 돕고 혼란만 더했다.**
+⚠️ 그 sim 의 명시된 결함: 「처음 쓰는 사람」 프레이밍으로 물어놓고 **returning 메뉴**를 보여줬다
+(계기≠대상). 그러므로 확실한 결론은 **new-user 문에 넣지 마라**까지이고, returning 문은 **미측정**이다.
+다시 넣고 싶으면 «FH 를 몇 번 써본 사람» 프레이밍으로 먼저 재라 — 눈으로 판단하지 마라.
+🟥 그리고 **환영문 리터럴과 문 집합은 어느 경우에도 못 건드린다** — G-GREET-05 의 세 문구는
+**하류 포크가 기계 매핑하는 앵커**라(pmh-dev #54) 바꾸면 모든 포크가 무음으로 깨진다.
+
 Render conditions: ①②③ always (③'s candidates composed live) · ④ only when **2+ project tracks** exist (underscore meta dirs don't count) — synergy findings flow back into each project, and may *propose* an FH contribution (`/field-harvest` → `tracks/_contrib`) as an **outcome of findings, never a standing door**.
 
 - **Developer door (unnumbered, outside the menu)**: when **FH-dev state exists** (session card `tracks/_meta/reference_next_session_starter.md` · open `fh_signal_*` files · `CLAUDE.local.md`), append it as **its own row at the bottom of the menu list**, not tacked onto another line: `- **🔧  FH self-development** — {FH worklist}`. The hub operator always has this state, so the owner always sees it — no flag needed. Without dev state the door is **silently absent**; the user typing `developer` / `개발자` **as a standalone utterance or menu reply** (not a substring of a task sentence) opens it on demand (routes to `docs/CONTRIBUTING.md` + `tracks/_contrib/` + open `fh_signal_*` items).

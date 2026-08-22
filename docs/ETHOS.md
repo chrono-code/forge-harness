@@ -20,19 +20,24 @@ not decoration:
 
 **Three at the anvil:**
 
-| The smith's word | What it does | Today |
-|---|---|---|
-| **Forge** | shape the raw project into a harness — raise its floor | `install-wizard`, harness-ify |
-| **Quench** | harden it by attack — the cold pass leaves standing only what is sound | `steel-quench`, `phantom-quench` |
-| **Temper** | take the brittleness back out of the hardened asset | `steel-quench` **Wave-T** + `templates/temper_check.sh` |
+| The smith's word | The stage | What it does | Today |
+|---|---|---|---|
+| **Forge** | ① plant the circuit | shape the raw project into a harness, and settle *what counts as success / what it will never do* — **before** the design | `install-wizard` · `deep-clarify` · the marker's mandatory `①영혼` line |
+| **Quench** | ② parallel decorrelation | cool it fast: many attempts in parallel from decorrelated angles. It hardens quickly — **and it makes the asset brittle**, which is what quenching does to steel | `auto-decorrelation` · `agent-composer` · cross-family sidecars · isolated worktree lanes |
+| **Temper** | ③ burn it on six axes | reheat and draw the brittleness back out while keeping the hardness — **where the attacking passes actually belong** | `steel-quench` · `phantom-quench` · `sim-conductor` · `fh-meta:challenger` · revert probes · `templates/temper_check.sh` |
 
 **⟹ And then it accelerates.** A blade that survived the forge cuts faster — `goal-quench`,
 *Pass → Accelerate*. Three at the anvil, and speed is what those three **produce**; it is not a
 fourth thing you do at the anvil. Quality is the lever, speed is the result.
 
-Every command named above ships today. (These are the smith's words — a **vocabulary**, not a stage
-list, and a different layer from the three-stage process, the four engines, the four-axis commit gate
-and the six verification axes. Do not count them against those.) **Temper** spent its first months named-but-unbuilt — deliberately, per
+Every command named above ships today. (🟥 **Corrected 2026-08-22.** This used to read *"a vocabulary, not a
+stage list, and a different layer from the three-stage process … do not count them against those."*
+That was wrong: the two diagrams are the same shape — three steps and an arrow into **⟹ accelerate** —
+so the smith's words **are** the three-stage process, said differently. One layer told twice, not two
+layers. The four engines, the four-axis commit gate and the six verification axes remain different
+counts and still do not line up here. ⚠️ The skill names keep the older reading: `steel-quench` and
+`phantom-quench` say *quench* but do *temper* work; renaming shipped skills to fix a metaphor would be
+the more expensive lie.) **Temper** spent its first months named-but-unbuilt — deliberately, per
 principle 5 — and shipped only after measurement runs on independent quench convergences validated that
 the check flags over-hardening without punishing simplification. Quenched steel is hard but brittle;
 no smith ships it un-tempered, and now neither does FH: after convergence, Wave-T measures the complexity
