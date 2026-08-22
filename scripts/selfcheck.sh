@@ -531,6 +531,14 @@ fi
 # test_capability_entrypoint_shipping.sh pins two (degrade_probe_capability.sh and
 # psa_probe_capability.sh); degrade is named here as the sentinel — the suite itself checks both and
 # fails if either is gone, so nothing is lost by not listing both in this table.
+# test_script_caller_ratchet_lanes.sh is the second of that shape: it pins BOTH
+# scripts/script_caller_ratchet.sh (the checker) and scripts/ratchet_base_resolve.sh (the base
+# resolver its L24–L26 lanes execute), and it hard-exits 1 naming the missing file if either is
+# gone. The checker is the sentinel because it is the one whose absence means the gate itself is
+# gone; the resolver's absence is a narrower failure the suite still reports by name. Neither
+# script ships — both, and this anchor, are declared in package_coverage_check.sh ACCEPTED_ABSENT.
+# On a consumer install the SUBJECT arm fires first and `_ships_per_files` returns 1, so the row
+# resolves to "SKIP (subject not in files[], and absent)" — the anchor arm is never reached.
 _LANE_TO=""; command -v timeout >/dev/null 2>&1 && _LANE_TO="timeout 300"
 for _pair in \
   "scripts/degrade_probe_capability.sh|scripts/test_capability_entrypoint_shipping.sh" \
@@ -552,7 +560,8 @@ for _pair in \
   "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
   "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \
   "scripts/stale_clone_guard.sh|scripts/test_stale_clone_guard_lanes.sh" \
-  "plugins/fh-commons/skills/ko-tech-writer/SKILL.md|scripts/test_ko_tech_writer_lanes.sh"
+  "plugins/fh-commons/skills/ko-tech-writer/SKILL.md|scripts/test_ko_tech_writer_lanes.sh" \
+  "scripts/script_caller_ratchet.sh|scripts/test_script_caller_ratchet_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then

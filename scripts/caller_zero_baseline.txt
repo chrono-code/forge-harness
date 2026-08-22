@@ -1,0 +1,53 @@
+# caller_zero_baseline.txt — the committed identity list for scripts/script_caller_ratchet.sh.
+#
+# 🟥 THE RATCHET IS KEYED ON IDENTITY, NOT ON COUNT. A count-keyed gate passes when you wire one
+# script and add another; that is the regrowth this file exists to stop. What blocks is a callerless
+# script whose PATH is not written below.
+#
+# TWO SECTIONS, AND THEY MEAN DIFFERENT THINGS:
+#   exempt:    this script legitimately has no in-repo caller. It is an entry point (a human, an
+#              installer, a container, a capability runtime invokes it) or a declared research
+#              artifact. Nothing is owed. These lines are permanent until the script's role changes.
+#   baseline:  this script SHOULD have a caller and does not. Measured debt, grandfathered so the
+#              gate can be turned on today. Shrink-only: when one gets wired, delete its line.
+#              🟥 A NEW entry here is not a legal move, and as of 2026-08-22 that is ENFORCED, not
+#              merely stated: the checker diffs this section against the base commit and blocks on
+#              any added path. Until that day the sentence was true in prose and false in code —
+#              the rule was misdescribing its own machine, which is the defect class this repo has
+#              logged as the one a blind read structurally cannot catch. Removing a line, or moving
+#              one from baseline: to exempt:, always passes.
+#              ⚠️ The enforcement compares against a BASE COMMIT. Where no base is resolvable (a
+#              depth-1 clone, a non-repo fixture root) the run prints `shrink-only: UNMEASURED` and
+#              does not block — except in CI, where FH_RATCHET_REQUIRE_BASE=1 turns that into exit 2.
+#
+# Every line needs a trailing `# <reason>` of 12+ characters. That is a channel check, in this
+# repo's sense: it asserts the record is present and attributable, never that the reason is good.
+# If you cannot write the sentence, the script probably belongs in a runner instead of in this file.
+#
+# Measured 2026-08-22. The live population and runner-surface counts are printed by the checker on
+# every run and are deliberately NOT copied here: a hand-maintained number beside a self-discovering
+# scan is a second source of truth that goes stale in silence (lane_runner_check.sh carries the same
+# warning after its own header stated one figure while its code held another). Every line below was
+# hand-checked by grepping the runner surfaces for that basename before it was written here — the
+# first machine-generated draft listed 36 and was wrong: the predicate was missing three dispatch
+# idioms (dot-source, assign-then-dispatch, and quote-prefixed `"bash scripts/x.sh"` inside JSON),
+# and two more entries dissolved when `.claude/capabilities/*.cap` was added as a runner surface.
+# 36 → 13 is a repair of the instrument, not of the tree.
+
+exempt:
+  - scripts/activity_log.sh   # on-demand chronological assembler, invoked by an operator/session when a trail is wanted — its own header says on-demand
+  - scripts/push_zone_check.sh   # human-run enumerate tool, same class as templates/predelete_check.sh: "run it BEFORE a multi-repo push round"
+  - scripts/docker_phase0_verify.sh   # one-shot Docker Track 2 proof, needs a running Docker/OrbStack daemon — auto-running it in CI would fail-closed on every consumer
+  - scripts/docker_phase1_verify.sh   # same Docker Track 2 one-shot; additionally spends live codex calls, so it must stay operator-initiated
+  - scripts/docker_phase1b_verify.sh   # same Docker Track 2 one-shot; needs a local Ollama endpoint that exists on one machine only
+  - scripts/dlp_calibration.sh   # one-shot calibration run against local models; produces a number for a human to read, has no verdict a runner could gate on
+  - scripts/rtk_gross_ablation.sh   # measurement instrument, requires the rtk binary installed; run by hand when the savings claim is being re-measured
+  - scripts/tier_census_grep.sh   # census HELPER invoked by hand during a Sonnet-Floor audit — it reports, it does not judge, so nothing gates on it
+  - scripts/fh-dispatch.sh   # entry point: the host-to-container bridge an operator or a headless job invokes directly, the way bin/*.js is invoked
+  - scripts/fh-frontier-send.sh   # declared RESEARCH ARTIFACT in its own header, explicitly "not a load-bearing tool" — wiring it would give it a status it disclaims
+
+baseline:
+  - scripts/below_floor_scan.sh   # PROSE-INVOKED FLOOR. operations.md §weekly-audit step 2 says to run it and nothing does; the pre-commit hook's below-floor ack is written against a consumer that never fires
+  - scripts/chamber_candidate_collect.sh   # the discovery entrance's second half; its sibling chamber_candidate_screen.sh has callers and this one does not
+  - scripts/validate_yaml.sh   # SHIPPED via package.json files[] and named by .github/workflows/validate.yml — but only inside a COMMENT, so the frontmatter validator that guards Codex/Gemini parsing runs nowhere
+  - scripts/frontier_digest_autopilot.sh   # the tracked plist names it on a /path/to/ PLACEHOLDER launchd cannot execute; ship_readiness_gate.md already records that placeholder as an identity-④ defect and the first draft of this ratchet PASSED over it
