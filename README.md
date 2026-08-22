@@ -619,23 +619,29 @@ Full spec: [`fh_integration_contract.md`](knowledge/shared/harness-core/fh_integ
 forge-harness treats a project like steel, and the metaphor is literal, not decoration. Work is shaped,
 hardened by attack, and only then does it ship faster, for having survived.
 
-> 🟥 **This is the name's origin, not a procedure — do not count it.** The smith's words below are a
-> vocabulary, not a stage list. They are a **different layer** from the three-stage process, the four
-> engines, the four-axis commit gate and the six verification axes above; nothing here lines up with a
-> number in any of those, and reading it as a fifth numbered set is the one mistake this section can
-> cause.
+> 🟥 **Not a fifth numbered set — it is the three-stage process said in the smith's words.**
+> An earlier version of this section said the smith's vocabulary *"lines up with nothing"* above.
+> That was wrong, and the two diagrams gave it away: both are three steps and an arrow into
+> **⟹ accelerate**. They were already the same shape; only the naming was kept apart. So this is
+> **one layer told twice**, not a second layer — the four engines, the four-axis commit gate and the
+> six verification axes remain different counts and still do not line up here.
 
-**Three at the anvil:**
+**Three at the anvil — and each is a stage of the three-stage process:**
 
-| The smith's word | What it means here | The commands |
-|---|---|---|
-| **Forge** | shape the raw project into a harness — raise its floor | `install-wizard`, "harness-ify this project" |
-| **Quench** | harden it by attack — the cold pass leaves standing only what is sound | `steel-quench` · `phantom-quench` |
-| **Temper** | take the brittleness back out of the hardened asset | `steel-quench` Wave-T · `templates/temper_check.sh` |
+| The smith's word | The stage | What it means here | The commands |
+|---|---|---|---|
+| **Forge** | ① **Plant the circuit** | shape the raw project into a harness, and settle *what counts as success / what it will never do* — **before** the design | `install-wizard` · `deep-clarify` · the marker's mandatory `①영혼` line (enforced at commit) |
+| **Quench** | ② **Parallel decorrelation** | cool it fast: many attempts in parallel, from decorrelated angles. It hardens quickly — 🟥 **and it makes the asset brittle**, which is exactly what quenching does to steel | `auto-decorrelation` · `agent-composer` · `meta-prompt-builder` · cross-family sidecars (codex · agy · gemini) · isolated worktree lanes |
+| **Temper** | ③ **Burn it on six axes** | reheat and draw the brittleness back out while keeping the hardness — this is where the attacking passes actually belong | `steel-quench` · `phantom-quench` · `sim-conductor` · `prompt-regression` · `verify-bidirectional` · `fh-meta:challenger` · revert probes · `templates/temper_check.sh` |
+
+> ⚠️ **The skill names carry the older reading and are kept as they are.** `steel-quench` and
+> `phantom-quench` say *quench*, but what they do — attacking a hardened asset until the brittleness
+> shows — is **temper**. Renaming shipped skills to fix a metaphor would be the more expensive lie;
+> the names stay and the roles are stated correctly here.
 
 ```mermaid
 flowchart LR
-  F["Forge"] --> Q["Quench"] --> T["Temper"] --> A(["⟹ Accelerate"])
+  F["Forge<br/>① circuit"] --> Q["Quench<br/>② parallel"] --> T["Temper<br/>③ six axes"] --> A(["⟹ Accelerate"])
   style A fill:#0f766e,stroke:#0f766e,color:#fff
 ```
 
