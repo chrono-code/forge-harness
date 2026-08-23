@@ -554,6 +554,7 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_crossfamily_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_floor_lanes.sh" \
   ".github/workflows/regression-guard.yml|scripts/test_regression_guard_ci_lanes.sh" \
+  ".github/workflows/validate.yml|scripts/test_leak_scan_control_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_standpoint_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_thirdparty_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_check_lanes.sh" \
