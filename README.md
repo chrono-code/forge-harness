@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/walkinglabs/awesome-harness-engineering#coding-agent-harnesses"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Harness Engineering"></a>
+  <a href="https://github.com/VoltAgent/awesome-agent-skills#community-skills"><img src="https://img.shields.io/badge/listed_in-awesome--agent--skills-0ea5e9.svg" alt="Listed in awesome-agent-skills"></a>
   <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
   <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
@@ -379,7 +380,7 @@ harness is actually used.
 **The three-stage process** — this is an *order of investment*, not a menu:
 
 ```mermaid
-flowchart LR
+flowchart TD
   S["① Circuit<br/>before design"]
   P["② Parallel decorrelation<br/>in the middle"]
   B["③ Burn it down<br/>on six axes"]
@@ -648,7 +649,7 @@ hardened by attack, and only then does it ship faster, for having survived.
 > the names stay and the roles are stated correctly here.
 
 ```mermaid
-flowchart LR
+flowchart TD
   F["Forge<br/>① circuit"] --> Q["Quench<br/>② parallel"] --> T["Temper<br/>③ six axes"] --> A(["⟹ Accelerate"])
   style A fill:#0f766e,stroke:#0f766e,color:#fff
 ```
