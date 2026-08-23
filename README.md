@@ -16,14 +16,7 @@
 </p>
 
 <p align="center">
-  <b>A meta-harness with the quality gates built in.</b>
-</p>
-
-<p align="center">
-  Projects, skills, harnesses — building them, checking them, speeding them up: you ask for it here.<br>
-  It does not simply hand the result back. It puts the work past several checks that fail in
-  <i>different</i> ways first.<br>
-  <b>And when the same request keeps coming back, it builds you the harness that does it for you.</b>
+  <b>Quality gates that catch you, not just your agent.</b>
 </p>
 
 <p align="center">
@@ -31,6 +24,13 @@
   the shape a change has to have. That is the part that becomes reusable, and it keeps its general
   form on purpose so it can be shaped to your case as you go.<br>
   <sub>What grows is the number of attempts: the trial and error comes off you and runs in parallel.</sub>
+</p>
+
+<p align="center">
+  Projects, skills, harnesses — building them, checking them, speeding them up: you ask for it here.<br>
+  It does not simply hand the result back. It puts the work past several checks that fail in
+  <i>different</i> ways first.<br>
+  <b>And when the same request keeps coming back, it builds you the harness that does it for you.</b>
 </p>
 
 ---
