@@ -15,10 +15,11 @@
 </p>
 
 <p align="center">
-  <b>너의 에이전트만이 아니라, 너를 잡는 품질 게이트.</b>
+  <b>당신의 에이전트도, 당신도 통과해야 합니다.</b>
 </p>
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/mascot.png" alt="" width="120" align="left" style="margin-right:16px">
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">

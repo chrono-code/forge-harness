@@ -249,8 +249,23 @@ do_digest() {
   awk '/^## 열어야 할 정본/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -v '^$'
   grep -E '^payload: ' "$sealfile" 2>/dev/null
   echo
-  echo "── 이 세션이 건드린 파일 (앞 20줄) ──"
-  awk '/^## 이 세션이 건드린 파일/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -v '^$' | head -20
+  # 🟥 2026-08-23: 이 블록은 절 전체를 뽑아 `head -20` 했다. seal 은 «파일 목록 → 브랜치 →
+  # 미푸시» 순으로 쓰므로, 파일이 캡을 채우면 **브랜치·미푸시가 조용히 사라진다** — 트리가
+  # 가장 바쁠 때, 즉 압축 복구에 git 상태가 가장 필요할 때다. 실측: status 20줄에서 digest 의
+  # `브랜치:` 히트 0, 그래서 --self-test #3 이 «git 레포가 아니다»로 읽혔다.
+  # 캡을 올리는 것은 임계를 옮길 뿐이다. git 상태 두 줄을 캡 **밖으로** 빼고, 잘린 줄 수를
+  # 말하게 한다 — 잘림과 부재를 가르지 않으면 0 으로 렌더된다.
+  _cp_sec="$(awk '/^## 이 세션이 건드린 파일/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -v '^$')"
+  _cp_git="$(printf '%s\n' "$_cp_sec" | grep -E '^[[:space:]]*(브랜치|미푸시|\(git 레포 아님\))')"
+  _cp_files="$(printf '%s\n' "$_cp_sec" | grep -vE '^[[:space:]]*(브랜치|미푸시|\(git 레포 아님\))')"
+  _cp_n="$(printf '%s\n' "$_cp_files" | grep -c . )"
+  if [ "$_cp_n" -gt 20 ]; then
+    echo "── 이 세션이 건드린 파일 (앞 20줄 / 전체 ${_cp_n}줄 — $((_cp_n - 20))줄 잘림) ──"
+  else
+    echo "── 이 세션이 건드린 파일 (${_cp_n}줄) ──"
+  fi
+  printf '%s\n' "$_cp_files" | head -20
+  [ -n "$_cp_git" ] && printf '%s\n' "$_cp_git"
   echo
   echo "── 운영자 발화 (앞 25건) ──"
   awk '/^## 운영자 발화/{f=1;next} /^## /{f=0} f' "$sealfile" 2>/dev/null | grep -E '^[0-9]+\.|^제외:|^합계:' | head -25
