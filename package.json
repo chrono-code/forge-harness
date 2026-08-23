@@ -244,6 +244,8 @@
     "scripts/test_prior_art_prompt_lanes.sh",
     "templates/settings.PriorArt.snippet.json",
     "scripts/listing_watch.sh",
-    "scripts/test_listing_watch_lanes.sh"
+    "scripts/test_listing_watch_lanes.sh",
+    "scripts/mapped_tracks.sh",
+    "scripts/test_mapped_tracks_lanes.sh"
   ]
 }

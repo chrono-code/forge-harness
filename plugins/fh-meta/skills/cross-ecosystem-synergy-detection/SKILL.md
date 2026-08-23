@@ -101,8 +101,20 @@ Call mechanism compatibility:
 
 ### Step 3-b. Harness-level pattern-transplant scan (conditional default)
 
-**Condition**: 2+ mapped field-harness tracks exist under `tracks/` (underscore-prefixed meta dirs
-such as `_meta`/`_audit`/`_contrib`/`_chamber` do not count). Otherwise skip with one line.
+**Condition**: 2+ mapped field-harness tracks exist. 🟥 **Establish the count by running
+`bash scripts/mapped_tracks.sh` — never by listing `tracks/` from the session's cwd.** The mapping
+signal is the *presence* of `tracks/<name>/`, and that signal cannot reach a worktree: `tracks/**` is
+gitignored, and at least one mapped track is an **empty directory** git could not carry even if it
+were not. Measured 2026-08-22, one run: **main checkout 11 · worktree 1** — a cwd listing does not
+return a smaller count, it returns a structurally blind one, and `skipped(<2 mapped tracks)` is a
+*pass* value, so the blind run closes green. The script resolves the hub root through
+`git rev-parse --git-common-dir` (the `EVIDENCE_ROOT` pattern this repo already sanctions in
+`templates/.git-hooks/pre-commit`) so both standpoints answer alike.
+🟥 **`status=UNMEASURED` (exit 3) is NOT a skip** — it means the count could not be taken, which is a
+different value from "fewer than two". Close it as `external-error` (non-pass); never as
+`skipped(<2 mapped tracks)`. Underscore-prefixed meta dirs (`_meta`/`_audit`/`_contrib`/`_chamber`)
+do not count — the test is a **leading** underscore, so a track like `the_bible` is counted.
+Otherwise skip with one line.
 
 Steps 1–3 look at **installed plugins/skills**. This step looks one layer up: the **governance
 mechanisms of the mapped field harnesses themselves** — verification axes, verdict enums, gate exit
@@ -355,7 +367,7 @@ External users automatically derive their own inventory via Step 1 `installed_pl
 | Condition | Check class |
 |---|---|
 | Steps 1~6 completed | **mandatory-pass** |
-| **Step 3-b reported as `run(n pairs)` or `skipped(<2 mapped tracks)`** — never silently omitted; read depth declared per track | **mandatory-pass** |
+| **Step 3-b reported as `run(n pairs)` or `skipped(<2 mapped tracks)`** — never silently omitted; read depth declared per track. 🟥 **The count comes from `bash scripts/mapped_tracks.sh`, and its `hub_root` / `in_worktree` line is quoted with the verdict** — a count taken by listing cwd is not evidence, it is the defect (main 11 vs worktree 1, measured 2026-08-22). `status=UNMEASURED` closes as `external-error`, **never** as `skipped` | **measured** (the count is a tool-call result, not a recollection) |
 | **Step 3-c closes as exactly one of `run(ⓐ=N ⓑ=N ⓒ=N)` · `offered(whole-environment mode)` · `withheld(residency)`** — 🟥 **there is deliberately no open `skipped(<reason>)` value.** A free-text reason is an escape hatch: «skipped — pair obvious» would satisfy a presence check while doing none of the work. Deciding a lookup is unnecessary is not a skip, it is **ⓐ**, and it gets counted. A lookup or tool **failure** closes as `external-error` — a **NON-PASS**, never one of the three above | **mandatory-pass** |
 | **Step 3-c pair ledger closes: `ⓐ + ⓑ + ⓒ + withheld == in-scope pair count`**, and ⓐ/ⓑ/ⓒ are assigned by tool-call evidence (none / local read / outward call), not by recollection | **measured** (counts come from the ledger and the session's tool history, not from memory) |
 | **Step 3-c queries carried problem shapes, not harness/repo/path names** — and any pair that genuinely could not be abstracted is recorded as `withheld (residency)`, never dropped silently | **mandatory-pass** |
