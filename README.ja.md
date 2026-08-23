@@ -19,6 +19,13 @@
 </p>
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
+</p>
+<p align="center">
+  <sub>演出ではなく実際の実行です。エージェントがスキル仕様を「整理」し、ゲートは<b>何が失われたか</b>を名指しします。セクションを戻せば整理はそのまま通ります。<br>再生成: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+</p>
+
+<p align="center">
   すでに Claude Code へ同じことを繰り返し伝えているはずです — 走らせる検査、守るべきルール、
   変更が満たすべき形。再利用できるようになるのはまさにその部分で、あえて汎用の形のままにしてあるので、
   使ううちにあなたの事例へ合わせて鍛えられます。<br>

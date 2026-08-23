@@ -21,6 +21,13 @@
 </p>
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
+</p>
+<p align="center">
+  <sub>A real run, not a mock: an agent “tidied up” a skill spec, the guard names what was <b>lost</b>, and the cleanup still ships once the section is back.<br>Regenerate: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+</p>
+
+<p align="center">
   You already tell Claude Code the same things over and over — the checks to run, the rules to hold,
   the shape a change has to have. That is the part that becomes reusable, and it keeps its general
   form on purpose so it can be shaped to your case as you go.<br>
