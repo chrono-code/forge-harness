@@ -15,6 +15,8 @@
   <b>English</b> · <a href="README.ko.md">한국어</a> · <a href="README.zh.md">中文</a> · <a href="README.ja.md">日本語</a>
 </p>
 
+<!-- This line was chosen, not drafted. Before rewriting it, read docs/ETHOS.md
+     §"Who this line is for" — two rejected alternatives are recorded there with why. -->
 <p align="center">
   <b>Quality gates that catch you, not just your agent.</b>
 </p>

@@ -116,3 +116,38 @@ forward), so the harness audits itself and the learnings compound session over s
   question, and an isolated reviewer also adds false positives you must triage.
 
 The honesty is not a disclaimer bolted on at the end. It *is* the positioning.
+
+---
+
+## Who this line is for
+
+> **Quality gates that catch you, not just your agent.**
+
+That sentence is the first thing on the README, and it was **chosen against two alternatives**. Both
+rejections are recorded because a line with no recorded reason gets rewritten by whoever edits next,
+and the reason is the part that does not survive in the artifact.
+
+**Rejected — "a reliable ally when you're unsure before opening a PR."** It names a *feeling*, and a
+feeling cannot be checked. What FH actually does is a set of things you can name and run: it blocks a
+commit, it refuses a publish, it makes an absent measurement say `UNMEASURED` instead of `0`. A
+first line should say **what you can do with it**, because that is the only half a reader can verify
+before installing. Warmth that outruns the verifiable is the same defect this file's §"What FH does
+not claim" exists to prevent — one register up.
+
+**Rejected — the solo-developer framing.** An earlier draft aimed the line at "a solo developer, before
+they open a PR". It reads narrower than the thing is. FH's gates fire the same way for one person and
+for a team; nothing in the machinery keys on team size. Naming an audience the machinery does not
+distinguish trades reach for nothing, and it invites the reader who *is* on a team to conclude the
+tool is not theirs.
+
+**And the surviving half is deliberately awkward: "catch *you*."** The natural sentence is "catches
+your agent" — that is what a reader expects and what most tools in this space promise. It is also the
+easier claim, and FH's own record refutes it as sufficient: on the day this line was written, the
+gates blocked the *author* seven times with **zero** self-catches ([`GATE_DAY.md`](GATE_DAY.md)). The
+person driving the agent is inside the surface being gated, and a first line that omits them is
+describing a smaller tool than the one that ships.
+
+⚠️ **Scope of this record.** These are positioning decisions, not measurements. The `GATE_DAY.md`
+figure is measured; "which sentence reads better" is not, and no reader study was run. What is being
+preserved here is *why the choice was made*, so a future rewrite argues with the reason rather than
+rediscovering it.
