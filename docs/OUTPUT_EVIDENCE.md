@@ -37,7 +37,7 @@
 |---|---|
 | Paper (v1.0) | Zenodo DOI [`10.5281/zenodo.20397566`](https://zenodo.org/records/20397566) — arXiv in review |
 | Package | npm [`@chrono-meta/fh-gate`](https://www.npmjs.com/package/@chrono-meta/fh-gate) — multi-backend governance gate (claude · codex · auto) |
-| Codex-compatible beta | `docs/codex-compat.md` — methodology layer runs model-agnostic |
+| Codex-compatible | `docs/codex-compat.md` — methodology layer runs model-agnostic. Marked **beta** there in the *validation-maturity* sense (external validation is still thin), **not** the *scope* sense: partial automation-layer support is the design, not an unfinished state |
 
 ## Validation signals (worked examples, not benchmarks)
 

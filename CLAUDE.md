@@ -13,7 +13,7 @@ forge-harness/
 └── CLAUDE.md              # This file (Sync/Push protocol)
 ```
 
-FH is a 2-layer system: **methodology layer** (model-agnostic — `tracks/`, `knowledge/`, `SKILL.md` docs) + **automation layer** (Claude-native — agents, hooks, slash commands). The methodology layer is designated Codex-compatible beta.
+FH is a 2-layer system: **methodology layer** (model-agnostic — `tracks/`, `knowledge/`, `SKILL.md` docs) + **automation layer** (Claude-native — agents, hooks, slash commands). The methodology layer is Codex-compatible (`beta` = validation maturity, not scope).
 
 Running Claude Code in this project activates **Control Tower** mode.
 
