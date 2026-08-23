@@ -24,8 +24,15 @@ if (process.env.CI || process.env.FH_NO_BANNER || process.env.CONTINUOUS_INTEGRA
 }
 try {
   process.stderr.write(
-    '\n⭐ forge-harness (fh-gate) — if this is useful, a star helps others find it:\n' +
-    '   https://github.com/chrono-meta/forge-harness\n' +
+    '\n✓ fh-gate installed — a governance gate for AI-written changes.\n' +
+    '\n' +
+    '  Try it on a change you already have:\n' +
+    '      npx fh-gate            # reviews your git diff, returns a typed verdict\n' +
+    '                             # PASS 0 · PENDING 1 · BLOCKED 2 · ESCALATE 3\n' +
+    '  Runs through your local `claude` CLI. Nothing staged? Stage something first —\n' +
+    '  with an empty diff it has nothing to review.\n' +
+    '\n' +
+    '⭐ Useful? A star helps others find it: https://github.com/chrono-meta/forge-harness\n' +
     '   (set FH_NO_BANNER=1 to silence this message)\n\n'
   );
 } catch (_) {

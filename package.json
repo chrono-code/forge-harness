@@ -2,6 +2,10 @@
   "name": "@chrono-meta/fh-gate",
   "version": "2.9.0",
   "description": "FH runtime adapters — run FH governance, skills, and agents via Claude or Codex with machine-parseable gates.",
+  "homepage": "https://github.com/chrono-meta/forge-harness#readme",
+  "bugs": {
+    "url": "https://github.com/chrono-meta/forge-harness/issues"
+  },
   "license": "MIT",
   "keywords": [
     "ai-governance",
