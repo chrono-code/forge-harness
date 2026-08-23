@@ -21,7 +21,6 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/mascot.png" alt="" width="120" align="left" style="margin-right:16px">
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">
