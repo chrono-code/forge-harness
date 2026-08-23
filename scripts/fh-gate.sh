@@ -62,6 +62,64 @@ EXIT_HARNESS_ERROR=10
 EXIT_ARG_ERROR=11
 EXIT_DRY_RUN=12
 
+# ── Flag handling ─────────────────────────────────────────────────────────────
+# 🟥 Added 2026-08-23 after a first-use measurement: there was NO flag handling at
+# all, so `--version` and `--help` fell through to TARGET_FILES and were treated as
+# file paths. The failure was not cosmetic — the script then built a governance
+# prompt around a nonexistent file and sent it to the user's `claude` CLI, which
+# correctly refused it as a prompt-injection attempt. A first-time user running the
+# most obvious command got their own assistant accusing this tool.
+#
+# Unknown flags are an ERROR, never a filename. Silently demoting an unrecognized
+# argument to "a file to review" is the same shape as demoting an unknown mode to a
+# weaker check: the run continues, reports something, and the something is wrong.
+case "${1:-}" in
+  --version|-V)
+    printf '%s\n' "fh-gate $VERSION"
+    exit 0
+    ;;
+  --help|-h)
+    printf '%s\n' "fh-gate $VERSION — FH governance gate"
+    printf '%s\n' ""
+    printf '%s\n' "  Reviews a change through an AI backend and returns a typed verdict, so a"
+    printf '%s\n' "  machine can act on it. Uses your local 'claude' CLI by default."
+    printf '%s\n' ""
+    printf '%s\n' "Usage"
+    printf '%s\n' "  fh-gate                     review the current git diff (auto-detected)"
+    printf '%s\n' "  fh-gate \"<files>\"           review an explicit space-separated file list"
+    printf '%s\n' "  fh-gate \"<files>\" <level>   level: quick (default) or full"
+    printf '%s\n' "  fh-gate --version | --help"
+    printf '%s\n' ""
+    printf '%s\n' "Exit codes"
+    printf '%s\n' "  0   PASS       no findings"
+    printf '%s\n' "  1   PENDING    B-grade findings; proceed with awareness"
+    printf '%s\n' "  2   BLOCKED    A-grade findings; do not merge"
+    printf '%s\n' "  3   ESCALATE   human decision required"
+    printf '%s\n' "  10  harness error — backend unavailable, timeout, unparseable verdict"
+    printf '%s\n' "  11  argument error"
+    printf '%s\n' "  12  dry run — prompt emitted, NO review performed"
+    printf '%s\n' ""
+    printf '%s\n' "  10, 11 and 12 sit outside the verdict range on purpose: a check that did"
+    printf '%s\n' "  not run must never be readable as a pass."
+    printf '%s\n' ""
+    printf '%s\n' "Environment"
+    printf '%s\n' "  FH_BACKEND=claude|codex|auto|cross   backend (default: claude)"
+    printf '%s\n' "  FH_MODEL=<model>                     model override"
+    printf '%s\n' "  FH_DRY_RUN=1                         emit the prompt only; exits 12"
+    printf '%s\n' "  FH_TIMEOUT=<seconds>                 backend kill deadline (default: 120)"
+    printf '%s\n' "  FH_VERBOSE=1                         print full backend stderr"
+    printf '%s\n' ""
+    printf '%s\n' "  https://github.com/chrono-meta/forge-harness"
+    exit 0
+    ;;
+  -*)
+    printf '%s\n' "ERROR: unrecognized option '${1}'." >&2
+    printf '%s\n' "       fh-gate takes a FILE LIST, not flags — an unknown option is not a filename." >&2
+    printf '%s\n' "       Run 'fh-gate --help' for usage." >&2
+    exit 11
+    ;;
+esac
+
 TARGET_FILES="${FH_TARGET_FILES:-${1:-}}"
 GATE_LEVEL="${FH_GATE_LEVEL:-${2:-quick}}"
 FH_CALLER="${FH_CALLER:-${3:-ci}}"
