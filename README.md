@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <b>Before the PR goes up, it blocks what review would have missed.</b>
+  <b>Quality gates that catch you, not just your agent.</b>
 </p>
 
 <p align="center">

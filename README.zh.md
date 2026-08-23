@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <b>在 PR 提上去之前，它拦下评审本会漏掉的东西。</b>
+  <b>抓住的不只是你的 agent，还有你——的质量门禁。</b>
 </p>
 
 <p align="center">
