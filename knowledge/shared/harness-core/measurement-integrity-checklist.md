@@ -122,6 +122,32 @@ here.** Three shapes, all observed 2026-07-20 in a single session:
 | n+9 | **Language / encoding assumption mismatch** | An **ASCII-token scanner run over a Korean corpus**: the index wrote `catch`, `MERGED`, `expert-system`; the files wrote `잡았다`, `머지`, `케이스크래프트` → every token scored as missing. **~96% false positives** | One known-negative (an entry you know is fully covered) scores as "missing" → mismatch exposed |
 | n+10 | **Accepted into the scanned set, but no probe matches that shape** — the instrument counts the file as covered and reports it *clean* | `degrade_direction_scan.sh` collected `.sh` files while every probe was Python-shaped (`except:` / `.get(k, True)` / `if not x:`). A known-positive bash file with four default-toward-PASS constructs scored **0/4**, and the output read `no default-toward-PASS smells in 1 scanned py/sh file` (2026-07-28) | The known-positive of *that shape* scores 0 while the summary says "scanned" — the tell is coverage claimed without detection demonstrated |
 | n+11 | **The collection predicate, not the probe, is what silently drops the target** | Same scan: git hooks are named `pre-push` (no extension) under `.git-hooks` (dotted directory), and the extension test ran against the **full path**, so FH's own mechanical floor reported `no scannable (py/sh) target files`, exit 0 | Point the instrument at a directory you *know* holds a positive; an empty file list is the finding, not a clean result |
+| n+12 | **The measured axis does not vary with the arm — and equal scores are read as "no difference"** | External name: **frozen-replay defect** (`001TMF/harness-forge`, absorbed 2026-08-23 — *"the single most common way a harness search produces a confident, meaningless result"*). Their instance: a scorer replaying cached outputs makes quality **constant across candidates**, so the search happily returns a winner while measuring only cost. **Ours is not that instance** — see the note below | A **known-pair on the actual pair being compared**, not on a fixture: inject an arm that MUST score differently. If it does not, the equal scores were the instrument standing still, not the arms being alike |
+
+🟥 **n+12 is the class every *comparative* measurement is exposed to — A/B arms, ablation, before/after,
+tier batteries** — and it is the one shape on this list where **the instrument's silence looks exactly
+like a finding.** n+7…n+11 produce a wrong number; n+12 produces a *confident conclusion* ("no
+difference → CUT / no regression → ship") out of an instrument that never moved.
+
+**Measured against our own ablation runner, 2026-08-23** (`scripts/probe_scope_check.sh` ·
+`ablation_calibrate.sh` · `.claude/regression/ablation_verdicts.md`), so this row is not imported on faith:
+
+| Leg | Verdict |
+|---|---|
+| Is there a cache/replay path (their literal mechanism)? | **Structurally absent** — every arm/rep is a live dispatch, so their instance cannot occur here |
+| Is arm B verified to have actually not seen the ablated section? | **Closed** — injection/leak control |
+| Is the scorer verified to respond at all? | **Closed** — a known-pair the calibrator must pass before a run is allowed |
+| 🟥 Is the scorer verified to respond **to the pair actually being compared**? | **OPEN.** The known-pair runs against a separate fixed fixture, never against the live arm A/B. Equal scores on a real pair are therefore not distinguishable from a stalled instrument |
+
+⚠️ **Do not read "no false CUT has happened" as safety.** Of the recorded verdicts, all showed arms
+scoring clearly apart and **zero CUTs have ever been issued** — so the open leg has never been
+exercised. `not found ≠ 0`; an untriggered hole is untested, not closed.
+
+**What actually transferred was the question, not the defect** — *"is my instrument responding to the
+arm at all?"* That question is portable even where the mechanism is not, which is the general lesson
+for absorbing an outside failure shape: check whether their **mechanism** exists here before adopting
+their **conclusion**. (Prescription deliberately NOT built: recurrence is 1, below this repo's own
+mechanization threshold — `[[feedback_mechanize_at_repetition_prose_before]]`.)
 
 Secondary false-positive sources in the same run, worth checking explicitly: **whitespace/hyphen
 variants** (`3주새` vs `3주 새`), and treating a line's **navigational annotation** (`(detail …, archive)`)
@@ -151,6 +177,11 @@ as a factual claim.
   (check class: **mandatory-pass** — record both cases and their outcomes)
 - At least one sample hand-verified before any count is written into a report
   (check class: **mandatory-pass**)
+- **If the measurement is COMPARATIVE** (A/B arms, ablation, before/after, tier battery): the
+  known-pair ran against **the pair actually being compared**, not only against a fixed fixture — and
+  **equal scores are reported as `INSTRUMENT-UNCONFIRMED`, never as "no difference"**, until an arm
+  known to score differently has moved the metric (check class: **mandatory-pass** — record which
+  pair the known-pair ran on; n+12)
 - If either is absent, the output carries the literal token `UNCALIBRATED`
   (check class: **mandatory-pass** — grep the report for the label)
 - Adversarial pairing for the judged part ("is this instrument valid for this corpus?"): the
