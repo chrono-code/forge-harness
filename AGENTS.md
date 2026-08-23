@@ -253,3 +253,8 @@ The constraint above is not.
 > pass `bash scripts/ablation_calibrate.sh` (exit 0), and verdicts are recorded in
 > `.claude/regression/ablation_verdicts.md`. Worth knowing before you propose a cut: a section whose
 > removal makes a reader answer *confidently wrong* counts as load-bearing, not as safe to drop.
+> **And the trap that produces a wrong CUT most easily**: when both arms score the *same*, that is
+> equally consistent with the section being redundant and with the scorer never having moved. The
+> two are indistinguishable from the outcome alone. Before writing a CUT on equal scores, name an arm
+> that MUST score differently and show the metric moved on *that* pair; if it did not, the verdict is
+> `INSTRUMENT-UNCONFIRMED`, not `CUT` (added to the script header 2026-08-23, §7).
