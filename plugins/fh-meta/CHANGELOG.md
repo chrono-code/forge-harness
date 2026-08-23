@@ -8,6 +8,76 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+### [2.9.0] — 2026-08-23
+
+**자릿수 근거 (minor)**: 새 게이트 레인 둘 · 새 자산 하나 · 소비자 게이트 수용을 바꾸는 변경 하나.
+major 아님 — 정체성 다섯이 전부 🟢 도 아니고(블로커는 여전히 ④ 하나), capability **class** 신설도
+아니다. **이미 있던 게이트를 조인 것에는 major 를 쓰지 않는다**는 정책 그대로.
+
+> **BREAKING (gate)**: `templates/regression_guard.sh` 가 이제 «0바이트로 비워진 / 내용이 사라진»
+> 게이트 경로 자산을 **M-tier 로 막는다**(전에는 통과했다). 처방: 제거가 의도라면 **파일을 지워라**
+> — 진짜 삭제는 git 에게 직접 물어(`--diff-filter=D`) 여전히 통과한다. 원래 비어 있던 파일은
+> **S-tier 경고**이고 차단하지 않으며, 못 읽는 파일은 **M-tier 계기오류**로 «통과»가 아니다.
+
+#### 🟥 부재-단언 관용구 — 우리 게이트 셋이 같은 얼굴로 뚫려 있었다
+
+`cmd && echo FOUND || echo NOT_FOUND` 계열, 즉 **통과 토큰이 실패 가지에서 생산되는** 형태.
+부재를 확인하는 게이트는 «참이기를 가장 바라는» 게이트라 거짓 초록의 피해가 가장 크다.
+
+- `templates/regression_guard.sh` — *삭제* · *0바이트로 비워짐* · *못 읽음* 세 상태가 한 분기로
+  접혀 있었고 접힌 방향이 PASS 였다. 실측(일회용 레포, `--staged`, 변수 하나씩):
+  컨트롤 = 무해한 추가 → PASS · known-positive = `## Done When` 삭제 → **BLOCK**(계기 판별력 확인)
+  · 🟥 **같은 파일 0바이트 → PASS**. 전부 잃었는데 초록이었다.
+- `.github/workflows/validate.yml` — `|| true` 가 grep 의 **오류(2)** 를 **무매치(1)** 에 접었다.
+  죽은 계기가 「깨끗함」으로 렌더된다. `rc>=2` → `INSTRUMENT ERROR` 로 분리하고, **실제 히트를
+  세기 전에** known-positive 컨트롤 픽스처를 먼저 통과시키도록 순서를 고정했다.
+- `scripts/mapped_tracks.sh` — 못 읽는 디렉터리가 `count=0` 이 되어 하류가 `skipped` 로 통과.
+  `[ -r ] && [ -x ]` 로 분리. 4케이스 표에서 `111` 이 결정적이다(`-x` 만으로는 통과한다).
+
+외부에서 이 부류에 이름을 붙여 준 것은 `Leonxlnx/unlazy` 이슈 #13 의 회신자다.
+
+#### 🟥 인큐베이션 큐가 한글 후보의 절반을 조용히 삼키고 있었다
+
+`scripts/chamber_candidate_collect.sh` 의 `raw 64 → dedup 31` 은 성능이 아니라 **결함**이었다.
+`sort -u` 의 UTF-8 collation 이 토큰 8개를 2개로 접었고, 2차 피해가 더 나빴다 — `comm -12` 가
+같은 collation 을 쓰므로 **jaccard 의 분자가 토큰이 아니라 collation 을 재고 있었다.**
+`LC_ALL=C` + 바이트 기반 awk 토크나이저로 교체(BSD awk · mawk 1.3.4 · gawk 5 에서 바이트 동일 확인).
+수리 후 **61**. 삼켜지고 있던 것 중에 정체성 ④ 후보가 있었다.
+
+#### 추가된 게이트·자산
+
+- **caller-zero ratchet** (`scripts/script_caller_ratchet.sh` + `ratchet_base_resolve.sh` +
+  `package_coverage_check.sh`, CI 는 `caller-zero-ratchet.yml`) — 호출자 0인 스크립트가 조용히
+  느는 것을 막는다. 🟥 **그 게이트 자신이 처음엔 fail-open 이었고**, 그 사실을 함께 기록했다.
+- **파괴적-op 훅 CI 상시 재검증** — 훅이 조용히 망가지는 것을 known-pair 로 매 PR 재실행.
+- **`scripts/mapped_tracks.sh`** (신규) — 매핑된 필드 하네스 리졸버 + 전용 레인 스위트.
+  door ④ Step 3-b 배선.
+- **door ④ Step 3-c** — 프런티어 답습 루프 배선.
+
+#### 정정 · 기록
+
+- 🟥 **「`standpoint:` 값을 검증하는 코드가 0줄」은 거짓이었다** — 상주·정본 층 **8자리 / 6파일**
+  전수 철회. 실물: `validate_standpoint_leg()` 는 86줄이고 호출되어 커밋을 **차단한다**.
+  정확한 잔여는 훨씬 좁다 — enum 은 닫혀 차단하고, `tier2`+ 의 grounds 검사만 advisory 다.
+  레포 안에 계수기가 **둘**이었고(FIVE vs 여섯) **둘 다 틀렸다.**
+- **`docs/GATE_DAY.md`** (신규, 공개) — 하루치 자기 실측. 게이트가 저자를 **7회** 막았고
+  **자력 적발 0**, 여덟 번째는 CI 가 뒤늦게 잡았다(그 자체가 이 레포의 「CI 는 백스톱이지
+  발견 수단이 아니다」 위반이다). 어떤 델타도 6축을 전부 태우지 않았다.
+- **마감 체인** — 워크트리에서 마감하면 살아있는 peer 를 전원 놓치던 것을 수리.
+- **README** — 게이트만 쓸 사람이 4스크롤 뒤에 만나던 답을 첫 화면으로. 첫 줄 =
+  *"Quality gates that catch you, not just your agent."* (4개 언어 + 레포 description 통일).
+  DOI · `Codex-beta — help validate` 배지 제거.
+
+#### 정직하게 남기는 잔여
+
+- 이 릴리스의 커밋 셋(#511·#512·#513)은 **PR 제목이 전부 동일**하다. 브랜치를 서로 위에 쌓고
+  가장 **오래된** 커밋 제목을 집는 스크립트를 쓴 결과다. 내용은 컨트롤과 함께 검증됐고,
+  이력 재작성은 금지라 **고치지 않고 적어 둔다.**
+- 부재-단언 관용구(N=4)와 built-but-not-wired(N=4) 둘 다 기계화 임계를 넘었으나
+  **«무엇을 지을지»가 미정**이다. 투기 빌드를 하지 않는다.
+
+---
+
 ### [2.8.0] — 2026-08-22
 
 **자릿수 근거 (minor)**: 새 게이트 레인 · 행동을 바꾸는 교리 · 소비자 install 동작 변경.
