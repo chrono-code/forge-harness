@@ -348,7 +348,7 @@ Project B  ──→  CLAUDE.md에서 허브 연결
 **3단 공정** — 이것은 메뉴가 아니라 *투자의 순서*입니다:
 
 ```mermaid
-flowchart LR
+flowchart TD
   S["① 설계 전에<br/>판단 회로"]
   P["② 중간은<br/>병렬 탈상관"]
   B["③ 마무리<br/>6축 태우기"]
@@ -633,7 +633,7 @@ forge-harness는 프로젝트를 강철처럼 다루고, 이 은유는 장식이
 > 은유를 맞추자고 출하된 스킬 이름을 바꾸는 게 더 비싼 거짓말이라, 이름은 두고 역할만 여기 바로잡습니다.
 
 ```mermaid
-flowchart LR
+flowchart TD
   F["벼림 Forge<br/>① 영혼"] --> Q["담금질 Quench<br/>② 병렬 탈상관"] --> T["뜨임 Temper<br/>③ 6축"] --> A(["⟹ 가속"])
   style A fill:#0f766e,stroke:#0f766e,color:#fff
 ```

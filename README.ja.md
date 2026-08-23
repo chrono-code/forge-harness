@@ -353,7 +353,7 @@ Project B  ──→  CLAUDE.md でハブを接続
 **3段工程** — これはメニューではなく*投資の順序*です:
 
 ```mermaid
-flowchart LR
+flowchart TD
   S["① 判断回路<br/>設計の前に"]
   P["② 並列脱相関<br/>中間で"]
   B["③ 焼き切る<br/>6つの軸で"]
@@ -597,7 +597,7 @@ forge-harness はプロジェクトを鋼のように扱い、この比喩は装
 > 高くつく嘘なので、名前は残し、役割だけをここで正します。
 
 ```mermaid
-flowchart LR
+flowchart TD
   F["鍛え<br/>① 魂"] --> Q["焼き入れ<br/>② 並列脱相関"] --> T["焼き戻し<br/>③ 6軸"] --> A(["⟹ 加速"])
   style A fill:#0f766e,stroke:#0f766e,color:#fff
 ```

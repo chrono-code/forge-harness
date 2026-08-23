@@ -328,7 +328,7 @@ Project B  ──→  在 CLAUDE.md 中连接中枢
 **三段工序** —— 这是一个 *投入的顺序*，不是一份菜单：
 
 ```mermaid
-flowchart LR
+flowchart TD
   S["① 立坐标系<br/>设计之前"]
   P["② 并行去相关<br/>中段"]
   B["③ 烧一遍<br/>六条轴上"]
@@ -561,7 +561,7 @@ forge-harness 把项目当作钢来对待，而这个隐喻是字面的，不是
 > 是更昂贵的谎言；因此名字留着，只在这里把角色说清楚。
 
 ```mermaid
-flowchart LR
+flowchart TD
   F["锻造 Forge<br/>① 回路"] --> Q["淬火 Quench<br/>② 并行去相关"] --> T["回火 Temper<br/>③ 六轴"] --> A(["⟹ 加速 Accelerate"])
   style A fill:#0f766e,stroke:#0f766e,color:#fff
 ```

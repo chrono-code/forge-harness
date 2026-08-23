@@ -380,7 +380,7 @@ harness is actually used.
 **The three-stage process** — this is an *order of investment*, not a menu:
 
 ```mermaid
-flowchart LR
+flowchart TD
   S["① Circuit<br/>before design"]
   P["② Parallel decorrelation<br/>in the middle"]
   B["③ Burn it down<br/>on six axes"]
@@ -649,7 +649,7 @@ hardened by attack, and only then does it ship faster, for having survived.
 > the names stay and the roles are stated correctly here.
 
 ```mermaid
-flowchart LR
+flowchart TD
   F["Forge<br/>① circuit"] --> Q["Quench<br/>② parallel"] --> T["Temper<br/>③ six axes"] --> A(["⟹ Accelerate"])
   style A fill:#0f766e,stroke:#0f766e,color:#fff
 ```
