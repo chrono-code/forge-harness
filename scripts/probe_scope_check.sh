@@ -53,6 +53,25 @@
 #            not right by luck;
 #        (c) arm B's wrong answer must be CONSEQUENTIAL -- name the behavior it changes. "Wrong but
 #            harmless" is not a KEEP.
+#   7. 🟥 "BOTH ANSWERED" AND "THE SCORER NEVER MOVED" LOOK IDENTICAL -- and only one of them is a
+#      CUT. Step 6's redundancy branch reads equal outcomes as evidence about the SECTION; it is
+#      equally consistent with the instrument standing still, in which case the CUT is manufactured
+#      by the measurement rather than found by it. This is the one failure on the calibration list
+#      whose silence is shaped like a finding (measurement-integrity-checklist.md n+12; the external
+#      name for the cached-scorer instance is "frozen-replay defect").
+#      WHAT IS ALREADY CLOSED, so this is not a restatement of the controls above: the leak control
+#      proves arm B did not SEE the section, and ablation_calibrate.sh proves the scorer responds
+#      AT ALL -- but that known-pair runs against a FIXED FIXTURE, never against the live A/B pair.
+#      So neither one licenses "these two arms are alike".
+#      THEREFORE, before writing a CUT on equal outcomes: name an arm that MUST score differently
+#      (e.g. arm A with the answer deleted outright) and show the metric moved on THIS pair. If it
+#      did not, the verdict is INSTRUMENT-UNCONFIRMED, not CUT -- and that token goes in
+#      `.claude/regression/ablation_verdicts.md`, because an unconfirmed instrument recorded as
+#      "no difference" is exactly how a live section gets deleted.
+#      Scope, measured 2026-08-23 rather than assumed: this repo has issued ZERO CUTs, so this leg
+#      has never been exercised. Untested is not safe ([[feedback_not_found_is_not_zero_family]]).
+#      Deliberately PROSE, not a code assert: recurrence is 1, below the mechanization threshold
+#      ([[feedback_mechanize_at_repetition_prose_before]]). Mechanize on the first real CUT.
 # The isolation is the whole experiment: ablation asks "is this knowable without the resident text",
 # not "can an agent find it".
 #
