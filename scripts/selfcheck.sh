@@ -463,6 +463,34 @@ else
   fail=1
 fi
 
+# files-manifest-shipping — sibling of package-coverage, DIFFERENT question. That check walks
+# REFERENCES (a shipped doc names a path, does the path ship); this one walks package.json's files[]
+# ARRAY ITSELF and asks whether every declared entry exists on disk. selfcheck.sh's own branch_claim
+# block (below) names the exact gap this closes: "measured 2026-08-09, package_coverage_check.sh
+# returns PASS on a files[] entry whose file does not exist, so a deleted subject would be green on
+# every surface" — that comment calls fixing it, for every subject and not just branch_claim.sh, "a
+# separate change with its own verification". This is that change.
+if [ ! -f scripts/files_manifest_shipping_check.sh ]; then
+  _absent_subject_verdict "test_files_manifest_shipping_lanes.sh" "scripts/files_manifest_shipping_check.sh" || fail=1
+elif [ -f scripts/test_files_manifest_shipping_lanes.sh ]; then
+  if ! bash scripts/test_files_manifest_shipping_lanes.sh; then
+    fail=1
+  fi
+  # Same applicability guard as package-coverage directly above, same reason: a repo with no npm
+  # surface has no files[] to audit, and that is NOT-APPLICABLE, not a red.
+  if [ -f package.json ] || [ -d bin ]; then
+    if ! bash scripts/files_manifest_shipping_check.sh; then
+      fail=1
+    fi
+  else
+    echo "SKIP  files-manifest-shipping — NOT APPLICABLE: this repo ships no npm surface"
+    echo "      (checked mechanically: package.json absent, bin/ absent — not a claim, a test)"
+  fi
+else
+  echo "FAIL  test_files_manifest_shipping_lanes.sh: files_manifest_shipping_check.sh present but its anchor is missing"
+  fail=1
+fi
+
 # lane-runner — sibling of package-coverage one level up: that one asks "does the CONSUMER get the
 # file a shipped doc names", this one asks "does ANYTHING execute the lane suite we wrote". Measured
 # 2026-08-12 (reship axis, card §🔱⑮ A): 12 of 43 suites under scripts/ had no runner in selfcheck,
