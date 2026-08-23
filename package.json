@@ -27,7 +27,7 @@
     "prepare": "chmod +x bin/fh-gate.js bin/fh-run.js bin/fh-goal.js bin/fh-codex-doctor.js scripts/fh-gate.sh scripts/fh-run.sh scripts/fh-goal.sh",
     "postinstall": "node scripts/postinstall_notice.js",
     "test": "bash scripts/selfcheck.sh",
-    "prepublishOnly": "bash scripts/prepublish_scope_note.sh && bash scripts/publish_freshness_check.sh && bash scripts/version_lockstep_check.sh && bash scripts/package_coverage_check.sh --vs-tarball && bash scripts/public_surface_scan_files.sh",
+    "prepublishOnly": "bash scripts/prepublish_scope_note.sh && bash scripts/publish_freshness_check.sh && bash scripts/version_lockstep_check.sh && bash scripts/package_coverage_check.sh --vs-tarball && bash scripts/files_manifest_shipping_check.sh --vs-tarball && bash scripts/public_surface_scan_files.sh",
     "release": "bash scripts/public_surface_scan_files.sh && npm publish"
   },
   "engines": {
@@ -73,6 +73,8 @@
     "scripts/test_lane_runner_lanes.sh",
     "scripts/test_version_lockstep_lanes.sh",
     "scripts/package_coverage_check.sh",
+    "scripts/files_manifest_shipping_check.sh",
+    "scripts/test_files_manifest_shipping_lanes.sh",
     "scripts/test_ko_tech_writer_lanes.sh",
     "scripts/ko_tech_writer_calibrate.py",
     "plugins/fh-commons/skills/ko-tech-writer/fixtures/known_positive.md",
