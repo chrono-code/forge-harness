@@ -543,6 +543,7 @@ _LANE_TO=""; command -v timeout >/dev/null 2>&1 && _LANE_TO="timeout 300"
 for _pair in \
   "scripts/degrade_probe_capability.sh|scripts/test_capability_entrypoint_shipping.sh" \
   "scripts/chamber_run.sh|scripts/test_chamber_run_lanes.sh" \
+  "scripts/chamber_candidate_collect.sh|scripts/test_chamber_sig_lanes.sh" \
   "scripts/destructive_pre_gate.sh|scripts/test_destructive_pre_gate_lanes.sh" \
   "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_lanes.sh" \
   "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_liveness.sh" \
@@ -1079,12 +1080,19 @@ else
 fi
 
 # listing_watch — 같은 형태. 🟥 이 블록을 «레인을 짓는 같은 커밋에서» 붙인다: 바로 위 주석이
-# 기록한 「레인은 지었는데 selfcheck 배선을 안 했다」 재발이 **최소 네 번**이고, 그 넷 다 CI 나
+# 기록한 「레인은 지었는데 selfcheck 배선을 안 했다」 재발이 **최소 다섯 번**이고, 그 다섯 다 CI 나
 # lane-runner 가 뒤늦게 잡았다. 순서를 바꾸는 것이 유일한 처방이라 여기서 그렇게 한다.
 # 🟥 **2026-08-23 정정 — 「세 번」은 stale 이었다. 그리고 숫자보다 함의가 중요하다**: 네 번째는
 # 2026-08-22 에 났는데, **이 주석 바로 아래에서** 났다. 처방이 «읽히는 자리»에 있었는데도 재발한
 # 것이다. ⇒ 「주석을 더 잘 쓰자」가 아니라 **「살리언스로는 이 축이 안 닫힌다」**의 근거다.
 # (회수 경위: 그 관측은 폐기된 워크트리 사본에만 있었고, peer 세션이 버리기 전에 건져 올렸다.)
+# 🟥 **다섯 번째 = 바로 이 주석을 「네 번」으로 고친 그 커밋 자신이다** (2026-08-23, CI 적발).
+#    그 델타가 `:546` 의 `chamber_candidate_collect.sh|test_chamber_sig_lanes.sh` 배선 한 줄을
+#    **의도 없이 지웠고**, 레인 파일은 그대로 남아 lane-runner 가 「돌리는 게 없는 스위트」로
+#    잡았다. 즉 **이 축을 서술하는 행위가 이 축의 다음 사례를 생산했다.** 자력 적발 0.
+#    ⚠️ 이번 것은 앞의 넷과 형태가 하나 다르다 — 앞의 넷은 «배선을 안 붙였다»(누락)인데
+#    이건 «있던 배선을 지웠다»(회귀)다. 같은 계기(lane-runner)가 둘 다 잡았으므로 한 카운터에
+#    두지만, 처방이 갈릴 수 있다는 뜻이므로 접지 말고 여기 적어 둔다.
 if [ ! -f scripts/listing_watch.sh ]; then
   echo "FAIL  scripts/listing_watch.sh is in package.json files[] but absent — a deleted subject, not a skip"
   fail=1
