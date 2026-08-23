@@ -19,6 +19,13 @@
 </p>
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
+</p>
+<p align="center">
+  <sub>这是真实运行，不是演示。一个 agent「整理」了技能规范，门禁会指出<b>丢失了什么</b>；把该章节放回去后，整理部分依然通过。<br>重新生成：<code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+</p>
+
+<p align="center">
   你大概已经在对 Claude Code 反复说同样的话：要跑的检查、要守的规则、一次变更该有的样子。
   变得可复用的正是这一部分，而它刻意保持通用的形态，好在使用过程中按你的场景当场锻造。<br>
   <sub>长起来的是尝试的次数：试错从你身上剥离，并行地跑。</sub>
