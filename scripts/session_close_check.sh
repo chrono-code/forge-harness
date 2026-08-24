@@ -566,5 +566,93 @@ CARD_LINE_EOF
   [ "$DRIFT_HITS" -eq 0 ] && echo "✅ ⑤-b no card absence-claim contradicted by on-disk artifacts"
 fi
 
+# ⑤-C CARRY-OVER probe — 카드 재작성이 «아직 안 온 기한» 을 날렸는가.
+# WHY (2026-08-24, 실측 손실 1건): ⑤ 재작성이 delta update 가 아니라 새로 쓰기가 되어 미완·
+# 시각박힌 항목이 통째로 사라졌다 — 그날 저녁 19:00 게시, 다음날 GeekNews, 14일 referrer 측정,
+# 08-26 미팅. 세션은 "BEFORE 172 → AFTER 101" 이라는 diff 를 출력하고도 «줄었다» 만 말하고
+# «무엇이 빠졌나» 는 보지 않았다. 운영자가 물어서 발견 — 자력 아니다.
+# 🟥 이것은 tier 문제가 아니라 WIRING 문제다. 카드 규율(§Session Wrap-up)은 「완료 항목이
+# 남는 게 버그」라고 한 방향만 적고 있고, 그 역방향(미완이 사라지는 것)은 검사가 0줄이었다.
+# 규율이 한 방향만 적혀 있으면 그 반대는 안 보인다. base op 이 살리언스에만 얹혀 있었으므로
+# sonnet_floor_doctrine §tier-gated base op = defect 에 해당한다 — N 을 세기 전에 닫는다.
+#
+# WHAT IT ASSERTS (채널이지 결론이 아니다 — CLAUDE.md §Mechanization Boundary):
+#   「이전 카드에 있던 **미래 날짜**가 오늘 카드나 오늘 fh_completed 에 여전히 나타나는가」
+#   = 기록의 성질(존재·귀속). 「이 항목을 지워도 되는가」는 **판정하지 않는다** — 그건 판단이고
+#   얼리면 오늘의 판단이 내일의 천장이 된다. 완료 처리했으면 fh_completed 에 날짜가 남으므로
+#   그 경로로 통과한다.
+#
+# HONEST SCOPE:
+#   · 판별자는 `YYYY-MM-DD` / `MM-DD` 토큰뿐이다. 날짜 없이 적힌 미완(«4090 부팅 UNKNOWN»)은
+#     구조적으로 못 잡는다 — 앵커지 floor 가 아니다.
+#   · 이전 카드는 companion store 의 git 이력에서 온다. 그게 없는 install(대부분의 소비자)에서는
+#     **SKIP 이고 PASS 가 아니다** — 미측정을 초록으로 접지 않는다.
+#   · ASCII 클래스만 쓴다. 다국어 RANGE 를 bracket 안에 넣으면 C 로케일 GNU grep 이
+#     `Invalid collation character` 로 exit 2 하고 **아무것도 안 뱉는다** → no-match 와 구분 불가
+#     (⑤-b 가 2026-07-31 에 정확히 그렇게 무음 통과했다).
+# DEGRADE: 이전 카드 못 구함 → SKIP(미측정 표기) · 구했는데 미래날짜 유실 → FAIL=1.
+#   FAIL 은 FH_SESSION_CLOSE=1 인 close push 만 막고 일반 push 는 surface 한다(가역 표면 규율).
+#   과차단 시 override: FH_CARRYOVER_OK=1 (무엇을 우회했는지 출력에 남는다).
+# 기본값을 두지 않는다 — companion store 의 이름은 install 마다 다르고, 특정 이름을 공개
+# 파일에 박으면 그 자체가 operator-private 토큰이다(이 줄은 실제로 그렇게 한 번 차단됐다).
+# 설정은 각자의 로컬 바인딩에서 FH_COMPANION_STORE 로 준다.
+_CARRY_STORE="${FH_COMPANION_STORE:-}"
+_CARRY_MIRROR="tracks-meta/reference_next_session_starter.md"
+if [ ! -f "$CARD" ]; then
+  : # ⑤ 가 이미 카드 부재를 FAIL 로 보고했다 — 여기서 중복 보고하지 않는다
+elif [ "${FH_CARRYOVER_OK:-0}" = "1" ]; then
+  echo "⚠️  ⑤-C SKIPPED by FH_CARRYOVER_OK=1 — 이전 카드의 미래-날짜 유실 검사를 우회했다"
+elif [ -z "$_CARRY_STORE" ] || [ ! -d "$_CARRY_STORE/.git" ]; then
+  echo "⬜ ⑤-C SKIPPED (not PASS) — companion store 미설정/부재 (FH_COMPANION_STORE). 이전 카드를 못 구해 UNMEASURED"
+else
+  _TODAY_YMD=$(date +%Y-%m-%d)
+  # 오늘 이전에 기록된 마지막 카드 버전. 오늘자 sync 커밋들은 이미 재작성본이라 제외한다.
+  _PRIOR_SHA=$(git -C "$_CARRY_STORE" log --before="${_TODAY_YMD}T00:00:00" -1 --format=%H -- "$_CARRY_MIRROR" 2>/dev/null || true)
+  if [ -z "$_PRIOR_SHA" ]; then
+    echo "⬜ ⑤-C SKIPPED (not PASS) — 오늘 이전 카드 버전이 이력에 없다 (첫 세션?) — UNMEASURED"
+  else
+    _PRIOR_CARD=$(git -C "$_CARRY_STORE" show "$_PRIOR_SHA:$_CARRY_MIRROR" 2>/dev/null || true)
+    if [ -z "$_PRIOR_CARD" ]; then
+      echo "⬜ ⑤-C SKIPPED (not PASS) — 이전 카드를 읽지 못했다 ($_PRIOR_SHA) — UNMEASURED"
+    else
+      # 이전 카드의 날짜 토큰 중 «오늘 이상» 인 것만. YYYY-MM-DD 와 MM-DD 둘 다 본다.
+      _TODAY_MD=$(date +%m-%d)
+      _FUTURE_DATES=$(printf '%s\n' "$_PRIOR_CARD" \
+        | grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}|(^|[^0-9])[01][0-9]-[0-3][0-9]([^0-9]|$)' 2>/dev/null \
+        | grep -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}|[01][0-9]-[0-3][0-9]' 2>/dev/null \
+        | sort -u | while IFS= read -r d; do
+            # bash 3.2(macOS)는 $( ) 안의 case 패턴 ')' 를 오파싱한다 — 길이로 가른다
+            _ref="$_TODAY_MD"
+            if [ ${#d} -eq 10 ]; then _ref="$_TODAY_YMD"; fi
+            if [ "$d" = "$_ref" ]; then printf '%s\n' "$d"
+            elif [ "$d" \> "$_ref" ]; then printf '%s\n' "$d"
+            fi
+          done)
+      _LOST=0
+      if [ -n "$_FUTURE_DATES" ]; then
+        _TODAY_LOG="$FH/tracks/_meta/fh_completed_${_TODAY_YMD}.md"
+        while IFS= read -r d; do
+          [ -z "$d" ] && continue
+          if grep -qF "$d" "$CARD" 2>/dev/null; then continue; fi
+          if [ -f "$_TODAY_LOG" ] && grep -qF "$d" "$_TODAY_LOG" 2>/dev/null; then continue; fi
+          _CTX=$(printf '%s\n' "$_PRIOR_CARD" | grep -F "$d" | head -1 | cut -c1-90)
+          echo "❌ ⑤-C carry-over 유실: 이전 카드의 미래 기한 '$d' 가 오늘 카드에도 fh_completed 에도 없다"
+          echo "     이전 카드 원문: $_CTX"
+          _LOST=$((_LOST+1))
+        done <<CARRY_EOF
+$_FUTURE_DATES
+CARRY_EOF
+      fi
+      if [ "$_LOST" -gt 0 ]; then
+        echo "   ⇒ ⑤ 는 delta update 다. 완료면 fh_completed 에 적고, 이월이면 카드에 남겨라."
+        echo "     정당하게 취소된 항목이면: FH_CARRYOVER_OK=1 FH_SESSION_CLOSE=1 git push"
+        FAIL=1
+      else
+        echo "✅ ⑤-C 이전 카드의 미래 기한이 전부 카드/완료로그에 살아 있다 (prior=${_PRIOR_SHA%%??????????????????????????????????})"
+      fi
+    fi
+  fi
+fi
+
 echo "── close check: $([ "$FAIL" -eq 0 ] && echo CONSISTENT || echo VIOLATIONS) ──"
 exit "$FAIL"
