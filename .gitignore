@@ -81,3 +81,8 @@ outputs/
 # deep-clarify spec documents — user goals, constraints, and "must not touch" lists.
 # Written per-task in a working project; keep off the tracked surface.
 .claude/specs/
+
+# prior-art hook runtime sentinels — per-session state written by the hook itself.
+# Never a commit target; without this they dirty `git status` every session.
+.claude/.prior_art_events.tsv
+.claude/.prior_art_prompted_*

@@ -1,0 +1,85 @@
+name: New-code anchor
+
+# WHAT THIS GATES, in one sentence: a NEWLY ADDED executable must not ship with zero lanes that
+# actually run it. Transplanted from qasp's `new-code-anchor` job via the door-④ synergy scan
+# (tracks/_meta/synergy_scan_2026-08-22.md, pair T3). Origin incident there: 123 tests green, and
+# none of them touched the file the PR added — the aggregate was green, the new file was unmeasured.
+#
+# 🟥 A SEPARATE WORKFLOW ON PURPOSE, not a step inside validate.yml. Two reasons, both about the
+# reader: (a) this gate needs `fetch-depth: 0` and a base ref, which validate.yml does not, and
+# folding it in would quietly change that job's checkout semantics for every other step in it;
+# (b) when it blocks, the CI UI must name THIS gate — a failure buried inside a 100-line selfcheck
+# log gets diagnosed as "selfcheck is red again". Same reasoning validate.yml states for keeping
+# the count-consistency step separate from the selfcheck step that also runs it.
+#
+# ⚠️ NOT A REQUIRED CHECK unless someone makes it one. Branch protection on this repo lists
+# `validate` and nothing else, so as shipped this job REPORTS and does not gate the merge button.
+# That is stated rather than implied: CLAUDE.md's §FH-Improvement-4-Axis-Auto-Gate already had to
+# correct a stale claim about which checks are required, and a workflow that describes itself as a
+# floor it is not is the same defect. Promoting it is an operator decision.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ['**']
+    # NAMED RESIDUAL: on a push to main itself, merge-base(origin/main, HEAD) IS HEAD, so the
+    # added-file set is empty and the job passes vacuously. That is correct — the change already
+    # merged, and this gate's binding point is pre-merge — but it means a green run on main is not
+    # evidence about anything ([[feedback_gate_binding_point_not_check_point]]).
+
+jobs:
+  new-code-anchor:
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is load-bearing, not hygiene. The default shallow checkout has no
+      # merge-base with the base ref, and the checker's response to that is exit 10 (UNMEASURED),
+      # not a green — so a shallow checkout turns this job red for an instrument reason. Correct
+      # direction, wrong diagnosis for whoever reads it; giving it the full history avoids the
+      # question entirely.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The lane suite FIRST, and that ordering is the point of this step existing here at all.
+      # If the calibration is broken, the gate's verdict below proves nothing — a gate whose
+      # known-pair has never executed is exactly the fail-open this repo spent 2026-08-11/12
+      # closing, one file at a time. It also gives the suite a runner: scripts/lane_runner_check.sh
+      # enumerates `.github/workflows/*.yml` as one of its three runner surfaces, so this line is
+      # what keeps test_new_code_anchor_lanes.sh out of its DEBT list.
+      - name: Calibrate the gate (known-pair lanes)
+        run: |
+          bash scripts/test_new_code_anchor_lanes.sh
+
+      - name: New-code anchor gate
+        env:
+          # On a PR, diff against the base the PR actually targets — NOT against origin/main's tip,
+          # which moves under the PR and would attribute other people's merged files to this
+          # change. On a push there is no such field, so the checker's own auto-resolution
+          # (origin/main → main → …) runs; an empty value is treated as unset by the checker.
+          NEW_CODE_ANCHOR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # `set +e` around the call, NOT `cmd || rc=$?`. GitHub runs steps under `bash -e`, so an
+          # unguarded non-zero exit kills the step before `rc=$?` is ever read and the case block
+          # below becomes unreachable decoration — the routing would look present and never run.
+          # The `||` form works too but this repo has logged what that idiom degrades into when it
+          # spreads ([[feedback_pipefail_fallback_disarms_guard]]); the explicit form says what it
+          # is doing.
+          set +e
+          bash scripts/new_code_anchor_check.sh
+          rc=$?
+          set -e
+          # Routed explicitly rather than left to the step's implicit exit-code handling, because
+          # the three values mean different things and a reader must not have to guess which one
+          # produced the red X. 10 is NOT a pass and NOT a lane failure: the instrument could not
+          # measure, so nothing below it is evidence either way
+          # ([[feedback_not_found_is_not_zero_family]]).
+          case "$rc" in
+            0)  echo "PASS — every added executable is exercised by a lane" ;;
+            1)  echo "FAIL — an added executable ships with no working anchor (see above)"; exit 1 ;;
+            # 10 also covers a MALFORMED EXEMPT ENTRY (a `path|reason` line whose reason is missing
+            # or vacuous). That is deliberately not a code verdict: the checker's own configuration
+            # is broken, so neither a pass nor a block would be evidence about the diff.
+            10) echo "HARNESS ERROR — the gate could not measure (base/git/python3/EXEMPT). Not a pass."; exit 1 ;;
+            *)  echo "HARNESS ERROR — undeclared exit code $rc; the contract is 0/1/10."; exit 1 ;;
+          esac
