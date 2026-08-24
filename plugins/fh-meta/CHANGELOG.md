@@ -8,6 +8,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+### [2.10.0] — 2026-08-24
+
+**BREAKING (gate)**: `lane_runner_check` 가 러너 표면을 워킹트리가 아니라 **git index** 로
+판정한다. clone 트리에서 untracked 러너에 기대던 레인은 이제 DEBT 로 뜬다 — 그 초록은
+clone 을 못 넘는 것이었다. **처방**: 그 러너를 `git add` 하거나 EXEMPT 로 선언한다.
+npm 설치본(`node_modules`, gitignored)은 `outside-index` 분기로 디스크 폴백하므로 무변경.
+
+#### Fixed
+- **러너 표면 index 전환** (`lane_runner_check.sh` · `script_caller_ratchet.sh`) — 러너 이름과
+  본문 둘 다 index 기준(`ls-files` + `cat-file --batch` 단일 프로세스). 실패는 전부 UNMEASURED:
+  git 없음 · 깨진 index · `ls-files` rc≠0 · blob 아님 · 조기 종료 · 짧은 본문. 빈 결과로 접는
+  경로 0개. 「git 아님」과 「git 실패」는 `.git` 상향 탐색으로 분리한다(판별자 자신의 실패 대비).
+  🟥 **모집단(검사 대상)은 그대로 디스크 기준** — 그쪽 글롭은 untracked 를 *잡는* 안전 방향이고,
+  함께 바꾸면 새 스크립트가 조용히 모집단에서 빠진다. 위험 방향이 반대인 두 글롭을 갈랐다.
+- dotfile parity: 세그먼트 선행 dot 가드로 `glob.glob` 원래 동작 유지(리터럴 dot 디렉터리 무영향)
+
+#### Added
+- `scripts/test_runner_surface_index_lanes.sh` — 32레인, 되돌림 앵커 6그룹(enum·state·dot·
+  content·isfile·nul). 각 앵커가 자기 그룹만 적색임을 실행으로 확인
+- `.github/workflows/new-code-anchor.yml` + 체커/레인을 tracked 로 — 종전엔 untracked 라
+  CI 에서 한 번도 돌지 않았다. 이 릴리스부터 PR 마다 돈다(필수 체크는 아니다)
+
+#### Docs
+- `docs/ETHOS.md` — "harness" 라는 낱말에 대한 한 문단. 🟥 넣기 전에 쟀고 **계측은 「넣지 마라」**
+  였다(플로어 티어 블라인드, CONTROL 3/3 이 문장 없이도 두 뜻을 알았다). 운영자 판정으로 넣었고
+  그 사실을 커밋에 남겼다 — taste 층이다
+
+#### Notes
+- cross-family 4라운드, 신규 S/A 벡터 `3 → 1 → 0 → 2 → 0`. R3 에서 뒤집힌 것 자체를 마커에
+  남겼다 — 라운드마다 새 코드가 새 결함을 낳았고, 5라운드는 「조이지 말고 줄여라」로 안 돌렸다
+- 잔여: `outside-index` 트리에서는 이 보호가 꺼진다(라벨만) · `LOCAL_ONLY_SURFACES` 는 디스크
+  기준(의도) · `GIT_DIR`/`GIT_WORK_TREE` 명시 배치 미측정 · `check-ignore` 부재는 fail-closed
+
+---
+
 ### [2.9.1] — 2026-08-23
 
 **자릿수 근거 (patch)**: 수정 · 배선 · 표시자료. 행동을 바꾸는 교리도 새 게이트 클래스도 없다.
