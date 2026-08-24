@@ -9,6 +9,11 @@ optimizes for *whether the work holds up*, not how fast it leaves the building. 
 asks "how quickly can the agent ship?", FH asks "what survives a cold, independent pass?" — and makes
 running that pass routine instead of a chore you skip.
 
+A note on the word: "harness" is also used, commonly and correctly, for the *runtime
+substrate* — prompts, tools, the agentic loop, the adapter across models. FH uses it for
+what that substrate is **for**: turning intent into machinery you can hold someone to.
+The substrate sense is a layer FH sits on, not a rival definition.
+
 Everything below is **copyable**. None of it is a secret. The principles are the product.
 
 ---
