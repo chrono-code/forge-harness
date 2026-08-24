@@ -2579,3 +2579,30 @@
     `notify_when_idle` + 발주 카드 보고 의무 3줄로 대응(일회성·세션 수명 한정, 미해결)."
   cost: "서브에이전트 토큰(완료 알림 기준): 워크플로 796,649 + 개별 합 약 2.3M · 거버너 = UNMEASURED.
     🟥 합계 안 적는다 — 거버너 칸이 미측정이라 총액은 만들 수 없다."
+
+- date: 2026-08-24
+  session: governor
+  agents: "격리 레인 6(harvest 0-b/0-c · harvest 1/2 · digest 후속 · curator · qasp Ⓐ · D-5)
+    + 워크플로 1(에이전트 10, §미정-둘 처방 판정) + 적대검증 4(challenger ×3, cross-family codex ×4)
+    + 플로어 sim 6런(ETHOS ablation, 레포 밖 cwd 헤드리스). 훅 집계 205 dispatch."
+  purpose: "harvest-loop · frontier-digest 후속 · §미정-둘 처방 판정 · qasp Ⓐ 시맨틱 발화조건 이식
+    · D-5 러너 표면 index 전환 · 릴리스 2.10.0"
+  outcome: accepted
+  evidence: "PR #530·#531·#532·#533 머지 · npm 2.10.0 발행(npx + clean-install 실행 검증) ·
+    qasp-dev PR #199 생성(restricted-env 판단 대기) · §미정-둘 PROSE-ONLY 로 닫힘(신규 자산 0건)"
+  note: "🟥 **자력 적발 2 / 타력 11.** 값을 낸 축은 전부 「받는 것이 다른 축」이었다 —
+    적대검증 5(selfcheck 배선이 필수체크 적색 · qasp kwargs 로 restricted-env adapter 사망 · findings 채널
+    오배치 · ⓑ 실효 0 · 계열≠축을 내가 접은 것) · cross-family 4(rc≠0 fail-open · 반쪽 index ·
+    isfile 누수 · -z 무름) · 계측 1(ETHOS ablation 이 「넣지 마라」) · **운영자 1**(카드 재작성이
+    미완 항목을 통째로 날린 것).
+    🟥 **수렴 벡터를 세었고 뒤집히는 것을 봤다** — FH D-5 `3→1→0→2→0`, qasp `S2→축소→12`.
+    축소가 「덜 나오게」를 보장하지 않았고, 옳은 수는 또 줄이는 게 아니라 **되돌리는 것**이었다
+    (finish_reason 수리: 앵커 0 · 소비처 0 · 새 결함 2건 → 철회).
+    🟥 **계열≠축을 내가 한 번 접었다** — 외부 계열이 residency 로 막히자 축까지 포기했는데,
+    같은 계열이되 다른 축(코드 직독 + 소비처 grep + 더블/실물 대조)이 S-tier 2건을 냈다.
+    접힌 방향이 내게 편한 쪽이었다는 것까지 같은 계열이다.
+    🟥 **마지막에 내 산출물에는 되돌림을 안 돌렸다** — 카드 재작성이 미완 항목을 날렸고
+    이전 버전이 companion store 에 커밋돼 있었는데도 대조하지 않았다. 계기를 남에게만 쓰고
+    자기에겐 안 쓴 형태. ⇒ ⑤-C 프로브로 기계화(PR #533)."
+  cost: "서브에이전트 토큰(완료 알림 기준): 워크플로 1,605,708 + 개별 레인 합 약 1.9M ·
+    거버너 = UNMEASURED. 🟥 합계 안 적는다 — 거버너 칸이 미측정이라 총액은 만들 수 없다."
