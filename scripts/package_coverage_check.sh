@@ -183,6 +183,12 @@ ACCEPTED_ABSENT=(
   "scripts/script_caller_ratchet.sh"
   "scripts/ratchet_base_resolve.sh"
   "scripts/test_script_caller_ratchet_lanes.sh"
+  # ── D-5 runner-surface known pair, 2026-08-24 — 같은 사유로 미출하 ────────────────────────
+  # test_runner_surface_index_lanes.sh 는 주체가 **둘**이다: lane_runner_check.sh(출하됨)와
+  # script_caller_ratchet.sh(미출하). 후자가 없는 트리에서는 파일 상단 가드가 exit 2 로 죽으므로
+  # 소비자에게 실으면 **모든 설치에서 계기 오류**가 된다. selfcheck 의 짝 표에서도 sentinel 주체를
+  # script_caller_ratchet.sh 로 잡아, 소비자 트리에서는 주체 팔이 먼저 발화해 SKIP 으로 끝난다.
+  "scripts/test_runner_surface_index_lanes.sh"
   # ── The two settings destinations, surfaced 2026-08-13 by fixing this file's own extractor ────
   # These were invisible until the `js|json` alternation below was corrected: every `.json`
   # reference in every shipped doc was being truncated to `.js`, a path that exists nowhere, so

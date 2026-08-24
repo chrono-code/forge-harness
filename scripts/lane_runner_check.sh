@@ -270,8 +270,97 @@ fi
 # treats an EMPTY array's expansion as an unbound variable and aborts. DEBT is now empty by design,
 # which is exactly the state the plain form cannot survive — measured here 2026-08-13, and it
 # aborted so early that the script still printed PASS (see the rc routing further down).
+# -- RUNNER SURFACE = THE GIT INDEX, NOT THE WORKING TREE (D-5, 2026-08-24) --------------------
+# An UNTRACKED file must never certify anything as WIRED. Until this fix the RUNNER globs below
+# were resolved against the DISK, so a workflow / hook / script that existed only in this working
+# copy counted as a caller -- and the tree read green on wiring that disappears on `git clone`.
+#
+# The POPULATION globs (what gets CHECKED) stay on DISK on purpose. There an untracked file must
+# be SEEN, so a new uncommitted script goes red instead of slipping through. Only the RUNNER
+# surface moves to the index; moving both would trade one silent pass for another.
+#
+# 🟥 "NOT A REPOSITORY" AND "GIT FAILED" ARE DIFFERENT FACTS AND MUST NOT SHARE A BRANCH.
+# The first draft of this block folded EVERY non-zero `git ls-files` exit into "no index here, use
+# the disk". Cross-family review (codex/gpt-5.5, 2026-08-24) executed the consequence: a fake `git`
+# that exits 1 for everything produced a warning line and then a PASS. A missing binary, a locked
+# or corrupt index, and a permission failure all landed on the SAME branch as an unpacked npm
+# tarball -- so the repair against "green that a clone deletes" had installed a fresh green of its
+# own. That is [[feedback_not_found_is_not_zero_family]] wearing this file's colours, and the
+# asymmetry was backwards: an EMPTY result was routed to UNMEASURED while a FAILED one was routed
+# to a pass.
+#
+# So the state is resolved by POSITIVE questions, in order, and only the answers that are actually
+# established are allowed to reach the disk fallback:
+#   git absent / `git --version` non-zero        -> UNMEASURED  (the instrument, not the tree)
+#   rev-parse fails AND a .git exists up-chain   -> UNMEASURED  (git broke inside a repo)
+#   rev-parse fails AND no .git anywhere up-chain-> nongit      (an unpacked tarball: disk is right)
+#   inside a git dir with no work tree           -> nongit
+#   in a work tree, `git ls-files` non-zero      -> UNMEASURED  (locked/corrupt index, permissions)
+#   in a work tree, ls-files empty, cwd ignored  -> outside-index (a package unpacked INSIDE some
+#                                                   other repo -- the index cannot answer for it,
+#                                                   and blocking every such install would just
+#                                                   train the override)
+#   in a work tree, ls-files empty, cwd tracked  -> UNMEASURED  (an empty index is not zero runners)
+#   otherwise                                    -> index
+# 🟥 The discriminator can itself fail, and when it does the answer is UNMEASURED -- never "not a
+# repository". That is why the .git walk-up exists: it is a filesystem fact that needs no working
+# git, so "git could not tell us" and "there is genuinely nothing here" stay separable.
+#
+# 🟥 `git ls-files` into a file, then `$?` on its OWN line. No pipe, no `|| true`: a fallback would
+# hand an empty list to the scan and the scan would render it as "no runners".
+_fh_has_dotgit_upchain() {
+  local _d; _d="$(pwd -P)"
+  while : ; do
+    [ -e "$_d/.git" ] && return 0
+    [ "$_d" = "/" ] && return 1
+    _d="$(dirname "$_d")"
+  done
+}
+FH_INDEX_STATE="UNMEASURED"; FH_INDEX_WHY="not determined"; FH_INDEX_FILE_LIST=""
+if ! command -v git >/dev/null 2>&1; then
+  FH_INDEX_WHY="git is not on PATH -- the index could not be read at all"
+else
+  _fh_gv="$(git --version 2>/dev/null)"; _fh_gvrc=$?
+  if [ "$_fh_gvrc" -ne 0 ] || [ -z "$_fh_gv" ]; then
+    FH_INDEX_WHY="\`git --version\` exited $_fh_gvrc -- the git binary is unusable, so nothing below was measured"
+  else
+    _fh_wt="$(git rev-parse --is-inside-work-tree 2>/dev/null)"; _fh_wtrc=$?
+    if [ "$_fh_wtrc" -ne 0 ]; then
+      if _fh_has_dotgit_upchain; then
+        FH_INDEX_WHY="git works but \`rev-parse --is-inside-work-tree\` exited $_fh_wtrc while a .git exists above this directory -- git failed, this is not a plain directory"
+      else
+        FH_INDEX_STATE="nongit"; FH_INDEX_WHY="no repository here and no .git anywhere above -- an unpacked tarball"
+      fi
+    elif [ "$_fh_wt" != "true" ]; then
+      FH_INDEX_STATE="nongit"; FH_INDEX_WHY="inside a git dir with no work tree (bare repository)"
+    else
+      # 🟥 NUL ALL THE WAY. An earlier draft piped this through `tr '\0' '\n'` into an env var,
+      # which un-did the whole point of `-z`: a path containing a NEWLINE was split into two paths
+      # before python ever saw it. Env vars cannot carry NUL, so the list travels as a FILE and the
+      # separator is never translated. Cross-family review, 2026-08-24, round 3.
+      _fh_tmp="$(mktemp)"
+      git ls-files -z >"$_fh_tmp" 2>/dev/null
+      _fh_lrc=$?
+      FH_INDEX_FILE_LIST="$_fh_tmp"
+      if [ "$_fh_lrc" -ne 0 ]; then
+        FH_INDEX_WHY="inside a work tree, but \`git ls-files\` exited $_fh_lrc -- a locked or corrupt index, or a permission failure. NOT an absence of runners"
+      elif [ -s "$_fh_tmp" ]; then
+        FH_INDEX_STATE="index"; FH_INDEX_WHY="the git index"
+      else
+        git check-ignore -q . 2>/dev/null; _fh_ci=$?
+        if [ "$_fh_ci" -eq 0 ]; then
+          FH_INDEX_STATE="outside-index"; FH_INDEX_WHY="this directory is IGNORED by the surrounding repository, so its index cannot answer for these files"
+        else
+          FH_INDEX_WHY="\`git ls-files\` exited 0 and returned NOTHING while this directory is tracked territory -- an empty index is not zero runners"
+        fi
+      fi
+    fi
+  fi
+fi
+export FH_INDEX_STATE FH_INDEX_WHY FH_INDEX_FILE_LIST
+
 out=$(python3 - "${#EXEMPT[@]}" "${EXEMPT[@]+"${EXEMPT[@]}"}" "${DEBT[@]+"${DEBT[@]}"}" <<'PY'
-import os, re, sys, glob, json
+import os, re, sys, glob, json, subprocess
 
 n_exempt = int(sys.argv[1])
 exempt = set(sys.argv[2:2 + n_exempt])
@@ -287,13 +376,160 @@ suites = sorted({os.path.basename(f) for f in glob.glob('scripts/*.sh')
 # Runner surfaces, enumerated rather than assumed. All three were checked by hand when this file was
 # written: CI runs `bash scripts/selfcheck.sh` + count_check + the plugin validators and nothing else.
 SELF = os.path.basename(__file__) if '__file__' in dir() else 'lane_runner_check.sh'
-runners = []
-for pat in ('scripts/*.sh', 'templates/.git-hooks/*', '.github/workflows/*.yml'):
-    runners += [p for p in glob.glob(pat) if os.path.isfile(p)]
+RUNNER_GLOBS = ('scripts/*.sh', 'templates/.git-hooks/*', '.github/workflows/*.yml')
+
+# -- INDEX-vs-DISK enumeration, RUNNER surfaces ONLY. State resolved in the bash preamble above. -
+INDEX_MODE = os.environ.get('FH_INDEX_STATE', '')
+INDEX_WHY = os.environ.get('FH_INDEX_WHY', 'the preamble did not run')
+_idx_path = os.environ.get('FH_INDEX_FILE_LIST', '')
+_idx_raw = b''
+if _idx_path:
+    try:
+        _idx_raw = open(_idx_path, 'rb').read()
+    except OSError:
+        _idx_raw = b''
+INDEX_FILES = [_b.decode('utf-8', 'replace') for _b in _idx_raw.split(b'\0') if _b]
+# Fail-closed on anything this file does not recognise, including the empty string a caller that
+# skipped the preamble would leave behind. A mode nobody set is not a mode that means "use disk".
+if INDEX_MODE not in ('index', 'nongit', 'outside-index'):
+    INDEX_MODE = 'UNMEASURED'
+if INDEX_MODE == 'index' and not INDEX_FILES:
+    INDEX_MODE = 'UNMEASURED'
+    INDEX_WHY = 'state said index and the file list is empty -- the two disagree'
+
+def _glob_rx(pat):
+    # glob semantics, NOT fnmatch, and that includes the DOTFILE rule.
+    # `*` -> `[^/]*` alone is WIDER than the `glob.glob()` it replaced: fnmatch translates `*` to
+    # `.*`, which also crosses `/`, and neither form hides dotfiles. `glob.glob('scripts/*.sh')`
+    # does NOT return `scripts/.x.sh`; a regex without the guard below DOES, so a hidden tracked
+    # file would certify a caller that the old surface never contained. Cross-family review,
+    # 2026-08-24. The guard is per SEGMENT and keys on a leading `*`/`?` in that segment -- a dot
+    # in a literal segment (`templates/.git-hooks/`) is a directory name and is unaffected; what
+    # glob hides is a leading dot in the matched BASENAME.
+    _segs = []
+    for _seg in pat.split('/'):
+        _s = ''
+        if _seg[:1] in ('*', '?'):
+            _s += '(?!\\.)'
+        for _c in _seg:
+            _s += '[^/]*' if _c == '*' else '[^/]' if _c == '?' else re.escape(_c)
+        _segs.append(_s)
+    return re.compile('^' + '/'.join(_segs) + '$')
+
+def enumerate_runners(patterns):
+    # index: the candidate runners are what `git ls-files` says is TRACKED.
+    # nongit / outside-index: no index can answer here, so disk is the correct surface -- and the
+    # run says which of the two it is out loud. UNMEASURED never reaches this function.
+    if INDEX_MODE == 'index':
+        # 🟥 NO os.path.isfile HERE. Filtering the INDEX list by what happens to be on disk lets the
+        # working tree decide the population of an index-grounded judgment -- a tracked runner the
+        # worktree has deleted would silently become "not a runner" instead of "read its blob",
+        # which also skips the completeness check below. The index blob exists regardless of the
+        # working tree; that is the whole reason to read it. Cross-family review, round 3.
+        # The disk branch on the next line KEEPS isfile, and so do LOCAL_ONLY_SURFACES: there the
+        # working tree IS the surface, and a name with no file behind it is genuinely nothing.
+        _rx = [_glob_rx(_p) for _p in patterns]
+        return [_p for _p in INDEX_FILES if any(_r.match(_p) for _r in _rx)]
+    return [_p for _pat in patterns for _p in glob.glob(_pat) if os.path.isfile(_p)]
+
+if INDEX_MODE == 'UNMEASURED':
+    print('CONTROL_FAILED\tthe runner surface is UNMEASURED, not zero runners: ' + INDEX_WHY)
+    raise SystemExit(2)
+print('INDEX_MODE\t' + INDEX_MODE + '\t' + INDEX_WHY)
+
+runners = enumerate_runners(RUNNER_GLOBS)
 # This file names every DEBT and EXEMPT suite in its own arrays. Scanning itself would read each of
 # those declarations as evidence the suite is run — the check would certify its own todo list as
 # done. Caught by the known-negative control below on the first execution.
 runners = [r for r in runners if os.path.basename(r) != 'lane_runner_check.sh']
+
+# -- RUNNER CONTENT = THE INDEX BLOB, NOT THE WORKING TREE FILE -------------------------------
+# 🟥 THE OTHER HALF OF D-5. Moving the runner FILE LIST to the index closed "is this runner in the
+# clone"; it did NOT close "does that runner call this lane in the clone". The names came from
+# `git ls-files` while the bodies were still read with `open()`, so ONE UNSTAGED LINE added to an
+# already-tracked runner certified a wiring that exists in nobody's checkout but this one -- the
+# same defect wearing the other half of its face. Cross-family review, 2026-08-24, round 2.
+# Claiming "the surface is index-grounded" while half of it was not is exactly
+# [[feedback_half_fix_propagation_boundary]] / "measured scope != claimed scope".
+#
+# ONE process, not one per runner: there are ~185 runner surfaces here, and `git show` per file
+# would be ~185 forks. `git cat-file --batch` reads them all from one stdin stream.
+#
+# 🟥 EVERY FAILURE PATH IS UNMEASURED, NEVER AN EMPTY BODY. A missing blob, a short read, a
+# non-blob object, a git that will not start -- each of them, read as "" , renders the runner as
+# calling nothing, which is the fold this whole file exists to refuse. They collect in _BLOB_ERR
+# and route to the same UNMEASURED exit as a broken index does.
+# In `nongit` / `outside-index` there is no blob to read and that is already decided policy
+# (protection off, labelled) -- the loader is simply not run, and the disk reader stays in place.
+# No new state value.
+_BLOBS = {}
+_BLOB_ERR = []
+
+def _load_index_blobs(paths):
+    if INDEX_MODE != 'index' or not paths:
+        return
+    # `git cat-file --batch` reads NEWLINE-delimited input, so a path containing one cannot be
+    # asked for safely. Refuse to guess: that is UNMEASURED, not "this runner calls nothing".
+    for _p in paths:
+        if '\n' in _p:
+            _BLOB_ERR.append('a runner path contains a newline and cannot be batched: ' + repr(_p))
+    if _BLOB_ERR:
+        return
+    _inp = ''.join(':' + _p + '\n' for _p in paths)
+    try:
+        _pr = subprocess.run(['git', 'cat-file', '--batch'], input=_inp.encode('utf-8'), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError as _e:
+        _BLOB_ERR.append('git cat-file could not be started: ' + str(_e))
+        return
+    if _pr.returncode != 0:
+        _BLOB_ERR.append('git cat-file --batch exited ' + str(_pr.returncode))
+        return
+    _buf = _pr.stdout
+    _pos = 0
+    for _p in paths:
+        _nl = _buf.find(b'\n', _pos)
+        if _nl < 0:
+            _BLOB_ERR.append('git cat-file output ended early at ' + _p)
+            return
+        _hdr = _buf[_pos:_nl].decode('utf-8', 'replace').split()
+        _pos = _nl + 1
+        if len(_hdr) != 3 or _hdr[1] != 'blob':
+            _BLOB_ERR.append('no blob in the index for ' + _p + ': ' + ' '.join(_hdr))
+            return
+        _sz = int(_hdr[2])
+        _end = _pos + _sz
+        if _end > len(_buf):
+            _BLOB_ERR.append('git cat-file returned a short body for ' + _p)
+            return
+        _BLOBS[_p] = _buf[_pos:_end].decode('utf-8', 'replace')
+        _pos = _end + 1
+    # Completeness, checked rather than assumed, and INSIDE the loader so that the loader is a
+    # single switch: this is what makes the disk fallback in read_runner unreachable for a runner
+    # in index mode. Without it a silently missing key would fall through to the working tree and
+    # rebuild the defect one path at a time.
+    for _p in paths:
+        if _p not in _BLOBS:
+            _BLOB_ERR.append('the index blob for ' + _p + ' was never read')
+
+_load_index_blobs(runners)
+
+def _read_disk(path):
+    try:
+        return open(path, encoding='utf-8', errors='replace').read()
+    except OSError:
+        return ''
+
+def read_runner(path):
+    # index mode: every runner is in _BLOBS (asserted above), so the disk branch is reachable only
+    # for surfaces that are deliberately NOT index-backed -- the gitignored local settings file --
+    # and for the nongit / outside-index states.
+    if path in _BLOBS:
+        return _BLOBS[path]
+    return _read_disk(path)
+
+if _BLOB_ERR:
+    print('CONTROL_FAILED\tthe runner CONTENT is UNMEASURED, not empty: ' + ' - '.join(_BLOB_ERR))
+    raise SystemExit(2)
 
 # An invocation is `bash <path-ending-in-suite>`, not a mention of the name. The bounded `.{0,60}?`
 # spans wrappers like `exec bash "$(dirname "$0")/x.sh"` (which contains a space inside the command
@@ -314,10 +550,7 @@ def has_runner(suite):
     for r in runners:
         if os.path.basename(r) == suite:
             continue
-        try:
-            txt = open(r, encoding='utf-8', errors='replace').read()
-        except OSError:
-            continue
+        txt = read_runner(r)
         if runner_dispatches(suite, txt):
             return True
     return False
@@ -470,7 +703,7 @@ def has_selftest_runner(bare_name):
     # added at the same time and for the same reason — without it this line is a repair no control
     # drives, which is the failure mode this file exists to name.
     _own = bare_name + '.sh'
-    return any(selftest_dispatched(bare_name, _read(r)) for r in runners if os.path.basename(r) != _own)
+    return any(selftest_dispatched(bare_name, read_runner(r)) for r in runners if os.path.basename(r) != _own)
 
 selftest_wired = {s for s in selftest_subjects if has_selftest_runner(s)}
 selftest_undeclared = sorted(s for s in selftest_subjects if s not in selftest_wired)
@@ -602,6 +835,7 @@ for s in selftest_undeclared:
 PY
 )
 rc=$?
+[ -n "${FH_INDEX_FILE_LIST:-}" ] && rm -f "$FH_INDEX_FILE_LIST"
 
 if [ "$rc" -eq 2 ]; then
   echo "FAIL  lane-runner: the instrument broke, it did not pass"
@@ -687,6 +921,20 @@ if [ -n "$SELFTEST_UNDECLARED" ]; then
   echo "    substring match. Require the terminal verdict AS A WHOLE LINE, with a non-zero count"
   echo "    in it, or exit 0 will certify a suite that ran nothing."
 fi
+
+INDEX_MODE=$(printf '%s\n' "$out" | awk -F'\t' '$1=="INDEX_MODE"{print $2}')
+INDEX_WHY=$(printf '%s\n' "$out" | awk -F'\t' '$1=="INDEX_MODE"{print $3}')
+# Labelled, never silent, and the two disk-fallback states are NOT merged. `nongit` is an
+# unpacked tarball; `outside-index` is this tree sitting inside some OTHER repo that ignores it.
+# Both are correct places to read the disk, and neither may appear inside a normal checkout --
+# if one does, the WIRED count is not index-grounded and the reader has to know that.
+case "$INDEX_MODE" in
+  nongit|outside-index)
+    echo "⚠️  lane-runner: runner surface enumerated from DISK, not the index ($INDEX_MODE)."
+    echo "    $INDEX_WHY"
+    echo "    Correct outside a checkout; WRONG inside one. It is not zero runners either way."
+    ;;
+esac
 
 echo "PASS  lane-runner: ${TOTAL} suites — ${WIRED} wired · ${N_EXEMPT} exempt · ${N_DEBT} declared debt" \
      "· self-test: ${ST_WIRED}/${ST_TOTAL} wired"
