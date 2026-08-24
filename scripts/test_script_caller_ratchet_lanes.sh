@@ -55,8 +55,21 @@ mkfix() {
   printf 'run: bash scripts/alpha.sh\n' > "$d/.github/workflows/ci.yml"
   echo "$d"
 }
-run()  { bash "$CHECK" --root "$1" 2>&1; }
-rcof() { bash "$CHECK" --root "$1" >/dev/null 2>&1; echo $?; }
+# 🟥 2026-08-24: the checker now reads a runner's BODY from the git index, not from the working
+# tree (D-5 second half -- an unstaged dispatch line is wiring that exists in nobody's clone). The
+# git-backed fixtures below rewrite .github/workflows/ci.yml AFTER their commit, so their intended
+# wiring was working-tree-only and stopped counting. Staging that one file restores each lane's
+# INTENT -- "this runner dispatches X" -- without weakening anything: it is what an author does
+# before committing, and the non-git fixtures (the majority) are untouched because there is no
+# index there to stage into. Only ci.yml is staged; the baseline file is deliberately left dirty,
+# which is what the shrink-only lanes measure.
+_stage_runner() {
+  git -C "$1" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  [ -f "$1/.github/workflows/ci.yml" ] || return 0
+  git -C "$1" add .github/workflows/ci.yml >/dev/null 2>&1 || true
+}
+run()  { _stage_runner "$1"; bash "$CHECK" --root "$1" 2>&1; }
+rcof() { _stage_runner "$1"; bash "$CHECK" --root "$1" >/dev/null 2>&1; echo $?; }
 # Variants that forward extra flags/env (--base, FH_RATCHET_REQUIRE_BASE) to the checker.
 runx()  { _d="$1"; shift; bash "$CHECK" --root "$_d" "$@" 2>&1; }
 rcofx() { _d="$1"; shift; bash "$CHECK" --root "$_d" "$@" >/dev/null 2>&1; echo $?; }

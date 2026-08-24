@@ -592,6 +592,7 @@ for _pair in \
   "scripts/stale_clone_guard.sh|scripts/test_stale_clone_guard_lanes.sh" \
   "plugins/fh-commons/skills/ko-tech-writer/SKILL.md|scripts/test_ko_tech_writer_lanes.sh" \
   "scripts/script_caller_ratchet.sh|scripts/test_script_caller_ratchet_lanes.sh" \
+  "scripts/script_caller_ratchet.sh|scripts/test_runner_surface_index_lanes.sh" \
   "scripts/mapped_tracks.sh|scripts/test_mapped_tracks_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
