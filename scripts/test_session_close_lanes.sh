@@ -256,6 +256,99 @@ else
 fi
 rm -rf "$T"
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ⑤-C CARRY-OVER lanes — 카드 재작성이 «아직 안 온 기한» 을 날렸는가.
+#
+# WHY (2026-08-24, 실측 손실 1건 — 이 레인이 그 결함의 회귀 앵커다): ⑤ 재작성이 delta update 가
+# 아니라 새로 쓰기가 되어 미완·시각박힌 항목이 통째로 사라졌다(그날 저녁 게시, 다음날 GeekNews,
+# 14일 referrer 측정, 08-26 미팅). 세션은 "BEFORE 172 → AFTER 101" 이라는 diff 를 내고도
+# «줄었다» 만 말하고 «무엇이 빠졌나» 는 보지 않았다. 운영자가 물어서 발견 — 자력 아니다.
+# 🟥 tier 문제가 아니라 WIRING 문제였다: 카드 규율은 「완료 항목이 남는 게 버그」라고 한 방향만
+# 적고, 그 역방향은 검사가 0줄이었다. base op 이 살리언스에만 얹혀 있었으므로
+# sonnet_floor_doctrine §tier-gated base op = defect.
+#
+# Lanes (각각 게이트가 옳게 판정해야 하는 결정이지 스모크가 아니다):
+#   ⑤-C-N  이전 카드의 미래 기한이 오늘 카드에 없음        → ❌ MUST fire (유실 지목)
+#   ⑤-C-P  그 기한이 오늘 카드에 살아 있음                 → ✅ must NOT fire (오탐 없음)
+#   ⑤-C-L  카드엔 없지만 오늘 fh_completed 에 있음         → ✅ 완료 처리 경로로 통과
+#           (「이 항목을 지워도 되나」를 판정하지 않는다 — 채널 검사지 결론 검사가 아니다)
+#   ⑤-C-S  companion store 부재                            → ⬜ SKIPPED, **초록 아님**
+#           (not-found ≠ 0. 미측정을 PASS 로 접으면 이 프로브 전체가 장식이 된다)
+#
+# 🟥 픽스처는 «뚫리는 표기» 로 고른다: 미래 날짜를 **MM-DD 축약형** 으로 둔다. YYYY-MM-DD 만
+# 잡는 반쪽 구현은 ⑤-C-N 에서 통과해버린다 — 실제 카드가 「08-26 미팅」처럼 축약형을 쓴다.
+_carry_fixture() {  # $1=오늘카드 본문  $2=fh_completed 본문(빈 문자열=파일 없음)  → "REPO|STORE"
+  local card_body="$1" done_body="$2" T S FUT
+  T=$(mktemp -d); S=$(mktemp -d)
+  ( cd "$T" && git init -q . && git config user.email a@l && git config user.name a \
+    && echo x > unrelated.txt && git add -A && git commit -qm fixture ) >/dev/null 2>&1
+  mkdir -p "$T/tracks/_meta"
+  printf '%s\n' "$card_body" > "$T/tracks/_meta/reference_next_session_starter.md"
+  [ -n "$done_body" ] && printf '%s\n' "$done_body" > "$T/tracks/_meta/fh_completed_${TODAY}.md"
+  # companion store: 어제 날짜로 커밋된 «이전 카드» 미러 하나
+  FUT=$(date -v+2d '+%m-%d' 2>/dev/null || date -d '+2 days' '+%m-%d')
+  ( cd "$S" && git init -q . && git config user.email a@l && git config user.name a \
+    && mkdir -p tracks-meta \
+    && printf '기한 %s 미팅 안건 [B]\n' "$FUT" > tracks-meta/reference_next_session_starter.md \
+    && git add -A \
+    && GIT_AUTHOR_DATE='2020-01-01T00:00:00' GIT_COMMITTER_DATE='2020-01-01T00:00:00' \
+       git commit -qm prior ) >/dev/null 2>&1
+  printf '%s|%s' "$T" "$S"
+}
+_carry_future() { date -v+2d '+%m-%d' 2>/dev/null || date -d '+2 days' '+%m-%d'; }
+
+_carry_lane() {  # $1=name $2=pattern $3=expect $4="REPO|STORE" $5=extra-env(옵션)
+  local name="$1" pat="$2" expect="$3" pair="$4" env5="${5:-}" T S out hit
+  T="${pair%%|*}"; S="${pair##*|}"
+  if [ ! -d "$T/tracks/_meta" ] || [ ! -d "$S/.git" ]; then
+    echo "❌ $name — FIXTURE ERROR: 픽스처가 안 만들어졌다"
+    PREMISE_FAILED=1; rm -rf "$T" "$S"; return
+  fi
+  if [ -n "$env5" ]; then
+    out=$(env "$env5" FH_COMPANION_STORE="$S" bash "$CHECK" "$T" 2>/dev/null)
+  else
+    out=$(FH_COMPANION_STORE="$S" bash "$CHECK" "$T" 2>/dev/null)
+  fi
+  hit=0; printf '%s\n' "$out" | grep -q "$pat" && hit=1
+  rm -rf "$T" "$S"
+  if [ "$hit" = "$expect" ]; then
+    echo "✅ $name (hit=$hit, expected=$expect)"
+  else
+    echo "❌ $name — hit=$hit, expected=$expect"
+    printf '%s\n' "$out" | grep '⑤-C' | sed 's/^/     /'
+    FAILED=1
+  fi
+}
+
+_CF=$(_carry_future)
+_carry_lane "⑤-C-N 미래 기한 유실 → 지목한다" "❌ ⑤-C carry-over 유실" 1 \
+  "$(_carry_fixture '# card' '')"
+_carry_lane "⑤-C-P 기한이 카드에 살아있음 → 조용" "❌ ⑤-C carry-over 유실" 0 \
+  "$(_carry_fixture "# card
+이월: $_CF 미팅 안건 [B]" '')"
+_carry_lane "⑤-C-L 완료로그에 있음 → 통과" "❌ ⑤-C carry-over 유실" 0 \
+  "$(_carry_fixture '# card' "- ✅ $_CF 미팅 — 취소 확정")"
+
+# ⑤-C-S: companion store 부재는 SKIPPED 여야 하고 **✅ 여서는 안 된다**.
+_T4=$(mktemp -d)
+( cd "$_T4" && git init -q . && git config user.email a@l && git config user.name a \
+  && echo x > u.txt && git add -A && git commit -qm f ) >/dev/null 2>&1
+mkdir -p "$_T4/tracks/_meta"; printf '# card\n' > "$_T4/tracks/_meta/reference_next_session_starter.md"
+_out4=$(FH_COMPANION_STORE=/tmp/__no_such_store__ bash "$CHECK" "$_T4" 2>/dev/null)
+if printf '%s\n' "$_out4" | grep -q '⬜ ⑤-C SKIPPED (not PASS)'; then
+  if printf '%s\n' "$_out4" | grep -q '✅ ⑤-C'; then
+    echo "❌ ⑤-C-S  SKIPPED 인데 ✅ 도 같이 찍었다 — 미측정을 초록으로 접고 있다"; FAILED=1
+  else
+    echo "✅ ⑤-C-S companion store 부재 → SKIPPED(not PASS), 초록 아님"
+  fi
+else
+  echo "❌ ⑤-C-S  store 부재를 SKIPPED 로 표기하지 않았다 — not-found 를 0 으로 렌더한다"
+  printf '%s\n' "$_out4" | grep '⑤-C' | sed 's/^/     /'
+  FAILED=1
+fi
+rm -rf "$_T4"
+
 # Premise failure is reported FIRST and with its own exit code: it says "this run's verdicts are
 # meaningless", which is a different instruction to the reader than "the gate is broken". Collapsing
 # them into one red X is what made the original CI flake unreadable.
@@ -267,5 +360,5 @@ if [ "$FAILED" -ne 0 ]; then
   echo "SESSION-CLOSE LANES: FAIL — the gate's instrument is miscalibrated"
   exit 1
 fi
-echo "SESSION-CLOSE LANES: PASS (8/8)"
+echo "SESSION-CLOSE LANES: PASS (12/12)"
 exit 0
