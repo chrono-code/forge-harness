@@ -125,7 +125,7 @@ The sibling pattern for Gemini is `gemini -p "$(cat <skill+artifact>)"`. Outside
 
 | Tier | Under Codex | Action |
 |---|---|---|
-| **M1** | Runs fully (`token-budget-gate`, `asset-placement-gate`, `phantom-quench`, `deep-clarify`, `convergence-loop`, `ko-tech-writer` (visual-QA steps degrade to text-only)) | `cat SKILL.md artifact \| codex exec -m gpt-5.5 -` |
+| **M1** | Runs fully (`token-budget-gate`, `asset-placement-gate`, `phantom-quench`, `deep-clarify`, `convergence-loop`, `ko-tech-writer` (visual-QA degrades to text-only; the spoken register's Step 5-s renders audio through a shell TTS call — available here — but its **listening** pass is human in every runtime, so it degrades to declared-unmet, not to a Codex-specific gap)) | `cat SKILL.md artifact \| codex exec -m gpt-5.5 -` |
 | **M2** | Core runs; agent/slash steps via adapter (`deliberation`, `steel-quench`, `harness-doctor`, `context-doctor`, `sim-conductor`, `harvest-loop`) | Substitute each dispatch with `fh-run` or a direct `codex exec` on the sub-agent's `.md` |
 | **M3** | Does not run automatically | Use native Codex session features where available; otherwise read as methodology reference or use a dedicated adapter |
 

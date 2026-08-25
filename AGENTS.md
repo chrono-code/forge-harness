@@ -200,7 +200,7 @@ control; FH supplies the quality gate after goal completion.
 
 | Tier | Definition | Skills |
 |---|---|---|
-| **M1 — Full** | No Claude-native dependency | `token-budget-gate`, `asset-placement-gate`, `phantom-quench`, `deep-clarify`, `convergence-loop`, `ko-tech-writer` (visual-QA steps degrade to text-only) |
+| **M1 — Full** | No Claude-native dependency | `token-budget-gate`, `asset-placement-gate`, `phantom-quench`, `deep-clarify`, `convergence-loop`, `ko-tech-writer` (visual-QA degrades to text-only; the spoken register's Step 5-s renders audio through a shell TTS call — available here — but its **listening** pass is human in every runtime, so it degrades to declared-unmet, not to a Codex-specific gap) |
 | **M2 — Partial** | Core works; native agent or slash-command steps need adaptation | `deliberation`, `steel-quench`, `harness-doctor`, `context-doctor`, `sim-conductor`, `harvest-loop` |
 | **M3 — Claude-only** | Requires a Claude hook or session-scoped dispatch | `goal-quench`, `hub-cc-pr-reviewer`, `install-wizard` |
 
