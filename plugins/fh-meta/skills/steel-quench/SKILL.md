@@ -54,6 +54,16 @@ A designer's anxiety is most dangerous when vague. steel-quench breaks that anxi
 
 > **Detail**: See `SKILL_detail.md §Phase0` — counterexample calibration full spec (pattern extraction from an external bad case, merge rules into Wave 1) — read when an external bad case is supplied.
 
+**Zero-finding wave names its angles (2026-08-26).** A wave reported as clean (0 new findings) must
+state *which attack angles actually ran and which did not* (e.g. `clean (돌린 각: #1 단순대안 · #3
+실사용 — #5 미실행)`), never a bare "clean". A clean round means «these angles found nothing», not
+«nothing is there» — a different perspective can still find new issues (externally replicated:
+edgelog ~400-call measurement, 2026-08-25 digest, finding ⓔ). Same discipline as the marker's
+`axes-run:` — silence is not zero. **This is a record requirement, not a new termination rule**: the
+§Convergence Criteria verdict (zero new S/A + no repairs) is unchanged — what changes is that an
+unnamed clean round is an *incomplete record*, so a reader auditing convergence can see which angles
+each clean round actually covered instead of assuming all of them ran.
+
 ---
 
 ## Step 0.3 — Artifact Vulnerability Profile
