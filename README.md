@@ -700,7 +700,7 @@ them — full list below.
 | `convergence-loop` *(fh-commons)* | N-round convergence loops | "Single-pass seems suspicious" |
 | `token-budget-gate` *(fh-commons)* | Pre-task token cost estimate | "How expensive is this?" |
 | `mcp-circuit-breaker` *(fh-commons)* | MCP tool failure pattern detection | "MCP keeps failing" |
-| `ko-tech-writer` *(fh-commons)* | Korean technical-writing pipeline (register calibration, translationese removal, honesty layering, perceptual QA) | "기술문서 써줘", "번역투 고쳐줘" |
+| `ko-tech-writer` *(fh-commons)* | Korean technical-writing pipeline (register calibration, translationese removal, honesty layering, perceptual QA — reader-facing docs **and spoken scripts**) | "기술문서 써줘", "번역투 고쳐줘", "발표 대본 다듬어줘" |
 | `quench-challenger` *(fh-commons)* | Adversarial pressure-test agent | "Challenge this with a devil" |
 | `auto-decorrelation` | Recruits a different-model-family reviewer for load-bearing changes | "Decorrelate this verification" |
 | `video-ingest` | Video → agent context, routed by capability and length | "What does this video show?" |

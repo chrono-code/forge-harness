@@ -610,7 +610,7 @@ flowchart TD
 | `convergence-loop` *(fh-commons)* | N 轮收敛循环 | "单遍通过很可疑" |
 | `token-budget-gate` *(fh-commons)* | 任务前 token 成本估算 | "这个多贵？" |
 | `mcp-circuit-breaker` *(fh-commons)* | MCP 工具失败模式检测 | "MCP 一直失败" |
-| `ko-tech-writer` *(fh-commons)* | 韩语技术写作流水线（语域校准、去翻译腔、诚实度分层、感知式 QA） | "기술문서 써줘"、"번역투 고쳐줘" |
+| `ko-tech-writer` *(fh-commons)* | 韩语技术写作流水线（语域校准、去翻译腔、诚实度分层、感知式 QA — 面向读者的文档**与朗读讲稿**） | "기술문서 써줘"、"번역투 고쳐줘"、"발표 대본 다듬어줘" |
 | `quench-challenger` *(fh-commons)* | 对抗压测 agent | "拿魔鬼来挑战这个" |
 | `auto-decorrelation` | 为承重变更招募一位不同模型家族的审阅者 | "把这次验证去相关" |
 | `video-ingest` | 视频 → agent 上下文，按能力与时长路由 | "这个视频讲了什么？" |

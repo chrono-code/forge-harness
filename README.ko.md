@@ -684,7 +684,7 @@ flowchart TD
 | `convergence-loop` *(fh-commons)* | N-라운드 수렴 루프 | "단일 패스가 의심스러워" |
 | `token-budget-gate` *(fh-commons)* | 작업 전 토큰 비용 추정 | "이거 얼마나 비싸?" |
 | `mcp-circuit-breaker` *(fh-commons)* | MCP 도구 실패 패턴 탐지 | "MCP가 계속 실패해" |
-| `ko-tech-writer` *(fh-commons)* | 한국어 기술 글쓰기 파이프라인(레지스터 보정, 번역투 제거, 정직도 층화, 지각적 QA) | "기술문서 써줘", "번역투 고쳐줘" |
+| `ko-tech-writer` *(fh-commons)* | 한국어 기술 글쓰기 파이프라인(레지스터 보정, 번역투 제거, 정직도 층화, 지각적 QA — 독자 대면 문서 **와 낭독 대본**) | "기술문서 써줘", "번역투 고쳐줘", "발표 대본 다듬어줘" |
 | `quench-challenger` *(fh-commons)* | 적대적 압박-테스트 에이전트 | "악마로 이걸 공격해" |
 | `auto-decorrelation` | 하중을 받는 변경에 다른 모델-패밀리 리뷰어를 소집 | "이 검증 탈상관해줘" |
 | `video-ingest` | 영상 → 에이전트 맥락, 능력과 길이로 라우팅 | "이 영상이 뭘 보여주는데?" |

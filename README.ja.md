@@ -650,7 +650,7 @@ flowchart TD
 | `convergence-loop` *(fh-commons)* | N ラウンドの収束ループ | "Single-pass seems suspicious" |
 | `token-budget-gate` *(fh-commons)* | 作業前のトークンコスト推定 | "How expensive is this?" |
 | `mcp-circuit-breaker` *(fh-commons)* | MCP ツールの失敗パターン検知 | "MCP keeps failing" |
-| `ko-tech-writer` *(fh-commons)* | 韓国語テクニカルライティングのパイプライン（レジスターの較正、翻訳調の除去、正直さの層分け、知覚的 QA） | "기술문서 써줘", "번역투 고쳐줘" |
+| `ko-tech-writer` *(fh-commons)* | 韓国語テクニカルライティングのパイプライン（レジスターの較正、翻訳調の除去、正直さの層分け、知覚的 QA — 読者向け文書**と朗読原稿**） | "기술문서 써줘", "번역투 고쳐줘", "발표 대본 다듬어줘" |
 | `quench-challenger` *(fh-commons)* | 敵対的プレッシャーテストエージェント | "Challenge this with a devil" |
 | `auto-decorrelation` | 負荷を担う変更に対して別モデルファミリーのレビュアーを招集 | "Decorrelate this verification" |
 | `video-ingest` | 動画 → エージェント文脈へ、能力と長さでルーティング | "What does this video show?" |
