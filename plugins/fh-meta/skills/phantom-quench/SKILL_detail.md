@@ -318,6 +318,7 @@ Process prescription:
 ## phantom-quench Complete
 
 Audit scope: {artifact file} / source {N files}
+Axes traced: {claim classes actually traced — e.g. 경로 참조 · 인용 · 버전 주장} / not run: {e.g. 외부 fetch(Step 2-E)} 
 {N} total claims audited
 
 Result summary:

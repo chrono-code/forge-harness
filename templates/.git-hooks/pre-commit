@@ -1936,14 +1936,30 @@ if [ -n "$LOADBEARING" ]; then
     done <<< "$LOADBEARING"
     # The grep filter is KEPT even though the scan is now scoped: the scanner emits summary lines
     # ("degrade-scan: N smell(s) …") that name no file, and those must not read as findings.
-    _dd=$(bash "$DDSCAN" "${_dd_targets[@]}" 2>/dev/null \
-          | grep -Ff <(printf '%s\n' "$LOADBEARING") 2>/dev/null | head -5 || true)
+    # 🟥 2026-08-26 fail-open fix (§미정-둘 ⓐ): the old one-liner (`… 2>/dev/null | grep … || true`)
+    # collapsed "scanner errored / left files unmeasured" (rc≠0, incl. its own
+    # `exit "${_FORCE_NONCLEAN:-0}"` = 안 쟀다 ≠ 깨끗하다) into an empty string, and the else-branch
+    # printed "✅ no smell" — the scanner's own defect class, committed by its caller. Capture rc
+    # first; rc≠0 still shows any partial findings but never prints the clean checkmark.
+    # rc alone cannot separate the states: the scanner exits 2 BOTH for "smells found" (a normal
+    # advisory result, :542) and for "files could not be measured" (_FORCE_NONCLEAN=2, :548) —
+    # codex cross-family catch on the first draft of this fix, which printed "DID NOT complete"
+    # for a completed scan that merely found smells. Discriminate by the output markers.
+    _dd_raw=$(bash "$DDSCAN" "${_dd_targets[@]}" 2>/dev/null); _dd_rc=$?
+    _dd=$(printf '%s\n' "$_dd_raw" | grep -Ff <(printf '%s\n' "$LOADBEARING") 2>/dev/null | head -5 || true)
+    _dd_unm=$(printf '%s\n' "$_dd_raw" | grep -c "COULD NOT BE MEASURED" || true); _dd_unm=${_dd_unm:-0}
+    if [ "$_dd_unm" -gt 0 ]; then
+      echo "  ⚠️  degrade lint: some file(s) COULD NOT BE MEASURED — NOT-SCANNED is not clean. Advisory: does not block."
+    fi
     if [ -n "$_dd" ]; then
       echo "  ⚠️  degrade-direction smell(s) in the staged load-bearing files (advisory):"
       printf '%s\n' "$_dd" | sed 's/^/       /'
       echo "       Each = 'prove this is not default-toward-PASS'. Advisory: does not block."
-    else
+    elif [ "$_dd_rc" -eq 0 ]; then
       echo "  ✅ degrade lint: no smell in the staged load-bearing files"
+    elif [ "$_dd_unm" -eq 0 ]; then
+      echo "  ⚠️  degrade lint rc=${_dd_rc} with no staged-file finding — scanner error, or findings outside"
+      echo "       the staged set. NOT a clean pass. Advisory: does not block."
     fi
   else
     echo "  ⚠️  degrade lint unavailable (scripts/degrade_direction_scan.sh missing) — advisory leg skipped"

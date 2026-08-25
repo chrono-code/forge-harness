@@ -379,6 +379,14 @@ Re-run back-trace for S-grade blocker claims after fixes are complete. Activate 
 
 > **Template**: See `SKILL_detail.md §Report-Template` — full completion declaration format — read when producing the final audit summary.
 
+**Zero-finding declaration names its axes (2026-08-26).** A pass reporting **0 phantoms** must state
+*which claim classes were traced* (e.g. `0건 (추적 축: 경로 참조 · 인용 · 버전 주장 — 외부 fetch 미실행)`),
+never a bare `0건`. «Looked and found nothing» and «looked along one axis» are different claims, and
+a bare zero collapses them — the same discipline the 4-axis marker's `axes-run:` imposes («silence
+is not zero — write `none`»). External replication that motivated the field: the 2026-08-25 frontier
+digest's edgelog measurement (a "no findings" round still yielded new issues from a different
+perspective). One field, existing vocabulary, no new gate.
+
 ---
 
 ## Connected Skills
