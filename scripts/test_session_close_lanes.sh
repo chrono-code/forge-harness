@@ -26,6 +26,17 @@
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 🟥 ENVIRONMENT ISOLATION (2026-08-27) — the suite inherited FH_COMPANION_STORE from the
+# operator's shell. `CLAUDE.local.md` INSTRUCTS the operator to export it, so this suite went red
+# on exactly the setup it is written for, and stayed green in CI where the variable is unset —
+# environment dependence in the inverse of the usual direction, which is why it survived.
+# The leak: ⑤-C reads the prior card from that store, so an unguarded lane compared its FIXTURE
+# card against the operator's REAL companion history and reported a carry-over loss that belongs
+# to neither. Measured A/B: exported → rc 1, 2 failures · unset → rc 0, 0 failures.
+# Default it to a path that cannot exist; the three lanes that genuinely exercise ⑤-C set their
+# own fixture store inline and still win, because they set it on the invocation.
+unset FH_COMPANION_STORE
+export FH_COMPANION_STORE=""
 CHECK="$SCRIPT_DIR/session_close_check.sh"
 TODAY=$(date +%Y-%m-%d)
 FAILED=0
@@ -352,6 +363,28 @@ rm -rf "$_T4"
 # Premise failure is reported FIRST and with its own exit code: it says "this run's verdicts are
 # meaningless", which is a different instruction to the reader than "the gate is broken". Collapsing
 # them into one red X is what made the original CI flake unreadable.
+# ── ENV-ISO — an inherited FH_COMPANION_STORE must not reach an unguarded $CHECK call ─────────
+# known-pair: a hostile store that WOULD trigger ⑤-C (its prior card carries a future date the
+# fixture card lacks) must produce SKIPPED, not a carry-over FAIL. POS arm first: prove the
+# hostile store really is hostile by feeding it to $CHECK ON PURPOSE.
+_ei=$(mktemp -d)
+mkdir -p "$_ei/store/tracks-meta" "$_ei/work/tracks/_meta"
+( cd "$_ei/store" && git init -q . && git config user.email l@l && git config user.name l
+  printf 'prior card\n- 2099-12-31 기한\n' > tracks-meta/reference_next_session_starter.md
+  git add -A >/dev/null 2>&1 && GIT_AUTHOR_DATE="2020-01-01T00:00:00" GIT_COMMITTER_DATE="2020-01-01T00:00:00" git commit -qm seed ) >/dev/null 2>&1
+printf 'today card, no future date\n' > "$_ei/work/tracks/_meta/reference_next_session_starter.md"
+( cd "$_ei/work" && git init -q . ) >/dev/null 2>&1
+_ei_pos=$(FH_COMPANION_STORE="$_ei/store" bash "$CHECK" "$_ei/work" 2>/dev/null | grep -c "⑤-C carry-over 유실")
+_ei_neg=$(FH_COMPANION_STORE="$_ei/store" env FH_COMPANION_STORE="$_ei/store" sh -c 'unset FH_COMPANION_STORE; export FH_COMPANION_STORE=""; bash "$0" "$1" 2>/dev/null' "$CHECK" "$_ei/work" | grep -c "⑤-C SKIPPED")
+if [ "$_ei_pos" -ge 1 ]; then
+  echo "✅ ENV-ISO POS: the hostile store DOES trigger ⑤-C when handed in ($_ei_pos) — the arm is potent"
+  if [ "$_ei_neg" -ge 1 ]; then echo "✅ ENV-ISO: with the suite's guard applied, ⑤-C SKIPs instead of comparing a foreign card"
+  else { echo "❌ ENV-ISO: guard did not hold — an inherited store still reached \$CHECK"; FAILED=1; }; fi
+else
+  { echo "❌ ENV-ISO POS arm inert (hostile store triggered nothing) — the negative result below is UNINTERPRETABLE"; FAILED=1; }
+fi
+rm -rf "$_ei"
+
 if [ "$PREMISE_FAILED" -ne 0 ]; then
   echo "SESSION-CLOSE LANES: FIXTURE ERROR — a lane's input state was never created; this run's ⑤ verdicts prove nothing (exit 3 ≠ gate failure)"
   exit 3
@@ -360,5 +393,6 @@ if [ "$FAILED" -ne 0 ]; then
   echo "SESSION-CLOSE LANES: FAIL — the gate's instrument is miscalibrated"
   exit 1
 fi
-echo "SESSION-CLOSE LANES: PASS (12/12)"
+echo "SESSION-CLOSE LANES: PASS (12 core + ENV-ISO 2)"
 exit 0
+
