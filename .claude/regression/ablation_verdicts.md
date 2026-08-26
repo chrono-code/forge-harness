@@ -208,3 +208,52 @@ cross-family auditor found it in one pass and named the mechanism: *this file pe
 self-correction in a persuasive narrative voice, which makes an internal contradiction easy to wave
 through.* The voice that makes a correction legible is the same voice that makes the next
 overstatement legible. **Grep this file for its own verdict words before citing it.**
+
+---
+
+## §Autonomous Initiative Layer — **KEEP** (2026-08-27, instrument CONFIRMED)
+
+사전등록 = `tracks/_meta/ablation_PREREG_2026-08-27_autonomous-initiative.md`
+봉인 해시 = `23900bf367b88f34…` (`.sha256` 동봉, arm 실행 **전** 기록)
+러너 캘리브레이션 = `ablation_calibrate.sh --reps 1` → exit 0 (P/N/T 셋 다 ok)
+
+### 결과 (reps=3, 전 rep 일치 — 이번엔 비결정성 미관측)
+
+| 질문 | arm A (원본) | arm B (절 제거) | arm A′ (Q1 답만 제거) |
+|---|---|---|---|
+| Q1 frontier-digest 7일 | ✅ 3/3 | **NOT IN MY CONTEXT 3/3** | **NOT IN MY CONTEXT 3/3** |
+| Q2 harness-doctor 30일 | ✅ 3/3 | **NOT IN MY CONTEXT 3/3** | ✅ 3/3 |
+| Q3 억제 3회 | ✅ 3/3 | **NOT IN MY CONTEXT 3/3** | ✅ 3/3 |
+| Q4 원정 주기 없음 | ✅ 3/3 | **NOT IN MY CONTEXT 3/3** | ✅ 3/3 |
+| Q5 `과녁: 없음` 정당 | ✅ 3/3 | **NOT IN MY CONTEXT 3/3** | ✅ 3/3 |
+
+**k tried = 5 · k flipped = 0.**
+
+### 판정 = **KEEP**
+arm A 가 답하고 arm B 가 못 한다 — 사전 고정한 규칙의 첫 행. 게다가 arm B 는 **틀리지도 않았고**
+`NOT IN MY CONTEXT` 를 냈다(«자신 있게 틀림» 경로도 아니다 — 가장 깨끗한 KEEP).
+
+### 🟢 계기 이동 확인 (step 7) — 이 레포에서 처음 행사됐다
+arm A′ 는 **Q1 의 답 문자열만** 제거한 arm 이다. 결과가 정확히 그 한 문항에서만 뒤집혔다
+(Q1 → NOT IN MY CONTEXT · Q2~Q5 → 그대로 정답). ⇒ **채점기는 이 쌍에서 움직인다.**
+「둘 다 답했다」와 「채점기가 안 움직였다」를 가르는 다리가 **실제로 판별력을 갖는 것이 실측됐다.**
+
+### 🟥 부수 발견 — 기존 프로브 8개 중 7개는 이 절차에 쓸 수 없다
+정답 토큰이 잘림 **밖에도** 산다(context-doctor 밖1 · harness-doctor 밖3 · harvest-loop 밖7 ·
+goal-quench 밖2 · CATALOG 밖7 · plugin-recommender 는 절 안에 **아예 없다**). 그대로 돌렸으면
+arm B 가 딴 데서 맞히고 **가짜 CUT** 이 났다 — 2026-08-03 에 반증된 그 다리의 재발이었다.
+**사전등록의 grep 검증이 arm 을 돌리기 전에 막았다.**
+⇒ 별건: `G-TRIG-01` 의 Scope 가 stale(row diet 로 제거된 행을 가리킨다).
+
+### 이 판정이 말하지 **않는** 것 (사전등록에 미리 적은 한계)
+- k=5 는 이 절 137줄 중 **Cadence Rules · 억제 가드 한 줄 · Expedition** 만 겨눈다.
+  절의 최대 덩어리인 **트리거 표는 미검증**이다. 「절 전체가 하중」이 아니라 「이 5문항에 대해 하중」이다.
+- 부분 절단(표만 잘라내기)은 이 절차의 범위 밖이고, 하려면 별도 사전등록이 필요하다.
+- 채점자 = 거버너(동일 계열). 교차계열 재채점 미실행.
+- 규격 이탈 1건: 5문항을 **한 프롬프트에 묶었다**(정본 예시는 문항당 1회). 45→9 호출로 줄이려는
+  선택이고, 대신 저자가 어느 문항을 보고할지 고를 자유도가 없어진다. 이탈로 기록한다.
+
+### ZERO CUTs 의 성질이 바뀌었다
+이전: *"CUT 을 한 번도 낸 적이 없다 — 이 다리는 한 번도 행사된 적 없다. 미검증은 안전이 아니다."*
+이후: **여전히 CUT 0 이지만, 이제 한 번은 «재보고 못 잘랐다».** 그리고 계기 이동 확인 다리가
+처음 행사되어 **판별력이 있음이 실측됐다** — 미검증 항목 하나가 줄었다.

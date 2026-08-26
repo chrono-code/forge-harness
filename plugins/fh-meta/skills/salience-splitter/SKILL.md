@@ -57,6 +57,32 @@ measurement); they differ in cost because the surfaces differ:
 | **Resident layer** — CLAUDE.md, a memory index (loaded every session, for every task) | **Ablation harness**: pre-registered question set · **isolated arm B** · `reps>=3` · runner precondition `bash scripts/ablation_calibrate.sh` exits 0 (canon = `scripts/probe_scope_check.sh` header) · verdict line → `.claude/regression/ablation_verdicts.md` | A wrong cut here degrades *every* session silently, and the cost is unattributable after the fact |
 | **SKILL.md → SKILL_detail.md** (loaded only when the skill is invoked) | **Cold-start sim**: `sim-conductor` Area D-skill on SKILL.md alone must reach grade F (see Done When) | The failure is scoped to one skill's invocation and the sim reproduces exactly that condition |
 
+🟥 **ON A CONSUMER INSTALL THE RESIDENT ROW CANNOT BE RUN — say so rather than let a reader
+discover it.** `ablation_calibrate.sh` and `probe_scope_check.sh` are **deliberately not shipped**
+(`package_coverage_check.sh` ACCEPTED_ABSENT): the procedure ablates *this hub's* resident
+`CLAUDE.md`, so an installer has nothing to point it at, and every run spends `claude` CLI calls on
+their account. So on an install:
+
+| | |
+|---|---|
+| **Hub (this repo)** | Run the ablation. Verdict → `.claude/regression/ablation_verdicts.md`. |
+| **Consumer install** | The harness is absent, so the measurement is **unavailable — not waived**. The floor holds in its degraded form: **KEEP is the default and a CUT is not available.** Record `UNMEASURED — no ablation runner on this install`; do not record a PASS. |
+
+**The degrade direction is the whole point**: an unavailable measurement makes cutting *harder*,
+never easier. A consumer who wants the resident row runs it against their own resident asset by
+copying the two scripts out of the hub — that is a deliberate act, not a default. Concretely, that
+means taking `scripts/ablation_calibrate.sh` and `scripts/probe_scope_check.sh` from the hub repo,
+running the calibrator until it exits 0 **on your machine** (it is a known-pair, not a formality —
+it is what proves the runner discriminates at all), and pointing the arms at YOUR resident file
+rather than the hub's. The verdict lands in your own `.claude/regression/ablation_verdicts.md`.
+🟡 **Named gap, surfaced by a blind floor-tier read of this very section (2026-08-27)**: two
+questions this skill does not answer, and pretending otherwise would be worse than saying so —
+(i) whether a section may ever be deleted OUTRIGHT rather than trimmed-with-a-pointer (every path
+here assumes the pointer), and (ii) whether *verified* duplication — two files grep-confirmed to
+carry the same text — is still subject to the full ablation, or whether that is the one case where
+"redundant" is a measurement rather than an impression. Both are open; treat them as KEEP until
+decided.
+
 **Arm B answering confidently wrong is a KEEP, not a pass** — fluency is not recall, and that is the
 whole reason the arm is isolated. The same reading applies to the sim: a consumer that improvises
 plausibly without the moved rule is grade P, not F.

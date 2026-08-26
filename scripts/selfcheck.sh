@@ -593,7 +593,9 @@ for _pair in \
   "plugins/fh-commons/skills/ko-tech-writer/SKILL.md|scripts/test_ko_tech_writer_lanes.sh" \
   "scripts/script_caller_ratchet.sh|scripts/test_script_caller_ratchet_lanes.sh" \
   "scripts/script_caller_ratchet.sh|scripts/test_runner_surface_index_lanes.sh" \
-  "scripts/mapped_tracks.sh|scripts/test_mapped_tracks_lanes.sh"
+  "scripts/mapped_tracks.sh|scripts/test_mapped_tracks_lanes.sh" \
+  "scripts/fh-goal.sh|scripts/test_fh_goal_change_detection_lanes.sh" \
+  "scripts/utterance_skill_probe.sh|scripts/test_utterance_skill_probe_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then
