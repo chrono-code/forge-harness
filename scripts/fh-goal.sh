@@ -205,13 +205,33 @@ if [[ -z "$TARGET_FILES" ]]; then
     echo "  The backend may well have changed code; fh-gate never ran. Pass --files explicitly." >&2
     exit 10
   fi
+  # 🟥 The GIT_OK branch above closed "no git at all"; these two closed NOTHING until
+  # 2026-08-26. `git` present + a real repo does not mean `diff`/`status` SUCCEEDS — a corrupt
+  # index, an unreadable object, a lock contention or an interrupted command all fail HERE, and
+  # `2>/dev/null … || true` folded that failure into an empty string indistinguishable from
+  # "nothing changed" → the `exit 0` below → **fh-gate never ran and the caller read it as a
+  # clean run**. Exactly the class the comment at the top of this block names; it was fixed in
+  # one branch and left open in the other two. Cross-family review (codex) found it; the same
+  # session's own lane had classified it "safe" (`C`).
+  # Capture the git rc SEPARATELY from the transform — `|| true` on the whole pipeline is what
+  # ate it, and `pipefail` had been faithfully propagating it right up to that point.
   if [[ -n "$START_COMMIT" ]]; then
-    TARGET_FILES=$(git -C "$WORK_ROOT" diff "$START_COMMIT"..HEAD --name-only 2>/dev/null | tr '\n' ' ' | xargs || true)
+    if ! _fg_raw=$(git -C "$WORK_ROOT" diff "$START_COMMIT"..HEAD --name-only 2>/dev/null); then
+      echo "ERROR: cannot detect changed files (git diff failed in ${WORK_ROOT})." >&2
+      echo "  The backend may well have changed code; fh-gate never ran. Pass --files explicitly." >&2
+      exit 10
+    fi
+    TARGET_FILES=$(printf '%s\n' "$_fg_raw" | tr '\n' ' ' | xargs || true)
   fi
   if [[ -z "$TARGET_FILES" ]]; then
     # `--porcelain` + strip the 2-char status field. `awk '{print $2}'` used to take the OLD
     # path of a rename ("R old -> new") and split names containing spaces.
-    TARGET_FILES=$(git -C "$WORK_ROOT" status --porcelain 2>/dev/null \
+    if ! _fg_raw=$(git -C "$WORK_ROOT" status --porcelain 2>/dev/null); then
+      echo "ERROR: cannot detect changed files (git status failed in ${WORK_ROOT})." >&2
+      echo "  The backend may well have changed code; fh-gate never ran. Pass --files explicitly." >&2
+      exit 10
+    fi
+    TARGET_FILES=$(printf '%s\n' "$_fg_raw" \
       | sed -e 's/^.\{3\}//' -e 's/^.* -> //' -e 's/^"\(.*\)"$/\1/' \
       | tr '\n' ' ' | xargs || true)
   fi

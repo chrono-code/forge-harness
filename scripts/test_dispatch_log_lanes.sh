@@ -39,10 +39,37 @@ if [ -z "$CATLOGS_DEF" ]; then
   echo "FAIL  subject 에 _cat_logs 가 없다 — 전환 설계(레거시 ∪ 디렉터리)가 사라졌거나 이름이 바뀌었다."
   exit 1
 fi
+# 🟥 2026-08-26 — 주어가 read-error 를 UNMEASURED 로 가르기 시작했고 그 로직이 `_cnt` 에 산다.
+# 이걸 안 들여오면 대입줄 평가가 «command not found → rc 127 → UNMEASURED» 로 **틀린 이유로**
+# 답을 낸다. 이 파일이 이미 _cat_logs 에 대해 경고한 장식-앵커 함정의 같은 얼굴이다.
+CNT_DEF=$(awk '/^_cnt\(\) \{/,/^\}/' "$CHECK")
+LOGGREP_DEF=$(awk '/^_log_grep\(\) \{/,/^\}/' "$CHECK")
+if [ -z "$CNT_DEF" ]; then
+  echo "FAIL  subject 에 _cnt 가 없다 — read-error↔zero 분리(UNMEASURED)가 사라졌거나 이름이 바뀌었다."
+  exit 1
+fi
+if [ -z "$LOGGREP_DEF" ]; then
+  echo "FAIL  subject 에 _log_grep 가 없다 — LOGGED 의 리더가 사라졌거나 이름이 바뀌었다."
+  exit 1
+fi
 echo "── matcher located in the subject"
 echo "── _cat_logs lifted from the subject ($(printf '%s' "$CATLOGS_DEF" | grep -c '') lines)"
 
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+# 🟥 정의를 `bash -c "..."` 안에 인라인하면 **바깥 셸이 먼저 확장**한다 — `_cnt` 본문의 `"$@"` 가
+# 빈 문자열로 치환돼 리더가 조용히 죽고, 레인은 «틀린 이유로» 판정을 낸다(2026-08-26 실측).
+# 파일로 떨궈 source 하면 그 창이 아예 없다.
+SUBJ_DEFS="$T/subject_defs.sh"
+printf '%s\n%s\n%s\n' "$CATLOGS_DEF" "$CNT_DEF" "$LOGGREP_DEF" > "$SUBJ_DEFS"
+bash -n "$SUBJ_DEFS" || { echo "FAIL  subject 정의 3종을 들어왔으나 구문이 깨진다"; exit 1; }
+# 🟥 크기 가드 — awk 범위가 안 닫히면(한 줄 함수라 `}` 가 column 0 에 없으면) 파일 나머지를
+# 통째로 끌고 오고, 그래도 `bash -n` 은 통과한다. 그러면 정의가 아니라 스크립트를 source 하게
+# 되어 «unbound variable» 같은 엉뚱한 이유로 판정이 난다(2026-08-26 실측).
+_SD_LINES=$(grep -c '' "$SUBJ_DEFS")
+if [ "$_SD_LINES" -gt 40 ]; then
+  echo "FAIL  들어온 정의가 ${_SD_LINES}줄 — awk 범위가 안 닫혔다(한 줄 함수?). 정의만 와야 한다."
+  exit 1
+fi
 D=2026-08-02
 
 echo "── date-spelling lanes (the shipped miscount) ──"
@@ -132,7 +159,7 @@ _eval_subject_assign() {  # $1 = variable name; echoes what the SUBJECT computes
     _int() { case \"\${1:-}\" in (''|*[!0-9]*) echo 0 ;; (*) echo \"\$1\" ;; esac; }
     # ★ LOGGED 는 주어의 _cat_logs 에 의존한다. 이걸 안 들여오면 «함수 없음 → 빈 입력 → 0»
     #   으로 **틀린 이유로 통과**한다 — 이 파일이 경고하는 장식 앵커 그 자체다.
-    $CATLOGS_DEF
+    . '$SUBJ_DEFS'
     TODAY=NOSUCHDATE; TALLY='$CHECK'; LOG='$CHECK'; LOGDIR='$CHECK.nodir'
     $line
     printf %s \"\$$var\"" 2>/dev/null
@@ -150,7 +177,7 @@ LOGGED_LINE=$(grep -E "^LOGGED=" "$CHECK" | head -1)
 _count_in() {  # $1=LOG 경로(없으면 빈문자) $2=LOGDIR 경로(없으면 빈문자)
   bash -c "set -uo pipefail
     _int() { case \"\${1:-}\" in (''|*[!0-9]*) echo 0 ;; (*) echo \"\$1\" ;; esac; }
-    $CATLOGS_DEF
+    . '$SUBJ_DEFS'
     TODAY='$D'; LOG='$1'; LOGDIR='$2'
     $LOGGED_LINE
     printf %s \"\$LOGGED\"" 2>/dev/null
@@ -166,6 +193,31 @@ printf -- "- date: %s\n" "$D" > "$LT/dir/b.yaml"                        # 1건
 # ★ 컨트롤: 다중 파일에 grep -c 를 직접 걸면 깨진다는 실측을 레인으로 고정
 _naive=$(grep -cE "^- date: *'?$D'?" "$LT/dir"/*.yaml 2>/dev/null | tr -d ' \n')
 [ "$_naive" != 3 ] ; chk $? "컨트롤: naive grep -c 다중파일은 3을 못 낸다 (실제='$_naive' — 경로:개수 형태)"
+
+echo ""
+echo "── read-error ≠ zero 레인 (2026-08-26, cross-family/codex) ──"
+# 주어가 «0건» 과 «못 읽었다» 를 가르는가. 가르기 전에는 읽기 실패가 0 으로 접혀
+# "✅ ④-e no sub-agent dispatches tallied today" 라는 **안 잰 초록**이 나갔다.
+DISP_LINE=$(grep -E "^DISPATCHED=" "$CHECK" | head -1)
+_disp_with() {  # $1 = TALLY 로 쓸 경로
+  bash -c "set -uo pipefail
+    _int() { case \"\${1:-}\" in (''|*[!0-9]*) echo 0 ;; (*) echo \"\$1\" ;; esac; }
+    . '$SUBJ_DEFS'
+    TODAY='$D'; TALLY='$1'
+    $DISP_LINE
+    printf %s \"\$DISPATCHED\"" 2>/dev/null
+}
+RE="$T/readerr"; mkdir -p "$RE/as_dir"
+printf '%s\n' "$D" > "$RE/real_hit"          # 오늘 1건
+: > "$RE/real_zero"                            # 진짜 0건
+_p=$(_disp_with "$RE/real_hit")
+[ "$_p" = "1" ] ; chk $? "POS 계기 생존: 정상 tally 1건 → '$_p' (1 이어야 아래 판정이 읽힌다)"
+_z=$(_disp_with "$RE/real_zero")
+[ "$_z" = "0" ] ; chk $? "진짜 0건 → '$_z' (UNMEASURED 아님 — 부재가 아니라 실측된 0)"
+_u=$(_disp_with "$RE/as_dir")
+[ "$_u" = "UNMEASURED" ] ; chk $? "읽기 실패(디렉터리) → '$_u' (0 으로 접히면 안 잰 초록이 나간다)"
+_n=$(_disp_with "$RE/nosuchfile")
+[ "$_n" = "0" ] ; chk $? "파일 부재 → '$_n' — 세 번째 상태다. 안 쓰인 tally 는 «0 디스패치»이지 «못 읽음»이 아니다. UNMEASURED 로 두면 새 install 의 깨끗한 마감을 전부 false-block 하고, 과차단 close 게이트는 같은 훅의 Destructive-Op 게이트까지 무장해제시키는 --no-verify 반사를 훈련시킨다"
 
 echo ""
 if [ "$FAILED" -ne 0 ]; then echo "DISPATCH-LOG LANES: FAIL"; exit 1; fi

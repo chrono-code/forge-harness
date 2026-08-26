@@ -83,6 +83,13 @@ if ! command -v find >/dev/null 2>&1; then
   echo "This is not 'clean' and not 'no targets'; nothing was measured. Fix PATH and re-run."
   exit 2
 fi
+# `awk` is the S1b probe's only engine (line-continuation joining + bounded lookahead are not
+# expressible in a line-oriented grep). Its absence must not render as clean — the same rule the
+# `find` gate above states. Guarded rather than hard-exit: unlike `find`, a missing awk blinds ONE
+# probe, not the whole discovery pass, so the honest degrade is "S1b NOT MEASURED" + non-clean rc.
+_S1B_OK=1
+command -v awk >/dev/null 2>&1 || { _S1B_OK=0; _FORCE_NONCLEAN=2; }
+
 # cksum 도 미선언 의존성이다 — 첫 수리는 python3 만 가드하고 cksum 은 rc 미검사로 도입했다.
 # 부재 시 유일성 토큰이 **빈 문자열**이 돼 shadow 이름 충돌(A-1)이 그대로 부활한다(실증).
 # mktemp 실패 시 예측 가능한 경로(/tmp/degradescan.$$)로 폴백하던 것을 제거했다: 그 경로를 mkdir
@@ -318,6 +325,116 @@ for f in "${FILES[@]}"; do
              | grep -vE '^[0-9]+:[[:space:]]*(if[[:space:]]+)?\[\[?[[:space:]]*(-[dznN][[:space:]]|[^]]*=~)' \
              | grep -E '(\$\(|`|\[[[:space:]]*-[fx][[:space:]]|\b(scan|check|verify|validate|audit|grep|gate|assert|lint|test_)[A-Za-z_]*[[:space:](])')
 
+    # S1b — `|| true` INSIDE a command substitution: `V=$(git … 2>/dev/null | … || true)`.
+    #   S1 above cannot see this shape at all: its regex closes on `(#|;|$)` after the permissive
+    #   value, and here the next character is `)`. Measured 2026-08-26 by a full hand-census of the
+    #   132 `|| true)` sites in this repo (tracks/_meta/s1_true_paren_census_2026-08-26.md): 11 sit
+    #   on a verdict path, and S1 saw 0 of them.
+    #
+    #   WHY THIS SHAPE IS DIFFERENT FROM `|| true` AT END OF LINE. `|| true` on its own is NOT the
+    #   defect — under `set -e` it is the prescribed way to let a legitimately-empty result through,
+    #   and flagging it would push an author to delete the remedy (the same trap S3 and S5 already
+    #   name). The measured defect is the CONJUNCTION the census isolated: the command's stderr is
+    #   discarded (`2>/dev/null`) AND its non-zero exit is swallowed (`|| true`), so "git failed"
+    #   and "git ran and matched nothing" arrive at the consumer as the same empty string. Every
+    #   downstream `[ -n "$V" ]` then reads a broken repo as "nothing to check" and the gate skips
+    #   itself in silence. Both halves are required by the rule below; either alone is not a smell.
+    #
+    #   SCOPE — ORIGIN sites only, deliberately. The census's dominant pattern is that ONE git read
+    #   feeds a dozen derived filters (`HEAVY=$(echo "$STAGED" | grep … || true)`). The derived
+    #   filters inherit the origin's risk and add none of their own: their only failure mode is
+    #   grep-no-match, which is what `|| true` is there for. Flagging them would turn 11 findings
+    #   into 122 and bury the origin — this file already paid that price once (S5 shipped at 9/9 FP)
+    #   and its own rule is that a probe which is mostly noise trains authors to dismiss it. So the
+    #   substitution's LEADING command must be a real state read, never `echo`/`printf` on a value
+    #   that is already in a shell variable.
+    #
+    #   TWO RULES, because the two A-shapes have different tells:
+    #     (1) git index/worktree read — `$(git … diff|log|ls-files|status|show …)`. Restricted to
+    #         those five subcommands on purpose: `rev-parse`/`config`/`describe`/`merge-base` read
+    #         identity or configuration, and in this corpus they are either fail-closed on the next
+    #         line or feed a display string.
+    #     (2) a substitution that FEEDS A LOOP — `done < <(cmd … || true)`, `done <<< "$(cmd …)"`.
+    #         There is no variable to test here, so no `[ -z ]` can ever exist: an errored command
+    #         yields zero iterations and the detector reports "found nothing". Any leading command
+    #         counts except `echo`/`printf` (see SCOPE above).
+    #
+    #   COUNTER DECONFLICTION: a pipeline ending in `grep -c` / `wc` is NOT flagged here — a counter
+    #   always emits ("0") and exits 1 on no-match, so `|| true` there is the no-match idiom, and
+    #   🟥 RETRACTED 2026-08-26 — the sentence below said counters "belong to S5". MEASURED FALSE:
+    #   S5's regex requires `|| echo 0` literally; `session_close_check.sh:395`/`:411` use
+    #   `|| true`, so S5 never sees them. They are not "another probe's business" — they fall
+    #   BETWEEN the two probes. Found by cross-family review (codex), confirmed by reading S5's
+    #   own pattern at the S5 block below. The exclusion here stays (a counter genuinely is not
+    #   S1b's shape and flagging it re-noises this probe to 74%); what changes is the CLAIM about
+    #   where they land. Open, named, not silently carried: see §S5-COUNTER-GAP below.
+    #   that class belongs to S5 (`|| echo 0` pipefail-fallback). Not flagging it twice is why S5's
+    #   narrowing survives. Named cost: census A#10/A#11 (session_close_check.sh ④-e DISPATCHED /
+    #   LOGGED) are counter-shaped and therefore NOT covered by S1b. They are not silently dropped —
+    #   they are named here.
+    #
+    #   SUPPRESSION (fail-closed handler): if the assigned variable is tested with `[ -z ]` within
+    #   14 lines and that branch exits non-zero / sets FAIL / reports ERROR|UNMEASURED, the emptiness
+    #   IS distinguished and the site is clean. Note the direction matters: `[ -n "$V" ] && run the
+    #   check` is NOT suppression — that is precisely the "empty ⇒ skip in silence" shape (census
+    #   A#5, pre-commit SKILL_CHANGE), and it stays flagged.
+    #
+    #   MEASURED PRECISION on this repo, hand-checked against the census, 2026-08-26: 11 hits,
+    #   9 true (census A), 2 false (scripts/fh-goal.sh:209,214 — a three-stage TARGET_FILES fallback
+    #   whose terminal empty branch is `exit 0` "skipping fh-gate", which the census read as C).
+    #   RECALL 9/11 of the census A set; the two misses are the counter-shaped pair named above.
+    #   awk is the only new dependency and it is GUARDED (_S1B_OK) — a missing awk makes this probe
+    #   blind, and blind must not render as clean (same rule as the `find` gate at the top).
+    if [ "${_S1B_OK:-1}" = 1 ]; then
+      while IFS= read -r ln; do
+        [ -n "$ln" ] || continue
+        emit "$f" "$ln" "S1b:||true-in-\$()" "a state-reading command has BOTH its stderr discarded (2>/dev/null) and its failure swallowed (|| true) inside a command substitution — 'the command failed' and 'the command matched nothing' become the same empty value, and the gate downstream skips itself in silence. Capture the status separately (out=\$(cmd 2>&1); rc=\$?) and branch on rc, or make the empty case fail closed"
+      done < <(awk '
+        { raw[NR]=$0 }
+        END{
+          n=NR
+          for(i=1;i<=n;i++){
+            if(i<=skipto) continue
+            L=raw[i]; last=i
+            while(L ~ /\\[ \t]*$/ && last<n){ sub(/\\[ \t]*$/,"",L); last++; L=L " " raw[last] }
+            skipto=last                                  # a continuation line is not its own finding
+            if(L ~ /^[ \t]*#/) continue
+            if(L ~ /#[ \t]*noqa[: \t]*degrade/) continue
+            if(L !~ /\|\|[ \t]*true[ \t]*\)/) continue
+            if(L !~ /2>\/dev\/null/) continue             # stderr must actually be discarded
+            if(L ~ /\|[ \t]*(grep[ \t]+-[A-Za-z]*c|grep[ \t]+--count|wc[ \t])/) continue   # counter: see §S5-COUNTER-GAP
+            r1 = (L ~ /[$<]\([ \t]*git[ \t]+(-[^ \t]+[ \t]+([^ \t]+[ \t]+)?)*(diff|log|ls-files|status|show)[ \t]/)
+            r2 = ((L ~ /<[ \t]*<\(/ || L ~ /<<<[ \t]*"?\$\(/) && L !~ /[$<]\([ \t]*(echo|printf)[ \t]/)
+            if(!r1 && !r2) continue
+            v=""
+            if(match(L,/^[ \t]*(local[ \t]+)?[A-Za-z_][A-Za-z0-9_]*=/)){
+              v=substr(L,RSTART,RLENGTH); sub(/^[ \t]*(local[ \t]+)?/,"",v); sub(/=$/,"",v)
+            }
+            supp=0
+            if(v!=""){
+              for(j=last+1;j<=last+14 && j<=n;j++){
+                if(raw[j] ~ ("-z[ \t]*\"?\\$\\{?" v "[\"}]")){
+                  # 🟥 2026-08-26 (cross-family/codex): proximity alone suppressed on a COMMENT
+                  # or on an unrelated later branch that merely sat within 6 lines. That is a
+                  # false NEGATIVE — it hides a real fail-open — which is strictly worse than the
+                  # distance constant being unmeasured. Two guards: comments are not remedies,
+                  # and the search stops at the end of the `-z` branch.
+                  for(k=j;k<=j+6 && k<=n;k++){
+                    C=raw[k]
+                    if(C ~ /^[ \t]*#/) continue
+                    sub(/[ \t]#.*$/,"",C)                       # trailing comment is not code
+                    if(k>j && C ~ /^[ \t]*(fi|else|elif|esac|;;|})([ \t]|$)/) break
+                    if(C ~ /exit[ \t]+[1-9]|return[ \t]+[1-9]|FAIL|UNMEASURED|ERROR|die /){ supp=1; break }
+                  }
+                }
+                if(supp) break
+              }
+            }
+            if(!supp) print i
+          }
+        }' "$f" 2>/dev/null)
+    fi
+
     # S2 — `else` fall-through to a permissive exit/return within 2 lines (unenumerated case → allow).
     while IFS= read -r ln; do
       emit "$f" "$ln" "S2:else→PASS(sh)" "else/fall-through branch exits permissively — the unenumerated case should fail closed"
@@ -535,6 +652,7 @@ for f in "${FILES[@]}"; do
 done
 
 echo "----"
+[ "${_S1B_OK:-1}" = 1 ] || echo "note: probe S1b NOT MEASURED (awk unavailable) — this run is not clean on that axis."
 [ ${#UNSCANNABLE[@]} -gt 0 ] && printf 'note: %s changed file(s) outside py/sh — NOT covered by this scan (send to cross-family directly).\n' "${#UNSCANNABLE[@]}"
 if [ "$hits" -gt 0 ]; then
   echo "degrade-scan: $hits smell(s) — ADVISORY. Each = 'prove this is not default-toward-PASS'."
