@@ -48,10 +48,6 @@ ACCEPTED_ABSENT=(
   "scripts/outbound_query_guard.sh"
   "scripts/test_outbound_query_lanes.sh"
   ".claude/registry/LOCAL_SKILL_REGISTRY.md"
-  # An INSTALL DESTINATION the user creates (`cp templates/local_fh_context.md
-  # .claude/rules/local_fh_context.md`), not a file FH ships. Shipping it would overwrite the
-  # user's own cross-context wiring — the template it is copied FROM is what ships.
-  ".claude/rules/local_fh_context.md"
   ".claude/regression/probes.md"
   # Its sibling, and absent for the same reason one layer up: this file records which sections of
   # THIS repo's resident CLAUDE.md were measured load-bearing. A consumer's CLAUDE.md is their
@@ -203,6 +199,13 @@ ACCEPTED_ABSENT=(
   # Its only input is `.claude/regression/probes.md`, itself ACCEPTED_ABSENT above (a consumer's
   # regression run must not compare against this harness's probe set). Shipping the reader without
   # its corpus would put a script in the package that can only ever report "instrument error".
+  # ④ 계측 채널(발화-유도 스킬 로깅). 배선이 **로컬 `.claude/settings.json`** 에 있고 그 파일은
+  # 출하물이 아니다 — 스크립트만 실으면 소비자 머신에서 아무것도 안 하는 죽은 파일이 된다.
+  # 게다가 이건 이 허브의 정체성 ④ 계측이라 소비자가 잴 대상 자체가 다르다.
+  "scripts/utterance_skill_probe.sh"
+  # 바로 위의 앵커. 주어가 안 실리는데 앵커만 싣는 것은 이 체커가 스스로 defect 라 부르는 형태다
+  # ("shipping an anchor whose subject is not in the package").
+  "scripts/test_utterance_skill_probe_lanes.sh"
   "scripts/probe_scope_check.sh"
   # The known-pair precondition for `probe_scope_check.sh`'s ablation procedure. Absent for the same
   # reason as its subject — the procedure ablates THIS repo's resident CLAUDE.md, so a consumer has

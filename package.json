@@ -181,6 +181,7 @@
     "scripts/test_peer_worktree_detect_lanes.sh",
     "scripts/utterance_landing_check.sh",
     "scripts/test_dispatch_log_lanes.sh",
+    "scripts/test_fh_goal_change_detection_lanes.sh",
     "scripts/memory_link_check.py",
     "scripts/test_memory_link_check.sh",
     "scripts/memory_nearcheck.py",
