@@ -28,32 +28,65 @@
   <sub>A real run, not a mock: an agent “tidied up” a skill spec, the guard names what was <b>lost</b>, and the cleanup still ships once the section is back.<br>Regenerate: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
 </p>
 
-<p align="center">
-  You already tell Claude Code the same things over and over — the checks to run, the rules to hold,
-  the shape a change has to have. That is the part that becomes reusable, and it keeps its general
-  form on purpose so it can be shaped to your case as you go.<br>
-  <sub>What grows is the number of attempts: the trial and error comes off you and runs in parallel.</sub>
-</p>
-
-<p align="center">
-  Projects, skills, harnesses — building them, checking them, speeding them up: you ask for it here.<br>
-  It does not simply hand the result back. It puts the work past several checks that fail in
-  <i>different</i> ways first.<br>
-  <b>And when the same request keeps coming back, it builds you the harness that does it for you.</b>
-</p>
-
 ---
 
-## Try it in two minutes — you do not have to read this document
+## Pick one. They install differently and buy you different things.
+
+### ① Just the gate — you do not need Claude Code
+
+```bash
+npx --package @chrono-meta/fh-gate fh-gate          # nothing to install
+brew tap chrono-meta/forge-harness && brew install forge-harness   # or this
+```
+
+**What you get**
+
+- A change is judged **before** it merges, and the verdict names what the change **lost** — not that
+  something is "off". The GIF above is that verdict on a real diff.
+- The verdict is a **typed value**, not text you grep: `PASS · PENDING · BLOCKED · ESCALATE`.
+- Runs anywhere a shell runs — CI, a pre-commit hook, a different coding agent. Claude Code optional.
+
+### ② The whole harness — inside Claude Code
 
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
 git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
-cd ~/projects/forge-harness && claude
+cd ~/projects/forge-harness && claude        # then type a greeting: hi · 안녕 · こんにちは · 你好
 ```
 
-**Then type `hi`** — or a greeting in whatever language you actually think in: `안녕`, `こんにちは`,
+**What you get, on top of ①**
+
+- The gate stops being a command you remember to run. It fires on its own, before the commit.
+- **40 skills · 8 agents** you can call in plain language: diagnose a project, accelerate one, wire a
+  new one up.
+- `tracks/` keeps what each session learned, so **session 2 starts where session 1 stopped**. This is
+  the part that compounds — and the part you cannot judge on day one.
+- Ask for the same thing three times and it stops answering: it builds you the harness that answers.
+
+<sub><b>Not sure?</b> Start with ①. It costs one command and nothing to uninstall, and ② is a superset —
+nothing you learn in ① is thrown away.</sub>
+
+### What neither door is
+
+**It does not replace the review that happens after.** It moves the question earlier, so that what
+reaches a human reviewer is smaller — not so that a human stops reviewing. The bottleneck it targets
+is the gap between how fast things get generated and how fast a person can check them; it closes that
+gap from the *front*, by cutting what has to travel to the back.
+
+**What a diff cannot show stays a person's job.** Anything that only surfaces when the thing actually
+runs — on a real screen, against real state — is outside what any of this reaches. That work does not
+shrink because a gate exists upstream of it. It gets a shorter queue.
+
+---
+
+## Details from here down
+
+Everything above is the whole decision. What follows is reference for when you want it.
+
+### After the four lines in ②
+
+**Type `hi`** — or a greeting in whatever language you actually think in: `안녕`, `こんにちは`,
 `你好`, `hola`, `bonjour`. **Any of them opens the menu**, and it will try to answer in the language you
 used. A numbered menu appears and takes it from there — pick a door, answer a couple of questions, and
 it runs the install wizard for you.
@@ -109,22 +142,20 @@ Everything below this line is reference for when you want it, not homework befor
 
 > **This document is for humans.** AI operating rules → `CLAUDE.md` · Command reference → `CHEATSHEET.md`
 
-**Which entry path is for you?**
+**Two footnotes to the two doors**, rather than a third table:
 
-| You are… | Start with |
-|---|---|
-| Solo dev, one project, just trying it | [`templates/starter_profile.md`](templates/starter_profile.md) — one command, curated first-five skills |
-| Multiple projects, want the compounding hub | Clone the hub (quickstart above) |
-| CI / non-Claude runtime, gates only | `npx --package @chrono-meta/fh-gate fh-gate` (zero-install governance gate) |
-| Prefer `brew` over `npx`/`npm` | `brew tap chrono-meta/forge-harness && brew install forge-harness` — same 100%-parity content, different install UX (community tap; not yet in Homebrew Core, so `brew search` won't find it without the tap first) |
+- **Trying ② on one project only?** [`templates/starter_profile.md`](templates/starter_profile.md) is
+  one command and a curated first five skills.
+- **`brew` instead of `npx` in ①?** `brew tap chrono-meta/forge-harness && brew install forge-harness`
+  — identical content, different install UX. Community tap, not Homebrew Core, so `brew search` will
+  not find it until you tap.
 
 ---
 
 ## Requirements
 
-**Prerequisite** — this applies to the **hub** and **plugin-only** paths, not to every row of the table
-above: Claude Code CLI, verify with `claude --version`. The **gates-only** row is a separate path and
-does not go through this quickstart — it is the one `npx` line in that row.
+**Door ② needs the Claude Code CLI** — verify with `claude --version`. **Door ① does not**; that is
+the point of it.
 
 <details><summary><b>Optional: one gate needs Python + PyYAML</b> — <code>npm test</code> is red without it</summary>
 
@@ -144,22 +175,7 @@ states what produced it.
 
 </details>
 
-```bash
-# 1. Install the plugin
-claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
-claude plugin install -s user fh-meta@forge-harness
-
-# 2. Clone the hub
-git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
-cd ~/projects/forge-harness
-
-# 3. Start a session
-claude
-```
-
-> ✅ Then **type a greeting** — `hi`, `안녕`, `こんにちは`, `你好`, whatever you actually think in; it
-> tries to reply in that language (see the note above — it is right more often than not, not always).
-> The 🐿️ door menu appears on a *typed* greeting, not on launch alone.
+> ✅ **After the four lines in ②**, the 🐿️ door menu appears on a *typed* greeting, not on launch alone.
 > Say **"Connect a project"** → hub scans `../`, finds `.git` directories, creates `tracks/{project}/`.
 > For full initial setup (hooks · gates · baseline — each item individually approved, declining is
 > respected and recorded), ask for **`/install-wizard`**.
@@ -178,7 +194,7 @@ claude
 
 Unfamiliar words on the way? → [`knowledge/shared/GLOSSARY.md`](knowledge/shared/GLOSSARY.md).
 
-**Plugin only (no clone):**
+**② without the clone** — plugin only, if you want the skills but not a hub directory:
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git  # once
 claude plugin install -s user fh-meta@forge-harness

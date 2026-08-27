@@ -11,7 +11,7 @@ Set Width 1200
 Set Height 700
 Set Padding 20
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 30ms
+Set TypingSpeed 18ms
 
 Hide
 Type 'eval "$(bash ~/projects/forge-harness/docs/demo/gate-block-setup.sh)" && clear' Enter
@@ -20,21 +20,20 @@ Show
 
 Sleep 800ms
 Type "# An agent tidied up a skill spec. The diff looks harmless:" Enter
-Sleep 1200ms
+Sleep 900ms
 Type "git diff --cached --stat" Enter
-Sleep 2500ms
+Sleep 1600ms
 
 Type "bash regression_guard.sh --staged" Enter
-Sleep 5s
+Sleep 3200ms
 
 Type "# It didn't lose a typo. It lost the section that defines 'done'." Enter
-Sleep 2500ms
+Sleep 1800ms
 Type "# Put that section back. Keep the rest of the cleanup:" Enter
-Sleep 1200ms
+Sleep 900ms
 Type "git restore --source=HEAD --staged --worktree -- plugins/acme/skills/deploy/SKILL.md" Enter
 Sleep 700ms
 Type "sed -i '' 's/ and reports what shipped//' plugins/acme/skills/deploy/SKILL.md" Enter
 Sleep 700ms
 Type "git add plugins && bash regression_guard.sh --staged" Enter
-Sleep 5s
-Sleep 3s
+Sleep 4s
