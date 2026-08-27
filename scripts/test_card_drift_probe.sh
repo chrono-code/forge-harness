@@ -16,6 +16,33 @@
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 🟥 ENVIRONMENT ISOLATION (2026-08-27). `CLAUDE.local.md` INSTRUCTS this operator to export
+# FH_COMPANION_STORE, so the suite inherited a REAL companion store and ⑤-C compared each FIXTURE
+# card against the operator's actual prior card — reporting a carry-over loss that belongs to
+# neither. Measured A/B on this file: exported → rc 1 with 6 exit-code lanes red · unset → rc 0.
+# The verdict CONTENT was right every time (every `_line` assertion passed); only the exit code
+# moved, which is what made it read like an over-blocking script rather than an ambient leak.
+# 🟥 THIS IS THE SECOND FILE WITH THIS LEAK. The sibling test_session_close_lanes.sh was fixed
+# earlier the same day and this one was not — a half-fix propagation boundary created by the same
+# author who had just named that class. Fixed together now; the sweep that found it is
+#   grep -l session_close_check scripts/test_*.sh   → check each for an FH_COMPANION_STORE guard.
+# Lanes that genuinely exercise ⑤-C set their own fixture store ON the invocation and still win.
+# 🟥 CLASS, NOT INSTANCE. The first draft of this guard unset FH_COMPANION_STORE alone — the one
+# variable that had actually bitten. That is the same shape as the half-fix that put this guard in
+# only ONE of two sibling lane files hours earlier. Every operator-settable override the subject
+# reads is the same window, so all of them are closed here rather than one at a time:
+#   FH_COMPANION_STORE  ⑤-C reads a REAL prior card and reports a carry-over loss on a fixture
+#   FH_SESSION_CLOSE    flips advisory into blocking — every `expect exit 0` lane would go red
+#   FH_CARRYOVER_OK     SKIPs ⑤-C — a lane asserting ⑤-C FIRES would go green for the wrong reason
+#                       (note the direction: this one fails OPEN, which is the worse half)
+#   FH_PEER_SCAN_FORCE  forces the ①-c peer scan on regardless of session shape
+#   FH_PEER_SOCK_DIR / FH_REPO_ID   repoint peer discovery at the ambient machine
+# CLAUDE_CODE_AGENT / CLAUDE_CODE_CHILD_SESSION are deliberately NOT in this list: the subject uses
+# them to detect session shape and the lanes that care unset them per-case on purpose (see the
+# subject's own "NEGATIVE ARM UNVERIFIED" note). Blanket-clearing them here would silently change
+# which branch those lanes exercise.
+unset FH_COMPANION_STORE FH_SESSION_CLOSE FH_CARRYOVER_OK FH_PEER_SCAN_FORCE FH_PEER_SOCK_DIR FH_REPO_ID
+export FH_COMPANION_STORE=""
 CHECK="$SCRIPT_DIR/session_close_check.sh"
 FAILED=0
 

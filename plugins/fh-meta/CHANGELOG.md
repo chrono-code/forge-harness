@@ -8,6 +8,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+### [2.12.0] — 2026-08-27
+
+**BREAKING (gate)**: `fh-goal` 이 `git status`/`git diff` 조회 실패를 더 이상 「변경 없음」으로
+접지 않는다. 종전에는 조용히 통과(exit 0)하며 `fh-gate` 호출 자체를 생략했다 — 조회가 실패한
+것과 변경이 없는 것을 같은 값으로 접은 fail-open 이다. 이제 **exit 10** 으로 막는다.
+**처방**: `--files` 로 대상을 명시하거나, git 조회가 실패하는 원인을 고친다.
+
+#### Fixed
+- **게이트 인접 fail-open 3경로 차단** — ⓐ `fh-goal`(출하물) 의 git 조회 실패 → 위 BREAKING
+  ⓑ `degrade_direction_scan.sh` 의 S1b 주석 억제 ⓒ `session_close_check.sh` 의 읽기 실패 → 0.
+  셋 다 «못 읽었다」를 «없다」로 접던 자리다. 각각 되돌림 앵커가 붙은 레인으로 증명한다.
+
+#### Added
+- 새 게이트 레인 4종 — S1b 프로브 · ENV-ISO(레인 환경 격리) · utterance-probe · fh-goal 변경 탐지
+- `scripts/utterance_skill_probe.sh` — 정체성 ④ 발화-유도 스킬 계측 채널 (주입 0 / 차단 0)
+- SessionStart 배너에 노드 명 표시 — 다중 노드에서 어느 머신의 판정인지 구분
+
+#### Changed
+- **공개 리드미 네 판(en·ko·zh·ja) 도입부를 두 문 구조로** — ① 게이트만(`npx`/`brew`,
+  Claude Code 불요) / ② 하네스 전체. 진입 경로 안내가 네 곳에 흩어져 겹치던 것을 하나의
+  결정으로 접고 나머지를 상세로 내렸다. 「두 문 다 아닌 것」 절을 새로 두어, 이 도구가 **뒷단의
+  검토를 대신하지 않는다**는 것과 **diff 로 볼 수 없는 것은 사람의 몫**이라는 것을 명시한다.
+- 한국어판 번역투 정리 — 산문 em dash 149건 → 0 · 낫표 → 작은따옴표 · 「당신」은 표어 한 줄만
+- **중국어판 인용부호 수정** — 간체 문서인데 번체 관행 「」 를 쓰고 있었다(27건 → `“ ”`).
+  ASCII 도식 안 7건은 East Asian Width 차이로 표 정렬이 깨져 의도적으로 남김.
+  일본어판은 「」 가 표준 부호라 **제외**
+- `salience-splitter` Floor ① 에 소비자 분기 문서화 — 측정 불가 = KEEP 기본, CUT 없음
+- 데모 GIF 페이싱 — `36.0초 → 23.0초`(899→575 프레임 · 592→550KB). 정지 화면이 53%였고
+  끝 8초가 통째로 죽어 있었다(GitHub 은 GIF 를 루프한다). BLOCK→수정→PASS 마지막 프레임은 동일
+
+---
+
 ### [2.10.0] — 2026-08-24
 
 **BREAKING (gate)**: `lane_runner_check` 가 러너 표면을 워킹트리가 아니라 **git index** 로
