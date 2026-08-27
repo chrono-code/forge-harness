@@ -41,14 +41,60 @@
 
 ---
 
-## 2分で試せます — この文書を読み切る必要はありません
+## どちらか一つを選んでください。入れ方も、得られるものも違います。
+
+### ① ゲートだけ — Claude Code は不要です
+
+```bash
+npx --package @chrono-meta/fh-gate fh-gate          # インストール不要
+brew tap chrono-meta/forge-harness && brew install forge-harness   # あるいはこちら
+```
+
+**得られるもの**
+
+- 変更がマージされる**前に**判定が出ます。その判定は、この変更が**何を失ったか**を名指しします。
+  「なんとなくおかしい」ではありません。上の GIF が、実際の diff に対するその判定です。
+- 判定は grep するテキストではなく、**型のある値**です: `PASS · PENDING · BLOCKED · ESCALATE`。
+- シェルが動く場所ならどこでも動きます。CI、pre-commit フック、別のコーディングエージェント。
+  Claude Code は任意です。
+
+### ② ハーネス全体 — Claude Code の中で
 
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
 git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
-cd ~/projects/forge-harness && claude
+cd ~/projects/forge-harness && claude        # そのあと挨拶を一言: こんにちは · hi · 안녕 · 你好
 ```
+
+**①に加えて得られるもの**
+
+- ゲートが「思い出して走らせるコマンド」であることをやめます。コミット前に自分で掛かります。
+- **スキル40種 · エージェント8種**を普通の言葉で呼べます。プロジェクトを診断し、加速し、新しく配線します。
+- `tracks/` が各セッションの学びを残すので、**2回目のセッションが1回目の止まった場所から始まります**。
+  複利が付くのはここで、初日には判断できないのもここです。
+- 同じことを三度頼むと、答えるのをやめます。代わりに、その答えを出すハーネスを作って渡します。
+
+<sub><b>迷ったら</b>①から。コマンド一つで済み、消すものもありません。②は①を含んでいるので、
+①で覚えたことは一つも捨てられません。</sub>
+
+### どちらの扉でも«ない»こと
+
+**後段のレビューを置き換えません。** 問いを前に倒すだけです。人間のレビュアーに届く量が減るので
+あって、人間がレビューをやめるのではありません。狙っている詰まりは «作られる速さ» と
+«人が確かめられる速さ» の差で、その差を**前側から**縮めます。後ろへ渡るものを減らすやり方で。
+
+**diff で見えないものは、依然として人の仕事です。** 実際に動かして初めて現れるもの —— 本物の画面で、
+本物の状態を相手に —— は、これらの道具が届く範囲の外です。その仕事は、上流にゲートがあるからといって
+減りません。減るのは待ち行列です。
+
+---
+
+## ここから先は詳細です
+
+上までが決定のすべてです。以下は必要なときに参照する資料です。
+
+### ②の四行を打ったあと
 
 **そして `こんにちは` と入力してください** — 使い慣れた言語の挨拶なら何でも構いません（`hi`,
 `안녕`, `你好`, `hola`, `bonjour`）。**どの言語で挨拶してもメニューは開き**、その言語で返そうと
@@ -108,24 +154,21 @@ cd ~/projects/forge-harness && claude
 
 > **この文書は人間のためのものです。** AI 運用ルール → `CLAUDE.md` · コマンドリファレンス → `CHEATSHEET.md`
 
-**どの入口があなた向きか?**
+**二つの扉に付く脚注が二つ**。三つ目の表は作りません。
 
-| あなたは… | ここから始める |
-|---|---|
-| 個人開発者、プロジェクト1つ、まず試したい | [`templates/starter_profile.md`](templates/starter_profile.md) — コマンド1つ、厳選された最初の5つのスキル |
-| プロジェクトが複数、複利で積み上がるハブが欲しい | ハブをクローン（上の«2分で試せます»の節） |
-| CI / 非 Claude ランタイム、ゲートだけ欲しい | `npx --package @chrono-meta/fh-gate fh-gate`（インストール不要のガバナンスゲート） |
-| `npx`/`npm` より `brew` がいい | `brew tap chrono-meta/forge-harness && brew install forge-harness` — 内容は100%同一、インストール体験だけが違います（コミュニティ tap; まだ Homebrew Core には入っていないので、先に tap しないと `brew search` では見つかりません） |
+- **②をプロジェクト一つだけで試したいなら**
+  [`templates/starter_profile.md`](templates/starter_profile.md): コマンド一つと、厳選した最初の5スキル。
+- **①で `npx` の代わりに `brew` を使いたいなら**
+  `brew tap chrono-meta/forge-harness && brew install forge-harness`。内容は100%同じで、
+  インストール体験だけが違います。コミュニティ tap なので Homebrew Core にはなく、先に tap しないと
+  `brew search` では見つかりません。
 
 ---
 
-## 2分で始める
+## 前提条件
 
-この前提は**ハブ・プラグイン経路**に限られ、**上の表のすべての行に当てはまるわけではありません。**
-下の3ステップが「2分」のすべてです。前提は Claude Code CLI ひとつだけで（`claude --version` で確認）、
-プラグインのインストールとハブのクローンはその3ステップの中に入っています。
-Claude Code は使わずゲートだけが必要なら、この3ステップの代わりに `fh-gate` の
-1行で済みます（上の表の「CI / 非 Claude ランタイム」の行、そして下の «AI 生成コードのためのガバナンス層» の節）。
+**②には Claude Code CLI が必要です**（`claude --version` で確認）。**①には不要**で、それが①が
+別にある理由です。
 
 <details><summary><b>任意: 1つのゲートが Python + PyYAML を必要とします</b> — 無いと <code>npm test</code> が赤くなります</summary>
 
@@ -147,19 +190,6 @@ virtualenv**（PyYAML 入り）に解決されたセッションから緑で出�
 生まれた緑なのかを読み手の推測に委ねません。
 
 </details>
-
-```bash
-# 1. プラグインをインストール
-claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
-claude plugin install -s user fh-meta@forge-harness
-
-# 2. ハブをクローン
-git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
-cd ~/projects/forge-harness
-
-# 3. セッションを開始
-claude
-```
 
 > ✅ そのあと**挨拶を打ってください** — `こんにちは` · `hi` · `안녕` · `你好`、使い慣れた言語で
 > 構いません。その言語で返そうとします（上の注記を参照 — たいていは合いますが、いつもではありません）。

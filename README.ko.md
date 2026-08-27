@@ -176,19 +176,6 @@ python3 -m pip install --user pyyaml     # 확인:  python3 -c 'import yaml; pri
 
 </details>
 
-```bash
-# 1. 플러그인 설치
-claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
-claude plugin install -s user fh-meta@forge-harness
-
-# 2. 허브 클론
-git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
-cd ~/projects/forge-harness
-
-# 3. 세션 시작
-claude
-```
-
 > ✅ 그다음 **인사를 타이핑하세요**: `안녕` · `hi` · `こんにちは` · `你好`, 편한 언어면 됩니다.
 > 그 언어로 답하려 합니다(위 각주 참고, 대체로 맞지만 항상은 아닙니다).
 > 🐿️ 문 메뉴는 실행만으로가 아니라 *타이핑된* 인사에 뜹니다.

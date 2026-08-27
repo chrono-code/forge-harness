@@ -40,14 +40,58 @@
 
 ---
 
-## 两分钟就能试 —— 你不必读完这份文档
+## 二选一。装法不同，拿到的东西也不同。
+
+### ① 只要门禁 —— 不需要 Claude Code
+
+```bash
+npx --package @chrono-meta/fh-gate fh-gate          # 无需安装
+brew tap chrono-meta/forge-harness && brew install forge-harness   # 或者用这个
+```
+
+**你会拿到**
+
+- 变更在合并**之前**就有判定，而且这个判定会指名这次变更**丢了什么**，不是"好像哪里不对"。
+  上面那个 GIF 就是对一个真实 diff 的这种判定。
+- 判定是**带类型的值**，不是需要你 grep 的文本：`PASS · PENDING · BLOCKED · ESCALATE`。
+- 只要有 shell 就能跑 —— CI、pre-commit 钩子、别的编码 agent。Claude Code 是可选的。
+
+### ② 整套框架 —— 在 Claude Code 里
 
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
 git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
-cd ~/projects/forge-harness && claude
+cd ~/projects/forge-harness && claude        # 然后打个招呼：你好 · hi · 안녕 · こんにちは
 ```
+
+**在①之上你还会拿到**
+
+- 门禁不再是"要记得去跑的命令"。它在提交前自己就挂上了。
+- **40 种技能 · 8 个 agent**，用平常话就能叫：诊断一个项目、加速一个项目、给新项目接线。
+- `tracks/` 留住每次会话学到的东西，于是**第二次会话从第一次停下的地方开始**。
+  复利长在这里，第一天也判断不了的同样在这里。
+- 同一件事请求三次，它就不再回答了，而是给你造一个专门回答它的框架。
+
+<sub><b>拿不准？</b>先从①开始。一条命令，也没有什么要卸载的；②是①的超集，
+①里学到的东西一样都不会浪费。</sub>
+
+### 两扇门都«不是»什么
+
+**它不替代事后的评审。** 它只是把问题提前，让抵达人类评审者的量变小 —— 不是让人不再评审。
+它针对的瓶颈，是"生成的速度"和"人能核对的速度"之间的差距；它从**前面**收窄这个差距，
+办法是减少需要往后传的东西。
+
+**diff 看不见的，依然是人的活。** 只有真跑起来才会显形的东西 —— 在真实的屏幕上、对着真实的状态 ——
+不在这些工具能触及的范围内。那部分工作不会因为上游有一道门禁就变少，变短的是队列。
+
+---
+
+## 以下是细节
+
+上面这些就是全部的决定。下面是需要时再查的资料。
+
+### 敲完②的四行之后
 
 **然后输入 `你好`** —— 或者用你真正在用的那门语言打招呼：`hi`、`안녕`、`こんにちは`、`hola`、
 `bonjour`。**不管你用哪种语言问候，菜单都会打开**，并且它会尝试用那种语言回复。会出现一个带编号
@@ -103,23 +147,19 @@ cd ~/projects/forge-harness && claude
 
 > **本文档面向人类。** AI 运行规则 → `CLAUDE.md` · 命令参考 → `CHEATSHEET.md`
 
-**哪条入口适合你？**
+**给两扇门的两条脚注**，而不是第三张表。
 
-| 你是…… | 从这里开始 |
-|---|---|
-| 单人开发者，一个项目，只想先试试 | [`templates/starter_profile.md`](templates/starter_profile.md) —— 一条命令，一份精选的头五个技能 |
-| 有多个项目，想要那个复利累积的中枢 | 克隆中枢（见上面的«两分钟就能试»一节） |
-| CI / 非 Claude 运行时，只要门禁 | `npx --package @chrono-meta/fh-gate fh-gate`（零安装的治理门禁） |
-| 比起 `npx`/`npm` 更习惯 `brew` | `brew tap chrono-meta/forge-harness && brew install forge-harness` —— 内容 100% 一致，只是安装体验不同（社区 tap；尚未进入 Homebrew Core，所以不先加 tap 的话 `brew search` 找不到它） |
+- **只想在一个项目上试试②**
+  [`templates/starter_profile.md`](templates/starter_profile.md)：一条命令，一份精选的头五个技能。
+- **①里想用 `brew` 而不是 `npx`**
+  `brew tap chrono-meta/forge-harness && brew install forge-harness`。内容 100% 一致，只是安装体验不同。
+  这是社区 tap，不在 Homebrew Core，所以不先 tap 的话 `brew search` 找不到它。
 
 ---
 
-## 2 分钟上手
+## 前置条件
 
-这个前置只限于**中枢与插件路径**，**并不适用于上表的每一行。**
-下面三步就是"两分钟"的全部。前置只有 Claude Code CLI 一个（用 `claude --version` 确认），插件安装
-与中枢克隆都包含在这三步里。如果你不用 Claude Code、只需要那道门禁，那就不走
-这三步，一行 `fh-gate` 即可（见上表"CI / 非 Claude 运行时"那一行，以及下面的«面向 AI 生成代码的治理层»一节）。
+**②需要 Claude Code CLI**（用 `claude --version` 确认）。**①不需要**，这正是①单独存在的理由。
 
 <details><summary><b>可选：有一道门禁需要 Python + PyYAML</b> —— 少了它 <code>npm test</code> 是红的</summary>
 
@@ -139,19 +179,6 @@ python3 -m pip install --user pyyaml     # 确认：python3 -c 'import yaml; pri
 解释器与 PyYAML 版本，于是一个"绿"会说明它是怎么来的，而不是留给读者去假设。
 
 </details>
-
-```bash
-# 1. 安装插件
-claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
-claude plugin install -s user fh-meta@forge-harness
-
-# 2. 克隆中枢
-git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
-cd ~/projects/forge-harness
-
-# 3. 启动会话
-claude
-```
 
 > ✅ 然后 **打一句招呼** —— `你好`、`hi`、`안녕`、`こんにちは`，用你习惯的语言就行，它会尝试用
 > 那种语言回复（见上面的注记 —— 多数时候对，但不是每次）。
