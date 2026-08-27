@@ -55,14 +55,28 @@ git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harn
 cd ~/projects/forge-harness && claude        # then type a greeting: hi · 안녕 · こんにちは · 你好
 ```
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/door2-menu.gif" alt="typing hi in a fresh forge-harness clone; FH reads the checkout, opens the new-user menu, and warns that the install wizard has not run yet" width="820">
+</p>
+<p align="center">
+  <sub>The whole of the fourth line. A clone made minutes earlier: it reads the checkout, sees no session files, opens the <b>new-user</b> menu — and tells you the wizard has not run yet.<br>Launch and thinking time are hidden; every character is that run's output. Regenerate: <code>vhs docs/demo/door2-menu.tape</code></sub>
+</p>
+
 **What you get, on top of ①**
 
-- The gate stops being a command you remember to run. It fires on its own, before the commit.
+- You stop having to pick the check. The harness reads what you are about to do — publish, delete,
+  rewrite history, open a PR — and names the gate for that moment. ① is one command you remember; ②
+  is the layer that remembers for you.
 - **40 skills · 8 agents** you can call in plain language: diagnose a project, accelerate one, wire a
   new one up.
 - `tracks/` keeps what each session learned, so **session 2 starts where session 1 stopped**. This is
   the part that compounds — and the part you cannot judge on day one.
 - Ask for the same thing three times and it stops answering: it builds you the harness that answers.
+
+<sub>🟥 <b>One thing ② does not give you.</b> FH also carries a 4-axis <b>pre-commit</b> hook, and it is
+not for your repos: it hard-codes hub paths and hub markers, so installing it into your project blocks
+your commits instead of helping. The installer treats it as opt-in and tells you to skip it unless you
+develop FH itself. <b>For your own repos, ① is the gate</b> — wire it into CI or your own pre-commit.</sub>
 
 <sub><b>Not sure?</b> Start with ①. It costs one command and nothing to uninstall, and ② is a superset —
 nothing you learn in ① is thrown away.</sub>

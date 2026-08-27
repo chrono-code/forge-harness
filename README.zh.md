@@ -65,13 +65,26 @@ git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harn
 cd ~/projects/forge-harness && claude        # 然后打个招呼：你好 · hi · 안녕 · こんにちは
 ```
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/door2-menu.gif" alt="在刚克隆的 forge-harness 里输入 hi：FH 读出这个检出，打开新用户菜单，并提示安装向导还没跑过" width="820">
+</p>
+<p align="center">
+  <sub>第四行做的全部事情。这是几分钟前才建的克隆 —— 它读出检出，看到没有会话文件，打开<b>新用户</b>菜单，并告诉你向导还没跑。<br>启动与等待时间已隐藏；屏幕上每一个字都是那次真实运行的输出。重新生成：<code>vhs docs/demo/door2-menu.tape</code></sub>
+</p>
+
 **在①之上你还会拿到**
 
-- 门禁不再是"要记得去跑的命令"。它在提交前自己就挂上了。
+- 你不必再自己挑该跑哪一道检查。它读出你正要做什么 —— 公开、删除、改写历史、开 PR ——
+  然后叫出那一刻该用的门禁。①是一条你要记住的命令，②是替你记住的那一层。
 - **40 种技能 · 8 个 agent**，用平常话就能叫：诊断一个项目、加速一个项目、给新项目接线。
 - `tracks/` 留住每次会话学到的东西，于是**第二次会话从第一次停下的地方开始**。
   复利长在这里，第一天也判断不了的同样在这里。
 - 同一件事请求三次，它就不再回答了，而是给你造一个专门回答它的框架。
+
+<sub>🟥 <b>②不会给你的一样东西。</b>FH 里还有一个 4 轴 <b>pre-commit</b> 钩子，但它不是给你的仓库用的：
+它把中枢路径和中枢标记写死在代码里，装进你的项目只会挡住你的提交，而不是帮你。安装向导也把它列为
+可选项，并写着「如果你不是在开发 FH 本身，就跳过」。<b>你自己仓库的门禁是①</b> —— 接到 CI
+或你自己的 pre-commit 上。</sub>
 
 <sub><b>拿不准？</b>先从①开始。一条命令，也没有什么要卸载的；②是①的超集，
 ①里学到的东西一样都不会浪费。</sub>
