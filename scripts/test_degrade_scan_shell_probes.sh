@@ -705,6 +705,135 @@ else
   fi
 fi
 
+
+# ── S1b known pair — `|| true` INSIDE a command substitution ────────────────────────
+# Added 2026-08-26 after a full hand-census of the 132 `|| true)` sites in this repo
+# (tracks/_meta/s1_true_paren_census_2026-08-26.md). 11 sat on a verdict path and S1 saw ZERO of
+# them: its regex closes on `(#|;|$)` after the permissive value, and in this shape the next
+# character is `)`. Both directions are pinned, and so are the two deliberate NON-detections that
+# keep the probe from becoming the 122-hit noise machine the census warned about.
+s1b_hits() { bash "$SCAN" "$@" 2>&1 | grep -cE '\[S1b:'; }
+
+# POSITIVE — the four census-A shapes, verbatim in structure:
+#   origin git read · multi-line continuation · process substitution feeding a detector loop ·
+#   here-string feeding the npm-publish leak loop.
+cat > "$TMP/s1b_positive.sh" <<'EOF'
+#!/usr/bin/env bash
+STAGED=$(git -c core.quotePath=false diff --cached --name-only -z 2>/dev/null | tr '\0' '\n' || true)
+HEAVY=$(echo "$STAGED" | grep -E 'SKILL\.md' || true)
+SKILL_CHANGE=$(git diff --cached --name-status --diff-filter=ADR 2>/dev/null \
+  | grep -E 'skills/[^/]+/SKILL\.md' || true)
+if [ -n "$SKILL_CHANGE" ]; then echo "count check"; fi
+while IFS= read -r p; do _bad=1; done < <(git diff --cached --name-only -z 2>/dev/null || true)
+while IFS= read -r h; do echo "$h"; done <<< "$(grep -aoiE "$re" "$path" 2>/dev/null | sort -u || true)"
+EOF
+
+# NEGATIVE — the same logic written so that "the command failed" and "the command matched nothing"
+# are different values. Must stay silent or the probe is noise.
+cat > "$TMP/s1b_negative.sh" <<'EOF'
+#!/usr/bin/env bash
+STAGED=$(git -c core.quotePath=false diff --cached --name-only -z 2>&1 | tr '\0' '\n'); _rc=$?
+[ "$_rc" -ne 0 ] && { echo "git diff failed"; exit 1; }
+HEAVY=$(echo "$STAGED" | grep -E 'SKILL\.md' || true)
+_paths=$(git diff --cached --name-only -z 2>/dev/null || true)
+if [ -z "$_paths" ]; then echo "ERROR: no path stream"; exit 1; fi
+while IFS= read -r p; do _bad=1; done <<< "$_paths"
+EOF
+
+# NON-DETECTIONS, each pinned for a distinct reason:
+#  (a) a DERIVED filter over a value already in a shell variable — its only failure mode is
+#      grep-no-match, which is what `|| true` is for. The census counted the risk once, at the
+#      origin; flagging derivations turns 11 findings into 122 and buries the origin.
+#  (b) stderr NOT discarded — a real failure is still visible, so the conjunction is incomplete.
+#  (c) a COUNTER pipeline — `grep -c` always emits and exits 1 on no-match; that class is S5's.
+#  (d) `git rev-parse`/`config` — identity/config reads, not index/worktree state.
+cat > "$TMP/s1b_nondetect.sh" <<'EOF'
+#!/usr/bin/env bash
+LIGHT=$(echo "$STAGED" | grep -E '^knowledge/' 2>/dev/null || true)
+BODY=$(printf '%s\n' "$body" | grep -E '^\+' 2>/dev/null || true)
+VISIBLE=$(git diff --cached --name-only || true)
+N=$(git -C "$FH" ls-files -v 2>/dev/null | grep -c '^[a-z]' || true)
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+EOF
+
+n=$(s1b_hits "$TMP/s1b_positive.sh")
+[ "$n" -eq 4 ] && ok "S1b-KP 4/4 census-A shapes detected (origin · continuation · <(…) · <<<)" \
+                || bad "S1b-KP expected 4 S1b hits, got $n"
+
+n=$(s1b_hits "$TMP/s1b_negative.sh")
+[ "$n" -eq 0 ] && ok "S1b-KN fail-closed spelling stays silent (the probe discriminates)" \
+                || bad "S1b-KN expected 0 S1b hits, got $n"
+
+n=$(s1b_hits "$TMP/s1b_nondetect.sh")
+[ "$n" -eq 0 ] && ok "S1b-ND derived filters / visible stderr / counters / rev-parse stay silent (5/5)" \
+                || bad "S1b-ND expected 0 S1b hits, got $n (the SCOPE narrowing regressed)"
+
+# The 2>/dev/null conjunct is LOAD-BEARING, not decoration: removing it from the fixture must flip
+# the verdict. Without this, "the probe fires" could be true for the wrong reason.
+printf '#!/usr/bin/env bash\nS=$(git diff --cached --name-only 2>/dev/null || true)\n' > "$TMP/s1b_conj.sh"
+a=$(s1b_hits "$TMP/s1b_conj.sh")
+printf '#!/usr/bin/env bash\nS=$(git diff --cached --name-only || true)\n' > "$TMP/s1b_conj.sh"
+b=$(s1b_hits "$TMP/s1b_conj.sh")
+if [ "$a" -eq 1 ] && [ "$b" -eq 0 ]; then
+  ok "S1b-CONJ the 2>/dev/null half is load-bearing (1 with, 0 without)"
+else
+  bad "S1b-CONJ expected 1/0 across the mutant, got $a/$b — the conjunct proves nothing"
+fi
+
+# The fail-closed suppression must SUPPRESS, and must not suppress the `-n` skip direction.
+printf '#!/usr/bin/env bash\nV=$(git diff --cached --name-only 2>/dev/null || true)\nif [ -z "$V" ]; then echo ERROR; exit 1; fi\n' > "$TMP/s1b_supp.sh"
+a=$(s1b_hits "$TMP/s1b_supp.sh")
+printf '#!/usr/bin/env bash\nV=$(git diff --cached --name-only 2>/dev/null || true)\nif [ -n "$V" ]; then run_the_check; fi\n' > "$TMP/s1b_supp.sh"
+b=$(s1b_hits "$TMP/s1b_supp.sh")
+if [ "$a" -eq 0 ] && [ "$b" -eq 1 ]; then
+  ok "S1b-SUPP [-z]→exit 1 suppresses; [-n]→run-the-check (empty ⇒ silent skip) still fires"
+else
+  bad "S1b-SUPP expected 0/1, got $a/$b — the suppression lost its direction"
+fi
+
 echo "----"
-echo "degrade-scan shell probes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
+# ── S1b-SUPP-COMMENT — the suppression must not be fooled by a COMMENT (2026-08-26) ──────────
+# Cross-family (codex) finding: the `-z`-branch remedy search was raw proximity, so the word
+# ERROR sitting in a COMMENT (or in an unrelated later branch) within 6 lines suppressed a REAL
+# fail-open. That is a false NEGATIVE — strictly worse than the unmeasured distance constant.
+# 🟥 POS arm is mandatory: without it, "0 firings" cannot be told apart from "S1b is dead".
+_s1bc=$(mktemp -d)
+cat > "$_s1bc/pos.sh" <<'P1'
+#!/usr/bin/env bash
+STAGED=$(git diff --cached --name-only 2>/dev/null | tr '\n' ' ' || true)
+echo "proceeding with $STAGED"
+P1
+cat > "$_s1bc/mut.sh" <<'P2'
+#!/usr/bin/env bash
+STAGED=$(git diff --cached --name-only 2>/dev/null | tr '\n' ' ' || true)
+if [ -z "$STAGED" ]; then
+  # ERROR appears only in this comment; nothing is actually blocked
+  :
+fi
+echo "proceeding"
+P2
+cat > "$_s1bc/ctl.sh" <<'P3'
+#!/usr/bin/env bash
+STAGED=$(git diff --cached --name-only 2>/dev/null | tr '\n' ' ' || true)
+if [ -z "$STAGED" ]; then
+  echo "ERROR: cannot read index" >&2
+  exit 1
+fi
+echo "proceeding"
+P3
+_s1bc_n(){ bash "$SCAN" "$1" 2>/dev/null | grep -c 'S1b' || true; }
+_p=$(_s1bc_n "$_s1bc/pos.sh"); _m=$(_s1bc_n "$_s1bc/mut.sh"); _c=$(_s1bc_n "$_s1bc/ctl.sh")
+if [ "$_p" -ge 1 ]; then
+  ok "S1b-SUPP-COMMENT POS: probe is ALIVE on a bare origin ($_p hit) — 0-results below are readable"
+  if [ "$_m" -ge 1 ]; then ok "S1b-SUPP-COMMENT MUT: a comment does not suppress a real fail-open"
+  else bad "S1b-SUPP-COMMENT MUT: comment-only ERROR suppressed a real fail-open (false negative)"; fi
+  if [ "$_c" -eq 0 ]; then ok "S1b-SUPP-COMMENT CTL: a genuine fail-closed branch is still suppressed"
+  else bad "S1b-SUPP-COMMENT CTL: over-blocked a legitimate fail-closed remedy ($_c)"; fi
+else
+  bad "S1b-SUPP-COMMENT: POS arm dead (probe fired 0 on a bare origin) — MUT/CTL UNINTERPRETABLE"
+fi
+rm -rf "$_s1bc"
+
+echo "degrade-scan shell probes: $pass passed, $fail failed"
+

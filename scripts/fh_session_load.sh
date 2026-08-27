@@ -487,7 +487,20 @@ fi
 
 # 5) Emit the freshness block (short + imperative). Only speak if there is something to say.
 {
-  echo "🔄 [FH SessionStart] companion-store freshness — $PULL_NOTE."
+  # 🟥 NODE NAME rides this line on purpose (2026-08-27, measured N=2). fh_node_check.sh computes
+  # NODE_ID and prints it — but only when something is WRONG or on the once-per-node identity event
+  # (its `[ -n "$MISS$...$IDENTITY$..." ] || exit 0` guard). That silence is the right call for a
+  # nag; the cost is that in the STEADY state the session cannot see which machine it is on.
+  # What that cost actually bought, same day: a session on the air node read three air-local
+  # absences and nearly published them as global — a "sealed corpus lost" (it is intact on pro), an
+  # M-tier "granted capability never fires" (all three files are on pro), and a 347-file hub/mirror
+  # gap. Recurrence 2 (2026-07-31 was the same shape, same node, already in memory as
+  # [[feedback_frontier_digest_auto_catch]]) — the rule was recorded and did not fire, because the
+  # trigger is "I observed an absence" and what a session checks at that moment is whether its
+  # INSTRUMENT is alive, not which NODE it is standing on. Those are different checks.
+  # So: no new hook, no new line, no nag — the node name is appended to a banner that already
+  # prints every single session. `hostname -s`, the same source fh_node_check.sh uses.
+  echo "🔄 [FH SessionStart] companion-store freshness — $PULL_NOTE. · node: $(hostname -s 2>/dev/null || echo unknown)"
   if [ -n "$NEWER" ]; then
     echo "⚠️ NEWER THAN SESSION CARD — READ THESE BEFORE ACTING (card may be stale):"
     printf "%b" "$NEWER"

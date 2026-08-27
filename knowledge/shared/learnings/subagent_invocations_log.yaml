@@ -2685,3 +2685,48 @@
   outcome: accepted
   evidence: "26건 보고 · 24건 채택 반영(비공개 컴패니언 스토어 커밋) · 1건 기 반영 · 1건 처방 조정"
   note: "이날 앞선 디자이너 렌즈/키워드 스윕 배치는 컴팩션 전 세션 기록분"
+- date: 2026-08-26
+  session: governor (forge-harness-ba, 병렬 2세션 중 FH 자체개발 축)
+  agents: "서브에이전트 6 — harness-doctor 진단 1 · frontier 대조 2(외부 앵커 추출 · 내부 교리
+    인벤토리) · key-amnesia sister 심사 1 · S1 정규식 확장 초안 1 · 챔버 사인 블라인드 재귀속 1
+    + 사이드카 3(codex 챔버 교차채점 · codex S1b 리뷰 · agy S1b 리뷰[실패])"
+  purpose: "정체성 ② 인큐베이터 겨냥 — 봉인 known-pair 최초 채점 + 오늘자 digest 즉시적용 2건
+    + 카드 ② S1 확장 + 75일 초과 harness-doctor"
+  outcome: accepted
+  evidence: "챔버 known-pair 최초 채점 완료(known-positive 2/2 KILL 유지 = 새 taxonomy 과소차단
+    아님 · 상한컨트롤 #9 EMIT 양쪽 계열 통과 · known-negative 5 중 과차단 3 확인, #10 은 옛 계기가
+    옳았음). 교차계열 7건 중 6 일치, 갈린 #10 을 기계 앵커(doctrine:187·485)로 소스-클로즈.
+    harness-doctor FAIL(M 2건) — M-2 는 consent_classes.yaml 부재로 승인된 capability 가 실제
+    미동작, exit 3/exit 0 known-pair 로 증명. S1b 프로브 초안 + 뮤턴트 RED/GREEN + 레인 4개."
+  note: "🟥 사이드카 판정을 동의로 받았으면 옳은 답을 틀린 쪽으로 고칠 뻔했다 — codex 가 근거로
+    든 문장이 doctrine 이 명시적으로 철회한 초판이었다. 「기계 앵커로 소스-클로즈」 규칙이 실제로
+    값을 낸 날. 🟥 자력 적발 2건: ⓐ 봉인 코퍼스 경로가 낡았다는 것을 「소실」로 발행하기 전에
+    확인 ⓑ 허브/미러 347건 차이를 「소실」로 발행하려다 날짜 패턴이 prune 가설을 반증(6월 있고
+    7월 없음)해서 다중노드 추정으로 하향. 🟥 타력 2건: peer 세션이 공유 원장 YAML 파손을
+    고쳤고(내가 진단), 훅이 경고한 PIPE-VERDICT R2 를 내가 그대로 밟았다(rc 를 표시필터 뒤에서
+    읽음). 🟥 레인 정직도가 높았다 — S1b 레인이 「0 오탐」 바를 못 맞췄다고(82%) 스스로 적고
+    자기가 제일 공격받을 자리까지 지목했다."
+  cost: "서브에이전트 토큰: harness-doctor 189,987 · 외부앵커 120,450 · 내부인벤토리 173,720 ·
+    key-amnesia 160,121 · S1b 207,745 · 챔버블라인드 142,096 · 사이드카(codex·agy) = 각 CLI
+    미출력 · 거버너 = UNMEASURED. 🟥 합계 안 적는다."
+- date: 2026-08-27
+  session: governor (forge-harness-ba, 에어 노드 · 08-26 에서 자정 넘어 이어짐)
+  agents: "서브에이전트 2 — claude-code-guide(Skill 훅 matcher 유효성 조회) ·
+    플로어 티어 블라인드 sim 1(salience-splitter 소비자 분기, model=sonnet)
+    + 사이드카 2(codex S1b 4문항 적대검증 · agy S1b[권한 자동거부로 무산])
+    + ablation 러너 9 호출(claude -p --model sonnet, arm A/B/A′ × reps 3)"
+  purpose: "④ 계측 채널 신설 · ② 상주층 ablation 최초 실행 · PR #538 CI 적색 수리"
+  outcome: accepted
+  evidence: "codex 4문항 중 3건 소스 앵커 확인 → npm 출하물 fail-open 실적발(자력 0, 내 레인은
+    「안전한 오탐」 분류). Skill matcher 유효성은 조회가 「확신도 낮음」이라 **프로브로 직접 실측**
+    (POS=Bash 4회 살아있는 상태에서 TEST-skill 1회). ablation: arm A 5/5 · arm B 5/5
+    NOT IN MY CONTEXT · A′ 정확히 Q1만 뒤집힘 → KEEP + 계기 이동 확인 최초 행사.
+    sim 통과(소비자 분기 결론 + degrade 방향 정확 도출, 미해결 2건 지목)."
+  note: "🟥 조회 레인의 「확신도 낮음」을 그대로 받지 않고 프로브로 재측정한 것이 값을 냈다 —
+    Skill matcher 는 실제로 유효했고, 조회만 믿었으면 설계를 접었을 것이다. 반대로 codex 의
+    챔버 divergence 는 **기각하려다 내가 틀렸음을 발견**했다(근거가 살아있는 규칙이었다).
+    사이드카는 양방향으로 못 믿는다 — 근거를 열어야 갈린다. 🟥 agy 는 헤드리스 권한 자동거부 시
+    **rc=0 + 출력 0줄** 을 낸다(사이드카 fail-open, reference_sidecar_calibration 갱신 대상).
+    🟥 sim 이 내 글의 구멍 3개를 지목했고 1개는 즉시 메웠다 — 저자가 못 보는 자리를 정확히 짚었다."
+  cost: "서브에이전트 토큰: claude-code-guide 121,734 · sim 141,503 · codex/agy = CLI 미출력 ·
+    ablation 9 호출 = CLI 미출력 · 거버너 = UNMEASURED. 🟥 합계 안 적는다."

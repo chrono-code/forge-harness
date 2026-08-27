@@ -392,7 +392,31 @@ fi
 # Fix = no `|| echo`, plus integer sanitation. This is the documented prescription for this class
 # ([[feedback_pipefail_fallback_disarms_guard]]) applied to the checker that cited it.
 _int() { case "${1:-}" in (''|*[!0-9]*) echo 0 ;; (*) echo "$1" ;; esac; }
-DISPATCHED=$(_int "$(grep -c "^$TODAY$" "$TALLY" 2>/dev/null | tr -d ' ' || true)")
+# 🟥 2026-08-26 (cross-family/codex) — the fix above closed the `0\n0` half and left the OTHER
+# half open: `|| true` + `_int` folded a READ FAILURE into the same 0 as a genuine no-match, so an
+# unreadable tally rendered as "✅ no sub-agent dispatches tallied today" — a green nobody measured.
+# `grep -c` separates the three cleanly: rc 0 = matched, rc 1 = no match (a REAL zero), rc >= 2 =
+# grep itself failed. Only the first two are counts; the third is UNMEASURED and must not be 0.
+# ([[feedback_not_found_is_not_zero_family]] — `not found` != `0`, applied to this checker.)
+# 🟥 Kept as a HELPER + a ONE-LINE assignment on purpose: test_dispatch_log_lanes.sh lifts the
+# subject's own `^DISPATCHED=` / `^LOGGED=` line and evaluates it, precisely so the lane cannot go
+# green on a needle that no longer matches real behaviour. A multi-line if/else defeats that lift.
+_cnt() {  # $1 = a path that must EXIST (or "" to skip that test); rest = the reader command.
+          # Three states, not two — the lane below pins all three:
+          #   path absent        -> 0          a tally that was never written IS zero dispatches;
+          #                                    calling that UNMEASURED false-blocks every clean
+          #                                    close on a fresh install, and an over-blocking close
+          #                                    gate trains the --no-verify reflex that disarms the
+          #                                    Destructive-Op gate sharing that hook.
+          #   reader rc 0 or 1   -> the count  (rc 1 = grep's honest "no match")
+          #   reader rc >= 2     -> UNMEASURED the reader ITSELF failed; folding that into 0 printed
+          #                                    "no dispatches tallied today" on something nobody read.
+  _c_f="$1"; shift
+  if [ -n "$_c_f" ] && [ ! -e "$_c_f" ]; then echo 0; return; fi
+  _c_out=$("$@" 2>/dev/null); _c_rc=$?
+  if [ "$_c_rc" -ge 2 ]; then echo UNMEASURED; else _int "$(printf '%s' "$_c_out" | tr -d ' ')"; fi
+}
+DISPATCHED=$(_cnt "$TALLY" grep -c "^$TODAY$" "$TALLY")
 # Both quotings, because the file carries both: hand-written entries use `- date: 2026-08-02`
 # while anything appended via yaml.dump renders `- date: '"'"'2026-08-02'"'"'`. Matching one form counted
 # half the entries as absent — a divergent-normalizer miss inside the check that exists to catch
@@ -408,8 +432,17 @@ LOGDIR="$FH/knowledge/shared/learnings/subagent_invocations"
 _cat_logs() {  # 다중 파일에 grep -c 를 직접 걸면 파일별 `경로:개수` 를 찍어 합산이 깨진다(실측).
   { [ -f "$LOG" ] && cat "$LOG"; [ -d "$LOGDIR" ] && cat "$LOGDIR"/*.yaml; } 2>/dev/null
 }
-LOGGED=$(_int "$(_cat_logs | grep -cE "^- date: *'?$TODAY'?" | tr -d ' ' || true)")
-if [ "${DISPATCHED:-0}" -gt 0 ] && [ "${LOGGED:-0}" -eq 0 ]; then
+_log_grep() {  # 🟥 MUST stay multi-line: the lane lifts defs with /^_name\(\) \{/,/^\}/ and a
+               # one-liner has no `}` at column 0, so the range never closes and the extraction
+               # silently swallows the rest of the file (measured 2026-08-26).
+  _cat_logs | grep -cE "^- date: *'?$TODAY'?"
+}
+LOGGED=$(_cnt "" _log_grep)   # _cat_logs already renders absence as empty, not as an error
+if [ "$DISPATCHED" = UNMEASURED ] || [ "$LOGGED" = UNMEASURED ]; then
+  echo "❌ ④-e dispatch log: COULD NOT MEASURE (tally=$DISPATCHED, log=$LOGGED) — a read error is"
+  echo "     not a count of zero. Fix the read before closing; do not treat this as 'no dispatches'."
+  FAIL=1
+elif [ "${DISPATCHED:-0}" -gt 0 ] && [ "${LOGGED:-0}" -eq 0 ]; then
   echo "❌ ④-e $DISPATCHED sub-agent dispatch(es) today and ZERO invocation-log entries — the 60/40"
   echo "     promotion gate and the UAP loop both read that file; an unlogged session is invisible to"
   echo "     them. Append to knowledge/shared/learnings/subagent_invocations_log.yaml (consolidated"
