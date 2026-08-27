@@ -67,6 +67,17 @@ cd ~/projects/forge-harness && claude        # then type a greeting: hi · 안�
 <sub><b>Not sure?</b> Start with ①. It costs one command and nothing to uninstall, and ② is a superset —
 nothing you learn in ① is thrown away.</sub>
 
+### What neither door is
+
+**It does not replace the review that happens after.** It moves the question earlier, so that what
+reaches a human reviewer is smaller — not so that a human stops reviewing. The bottleneck it targets
+is the gap between how fast things get generated and how fast a person can check them; it closes that
+gap from the *front*, by cutting what has to travel to the back.
+
+**What a diff cannot show stays a person's job.** Anything that only surfaces when the thing actually
+runs — on a real screen, against real state — is outside what any of this reaches. That work does not
+shrink because a gate exists upstream of it. It gets a shorter queue.
+
 ---
 
 ## Details from here down
