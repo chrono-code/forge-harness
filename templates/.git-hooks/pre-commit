@@ -83,6 +83,47 @@ is_carveout_path() {
 #    challenger S1). Filtering by the new path alone also breaks rename pairing, which
 #    was the original false positive on pure within-scope moves.
 # Fails CLOSED (returns substantive) on any git error — a gate must not fail open.
+# ── README first-screen rule (2026-08-28) ────────────────────────────────────────
+# WHY: README*.md matched NONE of HEAVY/CARVEOUT/LIGHT — a measured blind spot. Three
+# paths, all reproduced in a scratch repo before this was written:
+#   ⓐ README alone      → "no FH asset staged; 4-axis gate not applicable" — Axes 1/2+3/4 ALL skipped
+#   ⓑ README + a prose-only docs/*.md → that file's LIGHT verdict pulls the WHOLE commit to
+#                          lightweight, so the README's real content change rides along (this is
+#                          what actually happened on commits 8b982e9 / 73c1e4a)
+#   ⓒ README + a HEAVY file → full mode, but Axis 1 still never scans README (regression_guard.sh
+#                          has no README in its own pathspec — NOT closed here, named as residual)
+# The READMEs are npm-shipped, so a consumer-visible surface was changing with no axis enforced.
+#
+# WHY NOT "README is always HEAVY": a typo or badge fix would then demand a marker. Over-blocking
+# trains `--no-verify`, which disarms the Destructive-Op gate living in this same hook — the repo
+# has already reasoned that trade once and it holds here.
+#
+# WHY THIS PREDICATE: `diff_is_substantive` keys on fenced code / citation / version tokens. A
+# README's load-bearing change is often none of those — today's was a first-line rewrite with no
+# fence, no URL, no version, and it read as prose-only. So README additionally asks WHERE the
+# change landed: above the first `---` is the first screen, the part a reader decides on. That is
+# a property of the record (which lines moved), not a judgement about whether the copy is good —
+# a channel check, per CLAUDE.md §Mechanization Boundary.
+# Fails CLOSED on any git error, same as diff_is_substantive.
+readme_first_screen_touched() { # $1 = staged README path
+  local file="$1" fold hunks rc
+  # Fold = the first horizontal rule. No fold (a README with none) → treat the whole file as
+  # first screen; that fails toward review rather than toward silence.
+  fold=$(git show ":$file" 2>/dev/null | grep -n '^---[[:space:]]*$' | head -1 | cut -d: -f1)
+  [ -n "$fold" ] || fold=999999
+  hunks=$(git diff --cached -U0 -- "$file" 2>/dev/null | grep -E '^@@'); rc=$?
+  # rc=1 from grep just means "no hunks" (nothing staged for this file) — not an error.
+  [ -z "$hunks" ] && return 1
+  # New-side start line of each hunk: @@ -a,b +c,d @@
+  while IFS= read -r h; do
+    local start
+    start=$(printf '%s' "$h" | sed -E 's/^@@ [^+]*\+([0-9]+).*/\1/')
+    case "$start" in ''|*[!0-9]*) return 0 ;; esac   # unparseable → fail closed
+    [ "$start" -le "$fold" ] && return 0
+  done <<< "$hunks"
+  return 1
+}
+
 diff_is_substantive() {
   local file="$1" body rc oldpath mode
   oldpath=$(git diff --cached -M --name-status 2>/dev/null \
@@ -185,7 +226,7 @@ HEAVY=$(echo "$STAGED" \
 
 # Carve-out candidates: knowledge/ docs, docs/*.md, AGENTS.md. Heavy only if substantive.
 CARVEOUT=$(echo "$STAGED" \
-  | grep -E "(^knowledge/.*\.md$|^docs/.*\.md$|(^|/)AGENTS\.md$)" | grep -v "^knowledge/shared/rules/" || true)
+  | grep -E "(^knowledge/.*\.md$|^docs/.*\.md$|(^|/)AGENTS\.md$|^README(\.[a-z]{2})?\.md$)" | grep -v "^knowledge/shared/rules/" || true)
 
 # Always-light by path.
 LIGHT=$(echo "$STAGED" \
@@ -197,6 +238,8 @@ if [ -n "$CARVEOUT" ]; then
     [ -z "$f" ] && continue
     if diff_is_substantive "$f"; then
       HEAVY="$HEAVY"$'\n'"$f (substantive: code/claim added)"
+    elif case "$f" in README.md|README.??.md) true ;; *) false ;; esac && readme_first_screen_touched "$f"; then
+      HEAVY="$HEAVY"$'\n'"$f (substantive: first screen — the part a reader decides on)"
     else
       LIGHT="$LIGHT"$'\n'"$f (prose-only)"
     fi
