@@ -319,7 +319,7 @@ this page: that table is *symptoms you might arrive with*, this is *what the hub
 | **①** | **Harness cluster** | One task rides several harnesses, and governance is computed *between* them. Its load-bearing sub-mechanism, **cross-harness**: **call** a capability you do not have (rather than build it), and **absorb** the one you should have built |
 | **②** | **Project incubator** | A new harness comes out **walking where it was born**, not as an empty scaffold |
 | **③** | **Governance gate** | What must not ship is blocked **mechanically**, not by remembering to check |
-| **④** | **Frontier absorption** | What arrives from outside lands all the way *inside* the organization |
+| **④** | **Frontier absorption** | When you are not sure, *what we already have* then *what the world already built* gets searched first — so nothing is rebuilt |
 | **⑤** | **Amplifier** | A short intent gets forged all the way to the finished artifact |
 
 **A sixth row is deliberately absent from that table.** `Ⓑ` **Project Booster** — FH's machinery
