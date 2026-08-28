@@ -135,17 +135,23 @@ run_case() {
 echo "[universal-guard] known-pair anchor (throwaway repo: $SANDBOX)"
 
 # ── Pair 1: the closed hole. Same private token, asset vs non-asset path. ──
-# README.md is NOT in the 4-axis classifier's pathspec; before the 2026-07-26 fix this case
-# produced zero output and exit 0. If the guards are ever moved back below the early exit,
-# THIS is the case that goes clean and fails the anchor.
+# The non-asset case must use a path the 4-axis classifier does NOT claim — the pair's whole
+# point is that the universal guards fire on BOTH classes, so if both sides are assets the
+# contrast is gone and the pair stops discriminating.
+# 🟥 It was README.md until 2026-08-28, which worked only while README matched no bucket. When
+# README became a CARVEOUT that day the pair silently lost its non-asset half — and it stayed
+# GREEN, because run_case scores the leak dimension (`hasleak`), not the exit code. A pair can
+# keep passing after it has stopped measuring what it was built to measure.
+# Before the 2026-07-26 fix this case produced zero output and exit 0. If the guards are ever
+# moved back below the early exit, THIS is the case that goes clean and fails the anchor.
 run_case "non-asset path, private token   → BLOCK" \
-         "README.md" "see zzsynthoperator/home" "leak"
+         "notes.md" "see zzsynthoperator/home" "leak"
 run_case "asset path,     private token   → BLOCK" \
          "CATALOG.md" "see zzsynthoperator/home" "leak"
 
 # ── Pair 2: no over-blocking. Ordinary content on both path classes stays clean. ──
 run_case "non-asset path, clean content   → PASS " \
-         "README.md" "ordinary documentation, nothing private" "clean"
+         "notes.md" "ordinary documentation, nothing private" "clean"
 run_case "asset path,     clean content   → PASS " \
          "CATALOG.md" "ordinary catalog entry, nothing private" "clean"
 
@@ -202,15 +208,21 @@ run_state_case() {  # <name> <override-content|__NONE__> <defaults:keep|drop> <e
   # every layer ran. Identical verdicts for different amounts of measurement is the fail-open —
   # so the anchor has to read the verdict LINE, not just the status.
   local name="$1" ovc="$2" defmode="$3" expect="$4" want="${5:-}" out rc got
-  printf 'operator literal zzsynthoperator\n' > "$SANDBOX/README.md"
-  git -C "$SANDBOX" add -- README.md >/dev/null 2>&1
+  # 🟥 The carrier file must be a path the 4-axis gate does NOT classify — this lane is testing
+  # the public-surface scan, not the gate, so a HEAVY/CARVEOUT path would make every case here
+  # demand an Axes-2+3 marker and report "expected pass, got block".
+  # It used to be README.md, and that worked ONLY because README matched none of the gate's
+  # three buckets — i.e. this lane was green *because of* the blind spot closed on 2026-08-28.
+  # `notes.md` is deliberately unclassified: same extension (scan behaviour identical), no bucket.
+  printf 'operator literal zzsynthoperator\n' > "$SANDBOX/notes.md"
+  git -C "$SANDBOX" add -- notes.md >/dev/null 2>&1
   local ov="$SANDBOX/.psa_state_override"
   if [ "$ovc" = "__NONE__" ]; then rm -f "$ov"; else printf '%s\n' "$ovc" > "$ov"; fi
   local defbak="$SANDBOX/.defaults.bak"
   if [ "$defmode" = drop ]; then mv "$SANDBOX/.claude/rules/.public-surface-patterns.defaults" "$defbak" 2>/dev/null; fi
   out=$(cd "$SANDBOX" && PSA_PATTERNS="$ov" bash "$HOOK" 2>&1); rc=$?
   if [ "$defmode" = drop ]; then mv "$defbak" "$SANDBOX/.claude/rules/.public-surface-patterns.defaults" 2>/dev/null; fi
-  git -C "$SANDBOX" rm -q --cached -- README.md >/dev/null 2>&1; rm -f "$SANDBOX/README.md" "$ov"
+  git -C "$SANDBOX" rm -q --cached -- notes.md >/dev/null 2>&1; rm -f "$SANDBOX/notes.md" "$ov"
   if [ "$rc" -ne 0 ]; then got=block; else got=pass; fi
   if [ "$got" != "$expect" ]; then
     echo "  ❌ $name — expected $expect, got $got (exit $rc)"
