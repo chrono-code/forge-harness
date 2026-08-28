@@ -130,7 +130,8 @@ The honesty is not a disclaimer bolted on at the end. It *is* the positioning.
 
 That sentence is the **second** of two lines that open the README, and it was **chosen against two
 alternatives**. It was the first line until 2026-08-28; see §"Why a second line was added above it"
-below for what changed and why the line above it is allowed to break the rule this section states. Both
+below — a second line now sits above it, and that section records the blind cold read that
+chose its wording (and killed the first attempt). Both
 rejections are recorded because a line with no recorded reason gets rewritten by whoever edits next,
 and the reason is the part that does not survive in the artifact.
 
@@ -156,7 +157,7 @@ describing a smaller tool than the one that ships.
 
 ### Why a second line was added above it (2026-08-28)
 
-> **Build your own galaxy of projects.**
+> **Stop re-explaining your rules to your agent. Put them in the project.**
 
 The gate line describes **the device**. It does not say what the device is for. A reader arriving at
 the README met a quality gate and a GIF of a quality gate, and could reasonably conclude FH *is* a
@@ -164,25 +165,43 @@ gate — which is smaller than the thing that ships. The purpose statement did e
 banner's `alt` text, where a sighted reader never sees it. So the gap was not "unstated"; it was
 **stated somewhere invisible**.
 
-**This line knowingly breaks the rule stated above** — "a first line should say what you can do with
-it, because that is the only half a reader can verify before installing." A galaxy is a metaphor, and
-a metaphor is not checkable. The exemption is narrow and has a reason, not an exception-by-fiat:
+**A blind cold read confirmed the gap, and then refuted the first fix.** Two arms, floor tier, each
+given only the first screen and not told what was being tested:
 
-- **Layer.** FH's own rule already splits where metaphor earns its place: brand and doctrine surfaces
-  (README, this file) yes; **choosing surfaces** (menu doors, verdicts) no. That split is not taste —
-  it was measured. Forge vocabulary was put into the door subtitles on 2026-08-22 and rolled back when
-  a blind floor-tier read named it, 3/3, as the most confusing thing on screen. The doors are where a
-  reader *picks*; the README's opening is where a reader *decides whether this is for them at all*.
-- **Division of labour.** The two lines are not competing for the same job. Line one says what you are
-  building; line two says what keeps it from scattering. Removing line two to protect the rule would
-  leave the purpose unchecked; removing line one leaves the device standing in for the purpose, which
-  is the state this change is fixing.
+| arm | "what does this tool do?" | most confusing line |
+|---|---|---|
+| control — gate line only | *"잘 모르겠다"* | **the gate line itself** |
+| arm 1 — a metaphor added above it | *"정확히 모르겠다"* | **the new metaphor** |
+| arm 2 — the line that shipped | ✅ *"rules you kept re-explaining to the AI, planted in the project up front, and a gate that checks they were kept"* | neither opening line — the **GIF caption's jargon** |
 
-**What would refute this.** The doors precedent is the nearest measurement, and it points the other
-way — so the honest position is that this line is **unmeasured**, not vindicated. A blind floor-tier
-cold read of the first screen ("what is this tool for? would you install it?") is cheap and has not
-been run. If a reader cannot say what FH does after reading both lines, the metaphor failed and the
-answer is a checkable purpose line, not a longer metaphor.
+The metaphor tried was *"Build your own galaxy of projects."* It moved the answer not at all and it
+**added a new question**: the reader could not tell *"whether 「galaxy」 is a figure of speech or an
+actual feature of the product."* Arm 2 says the thing a reader can check, and the reader then said
+it back correctly — which is the whole test.
+
+⚠️ **Two things this measurement does not establish.** "Would you install it?" stayed *"모르겠다"*
+in all three arms, but the *reason* changed — in arm 2 it was *"the screen is cut off right before
+what you get"*, which is an artifact of the fixture (the first screen was truncated), not of the
+copy. That question is **unresolved, not answered**. And the confusion did not disappear; it
+**moved** — to `«스킬 명세»`, an internal term the GIF caption uses with no definition. That is a
+real finding about a different line, recorded here rather than quietly fixed.
+
+**What this replaces.** An earlier draft of this section argued the metaphor was admissible here
+because brand surfaces differ from choosing surfaces (menu doors, verdicts) — the split FH's own
+doors measurement drew on 2026-08-22, when forge vocabulary in door subtitles was named 3/3 as the
+most confusing thing on screen. **That argument was wrong in its prediction, and the doors
+measurement was the better guide.** The generalisation that survives is narrower and stronger:
+
+> A reader meeting the project for the first time is **deciding**, not reading. Metaphor costs them
+> a disambiguation they did not ask for — *is this a figure or a feature?* — and that cost lands
+> before they have any frame to absorb it. Metaphor earns its place further in, where a reader has
+> already chosen to read: this file's body, the doctrine sections, `docs/WHY.md`.
+
+**Honest scope.** One rep per arm, below this repo's own `reps>=3` bar. It is reported anyway
+because it **replicates an independent prior measurement in the same direction** (the doors), and
+because the pre-registered falsification condition was written *before* the arms were run and then
+fired. A single arm that confirms a hunch would not be worth this paragraph; one that kills the
+author's own line is.
 
 ⚠️ **Scope of this record.** These are positioning decisions, not measurements. The `GATE_DAY.md`
 figure is measured; "which sentence reads better" is not, and no reader study was run. What is being

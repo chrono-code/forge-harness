@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <b>打造属于你自己的项目星系。</b>
+  <b>别再一遍遍向 agent 解释规则 — 把它们放进项目里。</b>
 </p>
 
 <p align="center">

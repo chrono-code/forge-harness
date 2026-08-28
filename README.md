@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <b>Build your own galaxy of projects.</b>
+  <b>Stop re-explaining your rules to your agent. Put them in the project.</b>
 </p>
 
 <!-- This line was chosen, not drafted. Before rewriting it, read docs/ETHOS.md
