@@ -16,6 +16,10 @@
 </p>
 
 <p align="center">
+  <b>打造属于你自己的项目星系。</b>
+</p>
+
+<p align="center">
   <b>抓住的不只是你的 agent，还有你——的质量门禁。</b>
 </p>
 

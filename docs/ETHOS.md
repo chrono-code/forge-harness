@@ -128,7 +128,9 @@ The honesty is not a disclaimer bolted on at the end. It *is* the positioning.
 
 > **Quality gates that catch you, not just your agent.**
 
-That sentence is the first thing on the README, and it was **chosen against two alternatives**. Both
+That sentence is the **second** of two lines that open the README, and it was **chosen against two
+alternatives**. It was the first line until 2026-08-28; see §"Why a second line was added above it"
+below for what changed and why the line above it is allowed to break the rule this section states. Both
 rejections are recorded because a line with no recorded reason gets rewritten by whoever edits next,
 and the reason is the part that does not survive in the artifact.
 
@@ -151,6 +153,36 @@ easier claim, and FH's own record refutes it as sufficient: on the day this line
 gates blocked the *author* seven times with **zero** self-catches ([`GATE_DAY.md`](GATE_DAY.md)). The
 person driving the agent is inside the surface being gated, and a first line that omits them is
 describing a smaller tool than the one that ships.
+
+### Why a second line was added above it (2026-08-28)
+
+> **Build your own galaxy of projects.**
+
+The gate line describes **the device**. It does not say what the device is for. A reader arriving at
+the README met a quality gate and a GIF of a quality gate, and could reasonably conclude FH *is* a
+gate — which is smaller than the thing that ships. The purpose statement did exist, but only in the
+banner's `alt` text, where a sighted reader never sees it. So the gap was not "unstated"; it was
+**stated somewhere invisible**.
+
+**This line knowingly breaks the rule stated above** — "a first line should say what you can do with
+it, because that is the only half a reader can verify before installing." A galaxy is a metaphor, and
+a metaphor is not checkable. The exemption is narrow and has a reason, not an exception-by-fiat:
+
+- **Layer.** FH's own rule already splits where metaphor earns its place: brand and doctrine surfaces
+  (README, this file) yes; **choosing surfaces** (menu doors, verdicts) no. That split is not taste —
+  it was measured. Forge vocabulary was put into the door subtitles on 2026-08-22 and rolled back when
+  a blind floor-tier read named it, 3/3, as the most confusing thing on screen. The doors are where a
+  reader *picks*; the README's opening is where a reader *decides whether this is for them at all*.
+- **Division of labour.** The two lines are not competing for the same job. Line one says what you are
+  building; line two says what keeps it from scattering. Removing line two to protect the rule would
+  leave the purpose unchecked; removing line one leaves the device standing in for the purpose, which
+  is the state this change is fixing.
+
+**What would refute this.** The doors precedent is the nearest measurement, and it points the other
+way — so the honest position is that this line is **unmeasured**, not vindicated. A blind floor-tier
+cold read of the first screen ("what is this tool for? would you install it?") is cheap and has not
+been run. If a reader cannot say what FH does after reading both lines, the metaphor failed and the
+answer is a checkable purpose line, not a longer metaphor.
 
 ⚠️ **Scope of this record.** These are positioning decisions, not measurements. The `GATE_DAY.md`
 figure is measured; "which sentence reads better" is not, and no reader study was run. What is being
