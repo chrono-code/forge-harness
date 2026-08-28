@@ -135,17 +135,23 @@ run_case() {
 echo "[universal-guard] known-pair anchor (throwaway repo: $SANDBOX)"
 
 # ── Pair 1: the closed hole. Same private token, asset vs non-asset path. ──
-# README.md is NOT in the 4-axis classifier's pathspec; before the 2026-07-26 fix this case
-# produced zero output and exit 0. If the guards are ever moved back below the early exit,
-# THIS is the case that goes clean and fails the anchor.
+# The non-asset case must use a path the 4-axis classifier does NOT claim — the pair's whole
+# point is that the universal guards fire on BOTH classes, so if both sides are assets the
+# contrast is gone and the pair stops discriminating.
+# 🟥 It was README.md until 2026-08-28, which worked only while README matched no bucket. When
+# README became a CARVEOUT that day the pair silently lost its non-asset half — and it stayed
+# GREEN, because run_case scores the leak dimension (`hasleak`), not the exit code. A pair can
+# keep passing after it has stopped measuring what it was built to measure.
+# Before the 2026-07-26 fix this case produced zero output and exit 0. If the guards are ever
+# moved back below the early exit, THIS is the case that goes clean and fails the anchor.
 run_case "non-asset path, private token   → BLOCK" \
-         "README.md" "see zzsynthoperator/home" "leak"
+         "notes.md" "see zzsynthoperator/home" "leak"
 run_case "asset path,     private token   → BLOCK" \
          "CATALOG.md" "see zzsynthoperator/home" "leak"
 
 # ── Pair 2: no over-blocking. Ordinary content on both path classes stays clean. ──
 run_case "non-asset path, clean content   → PASS " \
-         "README.md" "ordinary documentation, nothing private" "clean"
+         "notes.md" "ordinary documentation, nothing private" "clean"
 run_case "asset path,     clean content   → PASS " \
          "CATALOG.md" "ordinary catalog entry, nothing private" "clean"
 

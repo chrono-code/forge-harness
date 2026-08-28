@@ -106,15 +106,31 @@ is_carveout_path() {
 # a channel check, per CLAUDE.md §Mechanization Boundary.
 # Fails CLOSED on any git error, same as diff_is_substantive.
 readme_first_screen_touched() { # $1 = staged README path
-  local file="$1" fold hunks rc
-  # Fold = the first horizontal rule. No fold (a README with none) → treat the whole file as
-  # first screen; that fails toward review rather than toward silence.
-  fold=$(git show ":$file" 2>/dev/null | grep -n '^---[[:space:]]*$' | head -1 | cut -d: -f1)
-  [ -n "$fold" ] || fold=999999
-  hunks=$(git diff --cached -U0 -- "$file" 2>/dev/null | grep -E '^@@'); rc=$?
-  # rc=1 from grep just means "no hunks" (nothing staged for this file) — not an error.
-  [ -z "$hunks" ] && return 1
-  # New-side start line of each hunk: @@ -a,b +c,d @@
+  local file="$1" fold hunks body first_screen_cap=60
+  body=$(git show ":$file" 2>/dev/null) || return 0   # unreadable → fail closed
+  # 🟥 YAML front matter: a README that opens with `---` would set fold=1 and then EVERY real
+  # first-screen edit reads as below-the-fold — fail-OPEN, and both cross-family auditors found
+  # it independently (2026-08-28). So the fold search starts AFTER a leading front-matter block.
+  local skip=0
+  if printf '%s\n' "$body" | head -1 | grep -qE '^---[[:space:]]*$'; then
+    skip=$(printf '%s\n' "$body" | awk 'NR>1 && /^---[[:space:]]*$/ {print NR; exit}')
+    [ -n "$skip" ] || skip=1
+  fi
+  fold=$(printf '%s\n' "$body" | awk -v s="$skip" 'NR>s && /^---[[:space:]]*$/ {print NR; exit}')
+  # 🟥 No horizontal rule at all: do NOT treat the whole file as first screen. That was the first
+  # draft and it is an over-block mine — a typo on line 800 of a rule-less README would demand a
+  # marker, which is exactly the `--no-verify` training this rule's own comment forbids. Both
+  # auditors named the self-contradiction. Bound it instead: the first screen is what a reader
+  # sees before scrolling, and 60 lines is the same window the cold-read fixture used.
+  [ -n "$fold" ] || fold="$first_screen_cap"
+  hunks=$(git diff --cached -U0 -- "$file" 2>/dev/null | grep -E '^@@')
+  if [ -z "$hunks" ]; then
+    # 🟥 No hunks is NOT "nothing changed above the fold". `git diff -U0` prints no @@ for a
+    # binary blob or a pure rename, so returning false here renders UNMEASURED as none — the
+    # exact family this repo keeps closing. Measure whether the file is staged at all first.
+    git diff --cached --name-only -- "$file" 2>/dev/null | grep -q . || return 1  # genuinely unstaged
+    return 0                                                                      # staged but unreadable → fail closed
+  fi
   while IFS= read -r h; do
     local start
     start=$(printf '%s' "$h" | sed -E 's/^@@ [^+]*\+([0-9]+).*/\1/')
@@ -226,7 +242,7 @@ HEAVY=$(echo "$STAGED" \
 
 # Carve-out candidates: knowledge/ docs, docs/*.md, AGENTS.md. Heavy only if substantive.
 CARVEOUT=$(echo "$STAGED" \
-  | grep -E "(^knowledge/.*\.md$|^docs/.*\.md$|(^|/)AGENTS\.md$|^README(\.[a-z]{2})?\.md$)" | grep -v "^knowledge/shared/rules/" || true)
+  | grep -E "(^knowledge/.*\.md$|^docs/.*\.md$|(^|/)AGENTS\.md$|^README(\.[A-Za-z]{2,3}([-_][A-Za-z]{2,4})?)?\.md$)" | grep -v "^knowledge/shared/rules/" || true)
 
 # Always-light by path.
 LIGHT=$(echo "$STAGED" \
@@ -238,7 +254,7 @@ if [ -n "$CARVEOUT" ]; then
     [ -z "$f" ] && continue
     if diff_is_substantive "$f"; then
       HEAVY="$HEAVY"$'\n'"$f (substantive: code/claim added)"
-    elif case "$f" in README.md|README.??.md) true ;; *) false ;; esac && readme_first_screen_touched "$f"; then
+    elif case "$f" in README.md|README.*.md) true ;; *) false ;; esac && readme_first_screen_touched "$f"; then
       HEAVY="$HEAVY"$'\n'"$f (substantive: first screen — the part a reader decides on)"
     else
       LIGHT="$LIGHT"$'\n'"$f (prose-only)"
