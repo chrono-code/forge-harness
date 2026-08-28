@@ -27,7 +27,7 @@
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">
-  <sub>这是真实运行，不是演示。一个 agent“整理”了技能规范，门禁会指出<b>丢失了什么</b>；把该章节放回去后，整理部分依然通过。<br>重新生成：<code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+  <sub>这是真实运行，不是演示。一个 agent“整理”技能定义文件（<code>SKILL.md</code>）时删掉了 <b>Done When（完成条件）</b>小节。门禁会点名指出被删的小节；把它放回去，其余整理照常通过。<br>重新生成：<code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
 </p>
 
 <p align="center">

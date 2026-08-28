@@ -27,7 +27,7 @@
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">
-  <sub>演出ではなく実際の実行です。エージェントがスキル仕様を「整理」し、ゲートは<b>何が失われたか</b>を名指しします。セクションを戻せば整理はそのまま通ります。<br>再生成: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+  <sub>演出ではなく実際の実行です。エージェントがスキル定義ファイル（<code>SKILL.md</code>）を「整理」した際に <b>Done When（完了条件）</b> の節を消しました。ゲートは消えた節を名指しし、それを戻せば残りの整理はそのまま通ります。<br>再生成: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
 </p>
 
 <p align="center">

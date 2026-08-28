@@ -27,7 +27,7 @@
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">
-  <sub>연출이 아니라 실제 실행입니다. 에이전트가 스킬 명세를 «정리»했고, 게이트는 <b>무엇이 사라졌는지</b>를 이름으로 말합니다. 섹션을 되살리면 정리는 그대로 통과합니다.<br>재생성: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+  <sub>연출이 아니라 실제 실행입니다. 에이전트가 스킬 정의 파일(<code>SKILL.md</code>)을 «정리»하면서 <b>완료 조건(Done When)</b> 항목을 지웠습니다. 게이트는 사라진 항목을 이름으로 지목하고, 그 항목을 되살리면 나머지 정리는 그대로 통과합니다.<br>재생성: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
 </p>
 
 ---

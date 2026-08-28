@@ -29,7 +29,7 @@
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">
-  <sub>A real run, not a mock: an agent “tidied up” a skill spec, the guard names what was <b>lost</b>, and the cleanup still ships once the section is back.<br>Regenerate: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+  <sub>A real run, not a mock: an agent “tidied up” a skill spec (<code>SKILL.md</code>) and dropped its <b>Done When</b> section. The guard names the missing section; put it back and the cleanup ships unchanged.<br>Regenerate: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
 </p>
 
 ---
