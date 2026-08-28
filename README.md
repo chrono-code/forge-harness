@@ -125,7 +125,7 @@ Everything below this line is reference for when you want it, not homework befor
 - **What it does not** — the model's ceiling. A harness lifts a model to its own ceiling, not past it.
 
 - **How you can check** — it grades itself in public. It names **five things it claims to be**
-  (harness cluster · project incubator · governance gate · frontier → org propagation · amplifier) and grades each
+  (harness cluster · project incubator · governance gate · frontier absorption · amplifier) and grades each
   one honestly in every [release](https://github.com/chrono-meta/forge-harness/releases). Any square
   that is not green names the real run that is still missing.
   <sub>Each of the five is spelled out further down, under «The five identities».</sub>
@@ -319,7 +319,7 @@ this page: that table is *symptoms you might arrive with*, this is *what the hub
 | **①** | **Harness cluster** | One task rides several harnesses, and governance is computed *between* them. Its load-bearing sub-mechanism, **cross-harness**: **call** a capability you do not have (rather than build it), and **absorb** the one you should have built |
 | **②** | **Project incubator** | A new harness comes out **walking where it was born**, not as an empty scaffold |
 | **③** | **Governance gate** | What must not ship is blocked **mechanically**, not by remembering to check |
-| **④** | **Frontier → org propagation** | What arrives from outside lands all the way *inside* the organization |
+| **④** | **Frontier absorption** | What arrives from outside lands all the way *inside* the organization |
 | **⑤** | **Amplifier** | A short intent gets forged all the way to the finished artifact |
 
 **A sixth row is deliberately absent from that table.** `Ⓑ` **Project Booster** — FH's machinery
@@ -394,7 +394,7 @@ naming them was recognition rather than taxonomy-building.
 | `judgment-circuit` | what counts as success, which way to lean under uncertainty, what is out of scope, what never happens | ⑤ Amplifier · ② Incubator |
 | `ship-gate` | mechanical blocking before an irreversible surface — commit, publish, delete, rewrite | ③ Governance gate |
 | `context-continuity` | not losing the thread across compaction, sub-agents, machines, sessions | ① Cluster · ② Incubator |
-| `external-grounding` | reaching outside the repo *before* asserting novelty or settling a design | ④ Frontier → org |
+| `external-grounding` | reaching outside the repo *before* asserting novelty or settling a design | ④ Frontier absorption |
 
 They are written by name, never by number — the table order here and the prose order elsewhere differ, so
 "engine ④" decodes to two different engines depending on which you read.
