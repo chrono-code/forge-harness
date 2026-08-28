@@ -128,7 +128,10 @@ The honesty is not a disclaimer bolted on at the end. It *is* the positioning.
 
 > **Quality gates that catch you, not just your agent.**
 
-That sentence is the first thing on the README, and it was **chosen against two alternatives**. Both
+That sentence is the **second** of two lines that open the README, and it was **chosen against two
+alternatives**. It was the first line until 2026-08-28; see §"Why a second line was added above it"
+below — a second line now sits above it, and that section records the blind cold read that
+chose its wording (and killed the first attempt). Both
 rejections are recorded because a line with no recorded reason gets rewritten by whoever edits next,
 and the reason is the part that does not survive in the artifact.
 
@@ -151,6 +154,54 @@ easier claim, and FH's own record refutes it as sufficient: on the day this line
 gates blocked the *author* seven times with **zero** self-catches ([`GATE_DAY.md`](GATE_DAY.md)). The
 person driving the agent is inside the surface being gated, and a first line that omits them is
 describing a smaller tool than the one that ships.
+
+### Why a second line was added above it (2026-08-28)
+
+> **Stop re-explaining your rules to your agent. Put them in the project.**
+
+The gate line describes **the device**. It does not say what the device is for. A reader arriving at
+the README met a quality gate and a GIF of a quality gate, and could reasonably conclude FH *is* a
+gate — which is smaller than the thing that ships. The purpose statement did exist, but only in the
+banner's `alt` text, where a sighted reader never sees it. So the gap was not "unstated"; it was
+**stated somewhere invisible**.
+
+**A blind cold read confirmed the gap, and then refuted the first fix.** Two arms, floor tier, each
+given only the first screen and not told what was being tested:
+
+| arm | "what does this tool do?" | most confusing line |
+|---|---|---|
+| control — gate line only | *"잘 모르겠다"* | **the gate line itself** |
+| arm 1 — a metaphor added above it | *"정확히 모르겠다"* | **the new metaphor** |
+| arm 2 — the line that shipped | ✅ *"rules you kept re-explaining to the AI, planted in the project up front, and a gate that checks they were kept"* | neither opening line — the **GIF caption's jargon** |
+
+The metaphor tried was *"Build your own galaxy of projects."* It moved the answer not at all and it
+**added a new question**: the reader could not tell *"whether 「galaxy」 is a figure of speech or an
+actual feature of the product."* Arm 2 says the thing a reader can check, and the reader then said
+it back correctly — which is the whole test.
+
+⚠️ **Two things this measurement does not establish.** "Would you install it?" stayed *"모르겠다"*
+in all three arms, but the *reason* changed — in arm 2 it was *"the screen is cut off right before
+what you get"*, which is an artifact of the fixture (the first screen was truncated), not of the
+copy. That question is **unresolved, not answered**. And the confusion did not disappear; it
+**moved** — to `«스킬 명세»`, an internal term the GIF caption uses with no definition. That is a
+real finding about a different line, recorded here rather than quietly fixed.
+
+**What this replaces.** An earlier draft of this section argued the metaphor was admissible here
+because brand surfaces differ from choosing surfaces (menu doors, verdicts) — the split FH's own
+doors measurement drew on 2026-08-22, when forge vocabulary in door subtitles was named 3/3 as the
+most confusing thing on screen. **That argument was wrong in its prediction, and the doors
+measurement was the better guide.** The generalisation that survives is narrower and stronger:
+
+> A reader meeting the project for the first time is **deciding**, not reading. Metaphor costs them
+> a disambiguation they did not ask for — *is this a figure or a feature?* — and that cost lands
+> before they have any frame to absorb it. Metaphor earns its place further in, where a reader has
+> already chosen to read: this file's body, the doctrine sections, `docs/WHY.md`.
+
+**Honest scope.** One rep per arm, below this repo's own `reps>=3` bar. It is reported anyway
+because it **replicates an independent prior measurement in the same direction** (the doors), and
+because the pre-registered falsification condition was written *before* the arms were run and then
+fired. A single arm that confirms a hunch would not be worth this paragraph; one that kills the
+author's own line is.
 
 ⚠️ **Scope of this record.** These are positioning decisions, not measurements. The `GATE_DAY.md`
 figure is measured; "which sentence reads better" is not, and no reader study was run. What is being

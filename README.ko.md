@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/banner.png" alt="forge-harness, 프로젝트를 벼려 통과시키면, 더 빠르게 나온다. 품질이 지렛대이고, 속도는 그 결과다." width="680">
+  <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/banner.png" alt="forge-harness, 프로젝트를 담금질해 통과시키면, 더 빠르게 나온다. 품질이 지렛대이고, 속도는 그 결과다." width="680">
 </p>
 
 <p align="center">
@@ -16,6 +16,10 @@
 </p>
 
 <p align="center">
+  <b>AI 에게 매번 설명하던 규칙을, 프로젝트마다 심어두세요.</b>
+</p>
+
+<p align="center">
   <b>당신의 에이전트도, 당신도 통과해야 합니다.</b>
 </p>
 
@@ -23,7 +27,7 @@
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">
-  <sub>연출이 아니라 실제 실행입니다. 에이전트가 스킬 명세를 «정리»했고, 게이트는 <b>무엇이 사라졌는지</b>를 이름으로 말합니다. 섹션을 되살리면 정리는 그대로 통과합니다.<br>재생성: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+  <sub>연출이 아니라 실제 실행입니다. 에이전트가 스킬 정의 파일(<code>SKILL.md</code>)을 «정리»하면서 <b>완료 조건(Done When)</b> 항목을 지웠습니다. 게이트는 사라진 항목을 이름으로 지목하고, 그 항목을 되살리면 나머지 정리는 그대로 통과합니다.<br>재생성: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
 </p>
 
 ---
@@ -57,7 +61,7 @@ cd ~/projects/forge-harness && claude        # 그다음 인사 한마디: 안�
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/door2-menu.gif" alt="갓 클론한 forge-harness 에서 hi 를 치자 FH 가 체크아웃을 읽고 신규 사용자 메뉴를 열며 설치 마법사가 아직 안 돌았다고 알린다" width="820">
 </p>
 <p align="center">
-  <sub>네 번째 줄이 하는 일 전부입니다. 몇 분 전에 만든 클론입니다 — 체크아웃을 읽고, 세션 파일이 없는 것을 보고, <b>신규 사용자</b> 메뉴를 엽니다. 그리고 마법사가 아직 안 돌았다고 알려 줍니다.<br>실행과 대기 시간은 숨겼습니다. 화면의 모든 글자는 그 실행의 출력입니다. 다시 만들기: <code>vhs docs/demo/door2-menu.tape</code></sub>
+  <sub>네 번째 줄이 하는 일 전부입니다. 몇 분 전에 만든 클론입니다. 체크아웃을 읽고, 세션 파일이 없는 것을 보고, <b>신규 사용자</b> 메뉴를 엽니다. 그리고 마법사가 아직 안 돌았다고 알려 줍니다.<br>실행과 대기 시간은 숨겼습니다. 화면의 모든 글자는 그 실행의 출력입니다. 다시 만들기: <code>vhs docs/demo/door2-menu.tape</code></sub>
 </p>
 
 **①에 더해 얻는 것**
@@ -82,8 +86,7 @@ cd ~/projects/forge-harness && claude        # 그다음 인사 한마디: 안�
 
 **뒷단의 검토를 대신하지 않습니다.** 질문을 앞으로 당길 뿐입니다. 사람 검토자에게 닿는 양이
 줄어드는 것이지, 사람이 검토를 그만두는 것이 아닙니다. 겨냥하는 병목은 «만들어지는 속도»와
-«사람이 확인하는 속도» 사이의 간격이고, 그 간격을 **앞쪽에서** 좁힙니다. 뒤로 넘어가야 할 것을
-줄이는 방식으로요.
+«사람이 확인하는 속도» 사이의 간격이고, 뒤로 넘어가야 할 것을 줄여서 그 간격을 **앞쪽에서** 좁힙니다.
 
 **diff 로 볼 수 없는 것은 여전히 사람의 몫입니다.** 실제로 돌려 봐야 드러나는 것 — 진짜 화면에서,
 진짜 상태를 놓고 — 은 이 도구들이 닿는 범위 밖입니다. 그 일은 앞에 게이트가 있다고 줄어들지
@@ -257,7 +260,7 @@ Project B  ──→  CLAUDE.md에서 허브 연결
 
 먼저 하네스가 *무엇을 위한 것인지*부터: 하네스는 사람의 **의도**를 읽어 **기계화된 형태**로
 벼립니다, AI가 신뢰성 있게 따르는 규칙, 또는 모델이 아예 필요 없는 결정적 코드로. 의도와
-통찰을 주면, 하네스가 실행 가능한 형태로 벼리고, 합의하면, 그것이 기계가 됩니다.
+통찰을 주면, 하네스가 실행 가능한 형태로 다듬어 내고, 합의하면, 그것이 기계가 됩니다.
 그 보상은 **사람 쪽 시행착오의 최소화**입니다: 요청 → 피드백 → 재생성 루프는 사라지는 게 아니라
 *위치를 옮깁니다*. 하네스 안으로, 에이전트와 사이드카가 병렬로 돌리는 곳으로. 그래서 사람의
 시간이 줄고, 주의는 변경이 되돌릴 수 없는 지점에만 쓰입니다.
@@ -287,7 +290,7 @@ Project B  ──→  CLAUDE.md에서 허브 연결
 | **②** | **프로젝트 인큐베이터** | 새 하네스가 빈 스캐폴드가 아니라 **태어난 자리에서 이미 걷는 상태로** 나옴 |
 | **③** | **거버넌스 게이트** | 나가면 안 되는 것이 점검을 기억해서가 아니라 **기계적으로** 막힘 |
 | **④** | **프런티어 → 조직 전파** | 밖에서 들어온 것이 조직 *안쪽까지* 내려앉음 |
-| **⑤** | **증폭자** | 짧은 의도가 완성된 산출물까지 벼려짐 |
+| **⑤** | **증폭자** | 짧은 의도가 완성된 산출물까지 다듬어짐 |
 
 **여섯 번째 행은 의도적으로 이 표에 없습니다.** `Ⓑ` **프로젝트 부스터**: FH 의 기계가 *상대
 하네스의 자체 개발*을 가속하는 것, 는 실재하고 등급도 매겨져 있지만, **다섯과 같은 층이
@@ -338,7 +341,7 @@ Project B  ──→  CLAUDE.md에서 허브 연결
 ```
 다섯 정체성    사람이 실제로 쓸 수 있는 것        (표면 — 무엇을 얻나)
       ↑ 떠받치는 것
-네 엔진        그것을 가능하게 하는 능력          (능력 — 무엇을 할 수 있나)
+네 엔진        그것을 떠받치는 능력              (능력 — 무엇을 할 수 있나)
       ↑ 만들어내는 것
 3단 공정       그 엔진들을 벼리는 순서            (공정 — 어떻게 만들어지나)
       └ ③단계 = 6축 게이트                       (아래 §여섯 검증 축)
@@ -586,7 +589,7 @@ FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-run --skill phantom-quenc
 FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-run --agent fh-commons:quench-challenger --file plugins/fh-meta/skills/foo/SKILL.md
 ```
 
-변경된 FH 스킬/에이전트 표면이 여전히 깨끗한 Codex 어댑터 경로를 갖는지 확인하려면:
+변경된 FH 스킬/에이전트 표면이 여전히 깨끗한 Codex 어댑터 경로가 있는지 확인하려면:
 
 ```bash
 npx --package @chrono-meta/fh-gate fh-codex-doctor --strict
@@ -630,7 +633,7 @@ FH의 degrade-direction 렌즈를 붙이자 오탐 0으로 6/8을 잡았습니�
 둘 다 같은 구멍 2개를 놓쳤습니다**(falsy 에러-센티널, 그리고 구분자-부정 파싱). 다른 모델 패밀리에
 같은 렌즈를 붙이니 둘 다 잡았고, 그래서 FH *스택*(렌즈 + 크로스패밀리 + 기계적 사전-스크린)은
 8/8에 닿습니다. 핵심은 헤드라인 점수가 아닙니다. 값어치가 **탈상관된 스택**에서 나온다는 것입니다.
-잘 프롬프트된 단일 모델조차 상관된 맹점을 갖고, 그것은 다른 패밀리만 닫습니다. 놓친 두 부류는
+잘 프롬프트된 단일 모델조차 상관된 맹점이 있고, 그것은 다른 패밀리만 닫습니다. 놓친 두 부류는
 이제 한 층 앞에서 기계적으로(lint 사전-스크린) 잡힙니다. 표본이 작습니다(단일 추출); 반복 실행과
 더 어려운 구멍이 명시된 다음 단계입니다. 방법 + 전체 결과:
 [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).

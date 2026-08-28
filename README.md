@@ -15,6 +15,10 @@
   <b>English</b> · <a href="README.ko.md">한국어</a> · <a href="README.zh.md">中文</a> · <a href="README.ja.md">日本語</a>
 </p>
 
+<p align="center">
+  <b>Stop re-explaining your rules to your agent. Put them in the project.</b>
+</p>
+
 <!-- This line was chosen, not drafted. Before rewriting it, read docs/ETHOS.md
      §"Who this line is for" — two rejected alternatives are recorded there with why. -->
 <p align="center">
@@ -25,7 +29,7 @@
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/gate-block.gif" alt="regression guard blocking a change that dropped a Done When section, then passing once it is restored" width="820">
 </p>
 <p align="center">
-  <sub>A real run, not a mock: an agent “tidied up” a skill spec, the guard names what was <b>lost</b>, and the cleanup still ships once the section is back.<br>Regenerate: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
+  <sub>A real run, not a mock: an agent “tidied up” a skill spec (<code>SKILL.md</code>) and dropped its <b>Done When</b> section. The guard names the missing section; put it back and the cleanup ships unchanged.<br>Regenerate: <code>brew install vhs &amp;&amp; vhs docs/demo/gate-block.tape</code></sub>
 </p>
 
 ---
