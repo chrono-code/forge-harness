@@ -2788,3 +2788,11 @@
   cost: "서브에이전트 토큰: 168,310 / 160,072 / 168,028 / 157,952 / 92,898 / 92,933 / 93,101
     (훅 오분류·npm 경계·미정의 용어 3건은 이 기록 시점 진행 중 — 미계상) ·
     codex 80,841 · agy 미출력 · 거버너 = UNMEASURED. 🟥 합계 안 적는다."
+
+- date: 2026-08-29
+  agent: fh-meta:persona-innovator
+  mode: F (내부 갭 + 외부 프런티어), 자율주행 — 운영자 명시 요청
+  trigger: 세션 마감 전 «이노베이터 자율주행» 발화
+  outcome: accepted
+  evidence: "후보 3종 + 외부 신호 4건 반환. 그중 «gate.py ⑨ baseline 이 토큰별인가 클래스별인가» 지적을 즉시 실측해 답을 냈다(per-token, 총합 불변 이주를 FAIL 로 잡음 — 19050 46→48). 자기 차단 2건을 스스로 SPECULATIVE 로 표시하고 인용 금지를 걸었다. 채택은 안 함 — H3 대로 별도 평가자 + 계수 대기"
+  cost: "subagent_tokens 126,428 · tool_uses 16 · 252s"
