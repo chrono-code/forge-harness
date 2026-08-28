@@ -61,7 +61,7 @@ cd ~/projects/forge-harness && claude        # 그다음 인사 한마디: 안�
   <img src="https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/demo/door2-menu.gif" alt="갓 클론한 forge-harness 에서 hi 를 치자 FH 가 체크아웃을 읽고 신규 사용자 메뉴를 열며 설치 마법사가 아직 안 돌았다고 알린다" width="820">
 </p>
 <p align="center">
-  <sub>네 번째 줄이 하는 일 전부입니다. 몇 분 전에 만든 클론입니다 — 체크아웃을 읽고, 세션 파일이 없는 것을 보고, <b>신규 사용자</b> 메뉴를 엽니다. 그리고 마법사가 아직 안 돌았다고 알려 줍니다.<br>실행과 대기 시간은 숨겼습니다. 화면의 모든 글자는 그 실행의 출력입니다. 다시 만들기: <code>vhs docs/demo/door2-menu.tape</code></sub>
+  <sub>네 번째 줄이 하는 일 전부입니다. 몇 분 전에 만든 클론입니다. 체크아웃을 읽고, 세션 파일이 없는 것을 보고, <b>신규 사용자</b> 메뉴를 엽니다. 그리고 마법사가 아직 안 돌았다고 알려 줍니다.<br>실행과 대기 시간은 숨겼습니다. 화면의 모든 글자는 그 실행의 출력입니다. 다시 만들기: <code>vhs docs/demo/door2-menu.tape</code></sub>
 </p>
 
 **①에 더해 얻는 것**
@@ -86,8 +86,7 @@ cd ~/projects/forge-harness && claude        # 그다음 인사 한마디: 안�
 
 **뒷단의 검토를 대신하지 않습니다.** 질문을 앞으로 당길 뿐입니다. 사람 검토자에게 닿는 양이
 줄어드는 것이지, 사람이 검토를 그만두는 것이 아닙니다. 겨냥하는 병목은 «만들어지는 속도»와
-«사람이 확인하는 속도» 사이의 간격이고, 그 간격을 **앞쪽에서** 좁힙니다. 뒤로 넘어가야 할 것을
-줄이는 방식으로요.
+«사람이 확인하는 속도» 사이의 간격이고, 뒤로 넘어가야 할 것을 줄여서 그 간격을 **앞쪽에서** 좁힙니다.
 
 **diff 로 볼 수 없는 것은 여전히 사람의 몫입니다.** 실제로 돌려 봐야 드러나는 것 — 진짜 화면에서,
 진짜 상태를 놓고 — 은 이 도구들이 닿는 범위 밖입니다. 그 일은 앞에 게이트가 있다고 줄어들지
@@ -342,7 +341,7 @@ Project B  ──→  CLAUDE.md에서 허브 연결
 ```
 다섯 정체성    사람이 실제로 쓸 수 있는 것        (표면 — 무엇을 얻나)
       ↑ 떠받치는 것
-네 엔진        그것을 가능하게 하는 능력          (능력 — 무엇을 할 수 있나)
+네 엔진        그것을 떠받치는 능력              (능력 — 무엇을 할 수 있나)
       ↑ 만들어내는 것
 3단 공정       그 엔진들을 벼리는 순서            (공정 — 어떻게 만들어지나)
       └ ③단계 = 6축 게이트                       (아래 §여섯 검증 축)
@@ -590,7 +589,7 @@ FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-run --skill phantom-quenc
 FH_BACKEND=codex npx --package @chrono-meta/fh-gate fh-run --agent fh-commons:quench-challenger --file plugins/fh-meta/skills/foo/SKILL.md
 ```
 
-변경된 FH 스킬/에이전트 표면이 여전히 깨끗한 Codex 어댑터 경로를 갖는지 확인하려면:
+변경된 FH 스킬/에이전트 표면이 여전히 깨끗한 Codex 어댑터 경로가 있는지 확인하려면:
 
 ```bash
 npx --package @chrono-meta/fh-gate fh-codex-doctor --strict
@@ -634,7 +633,7 @@ FH의 degrade-direction 렌즈를 붙이자 오탐 0으로 6/8을 잡았습니�
 둘 다 같은 구멍 2개를 놓쳤습니다**(falsy 에러-센티널, 그리고 구분자-부정 파싱). 다른 모델 패밀리에
 같은 렌즈를 붙이니 둘 다 잡았고, 그래서 FH *스택*(렌즈 + 크로스패밀리 + 기계적 사전-스크린)은
 8/8에 닿습니다. 핵심은 헤드라인 점수가 아닙니다. 값어치가 **탈상관된 스택**에서 나온다는 것입니다.
-잘 프롬프트된 단일 모델조차 상관된 맹점을 갖고, 그것은 다른 패밀리만 닫습니다. 놓친 두 부류는
+잘 프롬프트된 단일 모델조차 상관된 맹점이 있고, 그것은 다른 패밀리만 닫습니다. 놓친 두 부류는
 이제 한 층 앞에서 기계적으로(lint 사전-스크린) 잡힙니다. 표본이 작습니다(단일 추출); 반복 실행과
 더 어려운 구멍이 명시된 다음 단계입니다. 방법 + 전체 결과:
 [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).
