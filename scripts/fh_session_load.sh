@@ -86,11 +86,38 @@ if [ -d "$BE/.git" ]; then
     _deadline() { shift; "$@"; }
   fi
   PULL_NOTE=""
+  DIVERGED=""          # non-empty ⇒ the local tree is NOT the newest state (see §Diverged below)
+  DIVERGE_BEHIND=""    # commits the companion remote has that this clone does not
+  DIVERGE_AHEAD=""     # commits this clone has that the remote does not
   if _deadline "${FH_FETCH_DEADLINE:-8}" git -C "$BE" fetch --quiet >/dev/null 2>&1; then
     if git -C "$BE" merge --ff-only --quiet >/dev/null 2>&1; then
       PULL_NOTE="fetched + fast-forwarded"
     else
-      PULL_NOTE="fetched but NOT fast-forward (companion diverged — read local + newest remote)"
+      # §Diverged — WHY THIS IS LOUD AND COUNTED (2026-08-28, measured on this repo).
+      # The old line said only "companion diverged — read local + newest remote". A session read it,
+      # did NOT read the newest remote, counted the LOCAL tree, and reported an artifact as absent
+      # that the remote had had for two days (deck v6.3 vs the actual v12.4; 338 commits behind).
+      # Two separate defects, and the second is the dangerous one:
+      #   1) the note carried no MAGNITUDE and no COMMAND — "diverged" reads like a footnote
+      #   2) every downstream freshness check in this script (§NEWER THAN SESSION CARD, the STATUS
+      #      map, INDEX head) is computed over the STALE local tree, so it under-reports and an
+      #      un-pulled file renders as a non-existent one — `not found` ≠ `0`
+      #      ([[feedback_not_found_is_not_zero_family]]).
+      # This is a CHANNEL fix, not a judgment one (§Mechanization Boundary): it reports what the
+      # record IS (how far behind, computed) and never decides whether to merge. The hook still
+      # does NOT auto-rebase — mutating a diverged tree from SessionStart is exactly the
+      # irreversible-shaped act the --ff-only design refuses, and a parallel session may hold it.
+      _UP="$(git -C "$BE" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)"
+      [ -n "$_UP" ] || _UP="origin/$(git -C "$BE" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+      # Counts: a failure must leave these EMPTY, never 0 — an unmeasured gap rendered as zero is
+      # the same defect this block exists to stop. `git rev-list` prints nothing to stdout on error.
+      _CNT="$(git -C "$BE" rev-list --left-right --count "HEAD...$_UP" 2>/dev/null)"
+      if [ -n "$_CNT" ]; then
+        DIVERGE_AHEAD="$(printf '%s' "$_CNT" | awk '{print $1}')"
+        DIVERGE_BEHIND="$(printf '%s' "$_CNT" | awk '{print $2}')"
+      fi
+      DIVERGED="1"
+      PULL_NOTE="fetched but NOT fast-forward (companion DIVERGED — local tree is stale)"
     fi
   else
     PULL_NOTE="fetch skipped (offline or deadline hit — read local state)"
@@ -501,11 +528,34 @@ fi
   # So: no new hook, no new line, no nag — the node name is appended to a banner that already
   # prints every single session. `hostname -s`, the same source fh_node_check.sh uses.
   echo "🔄 [FH SessionStart] companion-store freshness — $PULL_NOTE. · node: $(hostname -s 2>/dev/null || echo unknown)"
+  # §Diverged banner. Loud, counted, and it names the ONE command — see the §Diverged comment at the
+  # fetch site for the 2026-08-28 measurement that made this necessary. The magnitude line and the
+  # "everything below is stale" line are separate on purpose: the first says the tree is behind, the
+  # second says this script's OWN downstream findings under-report while it is.
+  if [ -n "$DIVERGED" ]; then
+    if [ -n "$DIVERGE_BEHIND" ]; then
+      echo "🟥 COMPANION DIVERGED — this clone is $DIVERGE_BEHIND commit(s) BEHIND the companion remote (and $DIVERGE_AHEAD ahead)."
+    else
+      # UNMEASURED, never 0: rev-list failed (no upstream configured, unreadable ref). Say so.
+      echo "🟥 COMPANION DIVERGED — magnitude UNMEASURED (could not count against upstream; do NOT read that as 'small')."
+    fi
+    echo "   → PULL BEFORE YOU TRUST ANY FRESHNESS ANSWER:  git -C \"$BE\" pull --rebase"
+    echo "   🟥 Everything printed BELOW this line is computed over the STALE local tree, so it"
+    echo "      UNDER-REPORTS. A file the remote already has renders here as absent — \`not found\`"
+    echo "      is not \`0\`. Answering \"what is the newest X\" from this list while diverged has"
+    echo "      already produced a wrong answer once (2026-08-28: reported a 2-day-old artifact as"
+    echo "      the latest). Pull first, or label the answer LOCAL-ONLY."
+  fi
   if [ -n "$NEWER" ]; then
     echo "⚠️ NEWER THAN SESSION CARD — READ THESE BEFORE ACTING (card may be stale):"
     printf "%b" "$NEWER"
   else
-    echo "   (no companion files newer than the session card)"
+    if [ -n "$DIVERGED" ]; then
+      echo "   (no companion files newer than the session card — 🟥 but the tree is STALE, so this is"
+      echo "    NOT evidence of 'nothing new'. It is an unmeasured surface. Pull, then re-read.)"
+    else
+      echo "   (no companion files newer than the session card)"
+    fi
   fi
   if [ -n "$STATUS_MAP" ]; then
     echo "── handoff/signal STATUS map (mtime-independent — closed items) ──"
