@@ -77,17 +77,15 @@ ACCEPTED_ABSENT=(
   # sibling directly above: it exercises scripts/sync-to-be.sh, itself ACCEPTED_ABSENT — a lane
   # suite for a script that never ships has nothing to verify on a consumer's machine either.
   "scripts/sync_to_be_lanes.sh"
-  # Shared identity resolver for the two transports directly above (added to files[] by #368,
-  # REMOVED from it 2026-08-15). It was the odd one out: its own callers — sync-to-be.sh and
-  # sync-from-be.sh — are ACCEPTED_ABSENT here for a reason that applies to it verbatim (the
-  # namespacing it computes only means anything on a machine that HAS the operator's companion
-  # store), yet it alone was listed for shipping. The pre-publish confidentiality scan is what
-  # surfaced the misclassification: it carries the companion store's own directory vocabulary,
-  # which would have reached the registry for the first time in 1.4.98. The one shipped caller,
-  # fh_session_load.sh, sources it behind `[ -f ]` and documents its own degrade ("an unresolved
-  # identity degrades to the historical unsuffixed tracks-meta rather than erroring — that is the
-  # pre-fix behavior, not a new failure mode"), so a consumer loses nothing that consumer ever had.
-  "scripts/fh_hub_identity.sh"
+  # NOTE (2026-08-29): `scripts/fh_hub_identity.sh` USED to sit here, with a comment saying it had
+  # been removed from files[] on 2026-08-15 as a confidentiality misclassification. Both halves are
+  # now stale: #484 deliberately put it BACK in files[] (without it, `fh_session_load.sh`'s hub-
+  # identity resolution is dead on every consumer install), and a known-pair-calibrated PSA scan on
+  # 2026-08-29 found the file clean (known-positive rc=1 with three hits · known-negative rc=0 ·
+  # subject rc=0; the only private-looking word in it is "companion-store", which is public FH
+  # vocabulary). A shipped path can never exercise an ACCEPTED_ABSENT entry, so the entry was a dead
+  # exception — exactly the kind this check's own advisory warns a future real omission can land on
+  # and be silenced by. Removed rather than re-justified.
   # ── The three lane suites selfcheck.sh's DEBT-12 pair-loop names but does not ship ────────────
   # Added 2026-08-13, and the way they got here is the point: this check CAUGHT them. Before that
   # loop existed, these names lived in lane_runner_check.sh's DEBT array as bare basenames
