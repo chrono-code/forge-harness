@@ -69,6 +69,14 @@
 #   FH defect (a normal session has Bash and can `ls`) — but scoring an arm without knowing it
 #   produces a confident zero from a fixture that was never observable.
 #
+# 🟥 PROJECT HOOKS DO NOT RUN IN A DISPOSABLE CLONE — so this runner cannot measure anything
+#   that depends on one. Measured 2026-08-30: an arm copied `.claude/settings.json` into its clone
+#   to make the PreToolUse PriorArt hook live; not one of the three clones grew
+#   `.claude/.prior_art_events.tsv`, while the live repo's copy carries entries from the same hour.
+#   The hook never fired, so the "hook vs no-hook" contrast was HOOK ≡ NOHOOK and either verdict
+#   would have been false. ⇒ Before claiming a hook-dependent result, check the hook's own
+#   evidence file INSIDE the clone; absence of that file invalidates the arm, not the hypothesis.
+#
 # 🟥 CONTROL IS NOT OPTIONAL. Always run at least one arm whose correct answer is "the thing
 #   being measured should NOT fire". An instrument that fires on everything measures nothing
 #   ([[feedback_control_presence_is_not_discrimination]]).
