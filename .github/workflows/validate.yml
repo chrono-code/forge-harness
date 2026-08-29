@@ -193,6 +193,22 @@ jobs:
           python3 -c "import sys; print('python', sys.version.split()[0])"
           node -v
 
+      # 🟥 배선 (2026-08-29) — 이 워크플로가 **이 스크립트를 위해 pyyaml 을 설치하면서
+      # 정작 그것을 안 돌리고 있었다.** 위 단계의 주석이 `scripts/validate_yaml.sh:42` 를
+      # 이유로 대는데, 레포 전체에 그 파일의 실행 호출자가 0개였다 — 타계열 감사(codex,
+      # 2026-08-29)가 «호출자 0인 산문 floor» 5종 중 1순위로 지목했고 컨트롤(없는 이름 = 0히트)
+      # 동반으로 대조 확인했다. `AGENTS.md:36-43` 은 이것이 strict-runtime frontmatter 를
+      # 지킨다고 적는다 — 그 주장이 참이 되려면 무언가가 실제로 불러야 한다.
+      #
+      # 왜 여기인가(gate-locality): frontmatter 가 깨지면 그 **아래**에 선언된 `tools:` 와
+      # `model:` 하드 플로어가 통째로 무효가 되는데(measured: quench-challenger.md 가
+      # read-only 선언을 달고 전 도구로 돌고 있었다), CC 자신의 로더는 관대해서 **로컬에선
+      # 안 보인다.** 즉 저자 머신이 구조적으로 못 잡는 결함이라 CI 가 맞는 자리다.
+      # 배선 시점 실측: 41 skills + 8 agents 전부 파싱, rc=0 — 배선이 CI 를 적색으로 만들지 않는다.
+      - name: SKILL/agent frontmatter parses (strict-runtime portability)
+        run: |
+          bash scripts/validate_yaml.sh
+
       - name: Selfcheck (mandatory-pass surface + every wired lane suite)
         run: |
           echo "=== scripts/selfcheck.sh — the same command npm test and prepublishOnly run ==="
