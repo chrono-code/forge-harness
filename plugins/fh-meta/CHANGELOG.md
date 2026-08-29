@@ -8,6 +8,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ---
 
+### [2.13.0] — 2026-08-29
+
+> **BREAKING (gate)**: `templates/regression_guard.sh` 의 Axis 1 pathspec 이 이제
+> `README*.md` · `CHEATSHEET.md` · `CATALOG.md` · `.github/workflows/*.yml` · `scripts/*.py` ·
+> `.claude/registry/*.md` · `package.json` 을 **본다**. **FH 클론에 4축 pre-commit 훅을
+> opt-in 한 경우**, 그 파일들만 바꾼 커밋이 이전엔 `SKIP (not-checked)` 이었는데 이제 검사되고,
+> 대규모 삭제 시 `REVIEW`(S-tier) 또는 `BLOCK`(M-tier)이 될 수 있다.
+> **처방**: 의도된 감량이면 마커에 근거를 적고 진행한다 — S-tier 는 머지를 막지 않는다.
+> 영향 범위는 **FH 클론 + 훅 opt-in** 에 한정된다(그 게이트는 필드 프로젝트에 설치되지 않는다).
+
+**Added**
+- `docs/MODEL_SETUP.md` — 모델 교리의 정본 신설. `/model` 선택 표 · `opusplan` 측정 캐비앗
+  (10턴 중 Opus 0턴) · 하드웨어 티어 · **두 구조 법칙** · Multi-Model Sidecar.
+  `docs/OUTPUT_EVIDENCE.md` 가 「README §Model setup」을 역참조하던 것을 이 파일로 고쳤다
+  (그대로 뒀으면 README 감량 후 팬텀 참조가 된다).
+- `scripts/gate_pathspec_check.sh` — 새로 커버된 클래스에 **앵커 6쌍 추가**. 되돌림 프로브 확인:
+  `README*.md` 항만 제거하면 FAIL, 복원하면 PASS(30쌍).
+
+**Changed**
+- **README 4판 감량 3,443 → 1,535줄 (−55%)**. EN 896→382 · ko 880→387 · ja 861→396 · zh 806→370.
+  가장 설득력 있는 증거(OpenCode 실측 · 8홀 5/8→6/8→8/8)가 **72% 지점**에 묻혀 있던 것을
+  **40% 지점**으로 올렸다. 지운 것은 전부 착지처를 열어서 확인하고 옮겼다.
+  🟥 판마다 보존 경계가 다르다(EN L1~100 · ko L1~96 · ja L1~111 · zh L1~106) — 「100줄」을
+  일괄 적용했으면 ja·zh 는 두 문(door) 구조를 잘라먹었다.
+- `CHEATSHEET.md` — `FH_BACKEND=cross` 행 신설(기존 `FH_BACKEND` 행에 「one leg」 명시:
+  `auto` 는 폴백 *선택*이라 레그를 하나만 돈다) · PyYAML 요구사항 착지(§6).
+- `fh_three_layer_canon.md` — 「'4'가 셋이다」 3자 구분표를 `README.ko.md` 에서 정본으로 이관
+  (4개 언어판 중 ko 에만 있던 비대칭 해소).
+
+**Fixed**
+- `ship_readiness_gate.md` — §6 「확인된 stale 2건」이 그 자체로 stale 이었다. 1건은 stale 이
+  맞고 1건은 **수리완료를 미수리로 가리키는 오보**였다. 둘 다 철회·정정.
+- `scripts/activity_log.sh` — digest 날짜 정규식이 대시 표기만 봐서 언더스코어 파일 **70건을
+  무음 드롭**했다. `emit_line` 에 정규화가 있는데 호출부가 그 앞에서 죽여 도달하지 못한 형태.
+  실측 1 → 71.
+- README 4판의 stale 사실 2건 — 버전 셀(`2.8.0` vs 실제 2.12.1)과 정체성 등급(② 는 2026-08-21
+  부로 🟢). **고쳐 적지 않고 복제를 지웠다** — 그 문단이 스스로 «두 파일에 나눠 두면 썩는다»고
+  적어놓고 복제한 자리였다.
+
+---
+
 ### [2.12.1] — 2026-08-28
 
 **코드 무변경.** 2.12.0 이 **정정 전 리드미**로 발행됐다 — v2.12.0 태그(19:48)가 리드미 정정
