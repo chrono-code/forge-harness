@@ -147,6 +147,7 @@
     "scripts/test_chamber_sig_lanes.sh",
     "scripts/chamber_witness.sh",
     "scripts/digest_landing_check.sh",
+    "scripts/activity_log.sh",
     "scripts/relay_channel.sh",
     "scripts/test_relay_channel_lanes.sh",
     "scripts/fh_session_load.sh",
