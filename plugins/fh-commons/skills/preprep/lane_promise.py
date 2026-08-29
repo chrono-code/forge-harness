@@ -35,6 +35,8 @@ _FWD = ('뒤에서', '나중에', '곧 ', '잠시 후', '이따', '뒤이어', '
 _HEAD = re.compile(r'([가-힣]{2,10}?)(?:을|를|은|는|이|가|의|도|만)?\s*$')
 # 🟥 서수는 예고가 아니라 **상환 그 자체**다 — 「두 번째 실패는…」 은 약속이 아니다.
 #    안 거르면 상환 문장이 미상환 후보로 계상돼 방향이 거꾸로 된다.
+# 미래 지향 표지: «~하겠습니다» «~드립니다» «~보시겠» 류. 회고문(«~했기 때문입니다»)은 안 걸린다.
+_PROSPECTIVE = re.compile(r'(겠습니다|겠어요|드립니다|드리겠|보시면|보겠|말씀드리|소개하|다뤄|다루겠|살펴보)')
 _ORDINAL = re.compile(r'(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|[0-9]+)\s*번째')
 
 
@@ -45,13 +47,31 @@ def _lines(text):
             yield i, s
 
 
-def scan(texts, surf_meta, max_report=8):
+def scan(texts, surf_meta, max_report=8, mod=None):
+    """🟥 `mod`(interslide_deps)가 오면 **낭독 블록만** 본다.
+
+    실물 실측(2026-08-29, 실제 덱): mod 없이 표면 전체를 읽었더니 후보 **133건**이 나왔고,
+    표본 8건 중 5건이 **주석·설계 노트**였다(★ · 🟥 · 「운영자 결정」). 이 코퍼스의 정정 기록은
+    낭독과 **같은 `>` 인용 블록**에 살고 앞머리 이모지로만 갈린다 — 런 #14 에서 이미 겪어
+    `interslide_deps` 가 그 방어를 갖고 있는데, 이 레인이 그걸 안 썼다.
+    ⇒ 있는 걸 안 쓴 형태다. mod 가 없으면 **그렇다고 적고** 전체를 읽는다(조용히 접지 않는다).
+    """
     spoken = [sid for sid, m in surf_meta.items() if m.get('spoken')]
     if not spoken:
         return [], ['L11 promise : 낭독면 선언 0 — UNMEASURED (0 아님)']
     notes = []
+    if mod is None:
+        notes.append('L11 promise : ⚠️ 낭독 블록 분리기 없이 돈다 — 주석·설계 노트가 예고로 '
+                     '계상된다(실측: 그 상태에서 후보 133건, 표본 8중 5가 주석). 후보 수를 '
+                     '신뢰하지 마라')
     for sid in sorted(spoken):
         text = texts[sid][0]
+        if mod is not None:
+            speech = []
+            for _uid, _h, body, _r in mod.units(text):
+                _sc, sp = mod.blocks(body)
+                speech.append(sp if isinstance(sp, str) else '\n'.join(sp))
+            text = '\n'.join(speech) or text
         rows = list(_lines(text))
         promises = []
         for idx, (no, s) in enumerate(rows):
@@ -59,6 +79,13 @@ def scan(texts, surf_meta, max_report=8):
                 continue                      # 상환 문장을 예고로 세지 않는다
             m = _QUANT.search(s)
             fwd = any(w in s for w in _FWD)
+            # 🟥 **약속은 정의상 앞을 향한다.** 수량사만으로는 회고문이 걸린다 —
+            #    실물 실측: 「두 번 겪었기 **때문입니다**」 · 「한 번은 … 것입니다」 는 과거이지
+            #    예고가 아니다. 그래서 수량사 히트는 **미래 지향 표지**를 요구한다.
+            #    (시점 예고 `_FWD` 는 그 자체가 미래 지향이라 이 검사를 안 탄다.)
+            #    ⚠️ 이건 볼륨 불만이 아니라 «예고» 의 정의다 — 좁히는 근거가 실측이 아니라 정의다.
+            if m and not fwd and not _PROSPECTIVE.search(s):
+                continue
             if not m and not fwd:
                 continue
             head = None

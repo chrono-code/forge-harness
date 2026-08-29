@@ -595,7 +595,14 @@ for _pair in \
   "scripts/script_caller_ratchet.sh|scripts/test_runner_surface_index_lanes.sh" \
   "scripts/mapped_tracks.sh|scripts/test_mapped_tracks_lanes.sh" \
   "scripts/fh-goal.sh|scripts/test_fh_goal_change_detection_lanes.sh" \
-  "scripts/utterance_skill_probe.sh|scripts/test_utterance_skill_probe_lanes.sh"
+  "scripts/utterance_skill_probe.sh|scripts/test_utterance_skill_probe_lanes.sh" \
+  `# ── preprep 스킬(2026-08-29). 주체는 스킬 안의 모듈이라 scripts/ 밖이다 ──` \
+  "plugins/fh-commons/skills/preprep/preprep.py|scripts/test_preprep_retired_lanes.sh" \
+  "plugins/fh-commons/skills/preprep/lane_progression.py|scripts/test_preprep_progression_lanes.sh" \
+  "plugins/fh-commons/skills/preprep/lane_adjacent_dup.py|scripts/test_preprep_adjacent_dup_lanes.sh" \
+  "plugins/fh-commons/skills/preprep/lane_promise.py|scripts/test_preprep_promise_lanes.sh" \
+  "plugins/fh-commons/skills/preprep/SKILL.md|scripts/test_preprep_drift_anchor.sh" \
+  "scripts/field_canon_preload.sh|scripts/test_skill_canon_preload_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then

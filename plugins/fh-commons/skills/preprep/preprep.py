@@ -719,7 +719,10 @@ def main():
     f1, n1 = lane_canon(cfg, root, texts, surf_meta); findings += f1; notes += n1
     try:
         import lane_promise
-        _f11, _n11 = lane_promise.scan(texts, surf_meta)
+        import importlib.util as _iu2
+        _sp2 = _iu2.spec_from_file_location('interslide_deps', os.path.join(HERE, 'interslide_deps.py'))
+        _im2 = _iu2.module_from_spec(_sp2); _sp2.loader.exec_module(_im2)
+        _f11, _n11 = lane_promise.scan(texts, surf_meta, mod=_im2)
         notes += _n11   # advisory 고정 — findings 에 안 태운다
     except Exception as _e:
         notes.append('L11 promise : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)' % (type(_e).__name__, _e))
