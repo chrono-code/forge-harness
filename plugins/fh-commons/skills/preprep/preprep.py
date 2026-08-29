@@ -694,6 +694,13 @@ def main():
     surf_meta = {s['id']: {'marker': s.get('speech_marker'), 'spoken': s.get('spoken', False)}
                  for s in cfg['surfaces']}
     f1, n1 = lane_canon(cfg, root, texts, surf_meta); findings += f1; notes += n1
+    try:
+        import lane_progression
+        _f9, _n9 = lane_progression.scan(cfg, texts, surf_meta)
+        findings += _f9; notes += _n9   # 차단 — 선언된 것만 보므로 오탐이 선언에 갇혀 있다
+    except Exception as _e:
+        # 계기 부재/오류를 «통과»로 렌더하지 않는다. 부재 != 0.
+        notes.append('L9 progression : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)' % (type(_e).__name__, _e))
 
     f2, n2 = lane_unitref(cfg, root, surf); findings += f2; notes += n2
     f4, n4 = lane_getput(cfg, root, surf); findings += f4; notes += n4

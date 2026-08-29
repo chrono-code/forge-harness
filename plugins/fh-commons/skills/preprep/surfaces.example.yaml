@@ -122,3 +122,19 @@ speech_pacing:
 regen_recovery:
   generated: "ifkakao26_slides_v7.5.pptx"
   human:     "../../../private/tmp/keynote_export.pptx"   # 없으면 UNMEASURED (경로는 그때그때)
+
+# ── L9 progression — «단계가 하나 빠지면 논지가 뒤집히는» 자리를 사람이 선언한다 ─────────
+# 🟥 선언이 없으면 이 레인은 아무것도 안 본다(NOT_CONFIGURED — 통과가 아니다).
+#    무엇이 «한 세트»인지는 판단이라 기계가 정하지 않는다. 기계는 선언을 집행만 한다.
+# 실사고: ① 좋아진다 → ② 그래도 남는다 → ③ 더 늘려도 안 된다 → ④ 입장을 바꾸면 보인다
+#         에서 ①이 화면에서 떨어졌고, 리뷰어가 논지를 «정반대로» 읽었다. 문장은 다 옳았다.
+progressions:
+  - id: escalation
+    why: "단계가 하나 빠지면 논지가 뒤집힌다"
+    screens: [p17, p18, p19, p20]     # 이 단계들이 놓이기로 한 «화면» 표면 id
+    steps:
+      - anchor: "좋아집니다"           # 화면 텍스트에서 찾을 문자열
+        why: "이 첫 칸이 빠지면 나머지가 반대 논지로 읽힌다"
+      - anchor: "그래도 남는"
+      - anchor: "더 늘려도"
+      - anchor: "입장을 바꾸면"
