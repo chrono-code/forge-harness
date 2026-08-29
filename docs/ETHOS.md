@@ -111,6 +111,27 @@ forward), so the harness audits itself and the learnings compound session over s
 
 ---
 
+## 7. The floor is ours; the ceiling is yours
+
+A harness raises the **floor** — that is what the Sonnet-floor doctrine is about, and it is most of
+what people notice. It does not raise the **ceiling**. That moves with what the operator knows, and
+the asymmetry is deliberate: an amplifier multiplies what is there and supplies nothing that is not.
+
+So FH does not sell *you no longer need to know*. That sentence is popular and corrosive — a person
+who believes it stops checking, and every failure mode in this repository is a variety of having
+stopped checking. Craft is not overhead the tooling will retire; it is the lever the tooling
+multiplies. Different operators pull different levers out of the same install, and that is expected
+rather than a defect to engineer away.
+
+And the machinery is not the point of it. Mechanization has no natural end — left alone it grows
+until frozen judgment becomes the ceiling it was meant to raise. As the models underneath improve,
+scaffolding sheds; what survives the shedding is the intent it was built to carry, the identity it
+answers to, and the direction it is still moving in. Build for what remains.
+
+> *A harness makes intent executable. It does not make knowledge optional.*
+
+---
+
 ## What FH does not claim
 
 - It is **not** a detection engine, an accuracy multiplier, or a model ranking. The cold pass is your
