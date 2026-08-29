@@ -2796,3 +2796,23 @@
   outcome: accepted
   evidence: "후보 3종 + 외부 신호 4건 반환. 그중 «gate.py ⑨ baseline 이 토큰별인가 클래스별인가» 지적을 즉시 실측해 답을 냈다(per-token, 총합 불변 이주를 FAIL 로 잡음 — 19050 46→48). 자기 차단 2건을 스스로 SPECULATIVE 로 표시하고 인용 금지를 걸었다. 채택은 안 함 — H3 대로 별도 평가자 + 계수 대기"
   cost: "subagent_tokens 126,428 · tool_uses 16 · 252s"
+- date: 2026-08-29
+  agent: general-purpose / fh-meta:challenger (2 dispatches, consolidated)
+  purpose: >-
+    ⓐ measurement-reps 렌즈를 필드 하네스(qasp-dev·pmh-dev)에 처음 실행 —
+    FH 클론 밖에서 한 번도 안 돌려본 갭을 닫기 위해.
+    ⓑ 2.13.0 npm 발행 직전 Pre-Publish 코드 보안 패스 — 배포 코드 델타 6개.
+  outcome: accepted
+  evidence: >-
+    ⓐ 캘리브레이션 PASS(known-pair 가 같은 디렉터리·같은 계열이라 reps 값만 다름).
+    qasp M2·S1·R1 을 냈고 기존 렌즈가 구조적으로 못 보는 자리였다. 그리고 렌즈 자신의
+    결함 4개(provenance 미분리 · 「이미 닫혔나」 부재 · `단발` false friend · 대소문자
+    gate-locality)를 지목해 넷 다 반영. ⓐⓓ 는 거버너가 원본에서 재확인(액면가 수용 안 함).
+    ⓑ VERDICT=PUBLISH_OK_WITH_NOTES, 컨트롤 동반(위험패턴 known-positive 히트 중
+    eval/git-reset/push--force/curl/mapfile 등 known-negative 0히트).
+    지적 1번(regression_guard.sh F1 의 python3 fail-open)을 거버너가 실행으로 재현하고
+    발행 «전»에 닫았다 — 자력 적발 0(거버너 머신엔 python3 가 있어 늘 초록이었다).
+  note: >-
+    같은 날 별 세션(오르카 워크트리, SendMessage 채널)이 추가로 3건을 넘겼고 그중 2건이
+    PR #560 으로 착지. 그 세션은 서브에이전트가 아니라 peer 세션이라 이 원장의 계상 대상이
+    아니다 — 계상 경계를 명시해 둔다.
