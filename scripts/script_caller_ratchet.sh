@@ -481,6 +481,25 @@ def dispatches_shell(name, body):
         if direct.search(ln):
             return True
         if indirect and re.match(r'\s*(for\s+\w+\s+in\b|["\']?\S*\|)', ln):
+            # 🟥 THE PIPE FORM IS A PAIR, AND ONLY ITS LAST FIELD IS RUN.
+            # scripts/selfcheck.sh's suite loop is `"SUBJECT|ANCHOR"`, and its body does
+            #     _subj="${_pair%%|*}"; _anc="${_pair##*|}"  ...  bash "$_anc"
+            # — the SUBJECT is only `[ -f ]`-tested, never dispatched. Counting it as a caller made
+            # the ratchet tell a session to delete a `baseline:` line whose whole point is "still
+            # owes a PRODUCTION caller". That advice was given and followed once (2026-08-26,
+            # scripts/chamber_candidate_collect.sh), reverted by cross-family review, and fired
+            # AGAIN on the same file on 2026-08-30 — the only thing that stopped a second deletion
+            # was the note the reviewer had left in the baseline file. A gate whose correctness
+            # depends on someone having written a comment last time is not a gate.
+            # Direction is fail-closed: under-crediting a caller makes a script look callerless,
+            # which FAILS loudly, rather than silently discharging a debt.
+            # The discriminator is NOT "is this a for-line" — selfcheck.sh puts its pairs on
+            # continuation lines while a fixture puts them on the `for` line itself, and both mean
+            # the same thing. It is "does the name sit BEFORE the last pipe": a `X|Y` item
+            # dispatches Y. `for f in a.sh b.sh` has no pipe and is untouched, and a genuine
+            # `bash scripts/foo.sh | tee log` never reaches here — shape 1 returned already.
+            if '|' in ln and not nre.search(ln.rsplit('|', 1)[1]):
+                continue          # named as the SUBJECT of a subject|anchor pair — not a dispatch
             return True
         m = re.match(r'\s*(?:local\s+|export\s+|declare\s+-\w+\s+)?([A-Za-z_][A-Za-z0-9_]*)=', ln)
         if m:
@@ -718,7 +737,21 @@ for p in population:
             local_only.append(p)
 
 undeclared = [p for p in callerless if p not in exempt and p not in baseline]
-resolved   = sorted(p for p in baseline if p in wired)
+# 🟥 `resolved` MUST EXCLUDE LANE-ONLY. Measured cost of not doing so, twice:
+#   · 2026-08-26 — this advisory told a session to delete scripts/chamber_candidate_collect.sh
+#     from `baseline:`. Its only caller is a lane suite. A cross-family review caught it and the
+#     line was restored WITH that history written into it. The tool gave advice that had to be
+#     reverted by a human.
+#   · 2026-08-30 — the same advisory fired again on the same file, and the only thing that stopped
+#     a second deletion was that restored comment. A gate whose correctness depends on someone
+#     having written a note last time is not a gate.
+# `baseline:` means "owes a PRODUCTION caller". A lane calling it is an ANCHOR, not a discharge —
+# this file already computes `test_only` for exactly that distinction and then did not use it here.
+# Half-externalisation: the slot existed, the consumer did not
+# ([[feedback_half_externalization_slot_without_consumer]]).
+resolved   = sorted(p for p in baseline if p in wired and p not in test_only)
+# Reported separately so "still lane-only" never silently reads as "still callerless".
+baseline_lane_only = sorted(p for p in baseline if p in wired and p in test_only)
 ghost      = sorted(p for p in list(exempt) + list(baseline) if not os.path.isfile(p))
 
 print(json.dumps({
@@ -730,7 +763,7 @@ print(json.dumps({
     'exempt': sorted(p for p in callerless if p in exempt),
     'baseline': sorted(p for p in callerless if p in baseline),
     'test_only': sorted(test_only), 'local_only': sorted(local_only),
-    'resolved': resolved, 'ghost': ghost,
+    'resolved': resolved, 'baseline_lane_only': baseline_lane_only, 'ghost': ghost,
     'placeholder': sorted(set(plist_placeholder_hits)),
     'err': err, 'ctrl': ctrl,
 }))
@@ -809,7 +842,9 @@ TESTONLY="$(_j test_only)"
 LOCALONLY="$(_j local_only)"
 [ -n "$LOCALONLY" ] && { echo "      ⚠️  dispatched ONLY from the gitignored .claude/settings.json — wired on this machine,"; echo "          callerless for CI and for every consumer:"; printf '%s\n' "$LOCALONLY" | sed 's/^/           /'; }
 RESOLVED="$(_j resolved)"
-[ -n "$RESOLVED" ] && { echo "      ⚠️  baseline entry now WIRED — the list is shrink-only, delete these lines:"; printf '%s\n' "$RESOLVED" | sed 's/^/           /'; }
+[ -n "$RESOLVED" ] && { echo "      ⚠️  baseline entry now WIRED by a PRODUCTION caller — shrink-only, delete these lines:"; printf '%s\n' "$RESOLVED" | sed 's/^/           /'; }
+BLO="$(_j baseline_lane_only)"
+[ -n "$BLO" ] && { echo "      ℹ️  baseline entry has a LANE caller but still no production one — the line STAYS:"; printf '%s\n' "$BLO" | sed 's/^/           /'; echo "          (an anchor is not a discharge; deleting these was refuted by review on 2026-08-26)"; }
 GHOST="$(_j ghost)"
 [ -n "$GHOST" ] && { echo "      ⚠️  declared but the file does not exist (renamed/deleted?):"; printf '%s\n' "$GHOST" | sed 's/^/           /'; }
 PLACEHOLDER="$(_j placeholder)"
