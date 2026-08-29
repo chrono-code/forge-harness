@@ -199,5 +199,21 @@ printf '%s' "$OUT" | grep -q "SETUP FAILED" && printf '%s' "$OUT" | grep -q "CON
   && ok "L11c failing --setup → arm VOID, not a silent negative result" \
   || no "L11c failing setup did not void the arm"
 
+# L12 — --extra-tools must reach the CLI, and must NOT be there by default. Both directions,
+# because this flag decides what the arm can SEE, and a silently-dropped tool turns an
+# enumeration failure into what looks like a session misjudging.
+OUTDIR="$WORKROOT/o12"; LOG12="$WORKROOT/argv12.log"; : > "$LOG12"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say FH_STUB_ARGV_LOG="$LOG12" \
+   bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" --extra-tools Bash ) >/dev/null 2>&1
+grep -q "Read,Grep,Glob,Bash" "$LOG12" \
+  && ok "L12 --extra-tools appended to the tool set" \
+  || no "L12 --extra-tools did not reach the CLI ($(head -1 "$LOG12" 2>/dev/null))"
+OUTDIR="$WORKROOT/o12b"; LOG12B="$WORKROOT/argv12b.log"; : > "$LOG12B"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say FH_STUB_ARGV_LOG="$LOG12B" \
+   bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" ) >/dev/null 2>&1
+grep -q "Read,Grep,Glob,Bash" "$LOG12B" \
+  && no "L12b control — Bash present WITHOUT --extra-tools (observe mode is not read-only)" \
+  || ok "L12b control — no Bash without --extra-tools"
+
 echo "sim_isolated_run lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

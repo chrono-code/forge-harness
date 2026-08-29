@@ -76,7 +76,7 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ARM=""; REPS=1; PROMPT=""; MODE="observe"; MODEL="sonnet"; TIMEOUT=900; OUTDIR=""; NOHARNESS=0; SETUP=""
+ARM=""; REPS=1; PROMPT=""; MODE="observe"; MODEL="sonnet"; TIMEOUT=900; OUTDIR=""; NOHARNESS=0; SETUP=""; EXTRA=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --arm)     ARM="${2:-}"; shift 2 ;;
@@ -88,6 +88,7 @@ while [ $# -gt 0 ]; do
     --out)     OUTDIR="${2:-}"; shift 2 ;;
     --no-harness) NOHARNESS=1; shift ;;   # CONTROL arm: drops project CLAUDE.md. Not isolation.
     --setup)   SETUP="${2:-}"; shift 2 ;;  # shell run INSIDE each clone before the sim. See below.
+    --extra-tools) EXTRA="${2:-}"; shift 2 ;;  # append tools to the mode's set. See TOOL VISIBILITY.
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -162,6 +163,15 @@ for r in $(seq 1 "$REPS"); do
   else
     TOOLS=(--tools "Read,Grep,Glob,Bash,Write,Edit")
   fi
+  # 🟥 TOOL VISIBILITY IS PART OF THE MEASUREMENT, NOT A DETAIL. `Glob` matches FILES; a
+  # directory with no file directly inside it is invisible to a Read/Grep/Glob arm. FH's branch
+  # test keys on `tracks/{name}/` DIRECTORIES, so an observe-mode arm can report "tracks/ has only
+  # .gitkeep" while `tracks/demoproj/` and `tracks/webshop/` both exist — measured 2026-08-29,
+  # verified by opening the clones. That looks exactly like a session misjudging, and it is not.
+  # ⇒ When the thing under test depends on ENUMERATION, add Bash and say so:
+  #      --extra-tools Bash
+  # and treat the observe-only number as the "cannot enumerate" arm rather than as a defect rate.
+  [ -n "$EXTRA" ] && TOOLS[1]="${TOOLS[1]},$EXTRA"
   # `--restricted` is opt-in ONLY, and opting in means you are measuring the BASE MODEL, not FH.
   [ "$NOHARNESS" -eq 1 ] && TOOLS+=(--restricted)
 

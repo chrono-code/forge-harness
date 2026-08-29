@@ -88,14 +88,22 @@ public-tracked file. A `public`-only combination may land in tracked docs.
 Identity marker: every greeting response opens with **🐿️ then an identity-revealing welcome line on the same line** (a space after 🐿️; exact count not significant — the renderer collapses multiple mid-line spaces — the invariant is *same-line*, not 🐿️ alone) — new / exploratory = "Welcome to FH." · returning = "Welcome back to FH." · operator (FH-dev state) = "The FH operator — good to see you." This is FH's session-start signal — friendly, consistent, distinct; the onboarding-smoothness / lid matters even though it is not the substance. The marker + welcome are **part of each skeleton itself** (one salience unit with the menu — do not strip it when composing doors; mirrored in CLAUDE.md §Active Onboarding).
 
 **Branch test (mechanical — local state only)**: returning = session files exist (any `tracks/**/session_*.md` or `tracks/_meta/*.md` beyond `.gitkeep`) **OR** mapped project tracks exist (`tracks/{name}/` dirs — **any underscore-prefixed dir doesn't count** (`tracks/_*`, general rule not a closed list: `_meta`/`_audit`/`_contrib`/`_chamber`…); covers mapped-but-not-yet-synced users). **Never infer the branch from git log or CATALOG residue** — a fresh clone carries full commit history but zero session files: it is a NEW install (origin: fresh-clone sonnet sim rendered the returning menu off commit messages, `fh_signal_2026-06-11` FP8).
-> 🟥 **«mechanical» 이라 적혀 있지만 기계가 하지 않는다 — 세션이 눈으로 하고, 플로어에서 33% 틀렸다**
-> (2026-08-29 실측). 같은 픽스처(`tracks/demoproj/session_*.md` · `tracks/webshop/session_*.md`)를
-> 심은 동일 클론 여섯 팔 중 **둘이 「매핑된 프로젝트가 하나도 없다」**고 답했다. 두 오판 팔의 클론을
-> 열어 확인했고 옳게 읽은 팔과 **내용이 같았다.** 이 판정이 정하는 것은 신규/복귀 분기와 문 ④ 렌더
-> 여부다. ⚠️ 그 픽스처는 `tracks/` 엔트리만 만들고 프로젝트 **루트 디렉토리는 안 만들었다** — 오판이
-> 「루트가 없어서」일 가능성이 남는다. 그렇다 해도 이 판정의 기준은 `tracks/{name}/` 존재이지 루트가
-> 아니므로 **정본과 어긋난 판정**이다. 루트까지 만든 픽스처로 가르는 재측정은 **미실시**.
-> 정본: `tracks/_meta/RESULT_2026-08-29_door-identity-naming.md`
+> 🟥 **RETRACTED 2026-08-29 — 「이 판정이 플로어에서 33% 틀린다」고 여기 적었고, 거짓이었다.**
+> 그 숫자는 세션의 판단이 아니라 **측정 도구가 만든 것**이다. 재는 팔에 `Read,Grep,Glob` 만
+> 줬는데 **`Glob` 은 파일을 매칭하지 디렉토리를 열거하지 않는다** — `tracks/` 직하의 유일한
+> 파일이 `.gitkeep` 이라 팔들이 문자 그대로 *「tracks/ 엔 .gitkeep 만」* 이라 답했다. 그건
+> 오판이 아니라 **그 도구 셋이 실제로 본 것**이다. 도구 하나만 더해서 갈랐다:
+> ```
+> 같은 픽스처 · 같은 트리 · 같은 모델 · 같은 발화 · reps=5
+>   Read,Grep,Glob        인식 3/5
+>   Read,Grep,Glob,Bash   인식 5/5      ← 한 변수
+> ```
+> ⚠️ **그래도 여기 남길 것이 있다 — 다만 훨씬 좁다.** 이 판정은 «디렉토리 열거»를 필요로 하므로,
+> **열거할 수 없는 세션에서는 구조적으로 성립하지 않는다.** 실전 세션은 Bash 를 가지니 출하 결함이
+> 아니고, 도구가 제한된 맥락(서브에이전트에 좁은 도구 셋을 준 경우 등)에서만 문제가 된다.
+> ⚠️ 곁가지: 「루트 디렉토리가 없어서 오판했나」도 갈랐다 — **아니다.** 루트를 만들어 준 팔이
+> 오히려 인식 2/5 로 더 낮았다(사전등록 H1 반증). 정본:
+> `tracks/_meta/RESULT_2026-08-29b_branch-test-tool-visibility.md`
 
 **New user** (neither condition holds — fresh clone/install): 2-door starter, never the returning menu —
 > 🐿️  **Welcome to FH.** *Looks like you're new here! What would you like to do?*
