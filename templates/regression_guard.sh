@@ -383,7 +383,27 @@ for req in ('name:', 'description:'):
         sys.exit(1)
 print('OK')
 " 2>&1)
-    if echo "$fm_check" | grep -q FAIL; then
+    fm_rc=$?
+    # 🟥 An ABSENT instrument is not a clean result. Before 2026-08-29 this `else` printed
+    # "✅ frontmatter intact" whenever `$fm_check` merely lacked the token FAIL — and
+    # `python3: command not found` lacks it. macOS ships no python3 by default, so on a stock
+    # consumer machine F1 was ALWAYS green, and that green meant "no checker", not "no defect".
+    # Measured by execution, not reading: same broken content, python3 present → `❌ M-TIER`,
+    # python3 shadowed with a 127 stub → `✅ frontmatter intact`.
+    # Degrade direction: this is the REVERSIBLE commit surface, so it degrades to a LOUD
+    # ADVISORY and deliberately does NOT touch S_TIER — bumping it would exit 1 and redden every
+    # such consumer's CI on any SKILL.md edit, and this file's own line 659 warns that
+    # over-blocking is what trains `--no-verify` into muscle memory. Not-silent and not-blocking
+    # are different properties; only the first is mandatory here.
+    # 🟥 The discriminator is the EXIT CODE, not `command -v`. A first pass at this fix asked
+    # "is python3 available?" and a three-way known-pair immediately broke it: a 127-stub IS on
+    # PATH, so `command -v` succeeded and the fail-open survived. The checker contract is
+    # rc 0 = intact · rc 1 = a FAIL line was printed · anything else = the instrument did not run
+    # (127 absent, 126 not-executable, a broken interpreter), which covers absent AND broken with
+    # one branch instead of enumerating causes.
+    if [ "$fm_rc" -ne 0 ] && [ "$fm_rc" -ne 1 ]; then
+      echo "  ⚠️  F1 UNMEASURED — frontmatter checker did not run (rc=$fm_rc): $fm_check"
+    elif echo "$fm_check" | grep -q FAIL; then
       echo "  ❌ M-TIER  frontmatter: $fm_check"
       M_TIER=$((M_TIER + 1))
     else

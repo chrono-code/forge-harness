@@ -23,6 +23,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 > - **인사말 번역 조항** — 문장은 어느 언어로든 자연스럽게 옮기되 이름 「FH」는 움직이지 않는다.
 >   🟥 **측정했고 안 닫혔다**(컨트롤 1/3 · 조항 2/3, n=3 에서 차이 1). 조항은 옳고 싸서 남겼지
 >   효과가 측정돼서가 아니다. 이 축엔 기계 floor 가 없다.
+> - 🟥 **fail-open 수리 — `templates/regression_guard.sh` F1(frontmatter).** 발행 직전 보안 패스가
+>   찾았다: 검사기(`python3`)가 없거나 안 도는 머신에서 F1 이 **「✅ frontmatter intact」로 렌더**
+>   됐다 — 출력에 `FAIL` 토큰이 없다는 이유만으로. **macOS 는 python3 를 기본 탑재하지 않으므로**
+>   상당수 소비자에게 이 레인은 늘 초록이었고, 그 초록은 「검사했다」가 아니라 「검사기가 없었다」였다.
+>   이제 **종료코드**로 판정한다(0=정상 · 1=FAIL · 그 외=`⚠️ F1 UNMEASURED`). 🟥 **차단하지 않는다**
+>   — 가역 표면이고, 과차단은 이 파일 자신이 경고한 대로 `--no-verify` 를 근육에 새긴다.
+>   ⚠️ **행동 변화**: 그런 머신에서 이제 경고 줄이 뜬다. 통과/차단 판정은 안 바뀐다.
 > - `scripts/activity_log.sh` 가 **files[] 에 진입**했다 — 배포되는 digest 생산자
 >   (`frontier_digest_autopilot.sh`)가 언더스코어 날짜 파일을 만드는데 그 판독기가 안 실려 있었다.
 
