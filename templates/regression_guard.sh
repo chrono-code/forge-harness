@@ -170,6 +170,25 @@ GUARD_PATHSPEC=(
   'templates/.git-hooks/*'
   'plugins/*/agents/*.md'
   '.claude/agents/*.md'
+  # ── Added 2026-08-29 — 세 번의 SKIP 을 추적해 보니 «진짜 갭 1 · 계기 오용 2» 였다.
+  # 계기 오용: `--pr` 는 커밋된 ref 를 비교하는데 커밋 «전에» 불렀다 → merge-base==HEAD → 빈 diff
+  # → skip. (--staged 가 그 자리에 있는 이유이고, 위 --staged 주석이 이미 그렇게 적고 있었다.)
+  # 진짜 갭: README 4종. 공개 첫 화면인데 Axis 1 이 구조적으로 안 돌았다 — PR #550 이 실물이다.
+  # 같이 들어온 나머지는 4축 자산 목록과 이 배열을 기계로 대조해 나온 미커버분이다.
+  # 캘리브레이션(양방향, 넓힌 사본으로 실제 이력에 실행):
+  #   · 이력 20 커밋(README·CHEATSHEET·package.json 등을 건드린 것) → M=0 S=0, 전부 pass.
+  #     오탐 폭풍 없음. 그리고 SKIP 이 아니라 pass 라는 것이 «파일이 실제로 선택됐다»의 컨트롤이다
+  #     (무기력한 pathspec 에서 오는 깨끗한 0 을 배제한다 — 2026-08-04 항목과 같은 규율).
+  #   · known-positive: README.md 를 60% 절단 → ❌ BLOCK (M-tier 2, 'BLOCK' 토큰 66% 소실, rc=2).
+  # package.json 은 md/sh 형 검사 대부분이 무력하지만 F6 줄-감소가 살아 있다 — files[] 항목이
+  # 대량 삭제되는 회귀가 이 저장소에서 실제로 있었던 클래스다.
+  'README*.md'
+  'CHEATSHEET.md'
+  'CATALOG.md'
+  '.github/workflows/*.yml'
+  'scripts/*.py'
+  '.claude/registry/*.md'
+  'package.json'
 )
 
 # 계기 무결: base ref 가 안 풀리면 diff 실패가 2>/dev/null 로 삼켜져 CHANGED 공백 →
