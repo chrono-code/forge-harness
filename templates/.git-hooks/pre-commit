@@ -1454,6 +1454,45 @@ AXES_RUN_GRACE_DATE="2026-08-10"
 # 대신 `ⓑ=→standpoint` 포인터를 요구하고, 그 경우 `standpoint:` 줄의 **존재**를 확인한다.
 # (`standpoint:` 값 자체의 enum 검증은 별건이고 정본이 명시적으로 유보해 뒀다.)
 SIX_AXES_GRACE_DATE="2026-08-17"
+# ── ⓔ 첫 실사용 — «새 계기를 지으면서 안 돌렸다» 에는 근거를 요구한다 ────────────────────
+# 🟥 채널이지 결론이 아니다. 「여섯 축을 매번 다 돌려라」는 정본이 명시적으로 금지한다
+#    («비용 경계: 넷을 매번 다 돌리는 축이 아니다. 곱하지 말고 실패 모드에 맞춰 골라라»).
+#    그래서 이 검사는 **한 경우에만** 걸린다: 이 커밋이 **새 계기를 추가**하는데 `ⓔ=none` 일 때.
+#
+# WHY (2026-08-29 실측): 레인 넷 + 훅 하나를 지으면서 ⓐ(계열)·ⓕ(되돌림)를 여러 번 돌렸고
+#   둘 다 초록이었다. ⓔ(첫 실사용)만 **주석 블록 오탐 · 회고문 오탐** 둘을 냈고, 그건
+#   정본이 «ⓑ는 계기의 계기가 틀린 경우라 ⓐ·ⓓ 가 구조적으로 못 본다» 고 적어둔 그 자리다.
+#   🟥 그런데 그 ⓔ 는 **운영자가 잡아서** 돌았다. 마커는 여섯 축을 다 적게 하는데,
+#   **그 기록을 델타의 성격과 대조하는 소비처가 0** 이었다 — 슬롯은 있고 소비처가 없는 형태.
+#
+# 근거 요구의 모양은 `crossfamily:` degrade 삼종이 이미 쓰는 것과 **같다**: 값만으로는 못 지나가고
+# 같은 줄에 무엇을 걸고 있는지 적어야 한다. 새 형식이 아니다.
+# ⚠️ 판별자는 «새 파일이 계기 모양인가» 라는 **경로 규칙**이고, 그것이 정말 계기인지는 판단이다.
+#    과탐은 근거 한 줄로 통과하므로 비용이 낮다(과차단은 --no-verify 를 훈련시킨다).
+validate_first_use_leg() { # $1 = marker path
+  m="$1"
+  # 새로 «추가»된 계기 후보만 본다. 수정은 대상이 아니다 — 첫 실사용은 첫 번째에만 성립한다.
+  new_instr=$(git -c core.quotePath=false diff --cached --name-only --no-renames --diff-filter=A 2>/dev/null \
+    | grep -E '(^|/)(lane_[a-z_]+\.py|[a-z_]+_check\.sh)$' || true)
+  [ -n "$new_instr" ] || return 0
+  line=$(grep -m1 -E '^[[:space:]]*axes-run:' "$m" 2>/dev/null)
+  [ -n "$line" ] || return 0            # axes-run 자체 부재는 위 검사가 이미 막는다
+  # ⓔ 값 추출: `ⓔ=...` 부터 다음 축 키 직전까지
+  e_val=$(printf '%s' "$line" | sed -n 's/.*ⓔ=\([^ⓕ]*\).*/\1/p' | sed 's/[[:space:]]*$//')
+  case "$e_val" in
+    ''|none|None|NONE|-)
+      echo "  ❌ MARKER — 이 커밋은 **새 계기를 추가**하는데 'axes-run' 의 ⓔ(첫 실사용)이 'none' 이다."
+      printf '     새 계기: %s\n' $new_instr
+      echo "     🟥 정본 실측: ⓐ(계열)·ⓕ(되돌림)가 전부 초록인데 ⓔ만 오탐 둘을 낸 사례가 있다 —"
+      echo "        «계기의 계기가 틀린» 경우는 ⓐ·ⓓ 가 **구조적으로** 못 본다."
+      echo "     둘 중 하나를 해라 (여섯 축을 다 돌리라는 뜻이 아니다):"
+      echo "       · 실물 대상에 한 번 돌리고  ⓔ=<무엇에 돌렸고 무엇이 나왔나>"
+      echo "       · 안 돌릴 거면 **같은 줄에 근거**를  ⓔ=none(<왜 이 계기는 첫 실사용이 불필요/불가한가>)"
+      return 1 ;;
+  esac
+  return 0
+}
+
 validate_marker_axes_run() { # $1 = marker path
   local m="$1" mdate line ax miss="" nlines axkeys six=0
   mdate=$(basename "$m" | sed -nE 's/.*_([0-9]{4}-[0-9]{2}-[0-9]{2})\.marker$/\1/p')
@@ -1729,7 +1768,7 @@ if [ "$GATE_MODE" = "full" ]; then
     _SOUL_OK=1
     validate_soul_present_leg "$MARKER" || _SOUL_OK=0
     validate_soul_check_leg "$MARKER" || _SOUL_OK=0
-    if [ "$_DEFENSE_OK" -eq 1 ] && [ "$_SOUL_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER"; then
+    if [ "$_DEFENSE_OK" -eq 1 ] && [ "$_SOUL_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER" && validate_first_use_leg "$MARKER"; then
       echo "  ✅ PASS (marker confirmed + floor/axes fields valid:"
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
     else
