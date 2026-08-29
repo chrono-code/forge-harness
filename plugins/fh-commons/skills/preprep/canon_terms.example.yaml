@@ -5,76 +5,14 @@
 #    통과했다(ASCII 계기를 한국어 코퍼스에 돌린 것과 같은 족).
 
 banned:
-  - id: test-counts-14
-    literals: ["14 passed", "4 failed"]
+  # 🟥 아래 두 항목은 **형식을 보이는 합성 예시**다. 이 자리에 «당신 프로젝트의» 금지 인용을
+  #    적어라. 원본 하네스가 쓰던 실제 목록은 여기 없다 — 남의 원장 값을 배포본에 실으면
+  #    그것은 예시가 아니라 남의 특화가 새어 들어온 것이다.
+  - id: example-stale-metric
+    literals: ["99% 정확도", "99 percent accurate"]
+    ko_spoken: ["구십구 퍼센트"]     # ← 🟥 한글 낭독형을 «반드시» 같이 적는다. 아래 이유 참조
+    why: "재측정에서 반증된 값 — 인용하려면 그 재측정을 먼저 대라"
+  - id: example-retired-name
+    literals: ["옛 제품명"]
     ko_spoken: []
-    why: "산출물에 존재한 적 없는 문자열"
-  - id: test-counts-16
-    literals: ["✅16", "❌3 ", "16 / 0"]
-    ko_spoken: ["열여섯", "열세 개"]
-    why: "08-07 값. 발표 직전 재측정 · 총 arm 수를 크게 박지 말 것"
-  - id: anchor-10-14
-    literals: ["앵커 10→14", "10→14"]
-    ko_spoken: []
-    why: "실제 이력은 9 → 13 → 16"
-  - id: fp-rate-skew
-    literals: ["S-count", "FP-rate"]
-    ko_spoken: []
-    why: "교차 계열 재현 실패 → 논문 §8.3 철회"
-  - id: ensemble-multiplier
-    literals: ["2.5~3x", "2.8x", "19x", "2.5-3x"]
-    ko_spoken: []
-    why: "재측정(n=22)에서 전면 반증 — 인용하려면 그 재측정을 먼저 대라"
-  - id: identifiers
-    literals: ["chrono-meta", "forge-harness", "pmh-dev", "qasp-dev", "@chrono-meta"]
-    ko_spoken: []
-    why: "PR 번호·저장소명·개인 org — 조직 발표와 개인 계정이 연결된다"
-  - id: suite-909
-    literals: ["909"]
-    ko_spoken: ["구백구"]
-    why: "2026-07-13 값. 발표 본문에 한정 금지"
-  - id: red-runs-15
-    literals: ["15런 연속", "15연속 적색"]
-    ko_spoken: ["열다섯 런 연속"]
-    why: "실측은 14연속 적색 + 15번째 GREEN"
-  - id: family-axis-12
-    literals: ["계열 축 단독 12건", "codex 6 + agy 6"]
-    ko_spoken: []
-    why: "조작 변수가 계열이 아니었다 — same-family 컨트롤 부재"
-  - id: corr-0-44
-    literals: ["0.44", "0.60 > "]
-    context_required: ["상관", "계열", "ϕ", "phi", "패널"]   # 실측: 슬라이드 y좌표 0.44 를 3회 오탐
-    ko_spoken: []
-    why: "0.44 는 원문에 없다 — 예시 둘을 우리가 평균으로 만들었다"
-  - id: versions-absolute
-    spoken_only: true      # 원장: 「낭독은 절대수를 안 쓰고 하한 진술로」 — 화면 stat 은 허용
-    literals: ["113개", "115개", "105개", "99개"]
-    ko_spoken: []
-    why: "출하할 때마다 늘어난다 — 낭독은 「백 개가 넘는」 하한 진술로"
-
-# ⚠️ 조건 필수 — 리터럴이 나오면 **같은 문단에 조건 어휘**가 있어야 한다
-
-  # 🟥 2026-08-21 신설 — **은퇴 어휘**. 덱이 버린 말이 다른 표면에 남아 있는 클래스다.
-  #   오늘 실측: 「계열」은 낭독·표에서 전부 「모델/종류」로 갔는데 **도해에만 남아** 있었고,
-  #   「초록」은 CI 은어라 화면·낭독에서 뺐는데 **도해에 구워져** 있었다. 둘 다 텍스트 diff 로
-  #   구조적으로 안 잡힌다(그림은 픽셀) — 그래서 도해 **생성기**를 표면으로 세우고 여기 건다.
-  #   ⚠️ 이 항목은 «금지»가 아니라 «은퇴»다. 이력·주석에서의 언급(MENTION)은 정상이고,
-  #     L1 이 USE/MENTION 을 갈라 내므로 그 구분에 기댄다.
-  - id: retired-계열
-    literals: ["계열 A", "계열 B", "계열 축", "계열을 바꿔도", "같은 계열로만"]
-    ko_spoken: []
-    why: "2026-08-20 어휘 통일 — 「모델 다양성 / 종류」로 갔다. 도해에만 남아 있던 것을 눈으로 잡았다"
-  - id: retired-초록
-    literals: ["초록으로 보입니다", "초록이 ", "전부 초록"]
-    ko_spoken: []
-    why: "CI 은어. 리뷰 1 지적으로 화면·낭독에서 제거. 도해에 구워진 잔여를 눈으로 잡았다"
-
-conditional:
-  - id: downloads
-    literals: ["17,193", "15,481", "2,722", "2,017", "2600+"]
-    require_nearby: ["창", "기간", "누적", "2026-0"]
-    why: "창 없이 인용 금지 — 매주 바뀐다"
-  - id: approval-failure
-    literals: ["56%"]
-    require_nearby: ["5시간", "100명", "코딩 과제"]
-    why: "조건 없이 숫자만 대는 것은 금지"
+    why: "은퇴한 명칭. 화면·낭독 양쪽에서 제거됐고 복귀는 별도 결정"

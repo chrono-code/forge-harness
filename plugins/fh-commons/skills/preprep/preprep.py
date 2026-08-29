@@ -722,4 +722,8 @@ def main():
     if unreadable or missing: return 2 if not findings else 1
     return 1 if findings else 0
 
-sys.exit(main())
+# 🟥 `__main__` 가드 — 이게 없으면 **import 가 곧 실행**이라 아무도 이 파일을 라이브러리로
+#    못 쓴다(레인 하나만 부르려 해도 전체가 돌고 종료한다). 배포본이 된 뒤에 드러난 결함이다:
+#    스킬 문서가 «레인을 골라 부를 수 있다»는 인상을 주는데 실제로는 CLI 한 형태뿐이었다.
+if __name__ == '__main__':
+    sys.exit(main())
