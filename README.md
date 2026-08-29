@@ -71,7 +71,7 @@ cd ~/projects/forge-harness && claude        # then type a greeting: hi · 안�
 - You stop having to pick the check. The harness reads what you are about to do — publish, delete,
   rewrite history, open a PR — and names the gate for that moment. ① is one command you remember; ②
   is the layer that remembers for you.
-- **40 skills · 8 agents** you can call in plain language: diagnose a project, accelerate one, wire a
+- **41 skills · 8 agents** you can call in plain language: diagnose a project, accelerate one, wire a
   new one up.
 - `tracks/` keeps what each session learned, so **session 2 starts where session 1 stopped**. This is
   the part that compounds — and the part you cannot judge on day one.
@@ -342,7 +342,7 @@ sidecar posture: [`docs/MODEL_SETUP.md`](docs/MODEL_SETUP.md).
 
 ---
 
-## 40 skills · 8 agents
+## 41 skills · 8 agents
 
 Count = non-deprecated skills. Clustered as verification · orchestration · diagnosis · harvesting ·
 gates · discovery · simulation · setup, plus 8 agents (`challenger` · `quench-challenger` · `beginner`
