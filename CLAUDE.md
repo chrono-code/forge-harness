@@ -663,13 +663,15 @@ the weak one so that recording it honestly surfaces that the execution arm is st
 ## Field-Harness Diagnostic — "진단해줘 / 개선해줘" on a mapped project (compose → rank → HITL)
 
 The **on-demand pull sibling** of the gate above: a *project-level* "diagnose / improve this harness" ask
-composes the checks FH **already has** across **eight lenses** — leak (`/public-surface-audit`, incl. **Step 3c ignore-verification** — a file believed gitignored but actually tracked is the leak this sub-step exists to catch) · split
+composes the checks FH **already has** across **nine lenses** — leak (`/public-surface-audit`, incl. **Step 3c ignore-verification** — a file believed gitignored but actually tracked is the leak this sub-step exists to catch) · split
 integrity (`/phantom-quench` **Step 2.7**) · token/salience (`/context-doctor` · `/salience-splitter`) · structure
 (`/harness-doctor`) · verdict degrade (`scripts/degrade_direction_scan.sh`) · loop-readiness
 (`loop_engineering.md`) · built-but-unwired (per-module caller grep — a completed module with zero
 external call sites; the dominant class of the 2026-08-01 qasp audit) · triad consistency
 (spec↔implementation↔TC agreement — `harness_verification_core_extended.md` §2 dispatched-procedure
-recipe, cluster-independent core lens) — into **one ranked `M`/`S`/`R`
+recipe, cluster-independent core lens) · **measurement-reps** (그 하네스의 기록에서 «하중 지는 결론 +
+바 미달 reps» 를 찾는다 — 판정·등급·교리·비가역 처방을 떠받치는데 표본이 1~2 인 자리. 랭크만 하고
+자동 수리 안 함, 다른 렌즈와 동일) — into **one ranked `M`/`S`/`R`
 list**. No-reinvention: it only routes and ranks.
 
 **Resident guards (do not defer these to the detail file)**: **nothing is auto-fixed** — the list is the
@@ -932,6 +934,7 @@ Proposal format: `"I see [X]. Want me to run /[skill] to [one-line description]?
 | "/goal", "run this autonomously", "big multi-step task", "orchestrate this goal", or **any heavy autonomous/multi-agent run** (proactive — propose *before* running; it is expensive, so the proposal is mandatory, not the auto-run) | `/goal-quench` (budget gate + quality gate) |
 | "I don't know what to build", "how should I approach this", "organize this for me", "clarify this", "정리해줘" (ambiguous request before dispatch) | `/deep-clarify` |
 | **work-shaped request outside the harness domain** — "이 문서 만들어줘", "위키 페이지 써줘", "이 자료 표로 만들어줘", any general work ask no other row or skill catches (**fallback default** — a more specific row above/below always wins: 리서치→deep-research · ambiguous "정리해줘"→deep-clarify · heavy fleet→goal-quench) | **Intent-Marshaling loop** (§Intent Marshaling — mechanical capability scan → one-line compose proposal → run; gap → capability ladder) |
+| **측정을 기록했는데 reps 가 바 미달(1~2)이고, 그 결론이 «하중을 진다»** — 판정·등급·교리 변경·비가역 처방을 떠받치는 자리 (proactive; 기록하는 그 순간에 뜬다) | **한 줄로 제안한다** — *"이거 reps={n} 인데 sim 으로 {목표}까지 올릴까?"*. 🟥 **「바 미달」이라고 적고 넘어가지 마라** — 그것이 지금까지의 기본값이었고, 라벨은 측정이 아니다. 🟥 **조건이 «하중»인 이유**: 모든 reps=1 에 sim 을 걸면 소음이 된다(계기 확인용 1회는 올릴 값이 없다). **FH 자산에만 걸리는 규율이 아니다** — 필드 하네스의 자기 개선에도 같이 걸리고, 그쪽 렌즈는 §Field-Harness Diagnostic 의 `measurement-reps` 다 |
 | "memory feels bloated", "clean up memory", "memory too large", "memory hygiene" | `/memory-hygiene` |
 | **사람이 읽을 산출물이 나가기 직전** — README·가이드·리포트·장표·PR 본문 등 «독자가 여는» 것 (proactive; 코드가 옳아도 걸린다 — 이 행이 잡는 건 정확성이 아니라 **가독성**이다) | **독자로서 한 번 읽어라** — 첫 8줄에 결론이 있나 · 본문이 고정 템플릿에 덮이지 않나 · 마지막 인상이 무엇인가. 렌즈는 이미 있다: `/sim-conductor` A-1(`beginner` cold-read) 또는 직접 렌더해서 읽기. 🟥 **정적 검사는 「없는 것」을 잡고 「안 읽히는 것」은 못 잡는다** — 실측 2건이 독립 수렴했다(qasp 축: 지적 12건 중 스캐너 적발 0 · gstack 3자대면: 배포된 리포트 본문 3줄 vs 고정 템플릿 21줄). pre-commit 이 같은 상기를 advisory 로 낸다(차단 아님) |
 | "ready to PR", "about to push", "merge this", "PR 올려줘", FH asset changed in session | 4-axis auto-gate (see above — runs automatically, no proposal needed) |
