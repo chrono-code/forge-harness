@@ -718,6 +718,15 @@ def main():
                  for s in cfg['surfaces']}
     f1, n1 = lane_canon(cfg, root, texts, surf_meta); findings += f1; notes += n1
     try:
+        import lane_adjacent_dup, importlib.util as _ilu
+        _mp = os.path.join(HERE, 'interslide_deps.py')
+        _sp = _ilu.spec_from_file_location('interslide_deps', _mp)
+        _im = _ilu.module_from_spec(_sp); _sp.loader.exec_module(_im)
+        _f10, _n10 = lane_adjacent_dup.scan(cfg, texts, surf_meta, _im)
+        findings += _f10; notes += _n10
+    except Exception as _e:
+        notes.append('L10 adjacent-dup : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)' % (type(_e).__name__, _e))
+    try:
         import lane_progression
         _f9, _n9 = lane_progression.scan(cfg, texts, surf_meta)
         findings += _f9; notes += _n9   # 차단 — 선언된 것만 보므로 오탐이 선언에 갇혀 있다

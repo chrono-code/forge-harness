@@ -24,7 +24,7 @@ sk(){ echo "  ⏭  $1 — SKIPPED (**통과 아님**)"; SKIP=$((SKIP+1)); }
 
 # D1 — 단일 소스
 missing=""
-for f in preprep.py interslide_deps.py lane_progression.py SKILL.md README.md surfaces.example.yaml; do
+for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py SKILL.md README.md surfaces.example.yaml; do
   [ -f "$SRC/$f" ] || missing="$missing $f"
 done
 if [ -n "$missing" ]; then ng "D1 단일 소스 결손:$missing"
@@ -32,10 +32,10 @@ elif ! command -v python3 >/dev/null 2>&1; then
   sk "D1 구문 검사 — python3 부재라 «돌 수 있나»를 못 쟀다(UNMEASURED)"
 else
   synerr=""
-  for f in preprep.py interslide_deps.py lane_progression.py; do
+  for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py; do
     python3 -c "import ast,sys;ast.parse(open(sys.argv[1],encoding='utf-8').read())" "$SRC/$f" 2>/dev/null || synerr="$synerr $f"
   done
-  [ -z "$synerr" ] && ok "D1 단일 소스 6파일 실재 + python 3파일 구문 통과" \
+  [ -z "$synerr" ] && ok "D1 단일 소스 7파일 실재 + python 4파일 구문 통과" \
                    || ng "D1 구문 실패:$synerr"
 fi
 
@@ -46,11 +46,11 @@ elif [ ! -d "$DIST" ]; then
   ng "D2 PREPREP_STANDALONE_DIR 이 가리키는 곳이 없다: $DIST (설정됐는데 부재 = 드리프트 아니라 배선 결함)"
 else
   drift=""
-  for f in preprep.py interslide_deps.py lane_progression.py; do
+  for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py; do
     if [ ! -f "$DIST/$f" ]; then drift="$drift $f(부재)"
     elif ! cmp -s "$SRC/$f" "$DIST/$f"; then drift="$drift $f(갈림)"; fi
   done
-  [ -z "$drift" ] && ok "D2 standalone 코드 3파일이 단일 소스와 바이트 동일" \
+  [ -z "$drift" ] && ok "D2 standalone 코드 4파일이 단일 소스와 바이트 동일" \
                   || ng "D2 드리프트:$drift ⇒ 사본이 둘이 됐다. 단일 소스에서 다시 뽑아라"
 fi
 
