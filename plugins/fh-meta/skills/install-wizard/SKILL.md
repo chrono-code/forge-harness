@@ -199,6 +199,44 @@ intended default needs a `settings.json` edit, propose it in this step with the 
 it only on approval. Do not change settings silently on the strength of the doctrine alone — the
 doctrine says dispatch is the default posture, not that the wizard may edit a user's config unasked.
 
+### Step 3-E. Sidecar Panel — measure it once, here, instead of remembering it forever
+
+Step 3-D settles *whether you may dispatch*. This step settles **whether there is anyone of a
+different model family to dispatch TO** — and until now the wizard never asked. Measured
+2026-08-29 by a cross-family audit (codex, control-paired): **zero `sidecar_calibrate` references in
+either wizard file**, while the same install negotiates dispatch consent in detail. The gate that
+depends on this — `CLAUDE.md §Field-Harness Load-Bearing Change Gate` — degrades **fail-closed** when
+no different-family auditor is reachable, so "is one reachable?" is a question every install answers,
+and today answers **from memory**. `scripts/sidecar_calibrate.sh` opens with exactly that complaint:
+*"A panel you have not probed is not a panel; it is an assumption with a hostname."*
+
+**Ask first — this costs real API calls** (3 short probes per runtime), which is why it is a
+consent step and not a silent probe:
+
+> *"크로스패밀리 사이드카(codex · agy · 로컬 ollama)가 이 머신에서 실제로 도는지 지금 한 번
+> 재둘까? 짧은 프로브 3개씩이라 비용은 작고, 안 재면 나중에 게이트가 «기억으로» 답하게 돼."*
+
+On approval:
+
+```bash
+bash scripts/sidecar_calibrate.sh            # or --only codex|agy to scope
+```
+
+Record the final `PANEL:` line — that is the line a marker's `crossfamily:` leg quotes. Three
+outcomes, and **each is a valid recorded answer**:
+
+| Result | What to write down |
+|---|---|
+| `PANEL: <runtimes>` | the panel exists — markers may claim `panel(<families>)` |
+| `PANEL:` empty | **no different-family auditor** — this install's load-bearing changes degrade to `DEGRADED_SINGLE_FAMILY`, and that is now a *measured* value rather than an assumed one |
+| declined / not run | write **that** down, so the next session knows the panel is `UNKNOWN` — *did not look* is a distinct enum value from *could not* on purpose |
+
+🟥 **`REACHABLE` is not `PIN-OK`.** The calibrator separates them because a runtime can answer
+happily while serving a different model than the one pinned (measured 2026-07-30: agy pinned to
+`gemini-3.1-pro-high` answered as Gemini 3.6 Flash, silently). A runtime marked `UNTRUSTED-PIN`
+still runs — it just cannot carry a claim about *which family* reviewed. Record the verdict, not
+just the fact that something answered.
+
 ⚠️ **The lease is honoured by reading, not by machinery.** `scripts/consent_registry_check.sh`
 enforces leases for *registered consent classes*, and this grant is not one of those — say so when
 recording it rather than implying an expiry alarm exists.
@@ -318,6 +356,7 @@ On Claude API / MCP failure → refer to [`references/fallback-guide.md`](../../
   SUBSTITUTED values (no literal "{FH_DIR}" in the target file)
   or explicitly declined and the decline recorded                (mandatory-pass)
 ☐ Step 3-D dispatch consent recorded in the three-part form
+☐ Step 3-E sidecar panel measured (or the decline recorded) — never left to memory
   (quoted words · dated lease · scope) or a recorded decline —
   a two-part record is invalid and counts as absent              (mandatory-pass)
 ☐ Summary output: "N items installed, M items skipped" where

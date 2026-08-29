@@ -757,6 +757,42 @@ else
      "$(grep -n 'HEAD~1\|ratchet_base_resolve' "$WF" 2>&1)"
 fi
 
+# ── L28 — A `SUBJECT|ANCHOR` PAIR DISPATCHES ONLY THE ANCHOR ──────────────────────────────────
+# WHAT THIS CLOSES. scripts/selfcheck.sh drives its suite list as `"SUBJECT|ANCHOR"` strings and
+# its body does `_subj="${_pair%%|*}"; _anc="${_pair##*|}" ... bash "$_anc"` — the SUBJECT is only
+# `[ -f ]`-tested, never run. Shape 2 (for-list) credited BOTH sides, so a script that merely
+# appears as a subject was reported WIRED.
+# Cost, measured twice on the same file: on 2026-08-26 the ratchet told a session to delete
+# scripts/chamber_candidate_collect.sh from `baseline:` — a section whose whole meaning is "still
+# owes a PRODUCTION caller" — and a cross-family review had to revert it. On 2026-08-30 the same
+# advisory fired again on the same file, and the only thing that prevented a second deletion was
+# the note that reviewer had left behind. These two lanes replace that note with a check.
+d="$(mkfix)"
+printf '%s\n' '#!/usr/bin/env bash' 'echo subj' > "$d/scripts/subj.sh"
+printf '%s\n' '#!/usr/bin/env bash' 'echo anch' > "$d/scripts/anch.sh"
+cat > "$d/.github/workflows/ci.yml" <<'YML'
+run: |
+  bash scripts/alpha.sh
+  for _p in "scripts/subj.sh|scripts/anch.sh"; do
+    _a="${_p##*|}"; bash "$_a"
+  done
+YML
+o28="$(run "$d")"
+if printf '%s' "$o28" | grep -q "scripts/subj.sh"; then
+  ok "L28a subject side of a pair is NOT credited as a caller"
+else
+  no "L28a subject was credited — the pair form still discharges a production-caller debt" "$o28"
+fi
+# 🟥 CONTROL, and it is the half that makes L28a mean anything. If the fix were "stop trusting the
+# pipe form at all", L28a would pass while real anchor wiring silently broke — and every suite in
+# selfcheck.sh is wired exactly this way.
+if printf '%s' "$o28" | grep -q "scripts/anch.sh"; then
+  no "L28b control — the ANCHOR side lost its credit; the fix over-narrowed" "$o28"
+else
+  ok "L28b control — anchor side still counts as wired"
+fi
+rm -rf "$d"
+
 echo "-- caller-ratchet lanes: PASS $pass · FAIL $fail --"
 [ "$fail" -eq 0 ] || exit 1
 exit 0

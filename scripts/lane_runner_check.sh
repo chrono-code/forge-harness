@@ -864,11 +864,45 @@ TOTAL="${1:-0}"; WIRED="${2:-0}"; N_EXEMPT="${3:-0}"; N_DEBT="${4:-0}"
 
 UNDECLARED=$(printf '%s\n' "$out" | awk -F'\t' '$1=="UNDECLARED"{print $2}')
 RESOLVED=$(printf '%s\n' "$out" | awk -F'\t' '$1=="RESOLVED"{print $2}')
+# 판정의 «출처»를 한 문장으로. 순수 함수인 이유는 pre-commit 의 형제들과 같다 — 레인이
+# 저장소 상태 없이 모든 모드를 구동할 수 있어야 한다. 입력은 INDEX_MODE, 출력은 한 줄.
+# 🟥 세 갈래를 접지 않는다: 「인덱스를 읽었다」·「디스크를 읽었다」·「못 셌다」는 독자를 서로
+# 다른 곳으로 보낸다. UNMEASURED 를 「인덱스」로 접으면 못 센 것이 센 것으로 렌더된다
+# ([[feedback_not_found_is_not_zero_family]]).
+index_source_note() {   # $1 = INDEX_MODE
+  case "${1:-}" in
+    nongit|outside-index)
+      echo "      ⓘ 이 판정의 러너 표면은 DISK 에서 셌다 ($1) — 체크아웃 안이라면 인덱스-근거가 아니다." ;;
+    UNMEASURED)
+      echo "      🟥 이 판정의 러너 표면은 UNMEASURED 다 — 「러너가 없다」가 아니라 「못 셌다」." ;;
+    "")
+      : ;;   # 모드 자체를 모르면 아무 말도 안 한다 — 지어내는 것보다 침묵이 낫다
+    *)
+      echo "      ⓘ 이 판정은 git INDEX 기준이다 — **스테이징하지 않은 배선은 안 보인다.**"
+      echo "        방금 배선했다면: git add <경로> 후 재실행." ;;
+  esac
+}
+
 GONE=$(printf '%s\n' "$out" | awk -F'\t' '$1=="GONE"{print $2}')
+# 🟥 여기서 뽑는다 — 아래 FAIL 분기가 이 값을 쓰기 «전에» 있어야 한다. 처음 붙였을 때는
+# 디스크-모드 경고 블록 옆(한참 아래)에서만 뽑고 있었고, `set -u` 아래에서 FAIL 경로가
+# `INDEX_MODE: unbound variable` 로 죽었다. 🟥 **레인 여섯이 그걸 못 잡았다** — 함수를 직접
+# 호출했지 «호출부를 실행»하지 않았고, 호출 여부는 grep 으로만 단언했다(장식 앵커).
+# 잡은 것은 라이브 첫 실사용이다. 대입은 한 곳뿐이다 — 두 곳이면 관대함이 갈린다.
+INDEX_MODE=$(printf '%s\n' "$out" | awk -F'\t' '$1=="INDEX_MODE"{print $2}')
 
 if [ -n "$UNDECLARED" ]; then
   echo "FAIL  lane-runner: lane suite(s) with no runner and no declaration:"
   printf '%s\n' "$UNDECLARED" | sed 's/^/        /'
+  # 🟥 SAY WHERE THE VERDICT CAME FROM, on the FAIL path only.
+  # This check enumerates runners from the git INDEX, and in the normal (index) mode it used to say
+  # nothing at all — the disclosure fired only in the anomalous disk modes. So an author who wired a
+  # suite but had not staged it got "a suite nothing executes is prose" with no hint that the wiring
+  # existed on disk. Measured 2026-08-30: that is exactly what happened, and it was the FIFTH
+  # instance of «the tree I verified is not the tree the tool read» in one day.
+  # On the FAIL path only, because on a passing run this line is noise, and a noisy disclosure is
+  # one people learn to skip.
+  index_source_note "$INDEX_MODE"
   echo "      A suite nothing executes is prose. Fix by ONE of:"
   echo "        · wire it into scripts/selfcheck.sh (the usual answer)"
   echo "        · add it to EXEMPT here WITH the reason it must not be auto-run"
@@ -922,7 +956,6 @@ if [ -n "$SELFTEST_UNDECLARED" ]; then
   echo "    in it, or exit 0 will certify a suite that ran nothing."
 fi
 
-INDEX_MODE=$(printf '%s\n' "$out" | awk -F'\t' '$1=="INDEX_MODE"{print $2}')
 INDEX_WHY=$(printf '%s\n' "$out" | awk -F'\t' '$1=="INDEX_MODE"{print $3}')
 # Labelled, never silent, and the two disk-fallback states are NOT merged. `nongit` is an
 # unpacked tarball; `outside-index` is this tree sitting inside some OTHER repo that ignores it.

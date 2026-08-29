@@ -586,6 +586,8 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_standpoint_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_thirdparty_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_check_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_precommit_staged_drift_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_marker_address_lanes.sh" \
   "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \
   "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
   "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \
@@ -1069,6 +1071,23 @@ elif [ -f scripts/test_sidecar_calibrate_lanes.sh ]; then
   fi
 else
   echo "FAIL  test_sidecar_calibrate_lanes.sh: sidecar_calibrate.sh present but its anchor is missing"
+  fail=1
+fi
+
+# The isolated sim runner gets the same treatment, and it earned it in one session. Its lanes are
+# hermetic (the `claude` CLI is stubbed), so running them is free — and L8a is the lane that caught
+# a FALSE FINDING already published into CLAUDE.md: the runner still passed `--restricted` at the
+# call site after the flag had been "made opt-in" in the tools array, so every arm ran with the
+# project CLAUDE.md removed, and a two-variable comparison was written up as one. Without this
+# suite that retraction does not happen. Subject-present-but-anchor-absent is a FAIL, not a skip.
+if [ ! -f scripts/sim_isolated_run.sh ]; then
+  _absent_subject_verdict "test_sim_isolated_run_lanes.sh" "scripts/sim_isolated_run.sh" || fail=1
+elif [ -f scripts/test_sim_isolated_run_lanes.sh ]; then
+  if ! bash scripts/test_sim_isolated_run_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_sim_isolated_run_lanes.sh: sim_isolated_run.sh present but its anchor is missing"
   fail=1
 fi
 

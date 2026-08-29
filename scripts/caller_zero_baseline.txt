@@ -49,5 +49,4 @@ exempt:
 baseline:
   - scripts/below_floor_scan.sh   # PROSE-INVOKED FLOOR. operations.md §weekly-audit step 2 says to run it and nothing does; the pre-commit hook's below-floor ack is written against a consumer that never fires
   - scripts/chamber_candidate_collect.sh   # the discovery entrance's second half. 🟥 2026-08-26: the ratchet's WIRED-advisory told a session to delete this line, but the only caller is test_chamber_sig_lanes.sh:74 (a lane suite — ratchet's own test_only list flags it) — a test caller does not discharge the "should have a PRODUCTION caller" debt, so the line stays (codex cross-family catch)
-  - scripts/validate_yaml.sh   # SHIPPED via package.json files[] and named by .github/workflows/validate.yml — but only inside a COMMENT, so the frontmatter validator that guards Codex/Gemini parsing runs nowhere
   - scripts/frontier_digest_autopilot.sh   # the tracked plist names it on a /path/to/ PLACEHOLDER launchd cannot execute; ship_readiness_gate.md already records that placeholder as an identity-④ defect and the first draft of this ratchet PASSED over it

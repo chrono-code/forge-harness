@@ -226,7 +226,7 @@ forge-harness/   ← 中枢（持久大脑）              Project A ──→ �
 能用的功能**：成熟度按身份逐项评级（`aspirational → partial → RC → REALIZED`）并配有带日期的
 证据，刻意 **没有** 复制到这里 —— 同一个等级放进两个文件总会有一个先腐坏，而本页有四种语言版本。
 在你依赖上表任何一行之前，请先读那些等级：
-[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)。
+[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)。 而**每一个该怎么用** —— 哪条命令、哪扇门点亮哪重身份 —— 见 [`docs/IDENTITIES.md`](docs/IDENTITIES.md)：等级说的是*做到了几分*，那一页说的是*怎么调用*。
 
 有两条性质横贯这五重身份。**它搭上前沿，而不是给前沿打补丁** —— 跨家族派发（Claude、Codex、
 Gemini、本地）是为了共同演化，不是为了糊住弱点。**去相关 (decorrelation)** 是当下的信任杠杆，

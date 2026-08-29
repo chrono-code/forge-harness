@@ -540,6 +540,18 @@ is non-empty without a `_wizard_reminder_muted` sentinel, append ONE line to the
 hook — emit it once, not twice. Honest residual: a task-first entry on a fully-unwired node has no
 surface for this line (no hook, no menu) — prose cannot close that, and it is named here rather
 than papered over.
+> 🟥 **A widening of this residual was published here on 2026-08-29 and RETRACTED the same hour.**
+> It claimed the *greeting branch itself* does not fire without `.claude/settings.json` (3/3 vs
+> 2/2). **False, and false because of the instrument**: the arm that "did not fire" was run through
+> a sim runner that still passed `--restricted`, which drops the project CLAUDE.md — so that arm
+> had no harness loaded, and the comparison varied two things, not one. Re-run with the runner
+> fixed (`scripts/test_sim_isolated_run_lanes.sh` L8a is the lane that caught it): a clean clone
+> **with no `.claude/settings.json` fires the returning greeting 3/3**. The greeting is
+> prose-driven, as this protocol says. Nothing here needed widening.
+> ⚠️ What the episode does show is narrower and worth keeping: **verifying that `claude` loads
+> CLAUDE.md is not verifying that YOUR RUNNER lets it** — the check was run by hand instead of
+> through the instrument under test ([[feedback_instrument_vs_target_and_budget]]).
+
 **Metadata-is-not-intent guard**: the trigger is the user's **typed message only**. Session metadata — branch name (auto-derived from the first message, e.g. `claude/korean-greeting-*`), repo name, file paths — is **never** a task spec and never suppresses or redirects the greeting trigger. A bare greeting fires onboarding even when the branch name looks like a feature request; if the only "task" signal lives in metadata and not in what the user typed, treat the message as a greeting and run the greeting branch + door skeleton above.
 
 ## New Skill Creation Pre-Commit Gate
