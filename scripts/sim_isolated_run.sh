@@ -137,7 +137,7 @@ for r in $(seq 1 "$REPS"); do
   # `.claude/settings.json` is untracked too, so no hooks fire — which makes an arm resemble a
   # CONSUMER install. State that when scoring: this measures the shipped surface, not this node.
   ( cd "$WORK" && timeout "$TIMEOUT" claude -p "$PROMPT" \
-        --model "$MODEL" --restricted "${TOOLS[@]}" 2>/dev/null ) > "$OUTDIR/${ARM}_r${r}.txt"
+        --model "$MODEL" "${TOOLS[@]}" 2>/dev/null ) > "$OUTDIR/${ARM}_r${r}.txt"
   rc=$?
   bytes=$(wc -c < "$OUTDIR/${ARM}_r${r}.txt" | tr -d ' ')
 

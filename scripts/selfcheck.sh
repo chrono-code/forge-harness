@@ -1072,6 +1072,23 @@ else
   fail=1
 fi
 
+# The isolated sim runner gets the same treatment, and it earned it in one session. Its lanes are
+# hermetic (the `claude` CLI is stubbed), so running them is free — and L8a is the lane that caught
+# a FALSE FINDING already published into CLAUDE.md: the runner still passed `--restricted` at the
+# call site after the flag had been "made opt-in" in the tools array, so every arm ran with the
+# project CLAUDE.md removed, and a two-variable comparison was written up as one. Without this
+# suite that retraction does not happen. Subject-present-but-anchor-absent is a FAIL, not a skip.
+if [ ! -f scripts/sim_isolated_run.sh ]; then
+  _absent_subject_verdict "test_sim_isolated_run_lanes.sh" "scripts/sim_isolated_run.sh" || fail=1
+elif [ -f scripts/test_sim_isolated_run_lanes.sh ]; then
+  if ! bash scripts/test_sim_isolated_run_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_sim_isolated_run_lanes.sh: sim_isolated_run.sh present but its anchor is missing"
+  fail=1
+fi
+
 # marker axes-run lanes — 훅의 축 자기대조 형식 검사(§CLAUDE.md 3층 자기 대조)의 앵커.
 # ⚠️ 「4축」이라고 적혀 있었는데 2026-08-17 부로 **6축 분기가 생겼다**(마커 날짜 >= 그 날이면
 #    기호 키 ⓐ~ⓕ 요구, 미만이면 옛 ASCII 넷). 산문 층이라 레인은 안 깨지고 조용히 stale 이었다.
