@@ -227,7 +227,7 @@ harness's own development* — is real and graded, but sits on a different layer
 than a number. **And the table is not five working features**: maturity is graded per identity
 (`aspirational → partial → RC → REALIZED`) with dated evidence, deliberately not copied here — a grade
 kept in two files goes stale in one, and this page exists in four languages. Read the grades before
-relying on any row: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).
+relying on any row: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md). And for **how to use each one** — which command or door lights which identity — [`docs/IDENTITIES.md`](docs/IDENTITIES.md): the grades say *how ready*, that page says *how to call it*.
 
 Two properties cut across all five. **It rides the frontier instead of patching it** — dispatching
 across families (Claude, Codex, Gemini, local) to co-evolve, not to paper over weak spots.

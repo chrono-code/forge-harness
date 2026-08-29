@@ -227,7 +227,7 @@ forge-harness/   ← 허브 (영속 두뇌)          Project A ──→ CLAUDE.
 (`지향 → 부분 → RC → REALIZED`) 날짜 박힌 증거와 함께 채점되며, 여기 옮겨 적지 **않습니다** —
 두 파일에 나눠 둔 등급은 한쪽이 반드시 낡고 이 페이지는 4개 언어로 존재합니다. 어느 행이든 믿고
 쓰기 전에 등급을 읽으세요:
-[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).
+[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md). 그리고 **각각을 어떻게 쓰는지** — 어느 명령·어느 문이 어느 정체성을 켜는지 — 는 [`docs/IDENTITIES.md`](docs/IDENTITIES.md) 입니다. 등급은 *얼마나 준비됐나*를, 그 문서는 *어떻게 부르나*를 말합니다.
 
 다섯 전부를 가로지르는 성질이 둘 있습니다. **프런티어를 메꾸는 게 아니라 함께 탑니다** — 여러
 패밀리(Claude, Codex, Gemini, 로컬)에 디스패치하는 것은 약점을 땜빵하려는 게 아니라 공진화하려는

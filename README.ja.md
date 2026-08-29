@@ -243,7 +243,7 @@ Claude Code ネイティブの**自動化層**（エージェント、フック�
 **そしてこの表は「5つの動く機能」ではありません**: 成熟度は正体ごとに
 （`aspirational → partial → RC → REALIZED`）日付入りの証拠とともに採点され、ここには**あえて写しません**
 — 2つのファイルに置かれた等級は片方が必ず腐りますし、このページは4言語で存在します。どの行かに頼る前に
-等級を読んでください: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)。
+等級を読んでください: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)。 そして**それぞれをどう使うか** — どのコマンド・どの扉がどのアイデンティティを点けるか — は [`docs/IDENTITIES.md`](docs/IDENTITIES.md) です。等級は*どこまで出来ているか*を、そのページは*どう呼ぶか*を述べます。
 
 5つすべてを横断する性質が2つあります。**フロンティアに継ぎを当てるのではなく、フロンティアに乗ります**
 — ファミリーをまたいでディスパッチするのは（Claude, Codex, Gemini, ローカル）弱点を埋めるためではなく、
