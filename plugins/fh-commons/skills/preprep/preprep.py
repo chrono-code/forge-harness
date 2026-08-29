@@ -168,7 +168,8 @@ def lane_canon(cfg, root, texts, surf_meta):
     ledger = resolve(root, cfg['canon_ledger'])
     try:
         rows = [l for l in open(ledger, encoding='utf-8') if l.startswith('| **') ]
-        n_terms = len(terms.get('banned', [])) + len(terms.get('conditional', []))
+        n_terms = (len(terms.get('banned', [])) + len(terms.get('conditional', []))
+                   + len(terms.get('retired', [])))
         notes.append(f'L1-a 원장 표 행 {len(rows)} ↔ 기계 항목 {n_terms} — '
                      + ('커버 비율은 판정 안 한다(행≠항목 1:1 아님). 갈림 감시용 수치' ))
     except Exception as e:
@@ -188,6 +189,28 @@ def lane_canon(cfg, root, texts, surf_meta):
                         cls = 'mention'
                     findings.append((f'{sid}:{no}', 'BANNED' if cls == 'USE' else 'mention',
                                      entry['id'], lit, (entry['why'] + ' ▸ ' + ln[:110]) if cls == 'USE' else ln[:110]))
+        # ── L1-c 폐어(retired) — «리뷰가 걷어낸 낱말이 되돌아왔나» ────────────────
+        # 🟥 실사고: 리뷰가 명시적으로 걷어내라 한 「재다」가 4개월 뒤 재유입됐고
+        #    **아무 검사도 안 울렸다**(운영자가 잡았다). `jargon_terms` 는 조어→풀이를,
+        #    `banned` 는 수치 인용 금지를 다뤄서 «걷어낸 말»을 담을 자리가 없었다.
+        # 🟥 왜 새 레인이 아니라 여기인가: 기계는 «리터럴을 전 표면에서 찾기»로 같은데
+        #    **처방이 다르다**(폐어=대체어를 써라 / 금지인용=그 재측정을 대라). 태그와 처방만
+        #    가르면 «판정은 맞고 처방이 틀린 게이트»를 피하면서 레인 하나를 안 늘린다.
+        # 🟥 그리고 USE↔MENTION 이 여기서 하중을 진다 — 폐어를 «걷어냈다»고 적은 원장 자신이
+        #    그 낱말을 담는다. 못 가르면 원장이 자기를 위반으로 신고한다.
+        for entry in terms.get('retired', []):
+            for lit in entry['literals'] + entry.get('ko_spoken', []):
+                if not lit: continue
+                for cls, no, ln in hits(text, lit, surf_meta.get(sid, {}).get('marker')):
+                    if cls != 'USE':
+                        findings.append((f'{sid}:{no}', 'mention', entry['id'], lit, ln[:110]))
+                        continue
+                    prov = ' · '.join(x for x in (entry.get('retired_by'), entry.get('retired_at')) if x)
+                    rep = entry.get('replacement')
+                    msg = (entry.get('why', '리뷰가 걷어낸 낱말')
+                           + (f" ▸ 대신: «{rep}»" if rep else " ▸ 🟥 대체어 미기재 — 처방 없는 판정이다")
+                           + (f" ({prov})" if prov else '') + ' ▸ ' + ln[:110])
+                    findings.append((f'{sid}:{no}', 'RETIRED', entry['id'], lit, msg))
         for entry in terms.get('conditional', []):
             for lit in entry['literals']:
                 if lit and lit in text:
