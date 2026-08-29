@@ -570,6 +570,25 @@ fi
   echo "it fires even when the first user message is a task. Do not treat 'pulled' as 'read'."
 } 2>/dev/null
 
+# 5b) Onboarding branch — computed, not eyeballed.
+#     WHY IT IS HERE. The greeting branch (new vs returning) was a SENTENCE the session judged from
+#     the shape of `tracks/`, and the sentence counted files that SHIP WITH THE REPO. Measured
+#     2026-08-30 with a control: two tracked files satisfied it, so `git clone` alone rendered the
+#     RETURNING menu — the new-user branch was unreachable for anyone who clones.
+#     🟥 Surfacing it HERE is the point: the session reads a value instead of deriving one. Two
+#     salience-only placements of an onboarding rule were measured at 0/3 and 0/5 the day before,
+#     so «write it in the protocol and trust the read» is a shape this repo has already falsified.
+#     Silent unless the script answers — and UNKNOWN is printed as UNKNOWN, never as `new`.
+if [ -x "$FH/scripts/mapped_tracks.sh" ]; then
+  _MT=$(bash "$FH/scripts/mapped_tracks.sh" 2>/dev/null) || true
+  _BR=$(printf '%s' "$_MT" | sed -n 's/^onboarding_branch=//p' | head -1)
+  case "$_BR" in
+    new)       echo "🚪 [FH onboarding] branch=NEW — 2-door starter, «Welcome to FH.» (계산값이다: $(printf '%s' "$_MT" | sed -n 's/^branch_why=//p' | head -1))" ;;
+    returning) echo "🚪 [FH onboarding] branch=RETURNING — 고정 4문, «Welcome back to FH.» (계산값: $(printf '%s' "$_MT" | sed -n 's/^branch_why=//p' | head -1))" ;;
+    UNKNOWN)   echo "🚪 [FH onboarding] branch=UNKNOWN — 🟥 «new» 로 읽지 마라. $(printf '%s' "$_MT" | sed -n 's/^branch_why=//p' | head -1)" ;;
+  esac
+fi
+
 # 6) Substrate-jump detection (structure-enforcing — version drift lives outside any session's
 #    context boundary; silent when nothing changed). Detector, never a gate.
 [ -x "$FH/scripts/substrate_jump_detector.sh" ] && bash "$FH/scripts/substrate_jump_detector.sh" "$FH" 2>/dev/null
