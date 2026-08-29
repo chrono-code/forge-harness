@@ -84,3 +84,32 @@ These are external anchors for the **prose-vs-mechanical premise**; the locality
   sibling principle for *verdict* placement; gate-locality is for *gate* placement.
 - **Non-Model Ground** — multi-runtime orchestration is exactly where gate-locality bites, because
   different runtimes load different files.
+
+## Where a rule lives — the three seats (moved out of `README.md`, 2026-08-29)
+
+A harness learns by writing rules down, and the always-loaded file only ever gets longer — so the
+reasoning ends in a corner: *a harness that keeps learning keeps getting more expensive to start.* It
+does not, because a rule has **three seats**, chosen by *when the rule has to fire*:
+
+| Seat | Fires | Costs | Fits |
+|---|---|---|---|
+| **Always-loaded** | before you act | every session, every turn | rules whose trigger is an *intention* — tone, "don't normalize the unfamiliar", "prove the instrument works here". Nothing can hook an intention, so salience is the only layer |
+| **The gate's own error message** | at the moment you act | **nothing** | rules whose trigger is an *action*. The message that blocks you also teaches the form: `Write, before the design: success = «…». never = «…».` |
+| **The hook** | after you act | nothing | properties of a record — present · typed · attributable · non-vacuous |
+
+The middle seat usually goes unused, and it is free: it is **this principle applied to salience** — the
+actor reads the rule exactly where the action happens, so it does not have to be carried all session to
+be there when needed.
+
+🟥 **It is a third layer, not a replacement, and its honest limit is that it only fires on failure.**
+Someone who gets it right never sees it. So mechanizing a rule does **not** shrink the resident layer:
+measured on the change that produced this section, the machine grew by 480 lines and the always-loaded
+prose by **zero** — which is correct, because the prose has to reach the author *before* they design
+while the hook catches its absence *after*. A backstop cannot substitute for salience that must fire
+earlier.
+
+⚠️ And the threshold that would tell you a resident layer is "too big" is, in this repo, **not
+grounded** — the numbers in our own doctor skill were introduced without a line justifying the
+cutpoints, and one was set to a value the target already exceeded on the day it landed. We are
+re-deriving them rather than trimming toward a number nobody can defend; cutting resident text toward
+an unjustified target buys fail-open with the savings.
