@@ -133,6 +133,19 @@ so it must never be the default path. Operating detail (allowed corpus · say "n
 lives in `/fh` Step 3.5.
 
 > (When **FH-dev state exists** — the operator — the welcome line is **"The FH operator — good to see you."** in place of "Welcome back to FH.")
+>
+> *…and when you're done, say **"wrap up"** — what you did lands in the session card, and the next session starts from there instead of from scratch.*
+
+**Wrap-up line — returning branch only, and it is not a door.** A first-time user has nothing to close
+yet and the phrase reads as jargon; a returning user is exactly the person whose *last* session may have
+ended without it, and whose work therefore never reached the card. It sits **below** the doors as one
+line — **G-GREET-03 (fixed 4-door set) and G-GREET-05 (welcome literals) stay satisfied**, because those
+probes pin the door set and the welcome literal, not what follows them.
+🟥 **Say the trigger word, not the machinery.** The close chain is six steps; the consumer needs exactly
+one word. Naming «the close chain» here would be internal vocabulary leaking into the front door.
+⚠️ **Unmeasured**: this line is salience-only, with no mechanical floor (the greeting never has one —
+CLAUDE.md §Voice/Tone). Whether a floor-tier session actually emits it is **not yet blind-sim'd**, so it
+does not meet §Skeleton-Not-Muscle's completion bar. Labelled here rather than assumed.
 
 - **① Map a project** → routes to `auto_project_mapping.md`; after a successful mapping, offer the §6 Full-Harness promotion prompt
 - **② Create a new project** → Step 3-0 (new project setup)
