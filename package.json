@@ -1,6 +1,6 @@
 {
   "name": "@chrono-meta/fh-gate",
-  "version": "2.12.1",
+  "version": "2.13.0",
   "description": "FH runtime adapters — run FH governance, skills, and agents via Claude or Codex with machine-parseable gates.",
   "homepage": "https://github.com/chrono-meta/forge-harness#readme",
   "bugs": {
@@ -147,6 +147,7 @@
     "scripts/test_chamber_sig_lanes.sh",
     "scripts/chamber_witness.sh",
     "scripts/digest_landing_check.sh",
+    "scripts/activity_log.sh",
     "scripts/relay_channel.sh",
     "scripts/test_relay_channel_lanes.sh",
     "scripts/fh_session_load.sh",
