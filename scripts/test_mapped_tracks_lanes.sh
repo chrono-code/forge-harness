@@ -152,6 +152,64 @@ if [ -z "${MT_LANES_NESTED:-}" ]; then
 fi
 
 echo "──────────────────────────────────────────────"
+# ── B-1 … B-5 — THE ONBOARDING BRANCH VERDICT ────────────────────────────────────────────────
+# WHY THESE EXIST. The branch test has two halves: ⓑ (mapped tracks, the lanes above) and ⓐ
+# (session files). ⓑ has been mechanical since 2026-08-22; ⓐ was a SENTENCE the session judged —
+# and the sentence counted files that SHIP WITH THE REPO. Measured 2026-08-30 with a control
+# (nonsense pattern = 0 hits): two tracked files satisfied ⓐ, so `git clone` alone rendered the
+# RETURNING menu and the NEW-USER branch was unreachable for anyone who clones.
+# The rule is now one sentence — **ⓐ counts only files that did NOT ship** — and these lanes pin
+# BOTH directions, because a rule that answers `new` to everything would pass B-1 alone.
+BR="$TMP/branch"; mkdir -p "$BR/scripts"
+git init -q "$BR" 2>/dev/null || { echo "ⓘ git init failed (branch fixtures) — NOT a pass"; exit 10; }
+cp "$SUT" "$BR/scripts/mapped_tracks.sh"
+mkdir -p "$BR/tracks/_meta" "$BR/tracks/_contrib"
+: > "$BR/tracks/.gitkeep"; : > "$BR/tracks/_meta/.gitkeep"
+# The two SHIPPED shapes that caused the defect, committed exactly as the real repo carries them.
+printf '# monitor\n' > "$BR/tracks/_meta/harness_bench_issue_monitor.md"
+printf '# contrib\n' > "$BR/tracks/_contrib/session_2026_06_27_cross-audit.md"
+git -C "$BR" add -A >/dev/null 2>&1
+git -C "$BR" -c user.email=t@t -c user.name=t commit -q -m ship 2>/dev/null
+
+_bv() { ( cd "$1" && bash scripts/mapped_tracks.sh 2>&1 | sed -n 's/^onboarding_branch=//p' ); }
+
+v=$(_bv "$BR")
+[ "$v" = "new" ] && ok "B-1 shipped files do NOT make a clone look returning (got new)" \
+                 || ng "B-1 a fresh clone reported '$v' — shipped content is being counted as prior use"
+
+# 🟥 CONTROL — without this, a rule that always answers `new` passes B-1. A file the USER made
+# must still flip the verdict.
+mkdir -p "$BR/tracks/myproj"; printf '# s\n' > "$BR/tracks/myproj/session_2026-08-30.md"
+v=$(_bv "$BR")
+[ "$v" = "returning" ] && ok "B-2 control — a user-made session file DOES make it returning" \
+                       || ng "B-2 control — user file ignored (got '$v'); the rule is too wide"
+rm -rf "$BR/tracks/myproj"
+
+# ⓐ's own half: an UNTRACKED file in _meta counts (someone who worked and quit without closing).
+printf '# c\n' > "$BR/tracks/_meta/fh_completed_2026-08-30.md"
+v=$(_bv "$BR")
+[ "$v" = "returning" ] && ok "B-3 an untracked _meta file counts (worked, never closed)" \
+                       || ng "B-3 untracked _meta file ignored (got '$v')"
+rm -f "$BR/tracks/_meta/fh_completed_2026-08-30.md"
+
+# THREE-VALUED. Outside a git tree the two classes cannot be separated, and that is UNKNOWN —
+# never the friendlier value. Rendering it as `new` tells a returning user they look new.
+NG="$TMP/nogit"; mkdir -p "$NG/scripts" "$NG/tracks/_meta"
+cp "$SUT" "$NG/scripts/mapped_tracks.sh"; : > "$NG/tracks/.gitkeep"; : > "$NG/tracks/_meta/.gitkeep"
+v=$(_bv "$NG")
+[ "$v" = "UNKNOWN" ] && ok "B-4 non-git tree → UNKNOWN (not 'new')" \
+                     || ng "B-4 non-git tree reported '$v' — an unmeasured state took a real value"
+
+# The key must be present on EVERY path, including the UNMEASURED exit. A consumer that greps for
+# it and finds silence fills the blank in with the friendlier branch.
+# 🟥 CAPTURE FIRST, THEN GREP. The subject exits 3 on this path, and under `pipefail` that exit
+# code becomes the pipeline's — so `subject | grep -q` reports the SUBJECT's failure, not grep's.
+# The repo's own pre-commit hook warns about this shape; this lane reproduced it on the first try.
+_ngout=$( cd "$NG" && bash scripts/mapped_tracks.sh 2>&1 ) || true
+printf '%s' "$_ngout" | grep -q '^onboarding_branch=' \
+  && ok "B-5 the branch key is emitted even on the UNMEASURED path" \
+  || ng "B-5 UNMEASURED path emits no branch key — silence is not an answer"
+
 if [ "$FAIL" -eq 0 ]; then
   echo "MAPPED-TRACKS LANES: PASS ($PASS/$PASS)"
   echo "  NOT covered: whether the synergy skill (or any other consumer) actually CALLS this."

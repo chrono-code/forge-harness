@@ -87,7 +87,14 @@ public-tracked file. A `public`-only combination may land in tracked docs.
 
 Identity marker: every greeting response opens with **🐿️ then an identity-revealing welcome line on the same line** (a space after 🐿️; exact count not significant — the renderer collapses multiple mid-line spaces — the invariant is *same-line*, not 🐿️ alone) — new / exploratory = "Welcome to FH." · returning = "Welcome back to FH." · operator (FH-dev state) = "The FH operator — good to see you." This is FH's session-start signal — friendly, consistent, distinct; the onboarding-smoothness / lid matters even though it is not the substance. The marker + welcome are **part of each skeleton itself** (one salience unit with the menu — do not strip it when composing doors; mirrored in CLAUDE.md §Active Onboarding).
 
-**Branch test (mechanical — local state only)**: returning = session files exist (any `tracks/**/session_*.md` or `tracks/_meta/*.md` beyond `.gitkeep`) **OR** mapped project tracks exist (`tracks/{name}/` dirs — **any underscore-prefixed dir doesn't count** (`tracks/_*`, general rule not a closed list: `_meta`/`_audit`/`_contrib`/`_chamber`…); covers mapped-but-not-yet-synced users). **Never infer the branch from git log or CATALOG residue** — a fresh clone carries full commit history but zero session files: it is a NEW install (origin: fresh-clone sonnet sim rendered the returning menu off commit messages, `fh_signal_2026-06-11` FP8).
+**Branch test — ASK THE SCRIPT, DO NOT JUDGE IT BY EYE.**
+```
+bash scripts/mapped_tracks.sh   →   onboarding_branch=new | returning | UNKNOWN
+```
+🟥 **UNKNOWN 은 `new` 가 아니다** — 못 가른 상태를 친절한 쪽으로 렌더하면 복귀 사용자가
+「처음이시군요」를 받는다. 그 키는 UNMEASURED 종료 경로에서도 나온다(침묵은 답이 아니다).
+
+**판정 내용 (기계가 쓰는 규칙, 사람이 재현할 수 있게 적어 둔다)**: returning = session files exist (any `tracks/**/session_*.md` or `tracks/_meta/*.md` beyond `.gitkeep`) — 🟥 **그중 «레포와 함께 온» 파일은 세지 않는다**(`git ls-files` 가 판별자). 2026-08-30 실측: tracked 파일 둘(`_contrib/session_*.md` = 이름만 session 인 자매자산 감사 · `_meta/harness_bench_issue_monitor.md` = 이슈 모니터 산출물)이 이 조건을 만족해서 **`git clone` 만 해도 «복귀»가 됐고, 신규 사용자 분기가 도달 불가였다.** 컨트롤: 없는 패턴 0히트. npm 설치는 `files[]` 에 `tracks/` 가 없어 안 걸린다 **OR** mapped project tracks exist (`tracks/{name}/` dirs — **any underscore-prefixed dir doesn't count** (`tracks/_*`, general rule not a closed list: `_meta`/`_audit`/`_contrib`/`_chamber`…); covers mapped-but-not-yet-synced users). **Never infer the branch from git log or CATALOG residue** — a fresh clone carries full commit history but zero session files: it is a NEW install (origin: fresh-clone sonnet sim rendered the returning menu off commit messages, `fh_signal_2026-06-11` FP8).
 > 🟥 **RETRACTED 2026-08-29 — 「이 판정이 플로어에서 33% 틀린다」고 여기 적었고, 거짓이었다.**
 > 그 숫자는 세션의 판단이 아니라 **측정 도구가 만든 것**이다. 재는 팔에 `Read,Grep,Glob` 만
 > 줬는데 **`Glob` 은 파일을 매칭하지 디렉토리를 열거하지 않는다** — `tracks/` 직하의 유일한

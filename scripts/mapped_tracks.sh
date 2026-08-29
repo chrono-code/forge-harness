@@ -38,6 +38,12 @@ esac
 _die_unmeasured() {
   echo "status=UNMEASURED"
   echo "reason=$1"
+  # 🟥 EMIT THE BRANCH KEY ON EVERY PATH, including this one. A consumer greps
+  # `onboarding_branch=` and must get an ANSWER in every state — silence is the shape a reader
+  # fills in with the friendlier value, and «looks like you're new here» to a returning user is
+  # exactly the defect the branch test exists to prevent.
+  echo "onboarding_branch=UNKNOWN"
+  echo "branch_why=$1 — UNKNOWN is not 'new'"
   echo "# not-found != zero — do NOT read this as 'no mapped tracks'"
   exit 3
 }
@@ -100,12 +106,75 @@ done
 
 if [ "$COUNT_ONLY" = "1" ]; then echo "$COUNT"; exit 0; fi
 
+# ── ⓐ SESSION FILES, and the branch verdict ───────────────────────────────────────────────────
+# WHY THIS IS HERE AND NOT IN PROSE. The onboarding branch test has two halves: ⓑ (mapped tracks,
+# counted above) and ⓐ (session files). ⓑ has been mechanical since 2026-08-22; ⓐ was left to the
+# session to judge from a sentence — and the sentence was wrong.
+#
+# 🟥 THE DEFECT, measured 2026-08-30 with a control. ⓐ read «any `tracks/**/session_*.md` or
+# `tracks/_meta/*.md` beyond .gitkeep», and TWO files that SHIP WITH THE REPO satisfy it:
+#     tracks/_contrib/session_2026_06_27_….md      (a sister-asset cross-audit; only the NAME is
+#                                                    session-shaped)
+#     tracks/_meta/harness_bench_issue_monitor.md   (an issue-monitor artifact)
+# So `git clone` alone rendered the RETURNING menu, and the NEW-USER branch was unreachable for
+# anyone who clones. The canon warns two lines away that «a fresh clone is a NEW install — never
+# infer the branch from git log»; the same misreading arrived through tracked FILES instead.
+# (Control: the nonsense pattern `tracks/**/zzz_*.md` matched 0, so the probe discriminates.)
+#
+# THE RULE, one sentence: **ⓐ counts only files that did NOT ship with the repo.** Content that
+# arrived with the checkout is not evidence that this person has worked here. `git ls-files` is the
+# mechanical discriminator, and it degrades honestly: an npm install ships no `tracks/` at all
+# (verified against package.json `files[]`), so both worlds agree.
+#
+# 🟥 THREE-VALUED. "cannot tell shipped from user-made" is UNKNOWN, never `new` — rendering an
+# unmeasured state as the friendlier branch is how a returning user gets told they look new
+# ([[feedback_not_found_is_not_zero_family]]).
+_TRACKED=""
+_TRACKED_OK=0
+if command -v git >/dev/null 2>&1 && [ -d "$HUB_ROOT/.git" ] ||    { command -v git >/dev/null 2>&1 && git -C "$HUB_ROOT" rev-parse --git-dir >/dev/null 2>&1; }; then
+  _TRACKED=$(git -C "$HUB_ROOT" ls-files tracks/ 2>/dev/null)
+  # An EMPTY tracked list is a real state (a hub whose tracks/ is fully gitignored) — distinguish it
+  # from "git failed" by asking git a question it always answers.
+  if git -C "$HUB_ROOT" rev-parse --git-dir >/dev/null 2>&1; then _TRACKED_OK=1; fi
+fi
+
+_SESS=0
+_SESS_NAMES=""
+_is_shipped() {  # $1 = path relative to HUB_ROOT
+  [ "$_TRACKED_OK" = "1" ] || return 1
+  printf '%s\n' "$_TRACKED" | grep -qxF "$1"
+}
+for _f in "$HUB_ROOT"/tracks/*/session_*.md "$HUB_ROOT"/tracks/_meta/*.md; do
+  [ -f "$_f" ] || continue
+  _rel="tracks/${_f#"$HUB_ROOT"/tracks/}"
+  case "$(basename "$_f")" in .gitkeep) continue ;; esac
+  _is_shipped "$_rel" && continue
+  _SESS=$((_SESS + 1))
+  # Cap the sample. The COUNT is the answer; the names are a debugging aid, and an operator hub
+  # has hundreds — dumping them turns a one-line verdict into a screenful nobody reads.
+  [ "$_SESS" -le 3 ] && _SESS_NAMES="$_SESS_NAMES $(basename "$_f")"
+done
+
+if [ "$_TRACKED_OK" = "1" ]; then
+  if [ "$_SESS" -gt 0 ] || [ "$COUNT" -gt 0 ]; then _BRANCH=returning; else _BRANCH=new; fi
+  _BRANCH_WHY="session_files=$_SESS mapped=$COUNT (shipped files excluded via git ls-files)"
+else
+  _BRANCH=UNKNOWN
+  _BRANCH_WHY="cannot separate shipped from user-made files (git unavailable here) — UNKNOWN is not new"
+fi
+
 echo "status=OK"
 echo "hub_root=$HUB_ROOT"
 echo "root_source=$ROOT_SRC"
 echo "in_worktree=$IN_WORKTREE"
 echo "count=$COUNT"
 echo "names=${NAMES# }"
+echo "session_files=$_SESS"
+_SESS_SHOWN="${_SESS_NAMES# }"
+[ "$_SESS" -gt 3 ] && _SESS_SHOWN="$_SESS_SHOWN … (+$((_SESS - 3)) more)"
+echo "session_sample=$_SESS_SHOWN"
+echo "onboarding_branch=$_BRANCH"
+echo "branch_why=$_BRANCH_WHY"
 if [ "$IN_WORKTREE" = "yes" ]; then
   echo "# NOTE: running from a worktree; the count above is the MAIN tree's, resolved via"
   echo "#       --git-common-dir. The worktree's own tracks/ is NOT the answer to this question."
