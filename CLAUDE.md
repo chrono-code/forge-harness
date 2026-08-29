@@ -471,7 +471,7 @@ a property of *this* install, not of a consumer's. **Do not cite 1/5 as the ship
 menu at all, and one Korean run opened with an English welcome line. Reps are 1–3 per arm, below this
 repo's own bar. So the softened README wording stays correct; only its *reason* changed.
 
-- **New user** (no session files AND no mapped project tracks under `tracks/` — fresh clone/install; **any underscore-prefixed dir** (`tracks/_*` — `_meta`/`_audit`/`_contrib`/`_chamber`…) doesn't count, general rule not a closed list — `_chamber` holds incubation chamber runs, never mapped projects): 2-door starter, never the returning menu —
+- **New user** (fresh clone/install — **neither** condition below holds): 2-door starter, never the returning menu. 🟥 **The two conditions are scoped differently and the underscore rule touches only the second.** ⓐ **Session files** — any `tracks/**/session_*.md` **or `tracks/_meta/*.md` beyond `.gitkeep`**; 🟥 `_meta` **counts here** (someone who worked and quit without closing has files there, and rendering «looks like you're new» to them is the defect this clause exists to prevent). ⓑ **Mapped project tracks** — `tracks/{name}/` dirs, where **any underscore-prefixed dir** (`tracks/_*` — `_meta`/`_audit`/`_contrib`/`_chamber`…) doesn't count, general rule not a closed list — `_chamber` holds incubation chamber runs, never mapped projects. Canonical: `fh_detail_protocols.md` §Branch test —
 
   > 🐿️  **Welcome to FH.** *Looks like you're new here! What would you like to do?*
   > - **①  Create your first project** — guided
@@ -490,6 +490,10 @@ repo's own bar. So the softened README wording stays correct; only its *reason* 
   > - **📖  Guide / Q&A**
   >
   > (When **FH-dev state exists** — the operator — the welcome line is **"The FH operator — good to see you."** in place of "Welcome back to FH.")
+  >
+  > *…and when you're done, say **"wrap up"** — what you did lands in the session card, and the next session starts from there instead of from scratch.*
+
+  **The wrap-up line is returning-branch only.** A first-time user has nothing to close yet, and the phrase would read as jargon; a returning user is exactly the person whose last session may have ended without it. One line, below the doors, never a numbered door (the door set is fixed — §fh_detail_protocols Step 2).
 
   🟥 **한 줄로 이어붙이지 마라 — 문은 한 줄에 하나다** (운영자 지적 2026-08-20). `·` 로 이어붙인
   한 줄짜리 메뉴는 터미널 폭에서 임의로 접혀서 **어디까지가 한 문인지 눈으로 안 갈린다**. 세로
@@ -1307,7 +1311,7 @@ harvest-loop Step 0-b uses this file as its source — relying on LLM memory aft
 
 **Session close chaining (automatic sequence — not skippable)**:
 ```
-Closing phrase detected ("wrap up", "done", "good work", "end session", etc.)
+Closing phrase detected ("wrap up", "done", "good work", "end session", etc. — 🟥 **in any language**, on the same footing as the greeting trigger: 「마감」·「마무리하자」·「終わり」·「收尾」 all count. The returning-branch greeting *teaches* this phrase **in the user's language**, so a trigger list that only accepts English would tell the user a word the machine then ignores. Found by blind floor-tier sim 2026-08-29: the greeting emitted 「마무리하자」, which appeared nowhere in this list.)
   → ① Check git diff + unpushed commits (status snapshot)
   → ①-b Open-PR sweep — `gh pr list --author @me --state open` (+ `gh search prs --author @me
        --state open` cross-repo). Classify, **surface-not-auto**: **self-mergeable** PR (own repo,
