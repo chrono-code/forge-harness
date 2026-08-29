@@ -235,10 +235,10 @@ misread the project's status, so they are named here rather than only in the can
 
 | Counter | Where you see it | What it means |
 |---|---|---|
-| **Package version** (currently **2.8.0** — hardcoded here, so a release must update this cell by hand; the lockstep bump does not reach it) | npm, the plugin manifests, `git tag v2.x` | *what you install.* Ordinary release numbering: fixes → patch, new assets and gate lanes → minor, a capability **class** appearing or the thing being rebuilt → major |
+| **Package version** (the npm badge at the top of this page carries the live number — deliberately not repeated here, because a hand-updated copy is a copy that goes stale) | npm, the plugin manifests, `git tag v2.x` | *what you install.* Ordinary release numbering: fixes → patch, new assets and gate lanes → minor, a capability **class** appearing or the thing being rebuilt → major |
 | **Identity-maturity release** (currently **identity-v0.4.0**) | the GitHub **Releases** page | *how far along the harness is.* `0.x` carries an incomplete-but-honest status **by design**; **the all-green ship is reserved for `identity-v1.0.0`** — every one of the five identities at 🟢, none 🔵/🟡/🔴 |
 
-🟥 **A high package number does not mean maturity.** `2.8.0` is not "ahead of" `identity-v0.4.0`; they are not on
+🟥 **A high package number does not mean maturity.** The package number is not "ahead of" `identity-v0.4.0`; they are not on
 the same scale. The maturity track is deliberately allowed to sit at `0.x` while the package ships and
 improves, because the thing `0.x` refuses to do is **lie** — it says out loud that not every identity has
 cleared its bar yet, and each release names exactly which real run is still missing.
@@ -340,11 +340,9 @@ tracked per identity on a four-step scale — `aspirational → partial → RC (
 (walked outside)` — with a dated line of evidence for each. Those grades are deliberately **not** copied
 here: a grade kept in two files goes stale in one, and this page exists in four languages, so a copy here
 would be four copies. Before you rely on any row above, read the current grades — that is one file:
-[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md). The short version if you
-only want one sentence, as of **2026-08-17**: **①, ③, ⑤ and Ⓑ are graded green — demonstrated outside
-the lab; ② and ④ are release candidates — built and calibrated, not yet shown to walk in someone
-else's hands.**
-If that sentence and the gate file disagree, the gate file is right and this line is stale.
+[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md) — it carries the
+current grade for each identity, with the date and the evidence that earned it. Not all are green; that
+file says which, and when.
 
 Two properties cut across all five, and neither is a feature you switch on:
 
