@@ -260,6 +260,7 @@
     "scripts/test_skill_canon_preload_lanes.sh",
     "scripts/test_preprep_retired_lanes.sh",
     "scripts/test_preprep_adjacent_dup_lanes.sh",
+    "scripts/test_preprep_promise_lanes.sh",
     "scripts/test_mapped_tracks_lanes.sh"
   ]
 }

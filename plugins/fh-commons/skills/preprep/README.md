@@ -6,7 +6,7 @@
 
 ```bash
 mkdir -p ~/preprep && cd ~/preprep
-cp <이 디렉터리>/{preprep.py,interslide_deps.py,lane_progression.py,lane_adjacent_dup.py} .
+cp <이 디렉터리>/{preprep.py,interslide_deps.py,lane_progression.py,lane_adjacent_dup.py,lane_promise.py} .
 cp -r <이 디렉터리>/ooxml .          # 덱(pptx)을 다룬다면. 아니면 생략
 cp <이 디렉터리>/surfaces.example.yaml   surfaces.yaml
 cp <이 디렉터리>/canon_terms.example.yaml  canon_terms.yaml

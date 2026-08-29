@@ -718,6 +718,12 @@ def main():
                  for s in cfg['surfaces']}
     f1, n1 = lane_canon(cfg, root, texts, surf_meta); findings += f1; notes += n1
     try:
+        import lane_promise
+        _f11, _n11 = lane_promise.scan(texts, surf_meta)
+        notes += _n11   # advisory 고정 — findings 에 안 태운다
+    except Exception as _e:
+        notes.append('L11 promise : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)' % (type(_e).__name__, _e))
+    try:
         import lane_adjacent_dup, importlib.util as _ilu
         _mp = os.path.join(HERE, 'interslide_deps.py')
         _sp = _ilu.spec_from_file_location('interslide_deps', _mp)
