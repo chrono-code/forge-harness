@@ -114,7 +114,11 @@ fi
 # 7. cadence artifacts (harness_doctor / frontier_digest in _meta)
 for f in tracks/_meta/harness_doctor_*.md tracks/_meta/frontier_digest_*.md; do
   [[ -e "$f" ]] || continue
-  d="$(basename "$f" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | head -1)"
+  # 🟥 2026-08-29 — 초판은 대시 표기만 봤다(`[0-9]{4}-[0-9]{2}-[0-9]{2}`). 실파일 71개 중
+  # 대시 표기는 **1개**뿐이고 나머지 70개는 언더스코어라, `d=""` → emit_line 이 malformed 로
+  # 조용히 return 0 → **70건 무음 드롭**. emit_line:49 에 `${1//_/-}` 정규화가 **있는데도**
+  # 호출부가 그 앞에서 죽여서 도달하지 못했다([[feedback_not_found_is_not_zero_family]]).
+  d="$(basename "$f" | grep -oE '[0-9]{4}[-_][0-9]{2}[-_][0-9]{2}' | head -1)"
   case "$(basename "$f")" in
     harness_doctor_*) emit_line "$d" "doctor"  "harness-doctor run" "_meta" ;;
     frontier_*)       emit_line "$d" "digest"  "frontier-digest"    "_meta" ;;
