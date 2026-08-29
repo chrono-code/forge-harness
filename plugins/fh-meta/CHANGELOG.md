@@ -10,6 +10,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### [2.13.0] — 2026-08-29
 
+> **추가 (발행 전 보완)** — 아래 두 항목은 릴리스 커밋 이후, **발행 전에** 같은 2.13.0 으로
+> 들어왔다. 미발행 상태라 노트를 보완하는 것이 태그·타르볼·문서를 일치시키는 정직한 방향이다.
+>
+> - **새 게이트 행 + 필드 렌즈 — `measurement-reps`.** 측정을 기록했는데 `reps` 가 바(3) 미달
+>   이고 그 결론이 **하중을 지면**(판정·등급·교리·비가역 처방) 한 줄 제안이 뜬다. 지금까지는
+>   「바 미달」이라고 **적고 넘어가는 것**이 기본값이었다 — 라벨은 측정이 아니다. §Field-Harness
+>   Diagnostic 도 8렌즈 → **9렌즈**. 🟥 필드 하네스에 돌리기 전에
+>   `knowledge/shared/harness-core/field_harness_diagnostic.md` 의 **Step 0(provenance 분리)**
+>   를 읽어라 — FH 파생 하네스를 그냥 스캔하면 FH 자기 텍스트를 필드 발견으로 되읽는다
+>   (실측: 어느 필드 레포 원시 히트의 2/3).
+> - **인사말 번역 조항** — 문장은 어느 언어로든 자연스럽게 옮기되 이름 「FH」는 움직이지 않는다.
+>   🟥 **측정했고 안 닫혔다**(컨트롤 1/3 · 조항 2/3, n=3 에서 차이 1). 조항은 옳고 싸서 남겼지
+>   효과가 측정돼서가 아니다. 이 축엔 기계 floor 가 없다.
+> - `scripts/activity_log.sh` 가 **files[] 에 진입**했다 — 배포되는 digest 생산자
+>   (`frontier_digest_autopilot.sh`)가 언더스코어 날짜 파일을 만드는데 그 판독기가 안 실려 있었다.
+
 > **BREAKING (gate)**: `templates/regression_guard.sh` 의 Axis 1 pathspec 이 이제
 > `README*.md` · `CHEATSHEET.md` · `CATALOG.md` · `.github/workflows/*.yml` · `scripts/*.py` ·
 > `.claude/registry/*.md` · `package.json` 을 **본다**. **FH 클론에 4축 pre-commit 훅을
