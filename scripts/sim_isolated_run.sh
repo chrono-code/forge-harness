@@ -59,6 +59,16 @@
 #        --setup 'mkdir -p tracks/demoproj'      # build the precondition inside the clone
 #   Outputs land in a run dir printed at the end; each arm/rep is its own file.
 #
+# 🟥 OBSERVE MODE CANNOT SEE AN EMPTY DIRECTORY — and FH has machine signals that ARE empty
+#   directories. `fh_detail_protocols.md` §Branch test defines a mapped project as a
+#   `tracks/{name}/` **dir**, which is routinely empty; `Glob` matches files, so a read-only arm
+#   reports "no mapped projects" no matter what you created. Measured 2026-08-29: a `--setup` that
+#   ran `mkdir -p tracks/demoproj` succeeded, the directory existed in the clone, and all three
+#   arms still answered "매핑된 프로젝트가 하나도 없다". The fixture was real and invisible.
+#   ⇒ **A fixture for observe mode must contain a FILE.** This is an instrument constraint, not an
+#   FH defect (a normal session has Bash and can `ls`) — but scoring an arm without knowing it
+#   produces a confident zero from a fixture that was never observable.
+#
 # 🟥 CONTROL IS NOT OPTIONAL. Always run at least one arm whose correct answer is "the thing
 #   being measured should NOT fire". An instrument that fires on everything measures nothing
 #   ([[feedback_control_presence_is_not_discrimination]]).

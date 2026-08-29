@@ -88,6 +88,14 @@ public-tracked file. A `public`-only combination may land in tracked docs.
 Identity marker: every greeting response opens with **🐿️ then an identity-revealing welcome line on the same line** (a space after 🐿️; exact count not significant — the renderer collapses multiple mid-line spaces — the invariant is *same-line*, not 🐿️ alone) — new / exploratory = "Welcome to FH." · returning = "Welcome back to FH." · operator (FH-dev state) = "The FH operator — good to see you." This is FH's session-start signal — friendly, consistent, distinct; the onboarding-smoothness / lid matters even though it is not the substance. The marker + welcome are **part of each skeleton itself** (one salience unit with the menu — do not strip it when composing doors; mirrored in CLAUDE.md §Active Onboarding).
 
 **Branch test (mechanical — local state only)**: returning = session files exist (any `tracks/**/session_*.md` or `tracks/_meta/*.md` beyond `.gitkeep`) **OR** mapped project tracks exist (`tracks/{name}/` dirs — **any underscore-prefixed dir doesn't count** (`tracks/_*`, general rule not a closed list: `_meta`/`_audit`/`_contrib`/`_chamber`…); covers mapped-but-not-yet-synced users). **Never infer the branch from git log or CATALOG residue** — a fresh clone carries full commit history but zero session files: it is a NEW install (origin: fresh-clone sonnet sim rendered the returning menu off commit messages, `fh_signal_2026-06-11` FP8).
+> 🟥 **«mechanical» 이라 적혀 있지만 기계가 하지 않는다 — 세션이 눈으로 하고, 플로어에서 33% 틀렸다**
+> (2026-08-29 실측). 같은 픽스처(`tracks/demoproj/session_*.md` · `tracks/webshop/session_*.md`)를
+> 심은 동일 클론 여섯 팔 중 **둘이 「매핑된 프로젝트가 하나도 없다」**고 답했다. 두 오판 팔의 클론을
+> 열어 확인했고 옳게 읽은 팔과 **내용이 같았다.** 이 판정이 정하는 것은 신규/복귀 분기와 문 ④ 렌더
+> 여부다. ⚠️ 그 픽스처는 `tracks/` 엔트리만 만들고 프로젝트 **루트 디렉토리는 안 만들었다** — 오판이
+> 「루트가 없어서」일 가능성이 남는다. 그렇다 해도 이 판정의 기준은 `tracks/{name}/` 존재이지 루트가
+> 아니므로 **정본과 어긋난 판정**이다. 루트까지 만든 픽스처로 가르는 재측정은 **미실시**.
+> 정본: `tracks/_meta/RESULT_2026-08-29_door-identity-naming.md`
 
 **New user** (neither condition holds — fresh clone/install): 2-door starter, never the returning menu —
 > 🐿️  **Welcome to FH.** *Looks like you're new here! What would you like to do?*
@@ -154,6 +162,11 @@ does not meet §Skeleton-Not-Muscle's completion bar. Labelled here rather than 
   - **Skill-ification** of repeated patterns (`#skill-candidate` tag at 3+ recurrences → SKILL.md draft; FH skill gates — diet · Done When · triggers — apply to field skills too)
   - **Sub-agent proposals** (`.claude/agents/*.md`, invocation rules in `operations.md`)
   - **Plugin adoption / plugin-ification — no-reinvention order**: platform built-ins (Tier 0) and `claude-plugins-official` (Tier 1) **first**, via `/plugin-recommender` — FH builds only the governance increment on top (mirrors §6 item 5: recommend-only, never auto-install)
+  - 🔔 **레버를 제안할 때 정체성을 이름으로 달아라** — 「세상이 이미 푼 건지 먼저 뒤져볼까?
+    (**④ 프런티어 답습**)」 · 「다른 프로젝트 스킬을 여기서 부를까? (**① 하네스 클러스터**)」.
+    **한 턴에 하나**, 이름은 설명이 아니라 `docs/IDENTITIES.md` 로 가는 링크다.
+    (전체 규율과 실측은 아래 §문을 고른 «뒤» — 그 블록만으로는 **0/3 으로 안 떴다**. 이 줄이
+    행위자가 실제로 읽는 자리에 놓인 판본이다.)
 - **④ Cross-project synergy** → render **only when 2+ project tracks exist** (underscore meta dirs don't count); runs `cross-ecosystem-synergy-detection` across mapped tracks. Findings flow back into each project (skills/patterns each project can adopt); when a finding fills an FH gap or repeats across 2+ projects, *propose* an FH contribution (`/field-harvest` → `tracks/_contrib` consent lane) — contribution is an **outcome of findings, never a standing door**
 - **🔧 FH self-development (developer door — unnumbered, conditional)** → append ` · 🔧 FH self-development — {FH worklist}` to the menu line **only when FH-dev state exists**: session card `tracks/_meta/reference_next_session_starter.md` · open `fh_signal_*` files · `CLAUDE.local.md`. The hub operator always has this state (owner always sees it — no flag). Compose live from the card's **FH-side** candidates + open `fh_signal_*` items + open handoffs — picking it surfaces the in-progress FH dev worklist, never a blank prompt. Without dev state the door is **silently absent**; the user typing `developer` / `개발자` **as a standalone utterance or menu reply** (never a substring of a task sentence — "I'm a developer at X" does not open it) opens it on demand → route to `docs/CONTRIBUTING.md` + `tracks/_contrib/` + open `fh_signal_*` items (the contribution entry path)
 
@@ -196,10 +209,16 @@ Keep the door set fixed; compose each door's contents per situation. Do not expo
 2. **이름은 링크지 설명이 아니다.** 한 번 이상 풀어쓰지 말고 `docs/IDENTITIES.md` 로 보낸다.
 3. **③ 거버넌스는 제안하지 않는다.** 「숨 쉬듯 도는」 것을 묻는 순간 기능으로 강등된다.
 
-🟥 **UNMEASURED — 이 블록은 아직 안 재봤다.** 문 부제 실측이 남긴 명시적 결함이
-「returning 문 프레이밍 미측정」이었고 여기가 바로 그 구간이다. **「FH 를 몇 번 써본 사람」
-프레이밍으로 reps≥3 을 돌려서** ⓐ 라우팅이 안 깨지나 ⓑ 이름이 «헷갈리는 것»으로 지목되나
-를 확인하기 전에는 **성립으로 인용하지 마라.** 눈으로 판단 금지(§Skeleton, Not Muscle).
+🟥 **측정했다. 그리고 이 자리에서는 «안 뜬다»** (2026-08-29, 블라인드 플로어, 한 변수).
+ARM(블록 있음) 대 CTRL(블록 1443자만 제거) 각 reps=3, 매핑 프로젝트 둘을 픽스처로 세운
+일회용 클론. 여섯 응답 어디에도 다섯 정체성 이름이 **한 번도** 안 나왔다 — **ARM 0/3 · CTRL 0/3.**
+사전등록의 반증 조건이 그대로 발동했으므로 **「미측정」이 아니라 「측정했고 안 뜬다」**로 적는다.
+⚠️ **잰 범위는 문 선택 «직후 한 턴»** 이다 — 여섯 팔 다 그 턴에서 「어느 프로젝트?」를 되물었고,
+단발 세션으로는 그 다음 턴에 못 간다. **「나중 턴에도 안 뜬다」는 주장이 아니다.** 다만 여섯 팔
+모두 *제안을 했고* 거기서 안 떴다는 것까지는 확정이다.
+⇒ **접지 않고 위치를 옮겼다** — 트리거 한 줄을 위 ③ 문 항목 안(행위자가 문 ③ 을 구성할 때
+읽는 자리)으로 이동. gate-locality. 🟥 **그 이동이 효과가 있는지는 다시 재야 한다.**
+정본: `tracks/_meta/RESULT_2026-08-29_door-identity-naming.md`
 
 ### Step 3 — 5-Skill Cascade
 
