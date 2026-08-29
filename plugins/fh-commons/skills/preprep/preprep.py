@@ -694,13 +694,7 @@ def main():
     surf_meta = {s['id']: {'marker': s.get('speech_marker'), 'spoken': s.get('spoken', False)}
                  for s in cfg['surfaces']}
     f1, n1 = lane_canon(cfg, root, texts, surf_meta); findings += f1; notes += n1
-    try:
-        import lane_prose
-        _f9, _n9 = lane_prose.scan(texts, surf_meta)
-        notes += _n9   # advisory 고정 — findings 에 안 태운다(L8 과 같은 이유)
-    except Exception as _e:
-        # 계기 부재/오류를 «통과»로 렌더하지 않는다. 부재 != 0.
-        notes.append('L9 prose : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)' % (type(_e).__name__, _e))
+
     f2, n2 = lane_unitref(cfg, root, surf); findings += f2; notes += n2
     f4, n4 = lane_getput(cfg, root, surf); findings += f4; notes += n4
     f5, n5 = lane_jargon(cfg, root, texts, surf_meta); findings += f5; notes += n5
