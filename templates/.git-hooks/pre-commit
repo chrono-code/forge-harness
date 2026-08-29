@@ -2208,6 +2208,40 @@ fi
 # vocabulary test for "human-facing document" over-blocked a legitimate case the same day it was
 # first tried. The trigger is therefore a PATH SET (what actually ships to readers), not a
 # vocabulary guess, and its whole output is one line of salience.
+# ── STAGED ≠ WORKTREE — «네가 검증한 트리»와 «커밋되는 트리»가 갈렸다 (advisory) ──────
+# WHY. 2026-08-29/30 하루에 네 번 났다, 매번 다른 계기가 잡았다 = 운이었다:
+#   ⑴ pathspec 실패를 무시하고 검증 결과를 커밋에 귀속 ⑵ `git add` 뒤에 파일을 더 편집
+#   ⑶ 검출기가 인덱스를 읽는데 나는 워킹트리에서 돌림(lane_runner_check)
+#   ⑷ 래칫이 스테이징 전에는 새 배선을 못 봄
+# 공통 형태 하나: **검사기가 본 바이트와 커밋되는 바이트가 다르다.** 그런데 그 사실은
+# 커밋 시점에 한 줄로 계산된다 — `git diff`(워킹트리 vs 인덱스) ∩ `git diff --cached`.
+#
+# 🟥 WHAT THIS IS NOT — 판정이 아니라 채널이다(§Mechanization Boundary). 「이 편집이 검증을
+# 무효화하는가」는 안 묻는다; 그건 사람 몫이고 부분 스테이징은 정당한 관행이다. 묻는 것은
+# 오직 **«두 바이트열이 갈렸다»** 라는 기록의 성질이고, 그래서 절대 차단하지 않는다.
+# 차단했다면 hunk 단위 스테이징마다 막혀 `--no-verify` 를 훈련시켰을 것이고, 그건 같은 훅
+# 안의 Destructive-Op 게이트를 무장해제한다.
+#
+# 순수 함수인 이유: 레인이 저장소 없이 구동해야 한다. 입력은 두 경로 목록, 출력은 교집합.
+staged_worktree_drift() {   # $1 = staged paths (LF) · $2 = worktree-modified paths (LF)
+  # 🟥 빈 입력에서 무엇이 나오나 — `comm` 은 빈 파일 둘에서 빈 결과를 낸다(= 소견 없음).
+  # 그 방향이 옳다: 「비교할 게 없다」와 「갈린 게 없다」는 여기서 같은 처방(아무것도 안 함)이라
+  # 접어도 손실이 없다. 다른 필드에서 이 접기가 결함인 것과 구분해서 적어 둔다.
+  _d_a=$(printf '%s\n' "${1:-}" | sed '/^$/d' | LC_ALL=C sort -u)
+  _d_b=$(printf '%s\n' "${2:-}" | sed '/^$/d' | LC_ALL=C sort -u)
+  LC_ALL=C comm -12 <(printf '%s\n' "$_d_a") <(printf '%s\n' "$_d_b")
+}
+_WT_MOD=$(git diff --name-only 2>/dev/null || true)
+_DRIFT=$(staged_worktree_drift "$STAGED" "$_WT_MOD")
+if [ -n "$_DRIFT" ]; then
+  echo "[Gate] staged ≠ worktree — 검증한 바이트와 커밋되는 바이트가 다르다 (advisory)..."
+  printf '%s\n' "$_DRIFT" | sed 's/^/       /'
+  echo "  ⚠️  이 파일들은 **스테이징된 뒤에 또 편집됐다.** 방금 돌린 검사기가 워킹트리를"
+  echo "     읽었다면 그 결과는 이 커밋을 서술하지 않는다."
+  echo "     담으려면:  git add <경로>   ·   빼려면:  git restore <경로>"
+  echo "  (advisory — 막지 않는다. 부분 스테이징은 정당하고, 여기서 막으면 --no-verify 를 훈련시킨다.)"
+fi
+
 _PRESHIP=$(printf '%s\n' "$STAGED" | grep -E '^(README([._a-z]*)?\.md|CHEATSHEET\.md|CATALOG\.md|docs/[^/]*\.md|templates/[^/]*\.md)$' || true)
 if [ -n "$_PRESHIP" ]; then
   echo "[Gate] reader-facing surface staged — pre-ship read reminder (advisory)..."

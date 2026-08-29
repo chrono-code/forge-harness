@@ -586,6 +586,7 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_standpoint_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_thirdparty_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_check_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_precommit_staged_drift_lanes.sh" \
   "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \
   "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
   "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \

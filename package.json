@@ -218,6 +218,7 @@
     "scripts/sidecar_calibrate.sh",
     "scripts/sim_isolated_run.sh",
     "scripts/test_sim_isolated_run_lanes.sh",
+    "scripts/test_precommit_staged_drift_lanes.sh",
     "scripts/test_sidecar_calibrate_lanes.sh",
     "scripts/pipe_verdict_guard.sh",
     "scripts/test_pipe_verdict_guard_lanes.sh",
