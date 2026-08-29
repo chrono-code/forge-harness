@@ -312,6 +312,47 @@ Rendering the pinned welcome phrase in the user's language once produced an inve
 (`안 조종실…`), caught by the operator. The line is a **plain, natural translation of the pinned phrase** —
 onboarding smoothness is the lid, not the substance, but a wrong lid still reads as a broken product.
 
+🟥 **A second, opposite failure of the same line, measured 2026-08-29 — the translation succeeds and the
+NAME disappears.** Blind, floor tier, Korean returning greeting, reps=3:
+
+```
+rep1  🐿️ **Welcome back to FH.** *What would you like to start?*   ← 언어 매칭 실패(기존 미해결 결함)
+rep2  🐿️ 다시 만나서 반가워. 뭐부터 시작할까?                        ← 번역은 자연스러운데 「FH」가 없다
+rep3  🐿️ 다시 만나 반가워. 뭐부터 시작할까?                          ← 같음
+```
+
+두 결함은 **반대 방향이고 섞으면 안 된다**: rep1 은 «번역을 안 했다», rep2·3 은 «번역을 **잘** 했는데
+이름이 증발했다». 후자는 자연스러움을 추구할수록 심해진다 — 「Welcome back to FH」를 한국어답게 옮기면
+제품명이 군더더기로 느껴지기 때문이다. 그런데 이 줄의 존재 이유가 *identity-revealing* 이라, 이름이
+빠지면 **남는 절반은 그냥 인사**다.
+
+⇒ 규칙은 리터럴 변경이 **아니다**. G-GREET-05 의 세 문구는 하류 포크가 기계 매핑하는 앵커라(pmh-dev #54)
+건드리면 모든 포크가 무음으로 깨진다. 대신 번역 규칙에 조항 하나를 건다: **문장은 어느 언어로든
+자연스럽게 옮기되, 그 안의 이름 「FH」는 움직이지 않는다.**
+
+🟥 **그 조항을 걸고 같은 날 다시 쟀고, 안 닫혔다 — 숫자를 그대로 남긴다.** 격리 클론 2팔 ×
+플로어 티어 블라인드 × reps=3, 「안녕」 단발, returning 분기:
+
+```
+CONTROL(조항 없음)  FH 유지 1/3   — 「다시 만나서 반가워」 · 「다시 왔네」 에서 탈락
+ARM   (조항 있음)  FH 유지 2/3   — 「안녕! 다시 만나 반가워」 에서 여전히 탈락
+                                   ★ 이름을 지킨 1회는 «영어로» 답했다(언어 매칭 실패와 맞바꿈)
+```
+
+**n=3 에서 차이 1 은 소음과 안 갈린다.** 그러므로 «1/3 → 2/3 개선» 으로 인용하지 마라.
+확정된 것은 두 가지뿐이다: ⓐ **known-positive 가 섰다**(컨트롤이 결함을 재현했고 원 관측과 일치)
+⇒ 계기는 판별력이 있고 결함은 실재한다 · ⓑ **조항은 그것을 안 닫았다.**
+
+⚠️ 계기 정직성: 첫 시도는 **버렸다.** `tracks/_meta/reference_next_session_starter.md` 를 만들어
+놓고 returning 을 잰 줄 알았는데 그건 **FH-dev state** 라 운영자 분기가 켜졌다(응답이 「FH 운영자」라
+불러서 잡혔다). 분기를 잘못 켠 팔에서는 컨트롤조차 3/3 으로 FH 를 유지해 **거짓 초록**이 나왔다 —
+그대로 발표했으면 「고쳤다」가 됐을 것이다.
+
+⚠️ 정직한 잔여: 이 축에는 **기계 floor 가 없고 만들 수도 없다**(§Voice/Tone 이 톤·언어에는 본래
+없다고 못박는다). 살리언스가 가용한 최강 층이지 바닥이 아니다. 그리고 언어 매칭 실패는 **이 조항으로
+안 닫힌다** — 반대 방향의 다른 결함이다. 조항을 남기는 이유는 옳고 싸기 때문이지 효과가 측정돼서가
+아니다. 같은 파일의 문-언어 주석이 이미 같은 형태다(행위자 위치에 규칙을 반복해도 안 움직였다).
+
 ### Why a task-first entry still runs the companion-store load
 
 Measured miss **2026-07-05**: the first message was a task, the session skipped the onboarding menu
