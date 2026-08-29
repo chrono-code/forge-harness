@@ -246,6 +246,17 @@ The constraint above is not.
 > **Detail**: See `knowledge/shared/harness-core/agents_md_runtime_details.md §Adding-agents`
 > — creation gate, registry synchronization, and post-use thresholds — read before adding an agent.
 
+> **`reps` below the bar is a TRIGGER, not a label** (2026-08-29). This repo's bar is `reps>=3`.
+> When you record a measurement at reps 1–2 **and its conclusion is load-bearing** — it holds up a
+> verdict, a grade, a doctrine change, or an irreversible prescription — do not write *"below the
+> bar"* and move on. That was the standing default, and a label is not a measurement. Say it in one
+> line instead: *"this is reps={n} — raise it to {target} by simulation?"* 🟥 The **load-bearing**
+> condition is what keeps this from becoming noise: a single run done to confirm an instrument has
+> nothing to raise. The same discipline applies to a field harness's own records, where it is the
+> `measurement-reps` lens of `knowledge/shared/harness-core/field_harness_diagnostic.md` — 🟥 read
+> that file's **Step 0 (provenance split)** before running it anywhere: a harness onboarded by FH is
+> FH-derived, so an unsplit scan reads FH's own text back as a field finding.
+
 > **Removing resident text**: if you are considering deleting a section from `CLAUDE.md` (or any
 > always-loaded asset) because it looks redundant, this repo settles that by measurement rather than
 > by reading. The procedure — two arms, an isolated runtime, `reps>=3`, a question set fixed before
