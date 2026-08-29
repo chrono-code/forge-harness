@@ -35,9 +35,17 @@
 
 | Artifact | Reference |
 |---|---|
-| Paper (v1.0) | Zenodo DOI [`10.5281/zenodo.20397566`](https://zenodo.org/records/20397566) — arXiv in review |
+| Paper v1.0 — methodology | Zenodo DOI [`10.5281/zenodo.20397566`](https://zenodo.org/records/20397566) — 2-layer design, 6-axis framework, 4-agent orchestration, compounding loop, with empirical evidence. arXiv in review |
+| cs.SE companion — governance-gate methodology | **published** · Zenodo DOI [`10.5281/zenodo.20680081`](https://zenodo.org/records/20680081) (latest v1.1 `10.5281/zenodo.20740038` · CC-BY-4.0) · arXiv **submitted** (cs.SE). The moderation outcome is not tracked in this repo, so treat "submitted" as the last state this page can vouch for, not as current |
+| cs.AI companion — "Governance Dividend" | in preparation |
 | Package | npm [`@chrono-meta/fh-gate`](https://www.npmjs.com/package/@chrono-meta/fh-gate) — multi-backend governance gate (claude · codex · auto) |
 | Codex-compatible | `docs/codex-compat.md` — methodology layer runs model-agnostic. Marked **beta** there in the *validation-maturity* sense (external validation is still thin), **not** the *scope* sense: partial automation-layer support is the design, not an unfinished state |
+
+### External convergence (independent work, not ours)
+
+- ["Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems"](https://arxiv.org/abs/2604.14228) — arXiv April 2026
+- ["Code as Agent Harness"](https://arxiv.org/abs/2605.18747) — arXiv May 2026
+- Stanford IRIS Lab: ["Meta-Harness"](https://arxiv.org/abs/2603.28052) — +7.7pts at 4× fewer tokens
 
 ## Validation signals (worked examples, not benchmarks)
 
@@ -64,7 +72,7 @@
   **ceilinged** this run (Haiku 4.5 also 16/16, up from 15/16 on 2026-06-10) because the CATALOG format
   rule was supplied in-prompt, removing the format-discipline nit that separated tiers before — so this
   confirms parity-at-ceiling, it does **not** re-measure a tier spread. The tier-separating axis is
-  above-rubric design depth (not run here — and, by the two structural laws in README §Model setup,
+  above-rubric design depth (not run here — and, by the two structural laws in [`MODEL_SETUP.md`](MODEL_SETUP.md),
   same-generation tier order there is fixed by design, not something a replication needs to re-confirm).
   Measurement-integrity items applied: display-name pin (partial — Agent-tool binding, family-
   discriminated self-report), reps≥3 (not triggered — zero borderline verdicts), discriminating-probe
