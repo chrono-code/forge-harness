@@ -537,9 +537,20 @@ greeting auto-read, if `~/.cc_sentinels/{repo}_wizard_done` is absent, or `{repo
 is non-empty without a `_wizard_reminder_muted` sentinel, append ONE line to the response:
 *"install-wizard 미실행(또는 거부 항목 N개) 상태 — FH 의 의도된 기능 일부가 정상 실행되지 않을 수
 있다. 재실행: `/install-wizard`."* Wired nodes get the same line mechanically from the env-delta
-hook — emit it once, not twice. Honest residual: a task-first entry on a fully-unwired node has no
-surface for this line (no hook, no menu) — prose cannot close that, and it is named here rather
-than papered over.
+hook — emit it once, not twice. 🟥 **RETRACTED-AS-TOO-NARROW 2026-08-29.** This residual used to
+say only a *task-first* entry lacks a surface. Measured with a one-variable known pair (same
+disposable clone · sonnet · headless `안녕` · `CLAUDE.local.md` absent from both arms):
+`.claude/settings.json` **absent → 3/3 no onboarding at all**, **present → 2/2 🐿️ + the fixed four
+doors**. So the missing surface is not an edge case of task-first entry — **the greeting branch
+itself does not fire on an unwired node**, and `.claude/settings.json` is not in npm `files[]`, so
+a consumer install *is* the unwired arm. The rule is resident throughout (asked with search
+disabled, that clone answers `🐿️` and cites this protocol by name) — 읽히지만 발화 안 함, at the
+front door. Prose cannot close it and the remedy is an operator decision (snippet-merge exists so
+an install does not clobber user settings).
+> **Detail**: `tracks/_meta/fh_signal_2026-08-29_greeting-is-hook-gated.md` — the reps, the
+> unseparated variable (whole file copied, hooks not isolated), and the instrument trap that
+> nearly turned this into a false report. Read before citing these numbers.
+
 **Metadata-is-not-intent guard**: the trigger is the user's **typed message only**. Session metadata — branch name (auto-derived from the first message, e.g. `claude/korean-greeting-*`), repo name, file paths — is **never** a task spec and never suppresses or redirects the greeting trigger. A bare greeting fires onboarding even when the branch name looks like a feature request; if the only "task" signal lives in metadata and not in what the user typed, treat the message as a greeting and run the greeting branch + door skeleton above.
 
 ## New Skill Creation Pre-Commit Gate
