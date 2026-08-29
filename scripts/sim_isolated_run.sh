@@ -55,6 +55,8 @@
 # USAGE
 #   bash scripts/sim_isolated_run.sh --arm cluster --reps 3 --prompt "이 프로젝트 가속화하고 싶어"
 #   bash scripts/sim_isolated_run.sh --arm build --mode act --reps 3 --prompt "..." --model sonnet
+#   bash scripts/sim_isolated_run.sh --arm door3 --reps 3 --prompt "..." \
+#        --setup 'mkdir -p tracks/demoproj'      # build the precondition inside the clone
 #   Outputs land in a run dir printed at the end; each arm/rep is its own file.
 #
 # 🟥 CONTROL IS NOT OPTIONAL. Always run at least one arm whose correct answer is "the thing
@@ -64,7 +66,7 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ARM=""; REPS=1; PROMPT=""; MODE="observe"; MODEL="sonnet"; TIMEOUT=900; OUTDIR=""; NOHARNESS=0
+ARM=""; REPS=1; PROMPT=""; MODE="observe"; MODEL="sonnet"; TIMEOUT=900; OUTDIR=""; NOHARNESS=0; SETUP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --arm)     ARM="${2:-}"; shift 2 ;;
@@ -75,6 +77,7 @@ while [ $# -gt 0 ]; do
     --timeout) TIMEOUT="${2:-900}"; shift 2 ;;
     --out)     OUTDIR="${2:-}"; shift 2 ;;
     --no-harness) NOHARNESS=1; shift ;;   # CONTROL arm: drops project CLAUDE.md. Not isolation.
+    --setup)   SETUP="${2:-}"; shift 2 ;;  # shell run INSIDE each clone before the sim. See below.
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -115,12 +118,33 @@ snapshot "$OUTDIR/_machine_before.txt"
 
 CONTAMINATED=0
 for r in $(seq 1 "$REPS"); do
-  WORK="$OUTDIR/work_${ARM}_r${r}"
+  # Each clone gets its OWN parent directory. Siblings under one parent are visible to `../`,
+  # and that is not hypothetical: an arm measured 2026-08-29 scanned its parent for mappable
+  # projects and reported finding "iso_A, door_CTRL" — the other arms' work dirs. Content stayed
+  # isolated, but their EXISTENCE leaked into the arm's reasoning, which is enough to change an
+  # answer about "what projects are around". Isolation has to hold for the parent too.
+  WRAP="$OUTDIR/w_${ARM}_r${r}"; mkdir -p "$WRAP"
+  WORK="$WRAP/repo"
   # A disposable clone per REP, not per arm: two reps of the same arm contaminate each other
   # exactly as two different arms do. That was the measured failure — reps 1 and 2 of build_cron.
   if ! git clone --quiet --local --no-hardlinks "$REPO_ROOT" "$WORK" 2>"$OUTDIR/_clone_${ARM}_r${r}.err"; then
     echo "  ❌ r$r CLONE FAILED — see $OUTDIR/_clone_${ARM}_r${r}.err"
     continue
+  fi
+
+  # --setup: build the PRECONDITION the measurement needs, inside the clone, before the sim.
+  # WHY THIS EXISTS: the first door-③ measurement (2026-08-29) scored 0/3 on both arms and the
+  # number meant nothing — a fresh clone has no mapped project tracks, so door ③ can never reach
+  # the follow-up proposal that was under test. Both arms correctly answered "there is nothing to
+  # accelerate" and the instrument never entered the state it was built to observe. A run whose
+  # precondition is unmet does not produce a negative result; it produces no result. Setting the
+  # fixture up INSIDE the disposable clone keeps that from being a reason to touch the live tree.
+  if [ -n "$SETUP" ]; then
+    if ! ( cd "$WORK" && eval "$SETUP" ) >"$WRAP/_setup.log" 2>&1; then
+      echo "  ❌ r$r SETUP FAILED — precondition not built, arm is VOID (see $WRAP/_setup.log)"
+      CONTAMINATED=1
+      continue
+    fi
   fi
 
   if [ "$MODE" = observe ]; then

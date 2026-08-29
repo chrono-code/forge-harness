@@ -151,5 +151,53 @@ OUTDIR="$WORKROOT/o9"
 [ $? -eq 0 ] && ok "L9 always exit 0 (a detector that can block gets skipped)" \
              || no "L9 non-zero exit — callers will learn to skip it"
 
+# L10 — the clone's PARENT must not expose sibling arms. Measured leak: an arm scanning `../`
+# for mappable projects reported the other reps' work dirs by name.
+OUTDIR="$WORKROOT/o10"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say \
+   bash "$SUT" --arm a --reps 2 --prompt p --out "$OUTDIR" ) >/dev/null 2>&1
+# 🟥 PROPERTY-BASED ON PURPOSE. A first draft asserted on the literal path
+# `<out>/w_a_r1/...`; a revert probe then "failed" it for the wrong reason — the path simply no
+# longer existed, so the lane detected a rename rather than the leak. Locate the clones by what
+# they ARE (directories containing .git under the out dir) and ask the actual question:
+# does any clone's PARENT contain another clone?
+CLONES=$(find "$OUTDIR" -maxdepth 3 -type d -name .git 2>/dev/null | sed 's|/.git$||' | sort)
+nclone=$(printf '%s\n' "$CLONES" | grep -c . )
+leak=0
+for c in $CLONES; do
+  par=$(dirname "$c")
+  # count OTHER clones that share this parent
+  others=$(printf '%s\n' "$CLONES" | grep -v "^$c$" | while read -r o; do
+             [ "$(dirname "$o")" = "$par" ] && echo x; done | grep -c x)
+  [ "$others" -gt 0 ] && leak=$((leak+1))
+done
+if [ "$nclone" -ge 2 ] && [ "$leak" -eq 0 ]; then
+  ok "L10 no clone shares a parent with another ($nclone clones, 0 co-parented)"
+else no "L10 sibling clones share a parent (clones=$nclone co-parented=$leak)"; fi
+# control: the lane must be able to SEE two clones, else L10 passes on an empty set
+[ "$nclone" -ge 2 ] \
+  && ok "L10b control — $nclone clones found (L10 did not pass on an empty set)" \
+  || no "L10b control — found $nclone clone(s); L10 proves nothing"
+
+# L11 — --setup builds the precondition INSIDE the clone, and a failing setup VOIDs the arm
+# rather than letting the sim run in a state it was not meant to observe.
+OUTDIR="$WORKROOT/o11"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say \
+   bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" \
+   --setup 'mkdir -p tracks/demoproj' ) >/dev/null 2>&1
+[ -d "$OUTDIR/w_a_r1/repo/tracks/demoproj" ] \
+  && ok "L11 --setup ran inside the clone (precondition built)" \
+  || no "L11 --setup did not take effect in the clone"
+# and it must NOT have touched the source tree — the whole point of doing it in the clone
+[ -d "$SRC/tracks/demoproj" ] \
+  && no "L11b --setup leaked into the SOURCE tree" \
+  || ok "L11b control — source tree untouched by --setup"
+OUTDIR="$WORKROOT/o11c"
+OUT=$( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say \
+   bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" --setup 'exit 3' 2>&1 )
+printf '%s' "$OUT" | grep -q "SETUP FAILED" && printf '%s' "$OUT" | grep -q "CONTAMINATED" \
+  && ok "L11c failing --setup → arm VOID, not a silent negative result" \
+  || no "L11c failing setup did not void the arm"
+
 echo "sim_isolated_run lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
