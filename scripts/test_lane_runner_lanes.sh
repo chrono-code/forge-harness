@@ -44,6 +44,26 @@ else
   bad "L1 known-positive did not fire (rc=$rc) — every lane below is meaningless without it"
 fi
 
+# ── IDX7 the FAIL path must EXECUTE the provenance note, not merely contain a call to it ──────
+# 🟥 THIS IS THE LANE THAT THE OTHER SIX SHOULD HAVE BEEN. IDX1–IDX6 source the function and call
+# it with literals, and IDX6 asserts the call site by GREP. All six were green while the real FAIL
+# path died twice in a row under `set -u`:
+#     line 880: INDEX_MODE: unbound variable        (the value was extracted BELOW its use)
+#     line 886: index_source_note: command not found (the function was DEFINED below its use)
+# Both were found by running the thing, not by the lanes. A grep that a call exists is not a test
+# that the call works ([[feedback_anchor_can_be_decorative]]). This lane executes the branch.
+# It asserts the SHAPE of provenance, not the exact sentence: the fixture is a non-git dir, so the
+# honest answer there is the DISK one, and pinning the index wording would make the lane wrong.
+D="$T/idx7"; mkfixture "$D"
+out=$(run "$D")
+if printf '%s' "$out" | grep -qE 'unbound variable|command not found|syntax error'; then
+  bad "IDX7 the FAIL path errored: $(printf '%s' "$out" | grep -E 'unbound|not found|syntax' | head -1)"
+elif printf '%s' "$out" | grep -qE 'ⓘ|🟥'; then
+  ok "IDX7 the FAIL path actually emits a provenance line (executed, not grepped)"
+else
+  bad "IDX7 no provenance line on the FAIL path — the note is defined but never reached"
+fi
+
 # ── L2 NO-OP: no declaration file → behaviour is exactly the L1 behaviour ─────────────────────
 # This is the arm that protects THIS repo, which ships no company/ directory.
 D="$T/l2"; mkfixture "$D"
@@ -288,6 +308,61 @@ if [ "$rc" = "0" ] && printf '%s' "$out" | grep -q 'orphan_probe'; then
 else
   bad "L16 known-positive did not fire (rc=$rc) — self-exclusion guard is unanchored"
   printf '%s\n' "$out" | sed 's/^/       │ /'
+fi
+
+# ── INDEX-SOURCE DISCLOSURE (2026-08-30) ──────────────────────────────────────────────────────
+# WHY. This check enumerates runners from the git INDEX. In the normal (index) mode it used to say
+# nothing about that, and the disclosure fired only in the anomalous DISK modes — so an author who
+# had wired a suite but not staged it got "a suite nothing executes is prose" with no hint that the
+# wiring existed on disk. Measured 2026-08-30: that happened, and it was the FIFTH instance in one
+# day of «the tree I verified is not the tree the tool read». The note now fires on the FAIL path.
+#
+# 🟥 THREE STATES, NOT TWO. "read the index" · "read the disk" · "could not count" send a reader to
+# three different places. Folding UNMEASURED into the index branch would render a thing that was
+# never counted as a thing that was counted and found empty
+# ([[feedback_not_found_is_not_zero_family]]).
+_ISN=$(mktemp); sed -n '/^index_source_note()/,/^}/p' "$CHECK" > "$_ISN"
+if ! grep -q 'UNMEASURED' "$_ISN"; then
+  no "IDX-harness — index_source_note did not extract from $CHECK (lanes would measure nothing)"
+else
+  # shellcheck disable=SC1090
+  . "$_ISN"
+  o=$(index_source_note "index")
+  printf '%s' "$o" | grep -q "INDEX 기준" && printf '%s' "$o" | grep -q "스테이징" \
+    && ok "IDX1 index mode names the index AND the staging remedy" \
+    || no "IDX1 index mode note missing/incomplete: $o"
+
+  o=$(index_source_note "nongit")
+  printf '%s' "$o" | grep -q "DISK" && ok "IDX2 nongit mode says DISK, not index" \
+                                    || no "IDX2 nongit: $o"
+
+  o=$(index_source_note "UNMEASURED")
+  printf '%s' "$o" | grep -q "못 셌다" && ok "IDX3 UNMEASURED says «could not count», not «none»" \
+                                       || no "IDX3 UNMEASURED: $o"
+
+  # 🟥 CONTROL — an unknown/empty mode must stay SILENT. Inventing a source line for a state the
+  # check does not recognise is worse than saying nothing, and without this lane the function
+  # could pass IDX1–IDX3 while emitting the index sentence for every input.
+  o=$(index_source_note "")
+  [ -z "$o" ] && ok "IDX4 control — empty mode is silent (no invented provenance)" \
+              || no "IDX4 control — empty mode spoke: $o"
+
+  # 🟥 CONTROL 2 — the three states must be DISTINGUISHABLE from each other, not merely non-empty.
+  a=$(index_source_note "index"); b=$(index_source_note "nongit"); c=$(index_source_note "UNMEASURED")
+  if [ "$a" != "$b" ] && [ "$b" != "$c" ] && [ "$a" != "$c" ]; then
+    ok "IDX5 control — the three states produce three different sentences"
+  else
+    no "IDX5 control — states collapsed into the same sentence"
+  fi
+fi
+rm -f "$_ISN"
+
+# The note must fire on the FAIL path — a function nothing calls is the very defect this file names.
+if sed -n '/lane suite(s) with no runner and no declaration/,/Fix by ONE of/p' "$CHECK" \
+     | grep -q 'index_source_note'; then
+  ok "IDX6 the note is CALLED on the FAIL path (not just defined)"
+else
+  no "IDX6 index_source_note is defined but the FAIL path does not call it"
 fi
 
 echo "----"
