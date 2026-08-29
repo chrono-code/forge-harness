@@ -331,7 +331,7 @@ Claude Code 不会按任务复杂度自动选择模型 —— 这个要你设置
 
 ---
 
-## 40 skills · 8 agents
+## 41 skills · 8 agents
 
 计数 = 未废弃的技能。按验证 · 编排 · 诊断 · 收割 · 门禁 · 发现 · 模拟 · 设置分簇，另有 8 个 agent
 （`challenger` · `quench-challenger` · `beginner` · `main-player` · `expert` · `fact-checker` ·

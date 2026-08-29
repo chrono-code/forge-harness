@@ -347,7 +347,7 @@ Claude Code 는 작업 복잡도로 모델을 자동 선택하지 않습니다. 
 
 ---
 
-## 40 skills · 8 agents
+## 41 skills · 8 agents
 
 개수 = 폐기되지 않은 스킬. 검증 · 오케스트레이션 · 진단 · 수확 · 게이트 · 발견 · 시뮬레이션 ·
 설정으로 묶이고, 여기에 에이전트 8종(`challenger` · `quench-challenger` · `beginner` ·
