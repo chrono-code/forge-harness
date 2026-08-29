@@ -896,7 +896,22 @@ validate_crossfamily_leg() { # $1 = marker path
         return 1
       fi
       echo "  ⚠️  cross-family leg: $val — recorded, not silent (weekly audit re-queues these)"
-      echo "     $(printf '%s' "$reason" | cut -c1-80)" ;;
+      echo "     $(printf '%s' "$reason" | cut -c1-80)"
+      # 🟥 수락 경로에도 «안 짚은 채널»을 띄운다. 실패 메시지에만 채널 목록이 있으면,
+      #    근거를 적어서 통과한 사람은 그 목록을 **영영 못 본다** — 오늘 저자가 선 자리가 거기다.
+      #    실측 2026-08-29: 마커 다섯 개가 연속으로 DEGRADED 였고, `gemini` 가 인증 실패로 죽자
+      #    거기서 멈췄다. `agy` 는 살아 있었고 `scripts/sidecar_calibrate.sh` 가 그것을 codex 보다
+      #    많이 알고 있었는데(8 vs 7 히트) 아무도 그 자리에서 말해주지 않았다.
+      #    ⚠️ 차단하지 않는다 — 근거는 이미 통과했다. 이건 살리언스이지 판정이 아니다.
+      _unnamed=""
+      for _ch in codex agy gemini copilot; do
+        printf '%s' "$reason" | grep -qi -- "$_ch" || _unnamed="$_unnamed $_ch"
+      done
+      if [ -n "$_unnamed" ]; then
+        echo "     ℹ️  근거에 안 나온 채널:$_unnamed"
+        echo "        «probe 안 한 패널은 패널이 아니라 호스트명이 붙은 가정»이다."
+        echo "        살아있는지 재려면:  bash scripts/sidecar_calibrate.sh --only <채널>"
+      fi ;;
     single-family|none|none-this-round|N/A|n/a)
       # `single-family` is deliberately NOT accepted HERE. This block runs only on
       # load-bearing changes, where "decorrelation not required" is a contradiction — and
