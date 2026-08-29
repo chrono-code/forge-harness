@@ -1756,6 +1756,14 @@ validate_marker_floor() {
   return 0
 }
 
+# 오늘자 마커 중 이 게이트가 «안 읽는» 것들. 순수 함수인 이유는 staged_worktree_drift 와 같다 —
+# 레인이 저장소 없이 구동해야 한다. 입력은 파일명 목록과 이 게이트가 읽는 주소, 출력은 나머지.
+# 🟥 빈 입력에서 무엇이 나오나: 목록이 비면 결과도 빈다(= 소견 없음). 그 방향이 옳다 — 마커가
+# 아예 없으면 아래 NOT CONFIRMED 가 이미 말하므로 여기서 또 말하면 중복이다.
+unread_markers() {   # $1 = 오늘자 마커 파일명들 (LF) · $2 = 이 게이트가 읽는 파일명
+  printf '%s\n' "${1:-}" | sed '/^$/d' | LC_ALL=C sort -u | LC_ALL=C grep -vxF "${2:-}" || true
+}
+
 # ── Axes 2+3 — steel-quench + phantom-quench (full gate only) ─────────
 if [ "$GATE_MODE" = "full" ]; then
   echo "[Axis 2+3] Adversarial + Source-Grounding..."
@@ -1788,6 +1796,23 @@ if [ "$GATE_MODE" = "full" ]; then
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
     else
       FAILED=1
+    fi
+    # ── 이 게이트가 «안 읽는» 오늘자 마커가 또 있나 (advisory) ──────────────────────
+    # WHY. 이 훅은 `.axes_23_passed_<브랜치슬러그>_<날짜>.marker` **하나만** 읽는다. 다른 이름으로
+    # 쓴 마커는 기록으로는 유효하지만 **검증은 하나도 안 거친다** — 그런데 저자는 「마커를 썼다」는
+    # 사실만으로 검증됐다고 믿는다. 2026-08-30 실측: 한 세션이 안 읽히는 주소에 **8개**를 썼고,
+    # 그 8개 전부 `floor-status: opus-tier`(enum 밖)를 갖고 있었으며 아무도 안 잡았다. 이름을
+    # 맞추자 게이트가 **두 번의 시도로** 그 형식 오류들을 잡았다.
+    # 🟥 채널이지 결론이 아니다 — 「그 마커가 옳은가」는 안 묻는다. 「네 증거가 독자가 보는
+    # 주소에 있는가」만 묻고, 절대 차단하지 않는다(다른 이름의 기록은 정당한 관행이다).
+    _MK_ADDR=".axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker"
+    _MK_ALL=$(ls -1 "$MARKER_DIR"/.axes_23_passed_*"${TODAY}".marker 2>/dev/null | sed 's|.*/||' || true)
+    _MK_UNREAD=$(unread_markers "$_MK_ALL" "$_MK_ADDR")
+    if [ -n "$_MK_UNREAD" ]; then
+      echo "  ⚠️  오늘자 마커가 더 있는데 이 게이트는 안 읽는다 — 검증을 하나도 안 거친 기록이다:"
+      printf '%s\n' "$_MK_UNREAD" | sed 's/^/         /'
+      echo "     이 게이트가 읽는 주소는 $_MK_ADDR 하나다."
+      echo "     (advisory — 막지 않는다. 다른 이름의 «기록»은 정당하다. 다만 «검증됐다»고 읽지 마라.)"
     fi
   else
     echo "  ❌ NOT CONFIRMED"
