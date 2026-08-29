@@ -178,7 +178,7 @@ sentinel，以及一处分隔符取反的解析。同样的输入，同样的盲
 > `tracks/` 记忆。
 >
 > 🟥 **有两个版本号，它们量的不是同一件事。** **包版本**（页首的 npm 徽章）是你装到的东西；
-> **身份成熟度发布**（`identity-v0.4.0`，在 Releases 页上）是这个框架走到了哪一步 —— 刻意停在
+> **身份成熟度发布**（`identity-v0.5.0`，在 Releases 页上）是这个框架走到了哪一步 —— 刻意停在
 > `0.x`，因为它拒绝在五重身份还没全绿时就声称全绿。两者不在同一把尺子上，一个高的包版本号并不
 > 等于成熟：[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)。
 

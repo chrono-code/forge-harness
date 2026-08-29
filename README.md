@@ -176,7 +176,7 @@ cloned elsewhere? That path *is* your hub. Unfamiliar words →
 > compounding `tracks/` memory that makes them compound across sessions.
 >
 > 🟥 **Two version numbers, and they measure different things.** The **package version** (npm badge,
-> top of page) is what you install; the **identity-maturity release** (`identity-v0.4.0`, on the
+> top of page) is what you install; the **identity-maturity release** (`identity-v0.5.0`, on the
 > Releases page) is how far along the harness is — `0.x` by design, because it refuses to call all five
 > identities green when they are not. They are not on one scale, and a high package number is not
 > maturity: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).
