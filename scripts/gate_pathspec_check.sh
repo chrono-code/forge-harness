@@ -106,13 +106,19 @@ spec_matches() {  # $1 = path
 }
 for pair in \
   "plugins/fh-meta/skills/frontier-digest/SKILL_detail.md|tracks/_meta/x.md|PATHSPEC covers SKILL_detail.md" \
-  "plugins/fh-meta/skills/frontier-digest/SKILL.md|README.md|PATHSPEC still covers SKILL.md" \
+  "plugins/fh-meta/skills/frontier-digest/SKILL.md|docs/demo/gate-block.tape|PATHSPEC still covers SKILL.md" \
   "CLAUDE.md|CLAUDE.local.md|PATHSPEC covers CLAUDE.md but not the local override" \
-  "scripts/selfcheck.sh|README.md|PATHSPEC covers scripts/*.sh (seam #1 — the HEAVY term already gated it, this array did not)" \
-  "scripts/sub/nested.sh|package.json|PATHSPEC covers scripts/ recursively (git/bash globs cross '/')" \
+  "scripts/selfcheck.sh|scripts/fixtures/data.txt|PATHSPEC covers scripts/*.sh (seam #1 — the HEAVY term already gated it, this array did not)" \
+  "scripts/sub/nested.sh|scripts/README.txt|PATHSPEC covers scripts/ recursively (git/bash globs cross '/')" \
   "templates/regression_guard.sh|package-lock.json|PATHSPEC covers templates/*.sh — i.e. the guard can guard ITSELF" \
   "templates/.git-hooks/pre-commit|.gitignore|PATHSPEC covers the git-hook floor (the hook that hard-blocks commits)" \
-  "plugins/fh-meta/agents/challenger.md|tracks/_meta/y.md|PATHSPEC covers agent definitions (seam #3)"
+  "plugins/fh-meta/agents/challenger.md|tracks/_meta/y.md|PATHSPEC covers agent definitions (seam #3)" \
+  "README.ko.md|README.txt|PATHSPEC covers README 4종 — PR #550 이 Axis 1 무검사로 나간 자리 (2026-08-29)" \
+  "CHEATSHEET.md|CONTRIBUTING.md|PATHSPEC covers CHEATSHEET (루트 CONTRIBUTING 은 대상 아님)" \
+  "CATALOG.md|CHANGELOG.md|PATHSPEC covers CATALOG" \
+  ".github/workflows/validate.yml|.github/dependabot.yml|PATHSPEC covers workflow 정의 (yml 만)" \
+  "scripts/index_sync.py|scripts/notes.txt|PATHSPEC covers scripts/*.py" \
+  "package.json|package-lock.json|PATHSPEC covers package.json 이되 «리터럴» — lock 파일까지 삼키지 않는다"
 do
   IFS='|' read -r pos neg label <<< "$pair"
   ok=1

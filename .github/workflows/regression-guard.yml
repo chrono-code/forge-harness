@@ -9,6 +9,21 @@ on:
       - 'CLAUDE.md'
       - 'templates/*.md'
       - 'templates/regression_guard.sh'
+      # 2026-08-29 — 스크립트의 GUARD_PATHSPEC 과 갈리면 갈린 쪽이 무검사 구간이 된다.
+      # 스크립트가 이미 커버하던 것들 + 이번에 추가한 미커버분을 여기서도 트리거로 잡는다.
+      - 'knowledge/**/*.md'
+      - 'docs/*.md'
+      - 'AGENTS.md'
+      - 'scripts/**'
+      - 'templates/.git-hooks/*'
+      - 'plugins/*/agents/*.md'
+      - '.claude/agents/**/*.md'
+      - 'README*.md'
+      - 'CHEATSHEET.md'
+      - 'CATALOG.md'
+      - '.github/workflows/*.yml'
+      - '.claude/registry/*.md'
+      - 'package.json'
 
 jobs:
   regression-guard:
