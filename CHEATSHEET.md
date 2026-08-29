@@ -127,6 +127,23 @@ git config core.hooksPath templates/.git-hooks
 chmod +x templates/.git-hooks/pre-commit
 ```
 
+#### Requirement: Python + PyYAML — `npm test` is red without it
+
+The consent-registry gate parses YAML, and it **fails closed** when it cannot — correctly, since an
+unvalidated consent record must not read as a clean one. But that fail-closed turns the whole of
+`npm test` (and `prepublishOnly`) red on a machine without PyYAML.
+
+```bash
+python3 -m pip install --user pyyaml     # verify:  python3 -c 'import yaml; print(yaml.__version__)'
+```
+
+Why this is written down rather than left implicit: a release once shipped green because that
+session's `python3` happened to resolve to an **unrelated project's virtualenv** that had PyYAML,
+while the machine's own `python3` did not. The gate was never bypassed — it passed, and the pass
+simply did not port. Every verdict from that gate now prints the interpreter and PyYAML version it
+used, so a reader does not have to guess what a green was made of.
+
+
 After running `/steel-quench` and `/phantom-quench` in your session, Claude creates the Axes 2+3 pass marker automatically. The marker must carry machine-readable floor fields — the hook validates them (a bare `touch` marker no longer passes; below-floor passes block unless an explicit `below-floor-ack:` line records operator acceptance, **quoting the operator's approval utterance verbatim** — an unquoted reason is rejected as agent-self-writable). It also requires an **`axis2-evidence:`** line recording what the pass actually found (a finding count or verdict token — `PASS no-S` / `1S/4A fixed` / `clean — 0 findings`); a vacuous "it ran" line is rejected. *Honest scope: this enforces the marker is non-vacuous + auditable, not that the pass truly ran — a fabricated attestation is the weekly audit's + operator's residual, by design (judge-robustness swarm, 2026-06-13).* If Claude doesn't create it (e.g., session interrupted), create it manually:
 
 ```bash
@@ -239,7 +256,8 @@ fh-codex-doctor --strict
 
 | Knob | Values | Effect |
 |------|--------|--------|
-| `FH_BACKEND` | `claude` \| `codex` \| `auto` | Backend CLI (`auto` prefers Codex when both present) |
+| `FH_BACKEND` | `claude` \| `codex` \| `auto` | Backend CLI, **one leg**. `claude` runs `claude --print`; `codex` runs `codex exec`; `auto` is fallback *selection* — it prefers Codex when both CLIs are present, and still runs only one |
+| `FH_BACKEND=cross` | `cross` | **Both model families, findings UNIONed** (a finding only one family saw is still a finding, so union rather than vote); the verdict is the most severe leg. Costs ~2x, so it is for load-bearing verdict / gate / irreversible-surface changes, not a default. The output always declares which legs actually ran (`FH_GATE_LEGS:`, `FH_GATE_DECORRELATED:`) — on a machine with only one family installed, `cross` degrades to that single leg **and says so**, because a single-family result that reads as cross-checked is worse than an honest one |
 | `FH_MODEL` | model id | Override backend model |
 | level arg | `quick` \| `full` | Gate depth (default `quick`) |
 
