@@ -108,6 +108,50 @@ else
 fi
 [ -z "$SENT_DIR" ] || mkdir -p "$SENT_DIR" 2>/dev/null || true
 
+# ── 스킬-정본 분기 (2026-08-29 신설) ─────────────────────────────────────────
+# 🟥 왜 «매핑된 프로젝트» 만으로는 부족한가 — 실측이 있다.
+#   덱 세션이 `preprep/presentation_checklist.md`(274줄 · A0~M) 와 레인 L1~L6, 용어 파일을
+#   **하나도 열지 않고 44판을 구웠다.** 결과: C1 선 굵기 토큰 위반 388/907 = 43%, 그중
+#   ~329곳이 그 세션이 **눈대중으로 «발명한» 값**이었다. 그리고 리뷰가 걷어낸 낱말이
+#   재유입됐는데 **아무 검사도 안 울렸다**(운영자가 잡았다).
+#   🟥 진단이 뒤집힌 자리다: «자산화가 안 됐다» 가 아니라 **«자산은 있는데 안 읽힌다»** 였다.
+#   그리고 그 세션의 처방(«진입 트리거를 새로 짓자»)도 반쯤 틀렸다 — 이 훅이 이미 그 기계다.
+#   `grep preprep` → 0 · 컨트롤 `grep qasp` → 2 ⇒ 계기는 살아 있고 **커버리지 경계가 빠뜨렸다.**
+#   ⇒ 새 트리거를 짓지 않고 **경계를 넓힌다.** 이게 no-reinvention 이 실제로 값을 내는 형태다.
+#
+# 대상은 «레포» 가 아니라 «허브 안의 스킬»이라 위 해석기(fh_resolve_track_root)를 안 탄다.
+# 공유 해석기는 세 소비자가 문자 그대로 같아야 하므로 **건드리지 않고 분기를 덧붙인다.**
+# 오탐 정책은 위 루프와 같다: 짧은 낱말의 오탐은 감수한다(세션당 1회라 상한이 한 줄이다).
+skill_canon_emit() {
+  _sk="$1"; _dir="$HUB/$2"; shift 2
+  [ -d "$_dir" ] || return 0
+  [ -n "$SENT_DIR" ] && [ -e "$SENT_DIR/skill-$_sk" ] && return 0
+  _hit=0
+  for _w in "$@"; do
+    printf '%s' "$PROMPT" | grep -qiF -- "$_w" && { _hit=1; break; }
+  done
+  [ "$_hit" -eq 1 ] || return 0
+  _lines=""
+  for _f in SKILL.md presentation_checklist.md README.md surfaces.example.yaml; do
+    [ -f "$_dir/$_f" ] || continue
+    _n=$(wc -l < "$_dir/$_f" | tr -d " ")
+    _lines="$_lines\n     $_f (${_n}줄)"
+  done
+  [ -n "$_lines" ] || return 0
+  echo ""
+  echo "📚 [skill-canon] 발표 작업이 언급됐다 — **눈대중으로 값을 발명하기 전에 이 파일들을 열어라.**"
+  echo "  ▸ $_sk  →  $_dir"
+  printf "%b\n" "$_lines"
+  cat <<'SKEOF'
+  ⚠️ 세션당 1회. 실측(2026-08-28): 어느 세션이 이 파일들을 **하나도 안 열고 44판을 구웠고**,
+     선 굵기 토큰 위반이 388/907(43%) 났다 — 그중 ~329곳이 그 세션이 발명한 값이다.
+     🟥 «자산이 없다» 가 아니라 «있는데 안 읽힌다» 가 이 안내의 존재 이유다.
+SKEOF
+  [ -z "$SENT_DIR" ] || : > "$SENT_DIR/skill-$_sk" 2>/dev/null || true
+}
+skill_canon_emit preprep "plugins/fh-commons/skills/preprep" \
+  "발표" "장표" "슬라이드" "덱" "대본" "리허설" "presentation" "keynote"
+
 # 매핑된 프로젝트 = tracks/ 하위 디렉토리(언더스코어 접두는 메타라 제외)
 mapped=$(ls -d "$HUB"/tracks/*/ 2>/dev/null | while read -r d; do
   b=$(basename "$d")

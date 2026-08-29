@@ -255,6 +255,9 @@
     "scripts/listing_watch.sh",
     "scripts/test_listing_watch_lanes.sh",
     "scripts/mapped_tracks.sh",
+    "scripts/test_preprep_drift_anchor.sh",
+    "scripts/test_preprep_progression_lanes.sh",
+    "scripts/test_skill_canon_preload_lanes.sh",
     "scripts/test_mapped_tracks_lanes.sh"
   ]
 }
