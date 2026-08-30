@@ -238,6 +238,7 @@
     "scripts/test_wizard_snippet_merge_lanes.sh",
     "scripts/compaction_probe.sh",
     "scripts/context_continuity_score.sh",
+    "scripts/launchd_wiring_check.sh",
     "scripts/judgment_circuit_lint.sh",
     "scripts/novelty_claim_check.sh",
     "templates/settings.Compaction.snippet.json",
