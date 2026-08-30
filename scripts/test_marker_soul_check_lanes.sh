@@ -30,6 +30,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$REPO_ROOT/templates/.git-hooks/pre-commit"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 
+# 🟥 헬퍼도 같이 추출한다 — 안 하면 다리가 fail-open 이 되고 레인이 거짓 PASS 를 낸다
+#    (실측 2026-08-30: R1 이 BLOCK 기대에 PASS). 훅은 이제 헬퍼 부재를 HARNESS-ERROR 로 낸다.
+sed -n '/^_marker_template_residue()/,/^}/p' "$HOOK" > "$T/_helpers.sh"
 sed -n '/^validate_soul_check_leg()/,/^}/p' "$HOOK" > "$T/fn.sh"
 
 # Instrument calibration — an empty extraction would let every fixture "pass" against nothing.
@@ -106,6 +109,11 @@ soul-check: reflected(codex 가 성공정의 대조 — 어긋남 없음) — 20
 
 # ── ①영혼 presence lane (validate_soul_present_leg) ───────────────────────────
 sed -n '/^validate_soul_present_leg()/,/^}/p' "$HOOK" > "$T/fnp.sh"
+cat "$T/_helpers.sh" "$T/fnp.sh" > "$T/fnp2.sh" && mv "$T/fnp2.sh" "$T/fnp.sh"
+cat "$T/_helpers.sh" "$T/fn.sh"  > "$T/fn2.sh"  && mv "$T/fn2.sh"  "$T/fn.sh"
+# 🟥 계기 캘리브레이션 — 헬퍼가 실제로 붙었나. 안 붙으면 다리가 HARNESS-ERROR 를 내고
+#    모든 레인이 BLOCK 으로 쏠려 «잘 막는다»처럼 보인다. 그건 판별력이 아니다.
+grep -q '^_marker_template_residue()' "$T/fnp.sh" || { echo "❌ HARNESS-ERROR — 헬퍼 미결합"; exit 1; }
 if ! grep -q 'SOUL_PRESENT_GRACE' "$T/fnp.sh" && ! grep -q '①영혼 line' "$T/fnp.sh"; then
   echo "❌ HARNESS-ERROR — validate_soul_present_leg did not extract. Aborting."
   exit 1
@@ -205,6 +213,15 @@ soul-check: DEGRADED_NO_SOUL(설계 전에 성공 정의를 쓰지 않았다 —
 # `없음` is a first-class value the padded form is no longer the only way through.
 lane N3-padded-confession        PASS  'soul: 없음 — 설계 전에 안 썼다. 사후 재구성이 아니라 그 사실을 적는다. 붙잡고 있던 것은 범위 결정 하나였다
 axes-run: ⓐ=codex'
+
+# ── R1/R2 — 템플릿 잔여 (2026-08-30, 블라인드 sim 이 자기 힌트에 걸렸다) ──────────
+#    힌트에 `soul:` 예시를 넣자마자 플로어 티어 3/3 이 **자리표시자를 그대로** 복사했고
+#    비공허성 검사를 통과했다. 채널 검사로 닫았다: «이 기록이 템플릿 자신인가».
+# 🟥 이 둘은 `planep`(presence 다리)로 돌려야 한다. 초판은 `lane`(soul-check 다리)로 짜서
+#    **틀린 함수를 겨눴고**, BLOCK 기대에 PASS 가 나왔다. 초록/적색이 아니라 «무엇을 겨눴나»였다.
+planep R1-template-residue-blocks BLOCK 2026-09-05 "soul: 성공 정의 = <이 fix가 통과했다고 판단할 관측 가능한 결과> · 절대 안 함 = <이번 수정에서 하지 않기로 정한 것>"
+# 🟥 컨트롤 — 실제로 채운 줄은 통과해야 한다. 없으면 R1 은 «presence 검사를 통째로 껐다»와 구분 안 된다.
+planep R2-real-content-still-passes PASS 2026-09-05 "soul: 성공 정의 = 레인 28개가 초록이고 되돌림에서 자기 레인만 적색 · 절대 안 함 = 결과에 맞춰 기대값 바꾸기"
 
 echo
 if [ $FAIL -eq 0 ]; then echo "SOUL LANES: PASS"; else echo "SOUL LANES: FAIL"; fi

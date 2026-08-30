@@ -646,6 +646,24 @@ fi
 # Single-line recreate command — indentation-immune on paste (a displayed heredoc
 # pastes with leading indent: the anchored grep misses and an indented EOF never
 # terminates <<'EOF' — non-converging fix loop, challenger Axis-5 A-finding).
+# ── 템플릿 잔여 검사 (2026-08-30, 블라인드 sim 이 잡았다) ─────────────────────────
+# 🟥 오늘 `marker_recreate_hint` 에 `soul:`/`defeater:` 를 넣자마자 플로어 티어 팔 3/3 이
+#    **힌트의 자리표시자를 그대로 복사**해서 냈고 비공허성 검사를 **통과했다**
+#    (`<이 fix가 통과했다고 판단할 관측 가능한 결과>` = 26 낱말). 즉 내가 만든 힌트가
+#    게이트를 우회하는 가장 쉬운 답을 같이 제공했다.
+# ⚠️ **채널 검사다**: 「그 값이 옳은가」가 아니라 「이 기록이 템플릿 자신인가」를 묻는다.
+# 🟥 좁게 잡는다 — 꺾쇠를 정당하게 쓰는 기술 서술을 안 막으려고, **힌트에 실제로 등장하는
+#    문자열**만 본다. 목록이지 정규식 일반화가 아니다. 힌트를 바꾸면 여기도 같이 바꿔라.
+_marker_template_residue() { # $1 = 줄 내용  → 0 = 템플릿 잔여
+  case "$1" in
+    *"<이 fix가 통과했다고 판단할 관측 가능한 결과>"*) return 0 ;;
+    *"<이번 수정에서 하지 않기로 정한 것>"*)          return 0 ;;
+    *"<이 soul 이 틀렸다면 무엇이 관측될 것인가"*)    return 0 ;;
+    *"<무엇이 되돌아왔나>"*)                          return 0 ;;
+  esac
+  return 1
+}
+
 marker_recreate_hint() {
   # 🟥 힌트는 «행위자가 읽는 자리»다(FH-T07). 2026-08-30 블라인드 sim 실측: 플로어 티어 세 팔이
   #    나머지 필드를 다 쓰고 `soul:` 을 **하나도 안 썼다** — 차단되는 필드인데도. 스펙에도 힌트에도
@@ -1276,6 +1294,19 @@ validate_defeater_leg() { # $1 = marker path
     echo "     성공 정의와 그 반증 조건은 다른 문장이다."
     return 1
   fi
+  # 🟥 헬퍼 부재를 «잔여 없음»으로 렌더하지 않는다. 레인 스위트가 `sed` 로 이 함수만 추출하면
+  #    헬퍼가 안 따라오고, 정의되지 않은 명령은 거짓이 되어 **fail-open** 이 된다.
+  #    실측 2026-08-30: 그렇게 만든 레인 R1 이 BLOCK 기대에 PASS 를 냈다.
+  if ! declare -f _marker_template_residue >/dev/null 2>&1; then
+    echo "  ❌ HARNESS-ERROR — _marker_template_residue 가 정의돼 있지 않다."
+    echo "     격리 실행이면 그 헬퍼도 같이 추출해야 한다. 부재는 «통과»가 아니다."
+    return 1
+  fi
+  if _marker_template_residue "$body"; then
+    echo "  ❌ FAIL — defeater 가 힌트의 자리표시자 그대로다 (기록이 아직 안 쓰였다)."
+    echo "     «틀렸다면 무엇이 관측될 것인가»를 실제 사건으로 적어라."
+    return 1
+  fi
   echo "  ✅ defeater 기록됨 ($words 낱말)"
   return 0
 }
@@ -1375,6 +1406,20 @@ validate_soul_present_leg() { # $1 = marker path
   if [ "$words" -lt 6 ]; then
     echo "  ❌ FAIL — ①영혼 line is vacuous ($words word(s)). Name the success definition AND"
     echo "     the 절대 안 함. A one-word placeholder trains the ritual this field exists to avoid."
+    return 1
+  fi
+  # 🟥 헬퍼 부재를 «잔여 없음»으로 렌더하지 않는다. 레인 스위트가 `sed` 로 이 함수만 추출하면
+  #    헬퍼가 안 따라오고, 정의되지 않은 명령은 거짓이 되어 **fail-open** 이 된다.
+  #    실측 2026-08-30: 그렇게 만든 레인 R1 이 BLOCK 기대에 PASS 를 냈다.
+  if ! declare -f _marker_template_residue >/dev/null 2>&1; then
+    echo "  ❌ HARNESS-ERROR — _marker_template_residue 가 정의돼 있지 않다."
+    echo "     격리 실행이면 그 헬퍼도 같이 추출해야 한다. 부재는 «통과»가 아니다."
+    return 1
+  fi
+  if _marker_template_residue "$body"; then
+    echo "  ❌ FAIL — soul: 줄이 힌트의 자리표시자 그대로다 (기록이 아직 안 쓰였다)."
+    echo "     꺾쇠 안을 실제 내용으로 바꿔라. 이 검사는 «값이 옳은가»가 아니라"
+    echo "     «이 기록이 템플릿 자신인가»만 본다 — 채널 검사다."
     return 1
   fi
   echo "  ✅ ①영혼 present: $words word(s)"

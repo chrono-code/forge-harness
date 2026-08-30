@@ -27,6 +27,12 @@ verdict() { # $1 = rc, $2 = output  → PASS | BLOCK | HARNESS-ERROR
 
 sed -n '/^validate_soul_tenet_refs()/,/^}/p' "$HOOK" > "$T/fnt.sh"
 sed -n '/^validate_defeater_leg()/,/^}/p'    "$HOOK" > "$T/fnd.sh"
+# 🟥 헬퍼도 결합한다 — 안 하면 `_marker_template_residue` 미정의로 다리가 HARNESS-ERROR 를 낸다.
+#    (2026-08-30: 그 가드를 fail-closed 로 만든 직후 이 스위트가 실제로 그렇게 짖었다.
+#     종전이었다면 미정의 명령이 «잔여 없음»으로 조용히 통과했을 자리다.)
+sed -n '/^_marker_template_residue()/,/^}/p' "$HOOK" > "$T/_helpers.sh"
+cat "$T/_helpers.sh" "$T/fnd.sh" > "$T/fnd2.sh" && mv "$T/fnd2.sh" "$T/fnd.sh"
+grep -q '^_marker_template_residue()' "$T/fnd.sh" || { echo "❌ HARNESS-ERROR — 헬퍼 미결합"; exit 1; }
 # 계기 캘리브레이션 — 빈 추출은 모든 픽스처를 «아무것도 아닌 것»에 대고 통과시킨다.
 grep -q 'SOUL_TENET_REGISTRY_REL' "$T/fnt.sh" || { echo "❌ HARNESS-ERROR — tenet leg 추출 실패"; exit 1; }
 grep -q 'defeater' "$T/fnd.sh" || { echo "❌ HARNESS-ERROR — defeater leg 추출 실패"; exit 1; }
