@@ -175,6 +175,73 @@ for r in $(seq 1 "$REPS"); do
   #       팔이 만든 변화는 여전히 한 줄도 허용 안 된다(observe 모드).
   ( cd "$WORK" && git status --porcelain ) > "$WRAP/_tree_baseline.txt" 2>/dev/null
 
+  # ── 🟥 경로 격리 (2026-08-30 — 이 러너는 이날까지 «격리»가 아니었다) ──────────────
+  #    헤더가 *"disposable clone 이라 오염 없음"* 이라 적어왔는데, **클론은 cwd 일 뿐이고
+  #    읽기는 어디든 갔다.** `--tools "Read,Grep,Glob"` 는 «쓰기»만 막지 «경로»를 안 막는다.
+  #    실측(같은 날, known-pair): observe 팔이 `/tmp` 파일을 출력했고, **채점용 qset 을
+  #    정답 토큰까지 통째로** 읽었고, 앞선 팔의 답변 디렉터리를 나열했다(159,050 파일).
+  #    ⇒ 맥락유지 3개 회차가 전부 무효. 세 번의 VOID 는 «다른 증상 셋»이 아니라 **근인 하나**였다.
+  #
+  # 🟥 **첫 수리는 과차단이었다 — 클론 자신을 막았다.** `Read(//tmp/**)` 로 통째로 막았는데
+  #    `WRAP="$OUTDIR/..."` 라서 `--out /tmp/...` 이면 **클론이 그 아래 산다.** ARM 이
+  #    *"working directory 에 대한 read 권한이 모든 도구에서 거부"* 라고 답했다.
+  #    ⇒ 광범위 차단 대신 **위험한 곳만 이름으로** 막는다: 실제 레포 · 홈 · 이 회차의 out 디렉터리.
+  #    그 셋이 «이 실험이 자기 답을 볼 수 있는» 전부다(소스·qset·앞선 팔의 답변).
+  #    ⚠️ 완전 격리가 아니다 — 열거 안 한 절대경로는 여전히 읽힌다. 그렇게 적는다.
+  # 형태도 실측으로 골랐다: `Read(/x/**)`(슬래시 하나)는 **안 막힌다**. `Read(//x/**)` 라야 한다.
+  # `Glob(...)`/`Grep(...)` 을 섞으면 클론 안까지 과차단됐다 — 그래서 **Read 만** 둔다.
+  mkdir -p "$WORK/.claude"
+  # 🟥 cross-family(agy #4): 여기가 **명백한 fail-open** 이었다 — 격리 규칙이 없는
+  #    `settings.local.json` 이 클론에 있으면 주입을 건너뛰고 **비격리 상태로 측정을 강행**한다.
+  #    「SKIPPED 라고 알렸다」는 변명이 안 된다: 이 회차의 산출은 그래도 숫자로 쓰인다.
+  #    ⇒ 격리 없이는 **회차를 시작하지 않는다**. 강행은 명시 플래그로만.
+  if [ -f "$WORK/.claude/settings.local.json" ] && ! grep -q '"deny"' "$WORK/.claude/settings.local.json" 2>/dev/null; then
+    if [ "${FH_SIM_NO_ISOLATION_OK:-}" = 1 ]; then
+      echo "  ⚠️  r$r 격리 없이 강행됨(FH_SIM_NO_ISOLATION_OK=1) — 이 회차는 오염 가능하다고 기록해라." >&2
+    else
+      echo "  ❌ r$r settings.local.json 이 이미 있는데 deny 규칙이 없다 — **격리 없이 재지 않는다.**" >&2
+      echo "     강행: FH_SIM_NO_ISOLATION_OK=1 (그러면 그 회차는 오염 가능으로 기록해라)" >&2
+      CONTAMINATED=1
+      continue
+    fi
+  fi
+  if [ -f "$WORK/.claude/settings.local.json" ]; then
+    :
+  else
+    # 🟥 **물리경로로 계산한다** (2026-08-30, 세 번째 수리). macOS 에서 `/tmp` 는
+    #    `/private/tmp` 심링크라 **같은 자리가 두 이름**을 갖는다. 논리경로만 적으면
+    #    어떤 회차는 클론을 막고(과차단) 어떤 회차는 레포를 못 막는다(누출) — 즉 격리가
+    #    **비결정적**이 된다. 실측: 같은 설정에서 한 팔은 «working directory 거부», 다른 팔은
+    #    레포의 qset 을 읽었다. 비결정적 격리는 격리가 아니다.
+    _phys(){ ( cd "$1" 2>/dev/null && pwd -P ) || printf '%s' "$1"; }
+    _p_repo=$(_phys "$REPO_ROOT"); _p_home=$(_phys "$HOME")
+    _p_out=$(_phys "$OUTDIR");     _p_work=$(_phys "$WORK")
+    _deny_repo="//${_p_repo#/}"
+    _deny_home="//${_p_home#/}"
+    _deny_out="//${_p_out#/}"
+    # 🟥 클론이 out 아래 살면 out 을 통째로 막을 수 없다. 그 경우 «앞선 팔의 답변 파일»만 막는다.
+    # 클론이 out 아래 살면 out 을 통째로 못 막는다. 그때는 «다른 팔의 산출»만 막는다 —
+    # 🟥 `*.txt` 만으로는 부족했다: 다른 팔의 **클론 트리**(`w_*/repo/**`)에 주입된 봉인 원장을
+    #    읽을 수 있었다. 그것도 막고, **내 클론은 예외로 둔다**.
+    case "$_p_work" in
+      "$_p_out"/*) _deny_out="//${_p_out#/}/*.txt\",\"Read(//${_p_out#/}/w_*/repo/tracks/**)" ;;
+    esac
+    # 🟥 cross-family(agy #1): 기본 `$TMPDIR`(macOS `/var/folders/**`)·공유 경로·마운트 볼륨이
+    #    빠져 있었다. 산출물이 기본 TMPDIR 에 생기면 앞선 팔의 결과가 그대로 읽힌다.
+    #    🟥 단 **클론이 사는 경로는 막으면 안 된다**(첫 수리가 그렇게 자기 발을 쐈다) —
+    #    그래서 `$WORK` 를 품는 접두사는 목록에서 뺀다. 계산으로 하지, 손으로 고르지 않는다.
+    _extra=""
+    for d in /var/folders /private/var/folders /Users/Shared /Volumes /var/tmp /private/tmp /tmp; do
+      _pd=$(_phys "$d"); [ -n "$_pd" ] || continue
+      case "$_p_work" in "$_pd"/*) continue ;; esac  # 내 클론이 그 아래면 막지 않는다(물리경로 비교)
+      case "$_p_out"  in "$_pd"/*) continue ;; esac  # out 도 마찬가지 — 위에서 정밀하게 다룬다
+      d="$_pd"
+      _extra="$_extra,\"Read(//${d#/}/**)\""
+    done
+    printf '{"permissions":{"deny":["Read(%s/**)","Read(%s/**)","Read(%s)"%s]}}' \
+      "$_deny_repo" "$_deny_home" "$_deny_out" "$_extra" > "$WORK/.claude/settings.local.json"
+  fi
+
   if [ "$MODE" = observe ]; then
     TOOLS=(--tools "Read,Grep,Glob")
   else

@@ -254,6 +254,47 @@ above remains the unverified hypothesis it declares itself to be. An engine grad
 |---|---|---|---|---|---|
 | **ship-gate** (품질게이트) | 🟢 **GREEN** | pre-commit + pre-push, `core.hooksPath` verified live | ✅ 37 cross-family fixtures · 30 branch-claim · marker-floor. **2 revert arms, each reddening only its own lane** (neutering the degrade-grounds check surfaced `'client error'` passing on the substring `cli`; restoring the `single-family` free exit surfaced two more) | ✅ 3 suites `rc=0` | ✅ **twice in one session (2026-08-13)** — a commit blocked as `🚫 BLOCKED — resolve failing axes`, and a branch-claim block that stopped a commit from landing on a **peer session's branch** in a shared checkout |
 | **context-continuity** (맥락유지) | 🔵 **RC** | `compaction_probe` (PreCompact + UserPromptSubmit; snippet ships and `install-wizard` merges it by glob, not by name) · `session_close_check` (pre-push) · `digest_landing_check` · `utterance_landing_check` | ✅ 47 pairs after the 2026-08-13 fix, **4 revert arms**; session axis probed separately (deleting the card-last *verdict* — not its message — reddens its lane) | ✅ 47 · 10 · 8 · 8/8, all `rc=0` | ❌ **withheld, and the reason is the interesting part** — see below |
+
+#### 🟥 맥락유지 — 2026-08-30 격리 수리 후 첫 «신호», 그리고 등급을 **안** 올리는 이유
+
+이날 이 축의 회차가 **다섯 번 VOID** 났고, 넷은 증상이었고 하나가 근인이었다.
+
+```
+1~3차  qset 오염 · 채점기 비대칭 · 문항 전제(유도질문)          ← 증상. 각각 고쳤다
+4차    🟥 격리가 없었다 — 팔이 채점용 qset 을 정답 토큰까지 읽었다  ← 근인
+       `sim_isolated_run.sh` 헤더가 «disposable clone 이라 오염 없음»이라 적어왔지만
+       `--tools "Read,Grep,Glob"` 는 **쓰기만 막고 경로를 안 막는다**
+5차    격리 성립 후 처음으로 신호가 나왔다
+```
+
+격리 자체를 **네 번** 고쳤다. 마지막 원인은 한 줄짜리 사실이었다 — macOS 에서 `/tmp` 는
+`/private/tmp` 심링크라 **같은 자리가 두 이름**을 갖고, 논리경로만 막으면 어떤 회차는 클론을
+막고(과차단) 어떤 회차는 레포를 못 막는다(누출). **비결정적 격리는 격리가 아니다.**
+물리경로(`pwd -P`)로 바꾸고 reps=3 양방향 일관을 확인한 뒤에야 «성립»이라 적었다.
+회귀 앵커 = `scripts/test_sim_path_isolation_lanes.sh` (11 레인, 되돌림에서 L3b 만 적색).
+
+**격리된 상태의 첫 측정 (reps=3, 사전등록 봉인 `8ecbb1ea…`)**:
+
+```
+                ARM(운반체 있음)   CTRL(운반체 없음)
+positive PASS   5/6                0/6
+negative PASS   1/6                6/6
+```
+
+🟢 **운반체는 작동한다** — 봉인 원장이 없으면 positive 를 **아무도** 못 맞힌다(0/6).
+🟥 **그런데 같은 운반체가 과신을 만든다** — negative 에서 ARM 1/6 vs CTRL 6/6.
+손검증: ARM 「슬라이드 본문 글꼴 관련 지시는 **Pretendard** 로 확인됩니다」(원장에 없다) ·
+CTRL 「…언급을 찾지 못했습니다. 어느 파일/세션을 가리키는지 알려주시면 확인해보겠습니다」.
+
+🟥 **사전등록의 한 갈래가 이 결과로 반증됐다.** 봉인 문서는 «negative 가 또 비-PASS 면 그건
+운반체 문제가 아니라 모델이 부재를 못 말한다는 별도 명제»라고 적었는데, **CTRL 이 6/6 으로
+맞혔다** — 모델은 부재를 잘 말한다. 못 말하는 것은 **운반체를 받은 팔뿐**이다.
+(이 가설은 이전 카드가 reps=1 로 적었다가 철회한 것이다. 이번엔 격리·reps=3·컨트롤 6/6.)
+
+**그래서 등급을 안 올린다.** 운반체 충분성만 재면 6/6 이라 🟢 처럼 보이는데, 같은 운반체가
+«없는 것을 있다고 말하게» 만드는 손실이 계상되지 않는다. **계기가 반쪽이다** —
+🟢 은 「전달됐나」만이 아니라 「과신을 안 만드나」까지 재야 한다. 그것이 다음 회차의 과녁이다.
+
 | **external-grounding** (물어보기) | 🟢 **GREEN** (승격 2026-08-30) | 🟢 **2026-08-30: `novelty_claim_check` 가 차단한다**(advisory → block, `FH_NOVELTY_OK=1` override 는 `tracks/_meta/.novelty_override_log` 에 append). 켜기 전 전수 측정: 69문서 무앵커 0건. 종전 서술 ~~advisory, non-blocking~~ · ~~`digest_landing_check` has **zero callers**~~ 🟥 **RETRACTED 2026-08-22 — 그 주장이 거짓이었다.** `scripts/frontier_digest_daily.sh` 가 `landing_witness()` 로 그것을 감싸 실행하고(`:351-353`, 변수 할당 후 디스패치), 그 함수는 **세 곳(`:421`·`:504`·`:532`)에서 호출된다.** 컨트롤 동반 확인(존재하지 않는 이름 = 0건). 자매 레인이 지목했고 **자력 적발이 아니다**. ⚠️ **등급은 안 바뀐다** — 이 행의 나머지 근거 둘(advisory·플레이스홀더)이 그대로 서 있고, 오히려 플레이스홀더 쪽은 같은 날 기계로 재확인됐다. 바뀐 것은 **근거 한 줄의 진위**이지 판정이 아니다. 🟥 이 파일 자신이 `[[feedback_rule_misdescribes_its_own_machine]]` 의 표본이 된 자리다 — «아직 안 배선됐다»고 적힌 것이 이미 배선돼 있었다 · ~~the daily digest launcher ships a **placeholder path** in its plist~~ 🟢 **2026-08-30 닫힘 — `scripts/launchd_wiring_check.sh`**(라벨 둘, 10 레인, selfcheck 배선). 템플릿인 것이 결함이 아니라 **「바꿨는지·걸렸는지」를 보는 것이 0개**였던 것이 결함이었다. verdict 6값 닫힌 enum 이고 부재를 「정상」으로 렌더하지 않는다. 🟢 **첫 실사용에서 실제 결함을 찾았다** — 운영자 로컬 바인딩이 「매일 07:30 설치됨」이라 적어둔 `daily-report` 가 plist·스크립트 둘 다 없었다(산출물 1건만 생존). 종전 서술 (**2026-08-22 기계로 재확인**: 그 플레이스홀더가 `script_caller_ratchet` 에서 «배선됨»으로 계상되고 있었고, known-pair 로 확정한 뒤 그 게이트가 플레이스홀더를 호출로 안 세도록 수리됐다) | 🟢 novelty **8/8** · landing-check ~~**4 live branches that survive deletion**~~ **2026-08-30 닫힘**: 자기참조 3분기(digest 자신·그 로그·타 digest) + `.md` 필터에 앵커를 걸었고(20→25 레인) 되돌림에서 **각각 «자기 레인만»** 적색이다. 🟥 그 과정에서 **첫 프로브가 문법 파손으로 죽어** 「적색 0 = 장식 확정」으로 읽을 뻔했고, ⓐ 픽스처가 digest 를 덮어써 조건이 성립하지 않았다(둘 다 자체 적발). **뮤테이션 전수 측정**(가드 15개 기계 열거): **60% raw · 69% equivalent-adjusted** — 업계 바 70%(Stryker break threshold · Google 실무 70~80% 정체 · equivalent ~23%로 실용 천장 ~77%)에 사실상 도달. 생존 6은 실행으로 분류했다: **EQUIVALENT 2**(비인용 `for` 확장은 빈 단어를 안 만든다 — bash 실측) · **중복 방어 4**(`do_check:262` 등이 먼저 막는다, 2차 뮤턴트로만 죽는다) | ✅ novelty 13 pairs · landing **25 lanes** · launchd_wiring 10 lanes · ~~but the latter only runs when a human types it~~ 🟥 **그 서술은 stale 이었다(2026-08-30 실행으로 확인)** — `selfcheck.sh` 가 루프로 디스패치하므로 리터럴 grep 에 안 잡혔을 뿐이고, 자기검사에 뮤턴트를 심으니 `FAIL digest_landing_check --self-test (exit 1)` → `SELFCHECK: FAIL` 이 났다. **읽어서가 아니라 되돌려서** 확인했다 | ✅ **exists** — 5 `frontier-auto:` commits (2026-06-22 → 07-28); one hand-verified, it labelled an unreachable source `UNCALIBRATED` instead of asserting through it. 🟢 **2026-08-30 추가**: `launchd_wiring_check` 가 도입 당일 **실제 결함**을 찾았다(위 leg 1). 「물어보기」 엔진이 실상황에서 문 것이다.<br>⚠️ **명명된 잔여 3건**(cross-family gpt-5.5 · gemini-3.1 독립 수렴, 자력 적발 0 — 등급이 이것들을 덮지 않는다): ① **±6줄 무관 앵커 세탁** — *「전례가 없다. 백엔드는 [Node.js](https://nodejs.org)로 구축했다」* 가 통과한다(앵커의 **존재**만 보고 **연관성**을 안 본다 — 진위는 phantom-quench 의 일) ② **「69문서 0건」은 배포 안전을 지지하지 않는다** — 잰 것은 안착한 **정적 코퍼스**의 마찰이지 저자가 **작성 중인** 워크플로가 아니다 ③ **GUI git 클라이언트** 에서는 커밋당 env 주입이 번거로워 「Skip hooks」(`--no-verify`)로 새기 쉽고, 그건 **같은 훅의 Destructive-Op 게이트까지** 끈다 |
 | **judgment-circuit** (영혼) | 🟢 **GREEN** (승격 2026-08-30) | 🟢 차단 다리 **4개**(`validate_soul_present_leg` · `validate_soul_check_leg` · `validate_soul_tenet_refs` · `validate_defeater_leg`) + 원자 tenet 등록부 `.claude/soul_tenets.txt`(FH-T00~T07) + 양방향 추적 `soul_trace.sh`. 🟥 **배선은 «있다»가 아니라 «호출된다»로 확인했다** — `test_hook_leg_wiring_lanes.sh` 가 실행 프로브로 재고, 도입 당일 뒤 두 다리가 **호출부 0** 인 것을 잡았다. 종전 서술 ~~lint+registry only, 1/6 anchors~~ 는 2026-08-13 자 근거이고 PR #481(2026-08-21) 이후를 안 본 **stale** 이었다 | 🟢 되돌림 **6종**, 각각 «자기 레인만» 적색. 🟥 프로브마다 **적용확인 → 실행 → 복원** 3단을 돌렸다 — 한 번은 뮤턴트가 무력해 「장식이다」로 오판할 뻔했다 | ✅ 레인 **13개 신설**, 세 스위트 전부 PASS · 회귀 0 | 🟢 **네 갈래로 성립** ① 블라인드 플로어 sim reps=3: ARM `soul`/`soul-check`/`defeater` **3/3** vs CTRL 2/3·1/3·1/3(변수는 «정본 스펙+훅 힌트에 그 요구가 적혀 있는가» 한 칸) ② 그 sim 이 **실제 결함 2건**을 꺼냈다 — 훅이 9일간 차단해온 필드가 **어느 규칙 파일에도 없었다**, 그리고 힌트의 자리표시자가 **게이트를 통과**했다 ③ 게이트가 이 세션의 커밋을 **여섯 번** 막았고 여섯 번 다 옳았다(중복 필드 · 미등록 ID · 첫 글자만 남은 enum 값 …) ④ cross-family **4라운드 수렴**: 13 → 3 → 2 → **0**, 두 계열(codex gpt-5.5 · agy)이 마지막 라운드에 각자 「수렴」 |
 

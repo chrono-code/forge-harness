@@ -62,6 +62,10 @@ ACCEPTED_ABSENT=(
   "scripts/test_marker_soul_tenet_lanes.sh"
   "scripts/test_hook_leg_wiring_lanes.sh"
   "scripts/soul_trace.sh"
+  # 🟥 sim 경로격리 레인 — 출하 안 한다. `sim_isolated_run.sh` 는 이 레포의 측정 도구이고
+  #    이 레인은 «그 러너가 클론에 무엇을 써넣는가»를 본다. 소비자에게 그 러너가 없으면
+  #    레인이 HARNESS-ERROR 로 죽고, 그건 신선 설치를 막는 형태가 된다(위 outbound 와 동일 논리).
+  "scripts/test_sim_path_isolation_lanes.sh"
   ".claude/registry/LOCAL_SKILL_REGISTRY.md"
   ".claude/regression/probes.md"
   # Its sibling, and absent for the same reason one layer up: this file records which sections of
