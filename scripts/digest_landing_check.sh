@@ -694,6 +694,21 @@ EOF
   _t "★N-self b) 생성 로그(*/logs/*)는 타깃이 아니다 → 미측정(10)" 10 "$rc_s"
   rm -rf "$SG"
 
+  # ⓓ 비-.md 타깃 + 빈 제외 토큰 — 뮤테이션 측정(2026-08-30)이 드러낸 **미커버 입력**이다.
+  #    `case "$f" in *.md) ;; *) continue ;;` 와 `[ -n "$_x" ] || continue` 둘 다 되돌려도
+  #    초록이었는데, 이유는 「방어가 필요 없다」가 아니라 **픽스처가 그 입력을 한 번도 안 만든다**
+  #    였다. equivalent 뮤턴트와 미커버 입력은 다르다 — 전자는 못 죽이고 후자는 픽스처로 죽는다.
+  _mk_self "plain.md"
+  ( cd "$SG" && printf 'zzz_tok · zzz_ctl\n' > wiki/notes.txt && git add -A && git commit -qm t ) >/dev/null 2>&1
+  ( cd "$SG" && CLAUDE_PROJECT_DIR="$SG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+      DLC_CONTROLS="zzz_ctl" DLC_EXCLUDE_TARGETS="  wiki/plain.md  " \
+      bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$SG/wiki/digest.md" ) >/dev/null 2>&1; rc_s=$?
+  # plain.md 는 제외되고 notes.txt 는 .md 가 아니라 타깃에서 빠진다 ⇒ 타깃 0건 = 미측정(10).
+  # 🟥 `.md` 필터가 죽으면 notes.txt 가 타깃이 되어 「착지」로 렌더된다 = 거짓 양성.
+  # 🟥 빈 토큰 가드가 죽으면 공백 분리로 생긴 빈 문자열이 모든 경로에 매칭될 수 있다.
+  _t "★N-self d) 비-.md 는 타깃이 아니고 빈 제외 토큰은 무시된다 → 미측정(10)" 10 "$rc_s"
+  rm -rf "$SG"
+
   # ⓒ 타 digest — 후보는 이월되며 다음 날 digest 에 다시 등장한다. 그걸 착지로 세면
   #    「내일도 후보로 남았다」가 「오늘 착지했다」가 된다.
   _mk_self "frontier_digest_2002_02_02.md"; _run_self; rc_s=$?
