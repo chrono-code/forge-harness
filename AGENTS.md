@@ -94,6 +94,12 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
 1. **FH asset change:** before editing, read `.claude/rules/fh_4axis_gate.md`; before the first commit,
    run its required axes. Treat `templates/regression_guard.sh` exit 0 as PASS or SKIP; use its typed
    result channel and never report SKIP as checked.
+   🟥 **New blocking condition, 2026-08-30**: editing a `.md` under `knowledge/` or `docs/` now
+   **blocks the commit** if a world-scoped novelty/absence claim ("선례가 없다", "유일하게",
+   `no prior art`, `unprecedented`, …) stands with **no external anchor within ±6 lines**.
+   Anchors the check accepts: a URL · arXiv/DOI · `WebSearch`/`WebFetch` · `출처` · `원문 확인` ·
+   `서베이`. Override is `FH_NOVELTY_OK=1`, and it appends to `tracks/_meta/.novelty_override_log`.
+   ⚠️ The check sees only that an anchor **exists**, never that it supports the claim.
 2. **Company residency:** raw company source, secrets, hostnames, internal names, stack traces, and
    unredacted findings never leave the local machine, including to same-family cloud models. Only a
    sanitized summary may leave; exceptions require explicit operator approval and a gitignored note.
