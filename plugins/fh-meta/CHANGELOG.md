@@ -1,5 +1,45 @@
 # forge-harness (fh-meta) Changelog
 
+### [2.14.0] — 2026-08-31 — 영혼 엔진 배선 + sim 경로 격리
+
+### 🟥 BREAKING (gate): 2026-09-01 부터 마커에 `defeater:` 가 필요하다
+
+**무엇이 이제 막히나**: **2026-09-01 이후 날짜**의 Axes 2–3 마커에 `defeater:` 줄이 없으면
+**커밋이 차단된다.** 「이 성공 정의가 틀렸다면 **무엇이 관측될 것인가**」 한 줄이다.
+비공허성만 검사한다(6낱말 이상). 그 전 날짜의 마커는 **소급 없음**.
+
+**한 줄 처방**: 마커에 `defeater: <틀렸다면 관측될 사건>` 을 추가해라.
+반증 조건이 정말 없으면 `defeater: 없음` 도 **합법**이다 — 선언된 부재는 값이고 침묵이 아니다.
+
+**같이 들어온 것(차단 아님)**: `tenets:` 는 **선택**이다. 인용하면 `.claude/soul_tenets.txt` 에
+실재하는 `FH-T\d\d` 만 허용된다(오타를 조용히 안 버린다). 인용이 없으면 통과한다.
+`soul-check:` 는 **있으면** enum 이 강제되고 **없으면 통과**한다(부재는 차단 아님).
+
+**왜 지금**: `judgment-circuit`(영혼) 엔진이 🔴 였고 기계 앵커가 6단 중 1단뿐이었다.
+외부 정본을 따랐다 — 원자 tenet([arXiv 2605.24229](https://arxiv.org/abs/2605.24229)) ·
+defeater([Assurance 2.0](https://arxiv.org/abs/2004.10474)) · 양방향 추적성(DO-178C) ·
+등록부 규율([AWS tenets](https://aws.amazon.com/blogs/enterprise-strategy/tenets-supercharging-decision-making/):
+최대 7 · 우선순위 · **반대가 방어 가능해야 한다**). 셋 다 «기록의 속성»만 단언한다.
+
+### 🟥 sim 러너는 2.13.0 까지 «격리»가 아니었다
+
+`scripts/sim_isolated_run.sh` 헤더가 *"disposable clone 이라 오염 없음"* 이라 적어왔으나
+**클론은 cwd 일 뿐**이고 `--tools "Read,Grep,Glob"` 는 쓰기만 막았다. 실측에서 팔이
+**채점용 정답 키를 그대로 읽었다.** 이 버전부터 클론에 `Read` deny 를 주입한다
+(실제 레포 · 홈 · out · 다른 팔의 클론 트리). 격리가 없으면 **회차를 시작하지 않는다**.
+
+⚠️ **2.13.0 이하로 낸 sim 숫자는 재측정 대상이다.** ARM/CTRL 차이가 「운반체 덕」인지
+「팔이 답을 읽었는지」 구조적으로 구분되지 않는다.
+
+### 그 외
+
+- `portability_lint` **[P10]** — `tr` 집합 안의 하이픈이 **범위**로 읽히는 이식성 결함.
+  GNU/BSD 가 갈리고 **로컬만 초록**이 되는 클래스를 로컬로 당겨온다.
+- 훅 다리 넷이 «정의만 하고 안 부르는» 상태를 잡는 배선 레인(`test_hook_leg_wiring_lanes.sh`).
+- 마커 스펙(`.claude/rules/fh_4axis_gate.md`)에 `soul:`·`soul-check:`·`defeater:`·`tenets:` 기재
+  — 🟥 `soul:` 은 2026-08-21 부터 차단해왔는데 **어느 규칙 파일에도 적혀 있지 않았다**.
+
+
 ### 🟥 BREAKING (gate): novelty/absence 주장 검사가 **차단**으로 바뀐다 (2026-08-30)
 
 **무엇이 이제 막히나**: `knowledge/**` · `docs/**` 의 `.md` 를 커밋할 때, **세계에 대한
