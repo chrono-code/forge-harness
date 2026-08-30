@@ -18,6 +18,30 @@
 # Usage: bash scripts/soul_trace.sh [--quiet]
 # Exit : 0 정상(갭이 있어도 0 — advisory) · 10 계기 불량(레지스트리 부재/파싱 실패)
 set -uo pipefail
+
+# ── --self-test — 호출부가 있어야 이 스크립트가 «주장»이 아니다 ──────────────────
+# 🟥 CI 의 caller-zero ratchet 이 이 파일을 **호출부 0** 으로 잡았다(2026-08-30).
+#    오늘 하루 «만들고 안 부른다» 가 아홉 번째였고, **그 결함을 잡으려고 만든 도구 자신이**
+#    그 결함이었다. 자기검사를 붙이고 `selfcheck.sh` 의 embedded-suite 목록에 배선한다.
+# SCOPE — LLM 없이, 트레이스의 **판별 규칙**만 본다: 산문(.md)·레인(test_*)은 기계 앵커가 아니다.
+if [ "${1:-}" = "--self-test" ]; then
+  _t=$(mktemp -d); trap 'rm -rf "$_t"' EXIT; _f=0
+  _chk(){ if [ "$2" = "$3" ]; then printf '  ✅ %-44s %s\n' "$1" "$2"; else printf '  ❌ %-44s got=%s want=%s\n' "$1" "$2" "$3"; _f=1; fi; }
+  # 이 스크립트가 앵커에서 무엇을 빼는지 — 규칙 자체를 본다(실행 경로와 같은 필터).
+  _excl(){ printf '%s\n' "$1" | grep -v '/soul_tenets.txt$' | grep -v '/soul_trace.sh$' \
+           | grep -v '/test_[^/]*\.sh$' | grep -v '/\.claude/rules/' \
+           | grep -v '/\.claude/agents/' | grep -vE '\.md$' | grep -c . | tr -d ' '; }
+  _chk "S1 레인 스위트는 앵커가 아니다"       "$(_excl '/r/scripts/test_x_lanes.sh')" 0
+  _chk "S2 규칙 산문은 앵커가 아니다"         "$(_excl '/r/.claude/rules/x.md')"      0
+  _chk "S3 에이전트 산문도 앵커가 아니다"     "$(_excl '/r/.claude/agents/x.md')"     0
+  _chk "S4 모든 .md 가 앵커가 아니다"         "$(_excl '/r/docs/x.md')"              0
+  _chk "S5 등록부 자신은 앵커가 아니다"       "$(_excl '/r/.claude/soul_tenets.txt')" 0
+  # 🟥 known-negative — 전부 0 이면 «필터가 다 죽인 것»과 구분이 안 된다. 진짜 앵커는 남아야 한다.
+  _chk "S6 훅은 앵커다 (컨트롤)"              "$(_excl '/r/templates/.git-hooks/pre-commit')" 1
+  _chk "S7 프로덕션 스크립트는 앵커다 (컨트롤)" "$(_excl '/r/scripts/novelty_claim_check.sh')"  1
+  echo; if [ $_f -eq 0 ]; then echo "SOUL TRACE SELFTEST: PASS"; else echo "SOUL TRACE SELFTEST: FAIL"; fi
+  exit $_f
+fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REG="$REPO_ROOT/.claude/soul_tenets.txt"
 HOOK="$REPO_ROOT/templates/.git-hooks/pre-commit"

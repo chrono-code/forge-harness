@@ -762,6 +762,25 @@ for _subj in compaction_probe judgment_circuit_lint novelty_claim_check chamber_
   fi
 done
 
+# 🟥 `soul_trace.sh` 는 위 루프에 넣지 않고 **명시 호출**한다 (2026-08-30).
+#    루프는 `scripts/$_subj.sh` 로 경로를 조립하므로 **리터럴 grep 에 안 잡힌다** —
+#    CI 의 caller-zero ratchet 이 그것을 «호출부 0» 으로 잡았고, 그 판정이 옳다:
+#    「호출된다」를 사람 눈으로만 확인할 수 있으면 그건 배선의 증거가 아니다.
+#    오늘 아침 `digest_landing_check` 에서 본 것과 같은 형태다.
+# 🟥 그리고 이 블록의 초판은 이 파일에 없는 변수(`$ROOT`·`$RC`)를 써서 **selfcheck 자체를
+#    죽였다**(`ROOT: unbound variable`, 770줄). 관행은 상대경로 + `fail=1` 이다.
+if [ ! -f "scripts/soul_trace.sh" ]; then
+  _absent_subject_verdict "soul_trace --self-test" "scripts/soul_trace.sh" || fail=1
+else
+  if _st_out=$(bash scripts/soul_trace.sh --self-test 2>&1); then
+    echo "PASS  soul_trace --self-test ($(printf '%s' "$_st_out" | grep -c '✅') lanes)"
+  else
+    echo "FAIL  soul_trace --self-test"
+    printf '%s\n' "$_st_out" | grep '❌' | head -5
+    fail=1
+  fi
+fi
+
 # capability_registry_check — one of the 4 embedded --self-test subjects lane_runner_check.sh
 # flagged (2026-08-15), kept out of the loop above (see that loop's comment) because its own
 # terminal line is `통과 N · 실패 N`, never 캘리브레이션 — gate on exit code instead, same shape
