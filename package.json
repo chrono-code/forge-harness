@@ -237,6 +237,7 @@
     "scripts/test_node_infra_delta_lanes.sh",
     "scripts/test_wizard_snippet_merge_lanes.sh",
     "scripts/compaction_probe.sh",
+    "scripts/context_continuity_score.sh",
     "scripts/judgment_circuit_lint.sh",
     "scripts/novelty_claim_check.sh",
     "templates/settings.Compaction.snippet.json",
