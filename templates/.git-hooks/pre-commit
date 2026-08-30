@@ -2307,9 +2307,35 @@ if [ -f "$NC_CHECK" ]; then
     fi
     _nc_out=$(printf '%s\n' "$_nc_raw" | grep -E '🟥 무앵커' | head -5 || true)
     if [ -n "$_nc_out" ]; then
-      echo "[Gate] novelty/absence claim without an external anchor (advisory):"
-      printf '%s\n' "$_nc_out" | sed 's/^/  /'
-      echo "  Each = 'you asserted this about the world without asking it'. Does not block."
+      # 🟥 2026-08-30: advisory → **차단**. 운영자 결정("남은 다리 가기 위해서는 강행해야지").
+      #    켜기 전에 **과차단률을 쟀다**: 대상 표면 전수(knowledge/·docs/ 69개)에서 무앵커 **0건**.
+      #    즉 이 게이트를 켜는 비용이 현재 0 이다 — 아무도 안 막힌다. 재기 전에 켰으면 그건
+      #    강행이 아니라 도박이었다. 과차단은 `--no-verify` 를 훈련시키고 그건 **같은 훅의**
+      #    Destructive-Op 게이트를 무장해제한다(CLAUDE.md 가 반복해서 경고하는 그 축).
+      #    그래서 집안 관행대로 **명시적·기록되는 override** 를 같이 둔다.
+      if [ "${FH_NOVELTY_OK:-}" = "1" ]; then
+        echo "[Gate] novelty/absence claim without an external anchor — OVERRIDDEN (FH_NOVELTY_OK=1):"
+        printf '%s\n' "$_nc_out" | sed 's/^/  /'
+        # 🟥 cross-family(gpt-5.5, 2026-08-30)가 잡았다: 초판은 «기록에 남는다» 고 «말만» 하고
+        #    원장 append 가 없었다 — 터미널 로그가 사라지면 무엇을 우회했는지 감사 불가.
+        #    집안 관행(`.psa_override_log`)과 같은 형태로 실제로 남긴다.
+        mkdir -p "$EVIDENCE_ROOT/tracks/_meta" 2>/dev/null || true
+        { printf '%s FH_NOVELTY_OK=1 branch=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "${BRANCH:-?}"
+          printf '%s\n' "$_nc_out" | sed 's/^/    /'
+        } >> "$EVIDENCE_ROOT/tracks/_meta/.novelty_override_log" 2>/dev/null || true
+      else
+        echo "[Gate] 🚫 novelty/absence claim without an external anchor:"
+        printf '%s\n' "$_nc_out" | sed 's/^/  /'
+        echo "  각 줄 = '세상에 대해 단언했는데 세상에 안 물어봤다'."
+        echo "  고치는 법: 그 주장 ±6줄 안에 외부 앵커를 둬라 —"
+        echo "             URL · arXiv/DOI · WebSearch/WebFetch · 출처 · 원문 확인 · 서베이"
+        echo "  🟥 앵커 존재가 진위를 보증하지 않는다(그건 phantom-quench). 여기서 막는 것은"
+        echo "     '안 물어본 채 단언한 것' 하나다."
+        echo "  강행: FH_NOVELTY_OK=1 git commit …   (tracks/_meta/.novelty_override_log 에 append)"
+        echo "  ⚠️ GUI git 클라이언트에서는 env 주입이 번거로워 --no-verify 로 새기 쉽다 —"
+        echo "     그건 같은 훅의 Destructive-Op 게이트까지 끈다. 앵커를 다는 쪽이 싸다."
+        FAILED=1
+      fi
     fi
   fi
 fi

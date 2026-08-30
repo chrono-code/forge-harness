@@ -1,5 +1,36 @@
 # forge-harness (fh-meta) Changelog
 
+### 🟥 BREAKING (gate): novelty/absence 주장 검사가 **차단**으로 바뀐다 (2026-08-30)
+
+**무엇이 이제 막히나**: `knowledge/**` · `docs/**` 의 `.md` 를 커밋할 때, **세계에 대한
+신규성·부재 주장**(「선례가 없다」·「시장에 유일하게」·`no prior art`·`unprecedented` 등)이
+**±6줄 안에 외부 앵커 없이** 서 있으면 **커밋이 차단된다.** 종전에는 advisory 였다.
+
+**한 줄 처방**: 그 주장 옆에 외부 앵커를 둬라 — URL · arXiv/DOI · `WebSearch`/`WebFetch` ·
+`출처` · `원문 확인` · `서베이`. 강행이 필요하면 `FH_NOVELTY_OK=1 git commit …` (기록에 남는다).
+
+**왜 지금**: `external-grounding` 엔진이 🟡 인 두 다리 중 하나가 「배선은 됐는데 안 막는다」였다.
+
+🟢 **켜기 전에 쟀다** — 대상 표면 전수(`knowledge/`·`docs/` **69개 문서**)에서 무앵커 **0건**.
+
+🟥 **그 숫자가 «켜도 안전하다»를 지지하지는 않는다** — cross-family 패널(gpt-5.5 · gemini-3.1)이
+독립 수렴해 지적했고 맞다. 잰 것은 **완성돼 안착한 정적 코퍼스의 마찰**이지, 저자가 **작성 중인**
+워크플로가 아니다. 사람은 주장을 먼저 쓰고 출처를 나중에 보강한다. 소비자 코퍼스·미래 편집·
+무관 앵커의 false pass 는 **전부 미측정**이다. 정확한 표현은
+「**현재 이 레포의 정적 마찰 = 0**」이지 「배포 안전」이 아니다.
+
+⚠️ **명명된 우회 경로 3건** (숨기지 않는다 — 두 계열이 같은 것을 짚었다):
+1. **무관한 앵커 세탁** — ±6줄 안에 **아무 URL** 이나 있으면 통과한다.
+   *"이 아키텍처는 전례가 없다. 백엔드는 [Node.js](https://nodejs.org)로 구축했다."* 가 통과한다.
+   앵커의 **존재**만 보고 **연관성**을 안 본다(진위는 phantom-quench 의 일).
+2. **GUI git 클라이언트** — VS Code·SourceTree 등에서 커밋당 env 주입은 번거롭다.
+   가장 쉬운 우회가 **「Skip hooks」 = `--no-verify`** 이고, 그건 **같은 훅의 Destructive-Op
+   게이트까지** 끈다. 그래서 차단 메시지가 이 함정을 명시적으로 경고한다.
+3. **override 는 습관이 되기 쉽다** — env 는 셸에 export 해두면 영구다.
+   완화: `tracks/_meta/.novelty_override_log` 에 **시각·브랜치·우회한 주장**을 append 한다
+   (집안 관행 `.psa_override_log` 와 같은 형태). 🟥 초판은 「기록에 남는다」고 **말만** 하고
+   원장이 없었다 — gpt-5.5 가 잡았고, 그건 규칙이 자기 기계를 잘못 서술한 판이었다.
+
 All notable changes to fh-meta plugin and all skills.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)

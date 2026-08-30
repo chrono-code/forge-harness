@@ -1091,6 +1091,22 @@ else
   fail=1
 fi
 
+# daily_report — 어제 커밋 집계. 자기검사 10 레인(known-pair · 멱등 · 부재 표기).
+# 🟥 이 파일은 «한 번 존재했다가 사라진» 이력이 있다 — 2026-08-29 에 산출물 1건을 내고
+#    git 에 커밋된 적 없이 없어졌고, 로컬 바인딩만 「설치됨」이라 적고 있었다. 배선이
+#    그 재발을 막는 층이다. subject 있는데 anchor 없으면 FAIL 이지 skip 이 아니다.
+if [ ! -f scripts/daily_report.sh ]; then
+  _absent_subject_verdict "daily_report --self-test" "scripts/daily_report.sh" || fail=1
+else
+  if ! bash scripts/daily_report.sh --self-test >/dev/null 2>&1; then
+    echo "FAIL  daily_report --self-test"
+    bash scripts/daily_report.sh --self-test 2>&1 | grep '❌' | head -5
+    fail=1
+  else
+    echo "PASS  daily_report --self-test (10 lanes)"
+  fi
+fi
+
 # launchd_wiring_check — 주기 실행(frontier-digest)이 실제로 배선됐나. 자기검사 10 레인.
 # 🟥 이 검사가 없던 동안, 추적본 plist 는 «템플릿»(/path/to/ 플레이스홀더)인데 «바꿨는지»도
 #    «걸렸는지»도 보는 것이 0개였다. 소비자는 digest 가 돈다고 믿으면서 한 번도 안 도는 상태로
