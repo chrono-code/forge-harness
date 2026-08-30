@@ -647,7 +647,10 @@ fi
 # pastes with leading indent: the anchored grep misses and an indented EOF never
 # terminates <<'EOF' — non-converging fix loop, challenger Axis-5 A-finding).
 marker_recreate_hint() {
-  echo "     printf 'axis2-engine: quench-challenger\\naxis2-model: opus\\nfloor-status: at-floor\\naxis2-evidence: PASS no-S\\n' > \"$1\""
+  # 🟥 힌트는 «행위자가 읽는 자리»다(FH-T07). 2026-08-30 블라인드 sim 실측: 플로어 티어 세 팔이
+  #    나머지 필드를 다 쓰고 `soul:` 을 **하나도 안 썼다** — 차단되는 필드인데도. 스펙에도 힌트에도
+  #    없었기 때문이다. 여기에 최소 필드를 다 넣는다. 정본 = .claude/rules/fh_4axis_gate.md
+  echo "     printf 'axis2-engine: quench-challenger\\naxis2-model: opus\\nfloor-status: at-floor\\naxis2-evidence: PASS no-S\\nsoul: 성공 정의 = <...> · 절대 안 함 = <...>\\nsoul-check: reflected(<무엇이 되돌아왔나>)\\ndefeater: <틀렸다면 무엇이 관측되나>\\n' > \"$1\""
 }
 
 # ── Cross-family leg — typed verdict (see the load-bearing block below for WHY) ──

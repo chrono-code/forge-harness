@@ -165,6 +165,15 @@ for r in $(seq 1 "$REPS"); do
       continue
     fi
   fi
+  # 🟥 기준선은 «클론 직후»가 아니라 «--setup 직후»다 (2026-08-30, 첫 실사용이 잡았다).
+  #    아래 :treediff 는 `git status --porcelain` 을 클론 시점 기준으로 읽었다. 그러면
+  #    `--setup` 이 추적 파일을 건드리는 순간 그 팔은 **자동으로 CONTAMINATED** 가 된다 —
+  #    즉 «전제를 만드는 공식 수단»이 «판정을 무효로 만드는 수단»이었다.
+  #    실측: CTRL 3팔이 `rm -f .claude/soul_tenets.txt`(내가 시킨 그 삭제) 한 줄 때문에 전량 무효.
+  #    ⇒ setup 이 만든 변화를 기준선으로 빼고, **팔이 만든 변화만** 본다.
+  #    ⚠️ 이것은 오염 검사를 «약화»시키는 게 아니다: setup 은 내가 선언한 조작이고 로그에 남는다.
+  #       팔이 만든 변화는 여전히 한 줄도 허용 안 된다(observe 모드).
+  ( cd "$WORK" && git status --porcelain ) > "$WRAP/_tree_baseline.txt" 2>/dev/null
 
   if [ "$MODE" = observe ]; then
     TOOLS=(--tools "Read,Grep,Glob")
@@ -207,7 +216,14 @@ for r in $(seq 1 "$REPS"); do
 
   # Report what the arm changed inside its own clone — in `act` mode this is the interesting part,
   # and in `observe` mode a non-empty diff means --restricted did not hold and the run is void.
-  ( cd "$WORK" && git status --porcelain ) > "$OUTDIR/${ARM}_r${r}.treediff.txt" 2>/dev/null
+  ( cd "$WORK" && git status --porcelain ) > "$WRAP/_tree_final.txt" 2>/dev/null
+  # setup 기준선을 뺀다. 기준선 파일이 없으면(=setup 미사용) 빈 파일로 두어 종전과 동일하게 동작한다.
+  [ -f "$WRAP/_tree_baseline.txt" ] || : > "$WRAP/_tree_baseline.txt"
+  comm -13 <(sort "$WRAP/_tree_baseline.txt") <(sort "$WRAP/_tree_final.txt") \
+       > "$OUTDIR/${ARM}_r${r}.treediff.txt" 2>/dev/null
+  # 🟥 setup 이 만든 변화도 «버리지 말고» 별도로 남긴다 — 조용히 사라지면 다음 감사자가
+  #    «CTRL 이 정말 등록부 없이 돌았나»를 확인할 방법이 없다.
+  cp "$WRAP/_tree_baseline.txt" "$OUTDIR/${ARM}_r${r}.setupdiff.txt" 2>/dev/null || true
   tchanged=$(wc -l < "$OUTDIR/${ARM}_r${r}.treediff.txt" | tr -d ' ')
   if [ "$MODE" = observe ] && [ "$tchanged" -gt 0 ]; then
     echo "     🟥 r$r VOID — observe mode wrote $tchanged path(s); the read-only tool set did not hold"
