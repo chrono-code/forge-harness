@@ -130,7 +130,41 @@ no runnable path exists (run-first, ask-last — sonnet_floor_doctrine.md §Auto
 
 Record sim results in the Axes 2–3 marker + sub-agent invocation log.
 
-### Marker axis fields — `axes-run:` · `controls:` · `standpoint:`
+### Marker axis fields — `axes-run:` · `controls:` · `standpoint:` · `soul:` · `soul-check:` · `defeater:` · `tenets:`
+
+> 🟥 **이 제목의 뒤 넷은 2026-08-30 에 추가됐고, 그 이유가 이 절이 이미 적어둔 결함이다.**
+> `soul:` 은 **2026-08-21 부터 커밋을 하드 차단**해왔는데 **어느 규칙 파일에도 적혀 있지 않았다**
+> 🟥 **정정 (같은 날, cross-family codex #1 지목 — 자력 적발 0)**: 이 줄의 초판은
+> «`soul:`·`soul-check:` 이 하드 차단» 이라고 적었는데 **`soul-check:` 은 부재 시 차단하지
+> 않는다**(`validate_soul_check_leg` 은 필드가 없으면 `return 0`). 실측 rc=0.
+> 즉 **오늘 gate-locality 를 고치면서 같은 절에 새 오설명을 심었다** —
+> `[[feedback_rule_misdescribes_its_own_machine]]` 의 당일 재발이다.
+> **`soul-check:` 은 «있으면 enum 이 강제되고, 없으면 통과»** 다(채택은 점진적이다). — 즉 아래 문단이 스스로 명명한 «spec 쪽 gate-locality 결함»이 같은 절 안에서
+> 9일간 살아 있었다. 블라인드 플로어 티어 sim(2026-08-30, reps=3)이 그것을 실측으로 잡았다:
+> 세 팔 전부 나머지 11개 필드를 정확히 썼고 **`soul:` 을 하나도 안 썼다.** 훅이 차단하는 필드인데도.
+> 원인은 모델이 아니라 배선이다 — 행위자가 읽는 자리에 그 요구가 없었다(`FH-T07`).
+
+**`soul:` (또는 `①영혼:`) — 설계 *전에* 쓴 «성공 정의 / 절대 안 함». 없으면 `없음`.**
+공허한 한 단어(placeholder)는 차단된다. 훅은 **존재와 비공허성**만 본다 — 내용의 옳음은 안 본다.
+🟥 provenance(«정말 설계 전에 썼나»)는 **파일에서 확인 불가**다. 훅 주석이 그렇게 명시한다.
+
+**`soul-check:` — 있으면 닫힌 enum, 없으면 통과(부재는 차단 아님).** `reflected(<무엇이 되돌아왔나 — 어긋남 여부>)` ·
+`violated(<어느 절반이 깨졌나 + 무엇을 했나>)` · `DEGRADED_NOT_RUN(<왜>)` ·
+`DEGRADED_NO_SOUL(<왜>)` · `UNKNOWN` · `not-applicable(<왜>)`.
+🟥 `violated` 는 **일부러 합법이다.** 기록된 위반이 숨겨진 위반보다 낫고, 성공만 받는 레인은
+지우는 법을 훈련시킨다.
+
+**`defeater:` — 「이 성공 정의가 틀렸다면 무엇이 *관측*될 것인가」 한 줄.** 2026-09-01 이후
+날짜의 마커에만 강제된다(그 전 마커는 소급 없음 — `SOUL_PRESENT_GRACE_DATE` 와 같은 패턴).
+훅은 **비공허성만** 본다(관측 가능한 사건을 명명했는가). 외부 근거: Assurance 2.0 의
+*defeaters and counterevidence*. 🟥 저자가 자기 반증조건을 적는 것은 **게임 가능하고, 안 닫힌다** —
+닫는 방향은 cross-family 가 그 마커를 읽는 것이다.
+
+**`tenets:` — 선택. 인용하면 참조 무결성이 강제된다.** `.claude/soul_tenets.txt` 에 실재하는
+`FH-T\d\d` ID 만 허용되고, 미등록 ID 는 차단된다(오타를 조용히 버리지 않기 위해서다).
+🟥 인용은 **이 줄에서만** 읽는다 — 다른 줄에서 ID 를 «설명»하는 것은 인용이 아니다.
+인용이 하나도 없으면 통과한다(채택은 점진적이다).
+
 
 These are enforced (the first two) or expected (the third) on the Axes 2–3 marker. Until 2026-08-17
 **none of the three appeared in any rule file** — the format that hard-blocks the commit was legible

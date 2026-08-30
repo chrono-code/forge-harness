@@ -84,6 +84,87 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# ── 경로 격리 계산 (함수로 꺼냈다 — 레인이 «실행»해서 검증할 수 있게) ──────────────
+# 🟥 처음엔 인라인이었고 레인이 `grep` 으로만 확인했다. new-code-anchor 게이트가 그것을
+#    **MENTION_ONLY** 로 잡았다: 「레인이 파일을 이름만 대고 실행하지 않는다」.
+#    옳은 지적이다 — 그래서 함수로 꺼내 레인이 진짜로 부르게 한다.
+fh_sim_write_path_isolation() { # $1=WORK $2=OUTDIR $3=REPO_ROOT $4=HOME → 0=썼다 1=격리없음(차단)
+  local _w="$1" _out="$2" _repo="$3" _home="$4"
+  # ── 🟥 경로 격리 (2026-08-30 — 이 러너는 이날까지 «격리»가 아니었다) ──────────────
+  #    헤더가 *"disposable clone 이라 오염 없음"* 이라 적어왔는데, **클론은 cwd 일 뿐이고
+  #    읽기는 어디든 갔다.** `--tools "Read,Grep,Glob"` 는 «쓰기»만 막지 «경로»를 안 막는다.
+  #    실측(같은 날, known-pair): observe 팔이 `/tmp` 파일을 출력했고, **채점용 qset 을
+  #    정답 토큰까지 통째로** 읽었고, 앞선 팔의 답변 디렉터리를 나열했다(159,050 파일).
+  #    ⇒ 맥락유지 3개 회차가 전부 무효. 세 번의 VOID 는 «다른 증상 셋»이 아니라 **근인 하나**였다.
+  #
+  # 🟥 **첫 수리는 과차단이었다 — 클론 자신을 막았다.** `Read(//tmp/**)` 로 통째로 막았는데
+  #    `WRAP="$_out/..."` 라서 `--out /tmp/...` 이면 **클론이 그 아래 산다.** ARM 이
+  #    *"working directory 에 대한 read 권한이 모든 도구에서 거부"* 라고 답했다.
+  #    ⇒ 광범위 차단 대신 **위험한 곳만 이름으로** 막는다: 실제 레포 · 홈 · 이 회차의 out 디렉터리.
+  #    그 셋이 «이 실험이 자기 답을 볼 수 있는» 전부다(소스·qset·앞선 팔의 답변).
+  #    ⚠️ 완전 격리가 아니다 — 열거 안 한 절대경로는 여전히 읽힌다. 그렇게 적는다.
+  # 형태도 실측으로 골랐다: `Read(/x/**)`(슬래시 하나)는 **안 막힌다**. `Read(//x/**)` 라야 한다.
+  # `Glob(...)`/`Grep(...)` 을 섞으면 클론 안까지 과차단됐다 — 그래서 **Read 만** 둔다.
+  mkdir -p "$_w/.claude"
+  # 🟥 cross-family(agy #4): 여기가 **명백한 fail-open** 이었다 — 격리 규칙이 없는
+  #    `settings.local.json` 이 클론에 있으면 주입을 건너뛰고 **비격리 상태로 측정을 강행**한다.
+  #    「SKIPPED 라고 알렸다」는 변명이 안 된다: 이 회차의 산출은 그래도 숫자로 쓰인다.
+  #    ⇒ 격리 없이는 **회차를 시작하지 않는다**. 강행은 명시 플래그로만.
+  if [ -f "$_w/.claude/settings.local.json" ] && ! grep -q '"deny"' "$_w/.claude/settings.local.json" 2>/dev/null; then
+    if [ "${FH_SIM_NO_ISOLATION_OK:-}" = 1 ]; then
+      echo "  ⚠️  arm 격리 없이 강행됨(FH_SIM_NO_ISOLATION_OK=1) — 이 회차는 오염 가능하다고 기록해라." >&2
+    else
+      echo "  ❌ arm settings.local.json 이 이미 있는데 deny 규칙이 없다 — **격리 없이 재지 않는다.**" >&2
+      echo "     강행: FH_SIM_NO_ISOLATION_OK=1 (그러면 그 회차는 오염 가능으로 기록해라)" >&2
+      : # 오염 표기는 호출부가 한다(함수는 rc 로만 말한다)
+      return 1
+    fi
+  fi
+  if [ -f "$_w/.claude/settings.local.json" ]; then
+    :
+  else
+    # 🟥 **물리경로로 계산한다** (2026-08-30, 세 번째 수리). macOS 에서 `/tmp` 는
+    #    `/private/tmp` 심링크라 **같은 자리가 두 이름**을 갖는다. 논리경로만 적으면
+    #    어떤 회차는 클론을 막고(과차단) 어떤 회차는 레포를 못 막는다(누출) — 즉 격리가
+    #    **비결정적**이 된다. 실측: 같은 설정에서 한 팔은 «working directory 거부», 다른 팔은
+    #    레포의 qset 을 읽었다. 비결정적 격리는 격리가 아니다.
+    _phys(){ ( cd "$1" 2>/dev/null && pwd -P ) || printf '%s' "$1"; }
+    _p_repo=$(_phys "$_repo"); _p_home=$(_phys "$_home")
+    _p_out=$(_phys "$_out");     _p_work=$(_phys "$_w")
+    _deny_repo="//${_p_repo#/}"
+    _deny_home="//${_p_home#/}"
+    _deny_out="//${_p_out#/}"; _extra_out=""
+    # 🟥 클론이 out 아래 살면 out 을 통째로 막을 수 없다. 그 경우 «앞선 팔의 답변 파일»만 막는다.
+    # 클론이 out 아래 살면 out 을 통째로 못 막는다. 그때는 «다른 팔의 산출»만 막는다 —
+    # 🟥 `*.txt` 만으로는 부족했다: 다른 팔의 **클론 트리**(`w_*/repo/**`)에 주입된 봉인 원장을
+    #    읽을 수 있었다. 그것도 막고, **내 클론은 예외로 둔다**.
+    case "$_p_work" in
+      "$_p_out"/*) _deny_out="//${_p_out#/}/*.txt"; _extra_out=",\"Read(//${_p_out#/}/w_*/repo/tracks/**)\"" ;;
+    esac
+    # 🟥 cross-family(agy #1): 기본 `$TMPDIR`(macOS `/var/folders/**`)·공유 경로·마운트 볼륨이
+    #    빠져 있었다. 산출물이 기본 TMPDIR 에 생기면 앞선 팔의 결과가 그대로 읽힌다.
+    #    🟥 단 **클론이 사는 경로는 막으면 안 된다**(첫 수리가 그렇게 자기 발을 쐈다) —
+    #    그래서 `$_w` 를 품는 접두사는 목록에서 뺀다. 계산으로 하지, 손으로 고르지 않는다.
+    _extra=""
+    for d in /var/folders /private/var/folders /Users/Shared /Volumes /var/tmp /private/tmp /tmp; do
+      _pd=$(_phys "$d"); [ -n "$_pd" ] || continue
+      case "$_p_work" in "$_pd"/*) continue ;; esac  # 내 클론이 그 아래면 막지 않는다(물리경로 비교)
+      case "$_p_out"  in "$_pd"/*) continue ;; esac  # out 도 마찬가지 — 위에서 정밀하게 다룬다
+      d="$_pd"
+      case "$_extra" in *"Read(//${d#/}/**)"*) continue ;; esac   # 중복 금지(실행으로 드러났다)
+      _extra="$_extra,\"Read(//${d#/}/**)\""
+    done
+    # 🟥 함수로 꺼내 «실행»해보자마자 JSON 결함이 드러났다: 종전엔 `_deny_out` 안에 따옴표·괄호를
+    #    끼워넣어 `Read(...*.txt` 가 안 닫히고 `tracks/**))` 로 두 번 닫혔다. **grep 레인이었으면
+    #    영영 못 봤다** — new-code-anchor 게이트가 MENTION_ONLY 를 막은 것이 이걸 잡았다.
+    #    ⇒ 조각을 문자열로 조립하지 말고 **필드별로 분리**한다. 그리고 중복도 제거한다.
+    printf '{"permissions":{"deny":["Read(%s/**)","Read(%s/**)","Read(%s)"%s%s]}}' \
+      "$_deny_repo" "$_deny_home" "$_deny_out" "$_extra_out" "$_extra" > "$_w/.claude/settings.local.json"
+  fi
+
+  return 0
+}
+
 ARM=""; REPS=1; PROMPT=""; MODE="observe"; MODEL="sonnet"; TIMEOUT=900; OUTDIR=""; NOHARNESS=0; SETUP=""; EXTRA=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -165,6 +246,17 @@ for r in $(seq 1 "$REPS"); do
       continue
     fi
   fi
+  # 🟥 기준선은 «클론 직후»가 아니라 «--setup 직후»다 (2026-08-30, 첫 실사용이 잡았다).
+  #    아래 :treediff 는 `git status --porcelain` 을 클론 시점 기준으로 읽었다. 그러면
+  #    `--setup` 이 추적 파일을 건드리는 순간 그 팔은 **자동으로 CONTAMINATED** 가 된다 —
+  #    즉 «전제를 만드는 공식 수단»이 «판정을 무효로 만드는 수단»이었다.
+  #    실측: CTRL 3팔이 `rm -f .claude/soul_tenets.txt`(내가 시킨 그 삭제) 한 줄 때문에 전량 무효.
+  #    ⇒ setup 이 만든 변화를 기준선으로 빼고, **팔이 만든 변화만** 본다.
+  #    ⚠️ 이것은 오염 검사를 «약화»시키는 게 아니다: setup 은 내가 선언한 조작이고 로그에 남는다.
+  #       팔이 만든 변화는 여전히 한 줄도 허용 안 된다(observe 모드).
+  ( cd "$WORK" && git status --porcelain ) > "$WRAP/_tree_baseline.txt" 2>/dev/null
+
+  fh_sim_write_path_isolation "$WORK" "$OUTDIR" "$REPO_ROOT" "$HOME" || { CONTAMINATED=1; continue; }
 
   if [ "$MODE" = observe ]; then
     TOOLS=(--tools "Read,Grep,Glob")
@@ -207,7 +299,14 @@ for r in $(seq 1 "$REPS"); do
 
   # Report what the arm changed inside its own clone — in `act` mode this is the interesting part,
   # and in `observe` mode a non-empty diff means --restricted did not hold and the run is void.
-  ( cd "$WORK" && git status --porcelain ) > "$OUTDIR/${ARM}_r${r}.treediff.txt" 2>/dev/null
+  ( cd "$WORK" && git status --porcelain ) > "$WRAP/_tree_final.txt" 2>/dev/null
+  # setup 기준선을 뺀다. 기준선 파일이 없으면(=setup 미사용) 빈 파일로 두어 종전과 동일하게 동작한다.
+  [ -f "$WRAP/_tree_baseline.txt" ] || : > "$WRAP/_tree_baseline.txt"
+  comm -13 <(sort "$WRAP/_tree_baseline.txt") <(sort "$WRAP/_tree_final.txt") \
+       > "$OUTDIR/${ARM}_r${r}.treediff.txt" 2>/dev/null
+  # 🟥 setup 이 만든 변화도 «버리지 말고» 별도로 남긴다 — 조용히 사라지면 다음 감사자가
+  #    «CTRL 이 정말 등록부 없이 돌았나»를 확인할 방법이 없다.
+  cp "$WRAP/_tree_baseline.txt" "$OUTDIR/${ARM}_r${r}.setupdiff.txt" 2>/dev/null || true
   tchanged=$(wc -l < "$OUTDIR/${ARM}_r${r}.treediff.txt" | tr -d ' ')
   if [ "$MODE" = observe ] && [ "$tchanged" -gt 0 ]; then
     echo "     🟥 r$r VOID — observe mode wrote $tchanged path(s); the read-only tool set did not hold"

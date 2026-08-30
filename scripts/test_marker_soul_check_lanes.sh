@@ -30,6 +30,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$REPO_ROOT/templates/.git-hooks/pre-commit"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 
+# 🟥 헬퍼도 같이 추출한다 — 안 하면 다리가 fail-open 이 되고 레인이 거짓 PASS 를 낸다
+#    (실측 2026-08-30: R1 이 BLOCK 기대에 PASS). 훅은 이제 헬퍼 부재를 HARNESS-ERROR 로 낸다.
+# 🟥 v3 부터 `_marker_template_residue` 는 `marker_recreate_hint` 를 **부른다**(템플릿에서 파생).
+#    헬퍼 하나만 뽑으면 미정의로 죽고, 그러면 이 검사는 SKIPPED 를 낸다(통과 아님).
+sed -n '/^marker_recreate_hint()/,/^}/p'    "$HOOK" >  "$T/_helpers.sh"
+sed -n '/^_marker_template_residue()/,/^}/p' "$HOOK" >> "$T/_helpers.sh"
 sed -n '/^validate_soul_check_leg()/,/^}/p' "$HOOK" > "$T/fn.sh"
 
 # Instrument calibration — an empty extraction would let every fixture "pass" against nothing.
@@ -106,6 +112,11 @@ soul-check: reflected(codex 가 성공정의 대조 — 어긋남 없음) — 20
 
 # ── ①영혼 presence lane (validate_soul_present_leg) ───────────────────────────
 sed -n '/^validate_soul_present_leg()/,/^}/p' "$HOOK" > "$T/fnp.sh"
+cat "$T/_helpers.sh" "$T/fnp.sh" > "$T/fnp2.sh" && mv "$T/fnp2.sh" "$T/fnp.sh"
+cat "$T/_helpers.sh" "$T/fn.sh"  > "$T/fn2.sh"  && mv "$T/fn2.sh"  "$T/fn.sh"
+# 🟥 계기 캘리브레이션 — 헬퍼가 실제로 붙었나. 안 붙으면 다리가 HARNESS-ERROR 를 내고
+#    모든 레인이 BLOCK 으로 쏠려 «잘 막는다»처럼 보인다. 그건 판별력이 아니다.
+grep -q '^_marker_template_residue()' "$T/fnp.sh" || { echo "❌ HARNESS-ERROR — 헬퍼 미결합"; exit 1; }
 if ! grep -q 'SOUL_PRESENT_GRACE' "$T/fnp.sh" && ! grep -q '①영혼 line' "$T/fnp.sh"; then
   echo "❌ HARNESS-ERROR — validate_soul_present_leg did not extract. Aborting."
   exit 1
@@ -205,6 +216,31 @@ soul-check: DEGRADED_NO_SOUL(설계 전에 성공 정의를 쓰지 않았다 —
 # `없음` is a first-class value the padded form is no longer the only way through.
 lane N3-padded-confession        PASS  'soul: 없음 — 설계 전에 안 썼다. 사후 재구성이 아니라 그 사실을 적는다. 붙잡고 있던 것은 범위 결정 하나였다
 axes-run: ⓐ=codex'
+
+# ── R1/R2 — 템플릿 잔여 (2026-08-30, 블라인드 sim 이 자기 힌트에 걸렸다) ──────────
+#    힌트에 `soul:` 예시를 넣자마자 플로어 티어 3/3 이 **자리표시자를 그대로** 복사했고
+#    비공허성 검사를 통과했다. 채널 검사로 닫았다: «이 기록이 템플릿 자신인가».
+# 🟥 이 둘은 `planep`(presence 다리)로 돌려야 한다. 초판은 `lane`(soul-check 다리)로 짜서
+#    **틀린 함수를 겨눴고**, BLOCK 기대에 PASS 가 나왔다. 초록/적색이 아니라 «무엇을 겨눴나»였다.
+# 🟥 **이 레인의 기대값이 v3 에서 바뀐다. 결과에 맞춘 게 아니라 범위가 좁아진 것이고,
+#    그 좁아짐이 의도다.** v2 는 「꺾쇠+공백/비-ASCII」로 일반화해 이 문장을 잡았는데,
+#    같은 규칙이 `Map<String, Object>` 와 `<사용자_ID>` 를 **과차단**했다(두 계열 독립 지적).
+#    「이 꺾쇠가 자리표시자인가 타입인가」는 판단이고, 판단은 코드로 안 굳힌다.
+#    v3 는 «우리가 배포한 템플릿과 같은가»만 본다 — 아래 문장은 힌트에 없으므로 통과한다.
+#    ⚠️ 이것은 **명명된 잔여**다: 모델이 힌트를 자기 말로 바꿔 쓰면 안 잡힌다.
+planep R1-nonhint-paraphrase-not-blocked PASS 2026-09-05 "soul: 성공 정의 = <이 fix가 통과했다고 판단할 관측 가능한 결과> · 절대 안 함 = <이번 수정에서 하지 않기로 정한 것>"
+# 🟥 컨트롤 — 실제로 채운 줄은 통과해야 한다. 없으면 R1 은 «presence 검사를 통째로 껐다»와 구분 안 된다.
+# 🟥 cross-family 가 잡은 우회 — 내 힌트의 자리표시자 `<...>` 가 잔여 목록에 없었다
+#    (codex #3 · agy 2-b 독립 수렴). 픽스처는 «가장 쉬운 표기»가 아니라 «뚫리는 표기»여야 한다.
+planep R3-hint-placeholder-blocks BLOCK 2026-09-05 "soul: 성공 정의 = <...> · 절대 안 함 = <...>"
+# 🟥 2라운드(agy 결함1): 잔여 목록이 «손목록»이라 규칙 문서가 새 자리표시자를 실을 때마다
+#    어긋났다. 규칙으로 일반화했고, 아래가 그 양방향 고정이다. 차단 5 · 과차단 0 을 잰 뒤 박았다.
+# 🟥 v3 는 «힌트가 실제로 주는» 자리표시자만 본다. 스펙 문서에만 있는 표기는 안 잡히고,
+#    그건 명명된 잔여다(판단을 코드로 굳히는 것보다 낫다는 결정).
+planep R4-hint-derived-placeholder-blocks BLOCK 2026-09-05 "soul-check: reflected(<무엇이 되돌아왔나>)"
+planep R5-generic-type-not-blocked PASS 2026-09-05 "soul: 성공 정의 = Map<String, Object> 가 직렬화된다 · 절대 안 함 = 공개 API 깨기"
+planep R6-inequality-not-blocked PASS 2026-09-05 "soul: 성공 정의 = n < 3 이면 판정 보류하고 n > 5 면 채점한다 · 절대 안 함 = 바 미달로 결론내기"
+planep R2-real-content-still-passes PASS 2026-09-05 "soul: 성공 정의 = 레인 28개가 초록이고 되돌림에서 자기 레인만 적색 · 절대 안 함 = 결과에 맞춰 기대값 바꾸기"
 
 echo
 if [ $FAIL -eq 0 ]; then echo "SOUL LANES: PASS"; else echo "SOUL LANES: FAIL"; fi

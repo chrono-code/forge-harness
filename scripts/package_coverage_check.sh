@@ -47,6 +47,25 @@ ACCEPTED_ABSENT=(
   # `selfcheck.sh` 는 대상 부재 시 `_absent_subject_verdict` 로 빠지므로 패키지 모드에서 옳게 degrade 한다.
   "scripts/outbound_query_guard.sh"
   "scripts/test_outbound_query_lanes.sh"
+  # 🟥 영혼(judgment-circuit) 3종 — **일부러 출하하지 않는다.** 위 outbound 가드와 같은 이유다.
+  # 이 셋은 `.claude/soul_tenets.txt`(=**이 레포의** 심지 원칙 등록부)를 전제로 하는데, 그 파일은
+  # 소비자에게 안 나간다 — 소비자의 tenet 은 소비자가 쓰는 것이지 우리가 주는 것이 아니다
+  # (`.claude/regression/probes.md` 가 이미 같은 논리로 미출하다).
+  # 🟥 측정하고 결정했다(2026-08-30): 등록부를 치우고 셋을 돌리니 rc=1·1·10 — 즉 그대로 출하하면
+  # **신선 설치가 100% 실패**한다. CLAUDE.md 가 «모든 새 install 을 막는 게이트는 엄격한 게이트가
+  # 아니라 우회 훈련기»(→ `--no-verify` 훈련 → 같은 훅의 Destructive-Op 게이트 무장해제)라 못박은
+  # 그 형태다. 훅 자체(`templates/.git-hooks/pre-commit`)는 나가고, 인용이 없는 마커는 통과하므로
+  # 소비자 게이트는 열린 채로 남는다.
+  # ⚠️ **남은 갭을 이름으로**: 소비자는 자기 install 의 soul 다리를 검증할 레인을 못 받는다.
+  #    `test_hook_leg_wiring_lanes.sh` 는 원리상 등록부 없이도 돌 수 있어야 하고(호출부만 보므로),
+  #    그렇게 고치면 이 목록에서 빼는 것이 맞다. 오늘은 안 고쳤다 — 미측정이 아니라 미착수다.
+  "scripts/test_marker_soul_tenet_lanes.sh"
+  "scripts/test_hook_leg_wiring_lanes.sh"
+  "scripts/soul_trace.sh"
+  # 🟥 sim 경로격리 레인 — 출하 안 한다. `sim_isolated_run.sh` 는 이 레포의 측정 도구이고
+  #    이 레인은 «그 러너가 클론에 무엇을 써넣는가»를 본다. 소비자에게 그 러너가 없으면
+  #    레인이 HARNESS-ERROR 로 죽고, 그건 신선 설치를 막는 형태가 된다(위 outbound 와 동일 논리).
+  "scripts/test_sim_path_isolation_lanes.sh"
   ".claude/registry/LOCAL_SKILL_REGISTRY.md"
   ".claude/regression/probes.md"
   # Its sibling, and absent for the same reason one layer up: this file records which sections of
