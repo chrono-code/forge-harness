@@ -69,7 +69,12 @@ author_note() {
 #   🟥 «커밋 0건»과 «레포가 아님»을 같은 침묵으로 내지 않는다 — 호출부에서 갈라 적는다.
 repo_commits() {
   local repo="$1" day="$2" who="$3"
-  git -C "$repo" log --all --no-merges \
+  # 🟥 `-E` 가 없으면 `--author` 는 **BRE** 라 `|` 가 리터럴이 되고, 여러 신원을 한 필터로
+  #    묶으려는 순간 **조용히 0건**이 나온다(실측 2026-08-30: `-E` 117건 vs 기본 0건).
+  #    「커밋이 없었다」와 구분이 안 되는 실패라 이 스크립트에서 가장 위험한 자리였다.
+  #    ⚠️ 컨트롤만 보면 못 잡는다 — 없는 author 는 두 모드 모두 0 을 낸다.
+  #    known-positive(실재하는 다중 신원)를 같이 재야 갈린다.
+  git -C "$repo" log -E --all --no-merges \
       --since="${day} 00:00:00" --until="${day} 23:59:59" \
       ${who:+--author="$who"} \
       --pretty=format:'  - %h %s (%cr)' 2>/dev/null
@@ -134,6 +139,12 @@ self_test() {
   local none; none="$(repo_commits "$T/projects/demo" "$y" "someone-else@t")"
   [ -z "$none" ] && chk "L3 known-negative: 다른 author 는 안 잡는다(판별력)" empty empty \
                  || chk "L3 known-negative: 다른 author 는 안 잡는다(판별력)" "nonempty" empty
+  # 🟥 다중 신원 정규식이 실제로 먹나 — `-E` 누락이면 여기서 0 이 나온다.
+  #    known-negative(없는 author)만으로는 못 잡는다: 두 모드 다 0 이기 때문이다.
+  local multi; multi="$(repo_commits "$T/projects/demo" "$y" 'zzz-nobody|me@t')"
+  case "$multi" in *"fixture: 어제 커밋"*) chk "L4b 다중 신원 정규식(a|b)이 먹는다 — -E 앵커" hit hit ;;
+                   *)                      chk "L4b 다중 신원 정규식(a|b)이 먹는다 — -E 앵커" miss hit ;; esac
+
   # 날짜 창 — 그저께로 물으면 안 잡혀야 한다
   local other; other="$(repo_commits "$T/projects/demo" "1999-01-01" "me@t")"
   [ -z "$other" ] && chk "L4 다른 날짜 창은 안 잡는다" empty empty \
