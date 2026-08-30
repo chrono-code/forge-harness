@@ -237,8 +237,12 @@ fi
 # content out of SKILL.md to lean the resident layer — coverage shrank as the diet progressed.
 # Over-firing measured before shipping: of the last 60 commits, 28 touched a detail file and 26
 # already tripped HEAVY via a companion file, so this adds a heavy path to ~7% of them.
+# 🟥 `.claude/soul_tenets.txt` 추가 (2026-08-30, cross-family codex #7 — 자력 적발 0).
+#    등록부는 **심지 원칙의 정본**인데 어느 분류에도 안 걸려서, 등록부만 고치는 커밋이
+#    «no FH asset staged» 로 빠져 4축 게이트를 통째로 건너뛰었다. tenet 을 바꾸는 것은
+#    이 레포에서 가장 하중 큰 편집 중 하나다 — LIGHT 는커녕 CARVEOUT 도 아니다.
 HEAVY=$(echo "$STAGED" \
-  | grep -E "(SKILL(_detail)?\.md|^plugins/[^/]+/skills/[^/]+/.*\.md$|\.claude/rules/|^knowledge/shared/rules/|templates/|CLAUDE\.md|^scripts/.*\.sh$|^plugins/[^/]+/agents/.*\.md$|^\.claude/agents/.*\.md$)" || true)
+  | grep -E "(SKILL(_detail)?\.md|^plugins/[^/]+/skills/[^/]+/.*\.md$|\.claude/rules/|^knowledge/shared/rules/|templates/|CLAUDE\.md|^scripts/.*\.sh$|^plugins/[^/]+/agents/.*\.md$|^\.claude/agents/.*\.md$|^\.claude/soul_tenets\.txt$)" || true)
 
 # Carve-out candidates: knowledge/ docs, docs/*.md, AGENTS.md. Heavy only if substantive.
 CARVEOUT=$(echo "$STAGED" \
@@ -655,12 +659,32 @@ fi
 # 🟥 좁게 잡는다 — 꺾쇠를 정당하게 쓰는 기술 서술을 안 막으려고, **힌트에 실제로 등장하는
 #    문자열**만 본다. 목록이지 정규식 일반화가 아니다. 힌트를 바꾸면 여기도 같이 바꿔라.
 _marker_template_residue() { # $1 = 줄 내용  → 0 = 템플릿 잔여
-  case "$1" in
-    *"<이 fix가 통과했다고 판단할 관측 가능한 결과>"*) return 0 ;;
-    *"<이번 수정에서 하지 않기로 정한 것>"*)          return 0 ;;
-    *"<이 soul 이 틀렸다면 무엇이 관측될 것인가"*)    return 0 ;;
-    *"<무엇이 되돌아왔나>"*)                          return 0 ;;
-  esac
+  # 🟥 **세 번째 설계다. 앞의 둘이 왜 틀렸는지 남긴다** (cross-family 3라운드, 자력 적발 0).
+  #    v1 손목록  → 규칙 문서가 새 자리표시자를 실을 때마다 어긋났다(구조적 desync).
+  #    v2 일반규칙 → 「꺾쇠 안에 공백/비-ASCII」. 놓친 것: `<reason>` `< 무엇을 했나>` `<..>`.
+  #                 **과차단**: `Map<String, Object>` · `Result<T, Error>` · `<사용자_ID>`.
+  #                 두 계열이 각각 실물 문자열로 지적했다 — 그리고 그게 맞다.
+  # 🟥 v2 가 틀린 이유는 «구멍»이 아니라 **범주**다: 「이 꺾쇠가 자리표시자인가 타입인가」는
+  #    **판단**이고, §Mechanization Boundary 가 코드로 굳히지 말라는 바로 그 층이다.
+  #    기계가 답할 수 있는 것은 **«이 줄이 우리가 배포한 템플릿과 같은가»** 뿐이다.
+  # ⇒ v3: **템플릿에서 파생한다.** 힌트가 실제로 출력하는 문자열에서 `<...>` 조각을 런타임에
+  #    뽑아 그것만 본다. 목록을 손으로 안 적으므로 desync 가 **구조적으로 불가능**하다.
+  #    ⚠️ 정직한 대가: 「스펙 문서에만 있고 힌트에 없는」 자리표시자는 안 잡힌다. 그건 v1 의
+  #       구멍이 남은 것인데, 판단을 코드로 굳히는 것보다 낫다고 보고 **명명한 채로 둔다.**
+  local _line="$1" _tpl _frag
+  _tpl=$(marker_recreate_hint "X" 2>/dev/null)
+  # 힌트 문자열에서 `<...>` 조각을 뽑는다. 하나도 못 뽑으면 계기가 죽은 것이지 «잔여 없음»이 아니다.
+  _frag=$(printf '%s' "$_tpl" | grep -oE '<[^<>]+>' | sort -u)
+  if [ -z "$_frag" ]; then
+    echo "  ⚠️  template-residue: 힌트에서 자리표시자를 못 뽑았다 — 이 검사는 SKIPPED 다(통과 아님)." >&2
+    return 1
+  fi
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    case "$_line" in *"$f"*) return 0 ;; esac
+  done <<EOF_FRAG
+$_frag
+EOF_FRAG
   return 1
 }
 
@@ -1200,7 +1224,12 @@ validate_soul_tenet_refs() { # $1 = marker path
   #    ([[feedback_half_fix_propagation_boundary]] — 오늘 세 번째 반쪽).
   #    ⚠️ 필드로 좁히는 것이 교집합보다 낫다: 교집합은 «미등록 인용»을 조용히 버리는데,
   #    마커에서 그건 오타일 수 있고 오타는 잡아야 한다. 필드는 «어디가 인용인가»를 정한다.
-  ids=$(sed -n 's/^tenets:[[:space:]]*//p' "$m" 2>/dev/null | grep -oE 'FH-T[0-9]{2}' | sort -u)
+  # 🟥 cross-family 독립 수렴(codex #4 · agy 2-a): `^tenets:` 는 **선행 공백 하나로 우회**된다.
+  #    다른 마커 필드는 대부분 `^[[:space:]]*` 를 허용하는데 여기만 안 했다. 들여쓴 줄은
+  #    «인용 없음»으로 읽혀 미등록 ID 가 조용히 통과했다(실측 rc=0).
+  #    단수형 `tenet:` near-miss 도 같이 잡는다 — 필드명을 살짝 틀리면 검사가 통째로 빠진다.
+  ids=$(sed -n -E 's/^[[:space:]]*#*[[:space:]]*[Tt][Ee][Nn][Ee][Tt][Ss]?[[:space:]]*:[[:space:]]*//p' "$m" 2>/dev/null \
+        | grep -oE 'FH-T[0-9]{2}' | sort -u)
   [ -z "$ids" ] && return 0   # 인용 없음 = 합법. 채택은 점진적이다(thirdparty: 와 같은 형태)
   if [ ! -f "$reg" ]; then
     echo "  ❌ FAIL — 마커가 tenet ID 를 인용하는데 등록부가 없다: $rel"
@@ -1249,14 +1278,19 @@ validate_defeater_leg() { # $1 = marker path
     return 1
   fi
   mdate=$(printf '%s' "$m" | sed -nE 's/.*_([0-9]{4}-[0-9]{2}-[0-9]{2})\.marker$/\1/p')
+  # 🟥 near-miss 검사를 `n==0` 밖으로 꺼낸다 (cross-family codex #5, 2026-08-30 — 자력 적발 0).
+  #    종전에는 «정확한 defeater: 줄이 하나라도 있으면» near-miss 를 건너뛰었다. 그래서
+  #      defeater: 없음
+  #      defeaters: 진짜로 하고 싶은 말은 여기 적혀 있다
+  #    가 통과했다 — 저자는 두 번째 줄을 썼다고 믿는데 게이트는 첫 줄만 읽는다.
+  #    오타는 «부재»가 아니라 **오타**이고, 그 판정은 정확한 줄의 존재와 무관하다.
+  if grep -qE '^[[:space:]]*(defeaters:|defeator:|defeter:|defeater[[:space:]]+:|counter-evidence:|반증:)' "$m" 2>/dev/null; then
+    echo "  ❌ FAIL — defeater 키처럼 보이지만 정확히 'defeater:' 가 아닌 줄이 있다."
+    grep -nE '^[[:space:]]*(defeaters:|defeator:|defeter:|defeater[[:space:]]+:|counter-evidence:|반증:)' "$m" | sed 's/^/       /'
+    echo "     저자는 적었다고 믿는데 게이트는 못 읽는다 — 가장 조용한 실패다."
+    return 1
+  fi
   if [ "$n" -eq 0 ]; then
-    # 근사 키(near-miss)는 «부재»가 아니라 «오타»다 — 부재는 grace 로 넘어가지만 오타는 안 된다.
-    # 저자는 적었다고 믿는데 게이트는 못 읽는, 가장 조용한 실패다.
-    if grep -qE '^[[:space:]]*(defeaters:|defeator:|defeter:|defeater[[:space:]]+:|counter-evidence:|반증:)' "$m" 2>/dev/null; then
-      echo "  ❌ FAIL — defeater 키처럼 보이지만 정확히 'defeater:' 가 아닌 줄이 있다."
-      grep -nE '^[[:space:]]*(defeaters:|defeator:|defeter:|defeater[[:space:]]+:|counter-evidence:|반증:)' "$m" | sed 's/^/       /'
-      return 1
-    fi
     # 🟥 날짜를 못 읽으면 면제하지 않는다. 이 훅이 파일명을 `..._${TODAY}.marker` 로 만들므로
     # 날짜 없는 이름은 «오래된 것»이 아니라 «예상 밖»이다([[feedback_not_found_is_not_zero_family]]).
     [ -z "$mdate" ] || { [ "$mdate" \< "$DEFEATER_GRACE_DATE" ] && return 0; }
@@ -1982,6 +2016,31 @@ if [ "$GATE_MODE" = "full" ]; then
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
     else
       FAILED=1
+    fi
+    # ── 전부-부재 마커 표면화 (advisory · 2026-08-30, cross-family codex «가장 싼 우회») ──
+    # 🟥 모든 축을 «선언된 부재»로 채운 마커는 **형식적으로 완전히 합법**이다 — 그리고 그건
+    #    설계다. 선언된 부재가 침묵보다 낫다는 것이 이 게이트들의 전제이므로 **차단하지 않는다.**
+    #    그러나 «전부가 부재»라는 것 자체는 «기록의 속성»이라 기계가 볼 수 있다. 결론을 말하지
+    #    않고 세어서 보여준다 — 저자와 리뷰어가 그 마커를 다시 보게 만드는 것이 전부다.
+    #    (판정을 코드로 굳히면 §Mechanization Boundary 위반이다. 그래서 advisory 다.)
+    _empt=0
+    grep -qE '^[[:space:]]*soul:[[:space:]]*(없음|none|n/a)[[:space:]]*$' "$MARKER" && _empt=$((_empt+1))
+    grep -qE '^[[:space:]]*defeater:[[:space:]]*(없음|none|n/a)[[:space:]]*$' "$MARKER" && _empt=$((_empt+1))
+    grep -qE '^[[:space:]]*axes-run:.*ⓐ=none.*ⓒ=none.*ⓔ=none.*ⓕ=none' "$MARKER" && _empt=$((_empt+1))
+    grep -qE '^[[:space:]]*crossfamily:[[:space:]]*(UNKNOWN|DEGRADED)' "$MARKER" && _empt=$((_empt+1))
+    grep -qE '^[[:space:]]*standpoint:[[:space:]]*(UNKNOWN|DEGRADED)' "$MARKER" && _empt=$((_empt+1))
+    grep -qE '^[[:space:]]*thirdparty:[[:space:]]*(UNKNOWN|DEGRADED)' "$MARKER" && _empt=$((_empt+1))
+    # 🟥 3라운드 두 계열 독립 수렴: 임계 4 는 **정상 마커를 매번 시끄럽게** 만든다 —
+    #    혼자 한 작업이면 `axes-run: ⓐ=none…` + crossfamily/standpoint/thirdparty UNKNOWN 만으로
+    #    4점이 되고, 그건 «점진 채택»의 의도된 정상 상태다.
+    #    ⇒ 하중 지는 둘(`soul:`·`defeater:`)이 **부재일 때만** 세고, 임계를 5로 올린다.
+    _core_empty=0
+    grep -qE '^[[:space:]]*soul:[[:space:]]*(없음|none|n/a)[[:space:]]*$' "$MARKER" && _core_empty=1
+    grep -qE '^[[:space:]]*defeater:[[:space:]]*(없음|none|n/a)[[:space:]]*$' "$MARKER" && _core_empty=1
+    if [ "$_core_empty" = 1 ] && [ "$_empt" -ge 5 ]; then
+      echo "  ⚠️  이 마커는 $_empt 개 축이 «선언된 부재»다 — 형식은 통과지만 실질은 비어 있다."
+      echo "     막지 않는다(선언된 부재는 침묵보다 낫다). 다만 «게이트를 통과했다»가"
+      echo "     «검증했다»로 읽히지 않도록 여기 남긴다. 리뷰어는 이 줄을 보고 마커를 다시 봐라."
     fi
     # ── 이 게이트가 «안 읽는» 오늘자 마커가 또 있나 (advisory) ──────────────────────
     # WHY. 이 훅은 `.axes_23_passed_<브랜치슬러그>_<날짜>.marker` **하나만** 읽는다. 다른 이름으로

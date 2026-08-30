@@ -48,8 +48,19 @@ GAPS=()
 echo
 echo "-- forward: 각 tenet 이 최소 1개 기계 앵커에 걸렸나 --"
 for t in "${TENETS[@]}"; do
+  # 🟥 cross-family 독립 수렴(codex #6 · agy 1-①): 초판은 **테스트 픽스처**를 기계 앵커로 셌다.
+  #    `test_marker_soul_tenet_lanes.sh` 의 T8 픽스처가 `tenets: FH-T00` 을 담고 있어서
+  #    FH-T00 이 «앵커 1개»로 닫힌 것처럼 보였다 — 실제 배선 근거는 0이다.
+  #    앵커는 «그 원칙을 근거로 존재하는 프로덕션 유닛»이지 «그 문자열이 등장하는 파일»이 아니다.
+  #    ⇒ 레인 스위트(test_*)를 제외한다. 규칙 산문(.claude/rules)도 앵커가 아니다 — 기계가 아니다.
+#    🟥 2라운드(agy 결함3): 같은 논리로 `.claude/agents/*.md` 도, **모든 `.md`** 도 제외한다.
+#       초판은 rules 만 뺐는데 에이전트 정의는 똑같은 «프롬프트 산문»이다. 판별자는
+#       «디렉터리»가 아니라 «실행되는가»여야 한다 — 산문은 어디 있든 기계 앵커가 아니다.
+  #    ⚠️ 제외를 넓히면 «앵커 0» 이 늘어나는데, 그건 나빠진 게 아니라 **정직해진 것**이다.
   hits=$(grep -rlF "$t" "$REPO_ROOT/scripts" "$REPO_ROOT/templates" "$REPO_ROOT/.claude" 2>/dev/null \
-         | grep -v '/soul_tenets.txt$' | grep -v '/soul_trace.sh$' | sort -u)
+         | grep -v '/soul_tenets.txt$' | grep -v '/soul_trace.sh$' \
+         | grep -v '/test_[^/]*\.sh$' | grep -v '/\.claude/rules/' \
+         | grep -v '/\.claude/agents/' | grep -vE '\.md$' | sort -u)
   n=$(printf '%s' "$hits" | grep -c . )
   if [ "$n" -gt 0 ]; then
     printf '  ✅ %-8s %s anchor(s): %s\n' "$t" "$n" "$(printf '%s' "$hits" | sed "s|$REPO_ROOT/||" | tr '\n' ' ')"

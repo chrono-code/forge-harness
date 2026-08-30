@@ -30,7 +30,8 @@ sed -n '/^validate_defeater_leg()/,/^}/p'    "$HOOK" > "$T/fnd.sh"
 # 🟥 헬퍼도 결합한다 — 안 하면 `_marker_template_residue` 미정의로 다리가 HARNESS-ERROR 를 낸다.
 #    (2026-08-30: 그 가드를 fail-closed 로 만든 직후 이 스위트가 실제로 그렇게 짖었다.
 #     종전이었다면 미정의 명령이 «잔여 없음»으로 조용히 통과했을 자리다.)
-sed -n '/^_marker_template_residue()/,/^}/p' "$HOOK" > "$T/_helpers.sh"
+sed -n '/^marker_recreate_hint()/,/^}/p'    "$HOOK" >  "$T/_helpers.sh"
+sed -n '/^_marker_template_residue()/,/^}/p' "$HOOK" >> "$T/_helpers.sh"
 cat "$T/_helpers.sh" "$T/fnd.sh" > "$T/fnd2.sh" && mv "$T/fnd2.sh" "$T/fnd.sh"
 grep -q '^_marker_template_residue()' "$T/fnd.sh" || { echo "❌ HARNESS-ERROR — 헬퍼 미결합"; exit 1; }
 # 계기 캘리브레이션 — 빈 추출은 모든 픽스처를 «아무것도 아닌 것»에 대고 통과시킨다.
@@ -119,6 +120,32 @@ controls: known-negative 로 FH-T99 를 쓴다 — 등록부에 잡히면 HARNES
 defeater: 이 검사가 틀렸다면 미등록 ID 가 조용히 통과하는 것이 관측된다"
 # 🟥 컨트롤 — 필드 **안**의 미등록 ID 는 여전히 막혀야 한다. 이게 없으면 T8 은
 #    «인용 검사를 통째로 껐다»와 구분되지 않는다([[feedback_control_presence_is_not_discrimination]]).
+# 🟥 cross-family codex #5 — near-miss 검사가 «정확한 줄이 있으면» 건너뛰어졌다.
+#    저자는 오타 줄에 진짜 내용을 쓰고 정확한 줄엔 `없음` 을 쓴다 — 가장 조용한 실패다.
+dlane D11-stale-exact-plus-nearmiss BLOCK "$GRACE" 'defeater: 없음
+defeaters: 진짜 하고 싶은 말은 여기 있다'
+# 컨트롤 — 정확한 줄 하나만 있으면 통과해야 한다(near-miss 검사를 상시화한 게 과차단이 아님)
+dlane D12-single-exact-still-passes PASS "$GRACE" 'defeater: 되돌려도 아무 레인이 안 빨개지면 이 앵커는 장식이다'
+
+# 🟥 cross-family 가 잡은 fail-open — `^tenets:` 가 선행 공백/단수형으로 우회됐다
+#    (codex #4 · agy 2-a 독립 수렴). 미등록 ID 가 «인용 없음»으로 조용히 통과했다.
+tlane T10-leading-space-still-blocks BLOCK "$SOUL
+  tenets: FH-T99
+defeater: 이 검사가 틀렸다면 미등록 ID 가 들여쓴 줄로 통과하는 것이 관측된다"
+tlane T11-singular-key-still-blocks BLOCK "$SOUL
+tenet: FH-T99
+defeater: 이 검사가 틀렸다면 단수형 필드명으로 검사가 통째로 빠지는 것이 관측된다"
+# 컨트롤 — 들여쓴 «실재» ID 는 통과해야 한다(검사를 넓히기만 한 게 아님을 보인다)
+tlane T12-leading-space-real-id-passes PASS "$SOUL
+  tenets: FH-T00
+defeater: 이 검사가 틀렸다면 정상 인용이 차단되는 것이 관측된다"
+# 🟥 2라운드(agy 결함2): `tenets?` 확장에 **대소문자**가 빠져 `Tenets:` 가 «인용 없음»이 됐다.
+tlane T13-uppercase-key-still-blocks BLOCK "$SOUL
+Tenets: FH-T99
+defeater: 이 검사가 틀렸다면 대문자 키로 미등록 ID 가 통과하는 것이 관측된다"
+tlane T14-uppercase-key-real-id-passes PASS "$SOUL
+Tenets: FH-T00
+defeater: 이 검사가 틀렸다면 정상 인용이 대문자라는 이유로 차단되는 것이 관측된다"
 tlane T9-unregistered-INSIDE-field-still-blocks BLOCK "$SOUL
 tenets: FH-T00 FH-T99
 defeater: 이 검사가 틀렸다면 미등록 ID 가 조용히 통과하는 것이 관측된다"
