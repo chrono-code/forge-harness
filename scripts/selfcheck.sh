@@ -1091,6 +1091,22 @@ else
   fail=1
 fi
 
+# launchd_wiring_check — 주기 실행(frontier-digest)이 실제로 배선됐나. 자기검사 10 레인.
+# 🟥 이 검사가 없던 동안, 추적본 plist 는 «템플릿»(/path/to/ 플레이스홀더)인데 «바꿨는지»도
+#    «걸렸는지»도 보는 것이 0개였다. 소비자는 digest 가 돈다고 믿으면서 한 번도 안 도는 상태로
+#    지낼 수 있었고 그 부재는 아무 신호도 안 냈다. subject 있는데 anchor 없으면 FAIL 이다.
+if [ ! -f scripts/launchd_wiring_check.sh ]; then
+  _absent_subject_verdict "launchd_wiring_check --self-test" "scripts/launchd_wiring_check.sh" || fail=1
+else
+  if ! bash scripts/launchd_wiring_check.sh --self-test >/dev/null 2>&1; then
+    echo "FAIL  launchd_wiring_check --self-test"
+    bash scripts/launchd_wiring_check.sh --self-test 2>&1 | grep '❌' | head -5
+    fail=1
+  else
+    echo "PASS  launchd_wiring_check --self-test (10 lanes)"
+  fi
+fi
+
 # context_continuity_score — 「압축 후 모델이 여전히 답하나」의 격리 채점기. 자기검사 12 레인.
 # 🟥 이 배선이 없으면 채점 규칙이 조용히 썩는다. 실제로 이 스크립트는 만든 당일에 세 번 틀렸고
 #    (positive 오채점 · 거절 어휘 누락 · negative 게이트 구멍) 셋 다 이 레인들이 잡는 형태다.
