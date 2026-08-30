@@ -706,6 +706,13 @@ are **blocked at commit**.
 - `standpoint:` gains **`tier1b`** (a STATIC read of a target repo — executed nothing) plus a
   decide-in-order procedure, after blind floor-tier sims graded pure cold-reads as `tier2` for three
   rounds, defeating three separate rewordings via the enum's own internal logic.
+  🟥 **[RETRACTED 2026-08-17, noted here 2026-08-30]** — that sim result is withdrawn: the runs had
+  `tool_uses: 0`, so the agents never opened a file and the grades measure nothing. The live re-run
+  landed the **opposite** result at reps=1, below this repo's own bar — so neither direction is
+  established. **The `tier1b` rung itself stands** on its own wording (a read that executed nothing
+  is not `tier2`), not on this measurement. Canon: `CLAUDE.md` §Skeleton-Not-Muscle ·
+  `field_verdict_crossfamily_gate.md:310`. The sentence above is kept rather than deleted so the
+  citation stays traceable.
 - steel-quench Wave 1's sixth angle (**gate-locality**) gains the output-template row it never had —
   a mandatory angle that was structurally unreportable. Gate-locality failing its own check.
 - `verify-bidirectional` category 5 — **prescriptive doctrine statement**, the operator-correction
