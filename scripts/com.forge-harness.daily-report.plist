@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Replace every /path/to/... below with your own absolute paths before installing -->
+    <!-- 또는: bash scripts/launchd_wiring_check.sh render-daily > ~/Library/LaunchAgents/com.forge-harness.daily-report.plist -->
+    <key>Label</key>
+    <string>com.forge-harness.daily-report</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/path/to/forge-harness/scripts/daily_report.sh</string>
+    </array>
+
+    <!-- 매일 07:30. 잠자는 중이면 launchd 가 깨어난 뒤 한 번 돌린다(정각 보장 아님). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>7</integer>
+        <key>Minute</key><integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/path/to/forge-harness/tracks/_meta/logs/daily_report_out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/path/to/forge-harness/tracks/_meta/logs/daily_report_err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/path/to/home/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/path/to/home</string>
+        <!-- 🟥 author 필터: 레포 로컬 user.email 이 전역과 다르면 조용히 틀린 사람으로 걸러진다.
+             리포트 헤더가 불일치를 표시하지만, 여기서 못박아 두는 편이 낫다.
+             비워 두면 레포 설정을 쓴다. -->
+        <key>DR_AUTHOR</key>
+        <string></string>
+    </dict>
+</dict>
+</plist>

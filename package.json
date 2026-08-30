@@ -239,6 +239,8 @@
     "scripts/compaction_probe.sh",
     "scripts/context_continuity_score.sh",
     "scripts/launchd_wiring_check.sh",
+    "scripts/daily_report.sh",
+    "scripts/com.forge-harness.daily-report.plist",
     "scripts/judgment_circuit_lint.sh",
     "scripts/novelty_claim_check.sh",
     "templates/settings.Compaction.snippet.json",

@@ -27,7 +27,8 @@
 #
 # ── 사용 ──
 #   bash scripts/launchd_wiring_check.sh check
-#   bash scripts/launchd_wiring_check.sh render          # 채운 plist 를 인쇄(설치 안 함)
+#   bash scripts/launchd_wiring_check.sh render [<label>]   # 채운 plist 를 인쇄(설치 안 함)
+#                                                          기본 = frontier-digest
 #   bash scripts/launchd_wiring_check.sh --self-test
 #   FH_LAUNCHD_DIR=<dir> 로 검사 대상 디렉터리를 바꾼다(테스트용)
 #
@@ -38,6 +39,10 @@
 
 set -uo pipefail
 FH="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# 🟥 2026-08-30: 라벨 «둘» 로 확장. 초판은 하나만 보면서 그 사실을 범위로만 적어뒀는데,
+#    바로 그 미측정 칸에서 실제 결함이 나왔다 — daily-report 가 로컬 바인딩엔 「설치됨」인데
+#    plist 도 스크립트도 없었다. 범위를 적는 것과 재는 것은 다르다.
+LABELS="com.forge-harness.frontier-digest com.forge-harness.daily-report"
 TEMPLATE="$FH/scripts/com.forge-harness.frontier-digest.plist"
 LABEL="com.forge-harness.frontier-digest"
 LAUNCHD_DIR="${FH_LAUNCHD_DIR:-$HOME/Library/LaunchAgents}"
@@ -78,16 +83,19 @@ do_render() {
       -e "s|/path/to/home|$HOME|g" "$TEMPLATE"
 }
 
-do_check() {
+do_check_one() {
+  LABEL="$1"
+  TEMPLATE="$FH/scripts/$LABEL.plist"
   local has_launchd=0
   case "$(uname -s 2>/dev/null)" in Darwin) has_launchd=1 ;; esac
   local installed="$LAUNCHD_DIR/$LABEL.plist"
   [ -f "$installed" ] || installed=""
   local v; v="$(classify "$installed" "$has_launchd")"
+  echo "── $LABEL"
   echo "verdict: $v"
   case "$v" in
     NOT_APPLICABLE)        echo "  launchd 가 없는 OS 다. 「안 걸림」이 아니라 «해당 없음»이다." ;;
-    TEMPLATE_ONLY)         echo "  설치본이 없다 — 결함은 아니지만 **digest 는 안 돈다.**"
+    TEMPLATE_ONLY)         echo "  설치본이 없다 — 결함은 아니지만 **이 잡은 안 돈다.**"
                            echo "  걸려면:  bash scripts/launchd_wiring_check.sh render > ~/Library/LaunchAgents/$LABEL.plist"
                            echo "           launchctl bootstrap gui/\$(id -u) ~/Library/LaunchAgents/$LABEL.plist"
                            echo "  🟥 이 스크립트는 그 두 줄을 **대신 실행하지 않는다**(운영자 머신의 영속 설정)." ;;
@@ -99,6 +107,15 @@ do_check() {
     UNKNOWN)               echo "  🟥 읽을 수 없었다. UNKNOWN 을 TEMPLATE_ONLY 로 접지 마라." ;;
   esac
   case "$v" in INSTALLED_PLACEHOLDER|INSTALLED_BROKEN) return 1 ;; *) return 0 ;; esac
+}
+
+do_check() {
+  local rc=0 l
+  for l in $LABELS; do
+    do_check_one "$l" || rc=1
+    echo
+  done
+  return "$rc"
 }
 
 do_self_test() {
@@ -158,7 +175,8 @@ do_self_test() {
 
 case "${1:-check}" in
   check)       do_check ;;
-  render)      do_render ;;
+  render)      LABEL="${2:-com.forge-harness.frontier-digest}"
+               TEMPLATE="$FH/scripts/$LABEL.plist"; do_render ;;
   --self-test) do_self_test ;;
   *) echo "usage: launchd_wiring_check.sh [check|render|--self-test]" >&2; exit 2 ;;
 esac
