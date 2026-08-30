@@ -1091,6 +1091,22 @@ else
   fail=1
 fi
 
+# context_continuity_score — 「압축 후 모델이 여전히 답하나」의 격리 채점기. 자기검사 12 레인.
+# 🟥 이 배선이 없으면 채점 규칙이 조용히 썩는다. 실제로 이 스크립트는 만든 당일에 세 번 틀렸고
+#    (positive 오채점 · 거절 어휘 누락 · negative 게이트 구멍) 셋 다 이 레인들이 잡는 형태다.
+#    subject 는 있는데 anchor 가 없으면 FAIL 이지 skip 이 아니다.
+if [ ! -f scripts/context_continuity_score.sh ]; then
+  _absent_subject_verdict "context_continuity_score --self-test" "scripts/context_continuity_score.sh" || fail=1
+else
+  if ! bash scripts/context_continuity_score.sh --self-test >/dev/null 2>&1; then
+    echo "FAIL  context_continuity_score --self-test"
+    bash scripts/context_continuity_score.sh --self-test 2>&1 | grep '❌' | head -5
+    fail=1
+  else
+    echo "PASS  context_continuity_score --self-test (12 lanes)"
+  fi
+fi
+
 # marker axes-run lanes — 훅의 축 자기대조 형식 검사(§CLAUDE.md 3층 자기 대조)의 앵커.
 # ⚠️ 「4축」이라고 적혀 있었는데 2026-08-17 부로 **6축 분기가 생겼다**(마커 날짜 >= 그 날이면
 #    기호 키 ⓐ~ⓕ 요구, 미만이면 옛 ASCII 넷). 산문 층이라 레인은 안 깨지고 조용히 stale 이었다.
