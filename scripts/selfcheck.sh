@@ -586,6 +586,9 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_standpoint_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_thirdparty_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_check_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_marker_soul_tenet_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_hook_leg_wiring_lanes.sh" \
+  ".claude/soul_tenets.txt|scripts/test_marker_soul_tenet_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_precommit_staged_drift_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_address_lanes.sh" \
   "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \

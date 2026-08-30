@@ -1145,6 +1145,138 @@ validate_thirdparty_leg() { # $1 = marker path
   esac
   return 0
 }
+# ── ① 원자 tenet 참조 무결성 (2026-08-30) ─────────────────────────────────────────
+# tenet: FH-T02 (기계는 «기록의 속성»만 — 여기서는 참조 무결성) · FH-T01 (부재는 0이 아니다)
+#
+# WHY: 마커의 `①영혼` 은 자유 산문이라 `validate_soul_present_leg` 은 «비었나» 밖에 못 본다.
+# 저자마다 다른 말로 같은 원칙을 적고, 두 마커가 같은 원칙을 근거로 삼았는지 기계가 못 안다.
+# 원자 ID 를 인용하면 그 관계가 **참조 무결성**이 된다.
+# 외부 근거: arXiv 2605.24229 — 스펙을 atomic testable tenets 로 분해.
+#
+# SCOPE — 기록의 속성이지 결론이 아니다. 「인용한 ID 가 레지스트리에 실재하는가」**만** 본다.
+# 그 tenet 이 옳은지, 이 델타가 그것을 지켰는지는 **묻지 않는다**(CLAUDE.md §Mechanization
+# Boundary — 오늘의 판단을 코드로 굳히면 내일의 천장이 된다).
+#
+# 🟥 GRACE 가 필요 없다. ID 를 **하나도 인용하지 않은 마커는 통과**하므로 기존 300+ 마커에
+# 소급 효과가 0이다. 채택은 점진적이고, 그것이 이 설계가 새 필드를 안 만든 이유다.
+SOUL_TENET_REGISTRY_REL=".claude/soul_tenets.txt"
+validate_soul_tenet_refs() { # $1 = marker path
+  # tenet: FH-T02 (기계는 «기록의 속성»만 — 여기서는 참조 무결성) · FH-T01 (부재는 0이 아니다)
+  # 🟥 `rel` 은 **함수 안에서 기본값을 갖는다.** 레인 스위트가 `sed` 로 함수만 추출해 격리
+  # 실행하므로, 밖에 있는 상수를 참조하면 `set -u` 아래서 unbound 로 죽는다 — 그러면 레인은
+  # 그 죽음을 «BLOCK» 으로 읽고 초록을 보고한다(실측 2026-08-30, 이 레인 3개가 그랬다.
+  # [[feedback_broken_parser_reports_a_verdict]]).
+  local m="$1" reg ids id missing="" n=0
+  local rel="${SOUL_TENET_REGISTRY_REL:-.claude/soul_tenets.txt}"
+  reg="${EVIDENCE_ROOT:-$REPO_ROOT}/$rel"
+  [ -f "$reg" ] || reg="$REPO_ROOT/$rel"
+  # 🟥 인용은 **`tenets:` 줄에서만** 읽는다 — 마커 전문에서 긁으면 «설명»이 «인용»이 된다.
+  #    실측 2026-08-30: 이 마커의 `controls:` 줄이 «known-negative FH-T99 가 잡히면
+  #    HARNESS-ERROR» 라고 **계기를 설명**했는데 훅이 그걸 인용으로 읽고 차단했다.
+  #    같은 얼굴이 오늘 세 번째다(픽스처 토큰 3회 · 이번이 4회째) —
+  #    «토큰을 설명하는 것»과 «쓰는 것»은 grep 에게 구분되지 않는다.
+  #    `soul_trace.sh` 는 아침에 등록부 교집합으로 같은 오탐을 닫았는데 **여기는 안 닫았다**
+  #    ([[feedback_half_fix_propagation_boundary]] — 오늘 세 번째 반쪽).
+  #    ⚠️ 필드로 좁히는 것이 교집합보다 낫다: 교집합은 «미등록 인용»을 조용히 버리는데,
+  #    마커에서 그건 오타일 수 있고 오타는 잡아야 한다. 필드는 «어디가 인용인가»를 정한다.
+  ids=$(sed -n 's/^tenets:[[:space:]]*//p' "$m" 2>/dev/null | grep -oE 'FH-T[0-9]{2}' | sort -u)
+  [ -z "$ids" ] && return 0   # 인용 없음 = 합법. 채택은 점진적이다(thirdparty: 와 같은 형태)
+  if [ ! -f "$reg" ]; then
+    echo "  ❌ FAIL — 마커가 tenet ID 를 인용하는데 등록부가 없다: $rel"
+    echo "     부재를 «통과»로 렌더하지 않는다 — 없는 등록부는 «전부 유효»가 아니다."
+    return 1
+  fi
+  for id in $ids; do
+    n=$((n+1))
+    grep -qE "^${id}:" "$reg" || missing="${missing:+$missing }$id"
+  done
+  if [ -n "$missing" ]; then
+    echo "  ❌ FAIL — 마커가 등록부에 없는 tenet 을 인용한다: $missing"
+    echo "     실재하는 ID: $(grep -oE '^FH-T[0-9]{2}' "$reg" | sort -u | tr '\n' ' ')"
+    echo "     새 원칙이면 먼저 $rel 에 등재하라 — 다만 **최대 7개**이므로"
+    echo "     넣으려면 하나를 빼야 한다(Amazon tenets 규율: 목록이 길어지면 우선순위가 죽는다)."
+    return 1
+  fi
+  echo "  ✅ soul tenets: $n 건 인용, 전부 등록부에 실재 ($(printf '%s' "$ids" | tr '\n' ' '))"
+  return 0
+}
+
+# ── ② defeater: — «틀렸다면 무엇이 관측될 것인가» (2026-08-30) ────────────────────
+# tenet: FH-T02 (기록의 속성) · FH-T06 (실행이 하중 지는 절반 — defeater 는 관측 가능해야 한다)
+#
+# WHY: `①영혼` 은 성공 정의를 적게 하지만 **반증 조건**을 안 적게 한다. 반증 조건이 없는 성공
+# 정의는 사후에 언제나 충족된 것으로 회상된다(저자는 늘 «고른 것»이라고 회상한다).
+# 외부 근거: Assurance 2.0 (arXiv 2004.10474) — *"explicit identification of defeaters and
+# counterevidence"*. 보증 논증의 신뢰도는 «무엇이 이 논증을 무너뜨리는가»를 명시하는 데서 온다.
+#
+# SCOPE — **비공허성만**. 「그 defeater 가 좋은가」·「실제로 관측했는가」는 안 묻는다.
+# 형태는 `validate_crossfamily_leg` 의 grounds 검사와 **같다**(길이 + 기록의 속성). 새 클래스가
+# 아니다. 다만 어휘 grep 은 쓰지 않는다 — Grep-Collision Treadmill 이 되기 때문이다.
+#
+# 🟥 소급 적용 금지. `SOUL_PRESENT_GRACE_DATE` 와 **같은 패턴**으로, GRACE 이전 날짜의 마커는
+# 면제된다. 소급 강제는 진행 중인 모든 브랜치를 막고, 그 과차단이 `--no-verify` 를 훈련시켜
+# 같은 훅 안의 Destructive-Op 게이트까지 무장해제한다.
+DEFEATER_GRACE_DATE="2026-09-01"
+validate_defeater_leg() { # $1 = marker path
+  # tenet: FH-T02 (기록의 속성) · FH-T06 (실행이 하중 지는 절반 — defeater 는 관측 가능해야 한다)
+  local m="$1" mdate n line body words soul_line
+  n=$(grep -cE '^[[:space:]]*defeater:' "$m" 2>/dev/null); n=${n:-0}
+  if [ "$n" -gt 1 ]; then
+    echo "  ❌ FAIL — 마커에 'defeater:' 줄이 둘 이상이다."
+    grep -nE '^[[:space:]]*defeater:' "$m" | sed 's/^/       /'
+    echo "     읽는 쪽은 첫 줄을 취하므로 나중에 붙인 정정이 조용히 가려진다."
+    return 1
+  fi
+  mdate=$(printf '%s' "$m" | sed -nE 's/.*_([0-9]{4}-[0-9]{2}-[0-9]{2})\.marker$/\1/p')
+  if [ "$n" -eq 0 ]; then
+    # 근사 키(near-miss)는 «부재»가 아니라 «오타»다 — 부재는 grace 로 넘어가지만 오타는 안 된다.
+    # 저자는 적었다고 믿는데 게이트는 못 읽는, 가장 조용한 실패다.
+    if grep -qE '^[[:space:]]*(defeaters:|defeator:|defeter:|defeater[[:space:]]+:|counter-evidence:|반증:)' "$m" 2>/dev/null; then
+      echo "  ❌ FAIL — defeater 키처럼 보이지만 정확히 'defeater:' 가 아닌 줄이 있다."
+      grep -nE '^[[:space:]]*(defeaters:|defeator:|defeter:|defeater[[:space:]]+:|counter-evidence:|반증:)' "$m" | sed 's/^/       /'
+      return 1
+    fi
+    # 🟥 날짜를 못 읽으면 면제하지 않는다. 이 훅이 파일명을 `..._${TODAY}.marker` 로 만들므로
+    # 날짜 없는 이름은 «오래된 것»이 아니라 «예상 밖»이다([[feedback_not_found_is_not_zero_family]]).
+    [ -z "$mdate" ] || { [ "$mdate" \< "$DEFEATER_GRACE_DATE" ] && return 0; }
+    echo "  ❌ FAIL — 마커에 'defeater:' 줄이 없다."
+    echo "     성공 정의를 적었으면 **그것이 틀렸을 때 무엇이 관측되는지**도 적어라."
+    echo "     반증 조건 없는 성공 정의는 사후에 언제나 충족된 것으로 회상된다."
+    echo "       defeater: 소비자 경로 러너가 rc=0 인데 컨트롤 팔도 rc=0 이면 이 레인은 아무것도 안 가른 것이다"
+    echo "       defeater: 없음   ← 선언된 부재도 값이다(기록되고, 침묵은 아니다)"
+    echo "     Append to: $m"
+    return 1
+  fi
+  line=$(grep -m1 -E '^[[:space:]]*defeater:' "$m" | sed -E 's/^[[:space:]]*defeater:[[:space:]]*//')
+  body=$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+  # 선언된 부재는 값이다 — `①영혼: 없음` 과 같은 형태. 정직한 형태를 벌하고 분량으로 채운
+  # 「안 썼다」 문단을 통과시키는 것이 [[feedback_unreachable_done_when_trains_evasion]] 이다.
+  case "$(printf '%s' "$body" | tr -d '[:space:].·—-]')" in
+    없음|none|None|NONE|n/a|N/A|해당없음)
+      echo "  ⚠️  defeater: 없음 — 선언된 부재. 기록되었고, 침묵은 아니다."
+      return 0 ;;
+  esac
+  # 비공허성 — 한글 코퍼스이므로 **낱말 수**로 센다. `${#}` 는 로케일 의존이고, 긴 한글 한 덩어리가
+  # 문자 수 검사를 그냥 통과한 전례가 있다(A6 레인).
+  words=$(printf '%s' "$body" | wc -w | tr -d ' '); words=${words:-0}
+  if [ "$words" -lt 6 ]; then
+    echo "  ❌ FAIL — defeater 가 공허하다 ($words 낱말). **무엇이 관측될 것인가**를 적어라."
+    echo "     '틀렸을 수 있다' 는 반증 조건이 아니다 — 관측 가능한 사건이어야 한다."
+    return 1
+  fi
+  # 🟥 기록의 속성 하나 더: defeater 가 ①영혼 줄의 **복붙**이면 두 필드가 한 필드다.
+  # (이것은 «내용이 옳은가»가 아니라 «두 칸이 서로 다른 값을 담는가»다 — 채널 검사.)
+  soul_line=$(grep -m1 -E '^[[:space:]]*#*[[:space:]]*(①영혼|soul)[[:space:]]*[:—-]' "$m" 2>/dev/null \
+              | sed -E 's/^[^:—-]*[:—-][[:space:]]*//; s/[[:space:]]+$//')
+  if [ -n "$soul_line" ] && [ "$body" = "$soul_line" ]; then
+    echo "  ❌ FAIL — defeater 가 ①영혼 줄과 글자 그대로 같다. 두 칸이 한 칸이 되었다."
+    echo "     성공 정의와 그 반증 조건은 다른 문장이다."
+    return 1
+  fi
+  echo "  ✅ defeater 기록됨 ($words 낱말)"
+  return 0
+}
+
 
 SOUL_PRESENT_GRACE_DATE="2026-08-21"
 validate_soul_present_leg() { # $1 = marker path
@@ -1791,6 +1923,12 @@ if [ "$GATE_MODE" = "full" ]; then
     _SOUL_OK=1
     validate_soul_present_leg "$MARKER" || _SOUL_OK=0
     validate_soul_check_leg "$MARKER" || _SOUL_OK=0
+    # 🟥 2026-08-30 신설 — 이 두 줄이 «정의만 하고 안 부르는» 상태로 착지할 뻔했다.
+    #    `scripts/test_hook_leg_wiring_lanes.sh` 가 W3·W4 를 NOT WIRED 로 잡았다.
+    #    함수가 옳은지가 아니라 «호출되는지»를 보는 레인이 없으면 이건 조용히 통과한다
+    #    ([[feedback_built_but_not_wired]] — 오늘만 다섯 번째 얼굴).
+    validate_soul_tenet_refs "$MARKER" || _SOUL_OK=0
+    validate_defeater_leg "$MARKER" || _SOUL_OK=0
     if [ "$_DEFENSE_OK" -eq 1 ] && [ "$_SOUL_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER" && validate_first_use_leg "$MARKER"; then
       echo "  ✅ PASS (marker confirmed + floor/axes fields valid:"
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"

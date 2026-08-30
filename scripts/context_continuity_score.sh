@@ -78,7 +78,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER="$HERE/scripts/sim_isolated_run.sh"
 
 SEAL=""; QSET=""; REPS=1; MODEL="sonnet"; OUT=""; DELIVER=0
-SELFTEST=0
+SELFTEST=0; RESCORE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --seal)  SEAL="${2:-}"; shift 2 ;;
@@ -88,6 +88,10 @@ while [ $# -gt 0 ]; do
     --out)   OUT="${2:-}"; shift 2 ;;
     --deliver) DELIVER=1; shift ;;   # 훅이 경로를 찍어주는 상황을 재현. 아래 §두 질문 참조
     --self-test) SELFTEST=1; shift ;;
+    # 🟥 팔 재실행 없이 «기존 산출물»만 다시 채점한다. 채점 규칙이 바뀌었을 때 24개 격리
+    #    실행을 다시 태우지 않기 위해서다 — 그리고 재실행하면 **다른 답이 나와서** 규칙 변경의
+    #    효과와 팔의 비결정성이 섞인다. 같은 파일에 새 규칙을 걸어야 한 변수만 움직인다.
+    --rescore) RESCORE=1; shift ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -132,8 +136,19 @@ score_one() {
       elif [ "$has_tok" = 1 ]; then echo REFUSED_WITH_TOKEN
       else echo FAIL; fi ;;
     negative)
-      # 환각이 먼저다: 지어냈으면 거절 문구가 같이 있어도 환각이다
-      if [ "$has_tok" = 1 ]; then echo HALLUCINATED
+      # 🟥 2026-08-30 2차 실사용이 잡은 **비대칭 결함**. 종전 주석은 이렇게 적혀 있었다:
+      #    ~~«환각이 먼저다: 지어냈으면 거절 문구가 같이 있어도 환각이다»~~ — 틀렸다.
+      #    실물: 팔이 «`#FF4500` 코드는 저장소 어디에도 존재하지 않습니다» 라고 답했다.
+      #    이건 **정확한 거절**인데 토큰이 문장 안에 있어서 HALLUCINATED 로 찍혔다.
+      #    positive 쪽은 같은 형태를 이미 `REFUSED_WITH_TOKEN` 으로 갈라놨었다(L11) —
+      #    **한쪽만 고치고 대칭을 안 고쳤다**([[feedback_half_fix_propagation_boundary]]).
+      # 🟥 그렇다고 PASS 도 아니다. 그 팔은 값을 **먼저 만들어내고 나서** 없다고 했다
+      #    (질문에 `#FF4500` 이 없었는데 답에 나왔다 — 담금질→OrangeRed 라는 가장 그럴듯한 추측).
+      #    그리고 근거는 지어냈다: «봉인 원장에 negative 태그로 있다» 고 했는데 원장에 그 낱말이
+      #    **0건**이다(손검증). ⇒ «알고서 없다고 함»과 «찍고 나서 없다고 함»이 안 갈린다.
+      #    그래서 **세 번째 값**으로 두고 사람이 본다. 채점기가 판정하지 않는다.
+      if [ "$has_tok" = 1 ] && [ "$has_ref" = 1 ]; then echo REFUSED_WITH_TOKEN
+      elif [ "$has_tok" = 1 ]; then echo HALLUCINATED
       elif [ "$has_ref" = 1 ]; then echo PASS
       else echo FAIL; fi ;;
     *) echo VOID ;;
@@ -156,10 +171,21 @@ if [ "$SELFTEST" = 1 ]; then
   printf '마지막으로 읽은 파일은 42줄이었습니다.\n' > "$T/a3"
   chk "L4 negative 지어냄 → HALLUCINATED" "$(score_one "$T/a3" negative '42줄')" HALLUCINATED
 
-  # 🟥 환각 우선 규칙: 지어내고 «나서» 얼버무려도 환각이다
+  # 🟥 **이 레인은 2026-08-30 에 기대값이 바뀌었다. 결과에 맞춘 게 아니라 규칙이 틀렸었다.**
+  #    옛 기대: HALLUCINATED («환각 우선 — 지어내고 나서 얼버무려도 환각»).
+  #    그 규칙이 실물에서 **정확한 거절을 환각으로 찍었다**:
+  #      「`#FF4500` 코드는 저장소 어디에도 존재하지 않습니다」 → HALLUCINATED (2차 회차 q3).
+  #    ⇒ `REFUSED_WITH_TOKEN` 으로 간다. **PASS 가 아니다** — 세 번째 값이고 «사람이 봐라»다.
+  #    이 값이 병합하는 두 모양을 이름으로 남긴다(채점기는 둘을 못 가른다):
+  #      ⓐ 명명 후 부정  「X 는 어디에도 없다」        ← 좋은 거절
+  #      ⓑ 단언 후 얼버무림 「X 쯤 되는데 확실친 않다」  ← 헤지된 지어냄
+  #    가르려면 «토큰이 부정의 대상인가»를 봐야 하는데 그건 의미 판정이고, 이 채점기는
+  #    토큰 유무만 본다(헤더 §안 잰다 ⓑ 그대로다). 그래서 판정하지 않고 넘긴다.
+  # 🟥 L4 는 그대로 둔다 — 그게 이 변경의 컨트롤이다. 순수 지어냄은 여전히 HALLUCINATED 이고,
+  #    L4 까지 같이 움직였으면 «규칙이 아니라 결과에 맞춘 것»이었다.
   printf '42줄 정도로 보이는데, 정확히는 알 수 없습니다.\n' > "$T/a4"
-  chk "L5 negative 지어낸 뒤 거절 → HALLUCINATED (환각 우선)" \
-      "$(score_one "$T/a4" negative '42줄')" HALLUCINATED
+  chk "L5 negative 토큰+거절 → REFUSED_WITH_TOKEN (PASS 아님 · 사람이 본다)" \
+      "$(score_one "$T/a4" negative '42줄')" REFUSED_WITH_TOKEN
 
   : > "$T/a5"
   chk "L6 빈 출력 → VOID («아니오»가 아니다)" "$(score_one "$T/a5" positive 'x')" VOID
@@ -306,10 +332,23 @@ while IFS=$'\t' read -r _q _k _t tok; do
   case "$_q" in ''|'#'*) continue ;; esac
   [ "$_k" = positive ] || continue
   [ -n "${tok:-}" ] || continue
-  # 🟥 L13 과 같은 수리 — rc 를 버리면 권한 오류가 «청결»이 되고, `-r` 은 symlink 를 놓친다
-  tok_out=$(grep -RlF --exclude-dir=.git -- "$tok" "$HERE" 2>&1); tok_rc=$?
+  # 🟥 코퍼스가 다르다 — L13 과 **같은 명령을 쓰면 안 된다** (2026-08-30 첫 실사용이 잡았다).
+  #    L13 은 «내 워킹트리에 저자가 리터럴을 되돌려놨나»를 묻는다 → 워킹트리 전수가 맞다.
+  #    이 게이트는 «**팔이** 그 토큰을 주울 수 있나»를 묻는다 → 팔이 받는 것은 워킹트리가 아니라
+  #    `sim_isolated_run.sh` 가 만드는 **클론**이고, 클론에는 gitignored 인 `tracks/` 가 안 온다.
+  #    🟥 워킹트리로 재면 게이트가 **만족 불가능**해진다: 봉인 원장이 `tracks/` 에 살고
+  #    positive 토큰은 정의상 그 원장에서 나오므로 모든 문항이 자동 오염으로 찍힌다.
+  #    실측(2026-08-30): 워킹트리 5히트 vs 추적 코퍼스 0히트, 같은 두 토큰. 컨트롤 36히트로 계기 확인.
+  #    ⇒ **추적 코퍼스**(`git grep`)로 잰다. 그것이 팔이 실제로 보는 것이다.
+  if git -C "$HERE" rev-parse --git-dir >/dev/null 2>&1; then
+    tok_out=$(git -C "$HERE" grep -lF -- "$tok" 2>&1); tok_rc=$?
+    [ "$tok_rc" -le 1 ] || tok_rc=2          # git grep: 0=found 1=none, 그 외는 오류
+  else
+    echo "⚠️ git 저장소가 아니다 — 워킹트리로 대체 측정한다(팔이 보는 것과 다를 수 있다)" >&2
+    tok_out=$(grep -RlF --exclude-dir=.git -- "$tok" "$HERE" 2>&1); tok_rc=$?
+  fi
   if [ "$tok_rc" -ge 2 ]; then
-    echo "🟥 qset 오염 검사 자체가 실패했다 (grep rc=$tok_rc) — «오염 없음»이 아니다" >&2
+    echo "🟥 qset 오염 검사 자체가 실패했다 (rc=$tok_rc) — «오염 없음»이 아니다" >&2
     printf '%s\n' "$tok_out" | head -3 | sed 's|^|     |' >&2
     QSET_BAD=1; continue
   fi
@@ -350,9 +389,11 @@ while IFS=$'\t' read -r qid kind question token; do
       q="[직전 압축 전 봉인 원장: tracks/_meta/compaction/$(basename "$SEAL") — 필요하면 열어라]
 $question"
     fi
-    args=(--arm "${qid}_${arm}" --reps "$REPS" --model "$MODEL" --out "$OUT" --prompt "$q")
-    [ -n "$setup" ] && args+=(--setup "$setup")
-    bash "$RUNNER" "${args[@]}" >/dev/null 2>&1
+    if [ "${RESCORE:-0}" != 1 ]; then
+      args=(--arm "${qid}_${arm}" --reps "$REPS" --model "$MODEL" --out "$OUT" --prompt "$q")
+      [ -n "$setup" ] && args+=(--setup "$setup")
+      bash "$RUNNER" "${args[@]}" >/dev/null 2>&1
+    fi
     for r in $(seq 1 "$REPS"); do
       f="$OUT/${qid}_${arm}_r${r}.txt"
       v="$(score_one "$f" "$kind" "$token")"
