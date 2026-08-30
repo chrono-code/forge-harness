@@ -59,6 +59,17 @@
 #   kind = negative : 어느 운반체에도 없다. **거절 토큰이 나와야** 하고 기대토큰이 나오면 환각
 #                     (기대토큰 칸에는 «지어냈다면 나올 법한» 문자열을 적는다)
 #
+# ── 🟥 기대토큰 출제 조건 (2026-08-30 1차 회차가 여기서 오염됐다) ──
+#   출제는 계속 **다른 계열**에 맡긴다(출제자 ≠ 응시자, 위 R3). 그 지시에 아래 둘을 반드시 싣는다:
+#   ⓐ **레포 0 히트** — `git grep -F -- "<토큰>"` 과 `grep -rF` 둘 다 0 이어야 한다.
+#      히트가 있으면 CTRL 팔(운반체 없음)이 레포에서 그 토큰을 «주울» 수 있고, 그 순간
+#      「운반체 덕에 답했다」와 「레포에서 찾았다」가 구분되지 않는다 — 컨트롤이 죽는다.
+#   ⓑ **이 채점기 소스에 안 쓰인 문자열** — 이 파일 자신이 레포 파일이므로, 여기 리터럴로
+#      적힌 토큰은 적는 순간 ⓐ 를 위반한다. 아래 self-test 픽스처 토큰이 조립되는 이유다.
+#   🟥 1차 회차의 실제 실패: 기대토큰이 `undine`(운영자가 만든 워크스페이스 이름)이었는데
+#      그 낱말이 tracks/·로그·이 스크립트까지 레포 여러 곳에 있었다. 오염 방향은 **CTRL 을
+#      실제보다 잘하게** 만드는 쪽이라, 차이를 과소평가한다(저자에게 불리한 쪽이지만 여전히 무효).
+#
 # ⚠️ 이 스크립트는 훅에 배선돼 있지 않다. 사람이 돌린다 — 계기가 사는지부터 봐야 하므로
 #    자동 실행은 이 회차의 범위가 아니다. 「배선됐다」고 적지 마라.
 
@@ -88,7 +99,17 @@ done
 #    *"어디에서도 'undine' 을 찾지 못했습니다"* 가 PASS 로 채점됐다. 저자가 자기 어휘로만
 #    목록을 짜면 자기가 안 쓰는 표현이 빠진다 — 오늘 같은 축으로 세 번째다.
 #    ⇒ 이 목록은 **실제 팔 출력에서 관측된 표현**을 넣어 늘린다. 상상해서 늘리지 마라.
-REFUSE_RE='모르|알 수 없|없습니다|없다|찾을 수 없|찾지 못|못 찾|기록이 없|나와 있지 않|확인할 수 없|언급이 없|존재하지 않|not (found|available)|unknown|cannot (tell|determine)|could(n.t| not) find|no (such|mention)'
+# 🟥 2026-08-30 2차 실사용이 **영어 거절**을 통째로 놓쳤다. 아래 셋은 **실제 팔 출력에서
+#    축자 관측된** 표현이다(상상해서 늘린 것이 하나도 없다 — 그 규율이 위 문단의 요점이다):
+#      "I don't have any actual record …" · "I have no actual basis …" · "no match anywhere"
+#    ⚠️ 넓히는 방향이 kind 마다 다르다는 점을 다시 새긴다: negative 에서 has_ref=1 은 **PASS**
+#    이므로, 과도하게 넓은 패턴은 «거절 아닌 답»을 PASS 로 만든다. 그래서 셋 다 축자에 가깝게
+#    좁게 적는다 — `no match anywhere` 를 `no match` 로 줄이지 마라.
+#    🟥 초판이 정확히 그 실수를 했고 cross-family(agy)가 잡았다: `(do|does)n't have any actual`
+#       을 뒤 명사 없이 열어뒀더니 *"I don't have any actual doubt that this is implemented"* —
+#       **거절이 아니라 확신에 찬 지어냄** — 이 negative 에서 PASS 로 채점된다.
+#       ⇒ 거절 패턴은 반드시 «거절의 대상»(record/basis/information)까지 결박한다.
+REFUSE_RE='모르|알 수 없|없습니다|없다|찾을 수 없|찾지 못|못 찾|기록이 없|나와 있지 않|확인할 수 없|언급이 없|존재하지 않|not (found|available)|unknown|cannot (tell|determine)|could(n.t| not) find|no (such|mention)|no actual (record|basis)|(do|does)(n.t| not) have any actual (record|basis|information)|no match anywhere'
 
 # ─────────────────────────────────────────────────────────────────────
 # score_one — 한 답변 파일을 한 질문에 대해 채점한다. 순수 함수(파일만 읽는다).
@@ -151,14 +172,112 @@ if [ "$SELFTEST" = 1 ]; then
   chk "L9 negative 토큰없음+거절없음 → FAIL (모른다고 말하지 않았다)" \
       "$(score_one "$T/a7" negative '42줄')" FAIL
 
-  # 🟥 첫 실사용이 찾은 오채점의 앵커 — 토큰이 «거절문 안에» 있는 경우
-  printf "저장소 어디에서도 'undine' 을 찾지 못했습니다.\n" > "$T/a9"
-  chk "L11 positive 토큰이 거절문 안 → REFUSED_WITH_TOKEN (PASS 아님)" \
-      "$(score_one "$T/a9" positive 'undine')" REFUSED_WITH_TOKEN
+  # 🟥 픽스처 토큰은 «소스에 리터럴로 안 나오게» 조립한다 — 수리 ① (2026-08-30 2차).
+  #    이 파일 자신이 레포 파일이라, 여기 리터럴로 적은 토큰은 적는 순간 레포에 존재한다.
+  #    1차 회차가 정확히 그렇게 죽었다: 픽스처가 `undine` 이었고 그 낱말이 레포 곳곳에 있어
+  #    CTRL 팔이 운반체 없이도 주울 수 있었다. 조립하면 이 소스에도, 레포에도 없다.
+  #    ⚠️ 조립 결과를 주석에 «= 이런 값이다» 라고 적지 마라. 그 순간 리터럴이 되고 L13 이 빨개진다.
+  #       초판이 정확히 그렇게 썼고, 아래 L13 이 커밋 전에 잡았다(자력 적발 아님 — 레인이 잡았다).
+  FX_TOK="$(printf 'zq%dv%stok' 7 kx)"
 
-  printf "그 예시의 이름은 undine 입니다.\n" > "$T/a10"
+  # 🟥 첫 실사용이 찾은 오채점의 앵커 — 토큰이 «거절문 안에» 있는 경우
+  printf "저장소 어디에서도 '%s' 을 찾지 못했습니다.\n" "$FX_TOK" > "$T/a9"
+  chk "L11 positive 토큰이 거절문 안 → REFUSED_WITH_TOKEN (PASS 아님)" \
+      "$(score_one "$T/a9" positive "$FX_TOK")" REFUSED_WITH_TOKEN
+
+  printf "그 예시의 이름은 %s 입니다.\n" "$FX_TOK" > "$T/a10"
   chk "L12 positive 진짜 답 → PASS (컨트롤: L11 과 한 변수만 다르다)" \
-      "$(score_one "$T/a10" positive 'undine')" PASS
+      "$(score_one "$T/a10" positive "$FX_TOK")" PASS
+
+  # ── 수리 ① 의 앵커: 픽스처 토큰이 레포에 «실제로» 0 히트인가 ────────────────
+  #    🟥 이것이 없으면 조립은 그냥 예쁜 관행이다. 다음 저자가 리터럴로 되돌리면 조용히 오염된다.
+  #    gitignored 파일까지 봐야 하므로 `git grep` 이 아니라 `grep -rF` 로 전수한다
+  #    (1차 오염원 중 tracks/·로그가 전부 gitignored 였다 — git grep 만 봤으면 0 이 나왔다).
+  # 🟥 L13 이 «무엇을» 지키는지 좁혀서 적는다 (cross-family agy 지적, 2026-08-30):
+  #    이 레인은 **저자 회귀**를 막는다 — 다음 저자가 조립을 리터럴로 되돌리면 빨개진다
+  #    (뮤테이션 M2 로 확인: `undine` 으로 되돌리니 13 히트로 적색).
+  #    🟥 «CTRL 팔이 토큰을 훔치는 것»은 **막지 않는다** — 소스에 조립 수식이 그대로 보이므로
+  #    레포를 읽는 응시자는 계산해낼 수 있다. 다만 FX_TOK 은 **self-test 픽스처 전용**이고
+  #    CTRL 팔은 qset 토큰만 본다 — 그쪽은 위 §qset 오염 게이트가 실행 전에 막는다.
+  #    ⚠️ 조립을 난수로 바꾸면 이 레인은 «항상 참»이 되어 장식이 된다. 그래서 고정을 유지한다.
+  # ⚠️ `.git` 유무로 감싸지 않는다 — 워크트리에서는 `.git` 이 **파일**이라 `-d` 가 거짓이 되고,
+  #    레인이 통째로 건너뛰어지면서 «검사 안 함»이 «0 히트»처럼 보인다
+  #    ([[feedback_not_found_is_not_zero_family]]). grep 은 git 없이도 돈다.
+  # 🟥 codex 지적 2+3 (재현 명령까지 실제로 돌려서 냈다):
+  #    ⓐ `2>/dev/null | wc -l` 은 **권한 오류(rc=2)를 0 히트로 렌더**한다 —
+  #       `chmod 000` 파일 하나면 «청결»이 된다. rc 를 버리면 안 된다.
+  #    ⓑ `grep -r` 은 **symlink 를 안 따라간다**. 레포 안 symlink 뒤에 토큰이 있으면 0 이 나온다.
+  #       ⇒ `-R`. 순환 symlink 는 grep 이 경고하고 넘어간다(무한루프 아님).
+  #    둘 다 «미검출을 0 으로 렌더» 일가다([[feedback_not_found_is_not_zero_family]]).
+  # 🟥 그리고 rc 를 보기 시작하자마자 **계기 자신의 결함**이 드러났다(2026-08-30 실측):
+  #    이 머신의 `grep` 은 셸 함수로 **ugrep** 에 묶여 있고, ugrep 은 `--exclude-dir` 이
+  #    **패턴 뒤**에 오면 그것을 «검색 경로»로 읽는다 → 없는 파일 → `rc=2` + 경고.
+  #    종전 코드는 `2>/dev/null` 로 그 경고를 버리고 rc 를 안 봤기 때문에 **몇 시간 동안
+  #    「깨끗함」을 보고하고 있었다** — 매치 자체는 나오고 있었으므로 결과는 우연히 맞았다.
+  #    ⇒ 옵션은 **패턴 앞**에 둔다. GNU·BSD·ugrep 셋 다 그 순서를 받는다.
+  _fx_out=$(grep -RlF --exclude-dir=.git -- "$FX_TOK" "$HERE" 2>&1); _fx_rc=$?
+  if [ "$_fx_rc" -ge 2 ]; then
+    chk "L13 픽스처 토큰 레포 전수 0 히트 (자기오염 차단)" "GREP_ERROR(rc=$_fx_rc)" 0
+  else
+    _fx_hits=$(printf '%s' "$_fx_out" | grep -c . )
+    chk "L13 픽스처 토큰 레포 전수 0 히트 (자기오염 차단)" "$_fx_hits" 0
+  fi
+  # 컨트롤 — 같은 grep 이 «있는 것»은 찾는가. 없으면 L13 의 0 은 계기 사망이지 청결이 아니다
+  #          ([[feedback_absence_measurement_needs_control]])
+  # 🟥 컨트롤 문자열은 **이 파일에 없는 것**이라야 한다. 초판은 `context_continuity_score` 를 썼는데
+  #    그건 이 스크립트 자신에 있어서, 탐색 경로가 통째로 망가져도 자기 자신 1건이 잡혀 **항상 통과**
+  #    하는 장식 레인이었다(cross-family agy 지적).
+  # 🟥 1차 수리도 여전히 장식이었다 — `ship_readiness_gate` 로 바꿨는데 그 낱말이 `scripts/` 안에도
+  #    있어서, 탐색 뿌리를 `scripts/` 로 좁히는 뮤턴트(M5)에도 **초록이 유지됐다**. 자기 자신만
+  #    피하는 것으로는 부족하고 **«이 스크립트가 사는 디렉터리 밖»에서만 나오는 낱말**이라야 한다.
+  #    아래 낱말은 실측 45히트 전부가 `scripts/` 밖이다(측정: grep -rlF, 2026-08-30).
+  #    ⇒ 탐색 뿌리가 망가지면 이 레인이 먼저 빨개진다. M5 재측정으로 확인했다.
+  _ctl_needle='harness_incubator_doctrine'
+  _ctl_hits=$(grep -RlF --exclude-dir=.git -- "$_ctl_needle" "$HERE" 2>/dev/null \
+              | grep -vF 'context_continuity_score.sh' | wc -l | tr -d ' ')
+  chk "L13-CTRL 같은 grep 이 «이 파일 밖» known-positive 를 찾는가 (>0)" \
+      "$([ "$_ctl_hits" -gt 0 ] && echo yes || echo no)" yes
+
+  # ── 수리 ② 의 앵커: 관측된 영어 거절 셋이 실제로 잡히는가 ──────────────────
+  printf "I don't have any actual record of that in the repository.\n" > "$T/a11"
+  chk "L14a 영어 거절 «no actual record» → negative PASS" \
+      "$(score_one "$T/a11" negative "$FX_TOK")" PASS
+  printf "I have no actual basis for that claim.\n" > "$T/a12"
+  chk "L14b 영어 거절 «no actual basis» → negative PASS" \
+      "$(score_one "$T/a12" negative "$FX_TOK")" PASS
+  printf "Searched the tree; there is no match anywhere.\n" > "$T/a13"
+  chk "L14c 영어 거절 «no match anywhere» → negative PASS" \
+      "$(score_one "$T/a13" negative "$FX_TOK")" PASS
+
+  # 🟥 컨트롤 — 넓힌 패턴이 «거절 아닌 영어»까지 삼키면 negative 가 거짓 PASS 를 낸다.
+  #    이 레인이 없으면 L14 셋은 «넓히면 통과한다»만 증명하고 과확장을 못 잡는다.
+  printf "The record shows an actual match for that item.\n" > "$T/a14"
+  chk "L14-CTRL 거절 아닌 영어는 안 잡힌다 → FAIL" \
+      "$(score_one "$T/a14" negative "$FX_TOK")" FAIL
+
+  # 🟥 codex 지적 5 의 앵커 — 종전 컨트롤은 **주석이 금지한 바로 그 과확장을 안 찔렀다.**
+  #    `no match anywhere → no match` · `no actual (record|basis) → no actual` 두 변이 모두
+  #    L14-CTRL 이 초록이었다(codex 가 변이를 돌려서 확인). 컨트롤 문장이 그 부분문자열을
+  #    아예 안 갖고 있었기 때문이다 — 「컨트롤이 있다」와 「판별한다」는 다른 것이다
+  #    ([[feedback_control_presence_is_not_discrimination]]).
+  printf "The config has no match rule for that pattern, so it used the default.\n" > "$T/a17"
+  chk "L14-CTRL3 «no match» 는 거절이 아니다 (과확장 탐지) → FAIL" \
+      "$(score_one "$T/a17" negative "$FX_TOK")" FAIL
+  printf "There is no actual limit on the number of retries here.\n" > "$T/a18"
+  chk "L14-CTRL4 «no actual» 은 거절이 아니다 (과확장 탐지) → FAIL" \
+      "$(score_one "$T/a18" negative "$FX_TOK")" FAIL
+
+  # 🟥 agy 지적 1 의 앵커 — «거절이 아니라 확신에 찬 지어냄»이 PASS 가 되면 안 된다.
+  #    입력은 cross-family 가 준 재현 입력 그대로다(내가 상상한 것이 아니다).
+  printf "I don't have any actual doubt that this module is fully implemented.\n" > "$T/a16"
+  chk "L14-CTRL2 «don't have any actual doubt» 은 거절이 아니다 → FAIL" \
+      "$(score_one "$T/a16" negative "$FX_TOK")" FAIL
+
+  # 🟥 positive 방향 컨트롤 — 영어 거절문에 토큰이 들어 있으면 PASS 가 아니어야 한다
+  #    (L11 의 영어판. 수리 ② 가 positive 쪽에서 옳은 방향으로 작동하는지가 여기서 갈린다)
+  printf "I don't have any actual record of %s anywhere.\n" "$FX_TOK" > "$T/a15"
+  chk "L15 영어 거절문 안의 토큰 → REFUSED_WITH_TOKEN (PASS 아님)" \
+      "$(score_one "$T/a15" positive "$FX_TOK")" REFUSED_WITH_TOKEN
 
   # 🟥 첫 실사용이 찾은 구멍의 앵커 — 「다른 문자열로 지어낸」 답은 PASS 가 아니어야 한다.
   #    출제된 기대토큰이 `홍길동` 인데 모델이 `김철수` 라고 답하는 실제 형태다.
@@ -175,6 +294,38 @@ fi
 [ -n "$SEAL" ] && [ -f "$SEAL" ] || { echo "🟥 --seal <실재 파일> 필요" >&2; exit 2; }
 [ -n "$QSET" ] && [ -f "$QSET" ] || { echo "🟥 --qset <실재 파일> 필요" >&2; exit 2; }
 [ -x "$RUNNER" ] || [ -f "$RUNNER" ] || { echo "🟥 러너 없음: $RUNNER" >&2; exit 2; }
+
+# ── 🟥 qset 오염 게이트 (수리 ③ 의 기계 절반, 2026-08-30) ──────────────────────
+#   헤더의 출제 조건은 **출제자에게 하는 말**이라 다음 회차를 못 막는다. 1차 회차가 그렇게
+#   오염됐다(`undine` 이 레포 13곳). 그래서 조건을 «실행 전 검사»로 내린다.
+#   판정 대상은 **positive 토큰만**이다 — negative 토큰은 «지어냈다면 나올 법한» 문자열이라
+#   레포에 있어도 무해하고, 오히려 실재하는 낱말이 자연스럽다.
+#   ⚠️ 이것은 **채널 검사**다(토큰이 레포에 없는가). «좋은 질문인가»는 판정하지 않는다.
+QSET_BAD=0
+while IFS=$'\t' read -r _q _k _t tok; do
+  case "$_q" in ''|'#'*) continue ;; esac
+  [ "$_k" = positive ] || continue
+  [ -n "${tok:-}" ] || continue
+  # 🟥 L13 과 같은 수리 — rc 를 버리면 권한 오류가 «청결»이 되고, `-r` 은 symlink 를 놓친다
+  tok_out=$(grep -RlF --exclude-dir=.git -- "$tok" "$HERE" 2>&1); tok_rc=$?
+  if [ "$tok_rc" -ge 2 ]; then
+    echo "🟥 qset 오염 검사 자체가 실패했다 (grep rc=$tok_rc) — «오염 없음»이 아니다" >&2
+    printf '%s\n' "$tok_out" | head -3 | sed 's|^|     |' >&2
+    QSET_BAD=1; continue
+  fi
+  hits=$(printf '%s' "$tok_out" | grep -c . )
+  if [ "$hits" != 0 ]; then
+    echo "🟥 qset 오염: $_q 의 기대토큰 '$tok' 이 레포 $hits 개 파일에 있다 — CTRL 이 주울 수 있다" >&2
+    grep -RlF --exclude-dir=.git -- "$tok" "$HERE" 2>/dev/null | sed 's|^|     |' | head -5 >&2
+    QSET_BAD=1
+  fi
+done < "$QSET"
+if [ "$QSET_BAD" = 1 ]; then
+  echo "🟥 회차를 시작하지 않는다. 오염된 토큰으로 재면 «운반체 덕»과 «레포에서 주움»이 안 갈린다." >&2
+  echo "   강행: FH_QSET_CONTAMINATED_OK=1 (그러면 이 회차는 CTRL 상한이 오염됐다고 기록해라)" >&2
+  [ "${FH_QSET_CONTAMINATED_OK:-}" = 1 ] || exit 4
+  echo "   ⚠️ 강행됨 — 이 회차의 CTRL 은 상한이 오염됐다." >&2
+fi
 
 OUT="${OUT:-$(mktemp -d -t cc-score)}"
 mkdir -p "$OUT"
