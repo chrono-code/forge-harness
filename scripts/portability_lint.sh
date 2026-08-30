@@ -141,6 +141,26 @@ lint_file() {
     _emit "        → 루프 첫 줄에 \`[ -e \"\$f\" ] || continue\`, 또는 shopt -s nullglob"
     _hits=$((_hits+1))
   done < <(grep -nE 'for [A-Za-z_][A-Za-z0-9_]* in [^;]*\*[^;)]*; *do' "$f" 2>/dev/null)
+
+  # ── [P10] `tr` 집합 안의 «범위로 읽힐 수 있는» 하이픈 ────────────────────────────
+  # 🟥 2026-08-30 실측, N=3 로 기계화. (번호: 초판이 이미 쓰인 P9 를 재사용해 충돌했다 — 실행해서 잡았다.) `tr -d '[:space:].·—-]'` 의 `—-]` 를 **범위**로 읽는
+  #    구현이 있다(GNU tr). 그러면 그 범위에 든 바이트가 전부 삭제되고 — 한글 코퍼스에서는
+  #    낱말 자체가 사라진다. macOS 는 리터럴로 읽어 통과하므로 **로컬만 초록이고 CI 에서 적색**이다.
+  #    실제 피해: `defeater: 없음` 이 「1 낱말 공허」로 차단됐다(D6 레인, CI 전용 실패).
+  # 판별: `tr` 인자 안에서 **양쪽에 문자가 있는 `-`**. 맨 앞/맨 뒤 하이픈은 리터럴이라 안전하고,
+  #       `a-z`·`0-9` 같은 **의도된 범위**는 오탐이므로 뺀다.
+  while IFS= read -r line; do
+    n="${line%%:*}"; body="${line#*:}"
+    printf '%s' "$body" | grep -qE '#[[:space:]]*portability-noqa:[[:space:]]*[^[:space:]]' && continue
+    case "$(printf '%s' "$body" | sed 's/^[[:space:]]*//')" in '#'*) continue ;; esac
+    # 의도된 ASCII 범위만 쓰는 줄은 통과
+    printf '%s' "$body" | grep -qE "tr[^|]*'[^']*[a-zA-Z0-9]-[a-zA-Z0-9][^']*'" && continue
+    _emit "  [P10] $f:$n"
+    _emit "        \`tr\` 집합 안의 하이픈이 **범위**로 읽힐 수 있다(구현마다 다르다)."
+    _emit "        비-ASCII 가 섞인 집합에서는 낱말이 통째로 지워진다 — 로컬만 초록이 된다."
+    _emit "        → 하이픈을 **맨 뒤**로 옮기거나, \`tr\` 대신 셸 파라미터 확장을 써라."
+    _hits=$((_hits+1))
+  done < <(grep -nE "tr +-[a-z]* *'[^']*[^-'][-][^-'][^']*'" "$f" 2>/dev/null)
 }
 
 # ── self-test (known-pair) ────────────────────────────────────────────────────
@@ -194,6 +214,16 @@ if [ "$SELFTEST" = 1 ]; then
   printf 'd=$(date +%%s)\n'              > "$t/p7_neg.sh"; _ck "P7 known-negative (date +%s)" 0 "$t/p7_neg.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
   printf 'run_review "package.json"\n'  > "$t/p9_pos.sh"; _ck "P9 known-positive (레포고유 픽스처)" 1 "$t/p9_pos.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
   printf 'run_review "$t/fixture.json"\n' > "$t/p9_neg.sh"; _ck "P9 known-negative (자기 픽스처)" 0 "$t/p9_neg.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
+  # 🟥 P10 — `tr` 집합 안의 «범위로 읽힐 수 있는» 하이픈. 2026-08-30 CI 전용 실패에서 나왔다:
+  #    `tr -d '[:space:].·—-]'` 가 GNU 에서 범위로 읽혀 한글이 지워졌고 `defeater: 없음` 이
+  #    「1 낱말 공허」로 차단됐다. macOS 는 리터럴로 읽어 **로컬만 초록**이었다.
+  printf 'x=$(printf %%s "$b" | tr -d \x27[:space:].\xc2\xb7\xe2\x80\x94-]\x27)\n' > "$t/p10_pos.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
+  _ck "P10 known-positive (하이픈이 범위로 읽힌다)" 1 "$t/p10_pos.sh"
+  printf 'y=$(printf %%s "$b" | tr -d \x27[:space:].\xc2\xb7]\x27)\n' > "$t/p10_neg.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
+  _ck "P10 known-negative (하이픈 없음 = 리터럴)" 0 "$t/p10_neg.sh"
+  # 🟥 컨트롤 — 의도된 ASCII 범위(a-z)는 오탐이면 안 된다. 없으면 «전부 잡는 계기»와 구분 안 된다.
+  printf 'z=$(printf %%s "$b" | tr \x27a-z\x27 \x27A-Z\x27)\n' > "$t/p10_ctl.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
+  _ck "P10 control (의도된 a-z 범위는 오탐 아님)" 0 "$t/p10_ctl.sh"
 
   # 🟥 로케일 fail-open — cross-family 가 실측으로 잡은 것. 비-UTF8 바이트가 섞인 줄을
   # UTF-8 로케일에서 돌려도 검출돼야 한다(lint_file 이 LC_ALL=C 로 고정하므로).

@@ -1306,7 +1306,21 @@ validate_defeater_leg() { # $1 = marker path
   body=$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
   # 선언된 부재는 값이다 — `①영혼: 없음` 과 같은 형태. 정직한 형태를 벌하고 분량으로 채운
   # 「안 썼다」 문단을 통과시키는 것이 [[feedback_unreachable_done_when_trains_evasion]] 이다.
-  case "$(printf '%s' "$body" | tr -d '[:space:].·—-]')" in
+  # 🟥 **`tr -d '[:space:].·—-]'` 를 걷어냈다 (2026-08-30, CI 가 잡았다 — 로컬은 초록이었다).**
+  #    그 브래킷 표현은 이식 불가다: `—-]` 를 **범위**로 읽는 구현이 있고(GNU tr), 그러면 한글
+  #    바이트가 삭제돼 `case` 가 안 걸린다 → `defeater: 없음` 이 «1 낱말 공허» 로 차단된다.
+  #    macOS(BSD/ugrep 환경)에서는 `없음` 이 그대로 남아 통과했고, **그래서 로컬만 초록이었다.**
+  #    ⇒ `tr` 대신 셸 파라미터 확장으로 «양끝 구두점/공백»만 벗긴다. 클래스 파싱에 안 기댄다.
+  _dv="$body"
+  while :; do
+    case "$_dv" in
+      ' '*|'	'*) _dv="${_dv# }"; _dv="${_dv#	}" ;;
+      *' '|*'	') _dv="${_dv% }"; _dv="${_dv%	}" ;;
+      *'.'|*'·'|*'—'|*'-'|*']') _dv="${_dv%?}" ;;
+      *) break ;;
+    esac
+  done
+  case "$_dv" in
     없음|none|None|NONE|n/a|N/A|해당없음)
       echo "  ⚠️  defeater: 없음 — 선언된 부재. 기록되었고, 침묵은 아니다."
       return 0 ;;

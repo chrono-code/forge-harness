@@ -94,6 +94,17 @@ dlane D4-vacuous-blocks            BLOCK "$GRACE" "$SOUL
 defeater: 틀렸을 수도"
 dlane D5-korean-onetoken-blocks    BLOCK "$GRACE" "$SOUL
 defeater: 관측될것이있을것이다확인함"
+# 🟥 D6 은 **CI 에서만** 깨졌다(2026-08-30). 원인은 `tr -d '[:space:].·—-]'` 의 `—-]` 를
+#    **범위**로 읽는 구현(GNU tr)이 있다는 것 — 그러면 한글 바이트가 지워져 「선언된 부재」
+#    분기가 안 걸리고 `1 낱말 공허` 로 차단된다. macOS 에서는 그대로 남아 **로컬만 초록**이었다.
+#    ⇒ `tr` 을 걷어내고 셸 파라미터 확장으로 양끝 구두점만 벗긴다. 아래 D6b/D6c 가 그 고정이다.
+dlane D6b-absent-with-trailing-dot PASS  "$GRACE" "$SOUL
+defeater: 없음."
+dlane D6c-absent-english           PASS  "$GRACE" "$SOUL
+defeater: none"
+# 컨트롤 — 「선언된 부재」를 넓힌 것이 «공허 검사를 껐다» 가 되면 안 된다
+dlane D6d-vacuous-still-blocks     BLOCK "$GRACE" "$SOUL
+defeater: 아마도"
 dlane D6-declared-absent-ok        PASS  "$GRACE" "$SOUL
 defeater: 없음"
 dlane D7-duplicate-blocks          BLOCK "$GRACE" "$SOUL
