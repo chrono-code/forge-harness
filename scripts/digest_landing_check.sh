@@ -644,6 +644,62 @@ EOF
       bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$IG/wiki/digest.md" ) >/dev/null 2>&1; rc_ie=$?
   _t "★N-input e) 글롭이 확장되지 않는다(진짜 착지면을 과잉 제외 안 함)" 0 "$rc_ie"
   rm -rf "$IG"
+
+  # ── ★N-self (2026-08-30) — 자기참조 차단 «세 분기»의 앵커 ─────────────────────────────
+  # 🟥 왜 지금 붙나: 세 분기(digest 자신 · 그 로그 · 타 digest)를 **각각 `continue` 에서 `:` 로
+  #    되돌려도 20 레인이 전부 초록**이었다(2026-08-30 실측). 즉 위 ★N-input 이 «프로필» 축만
+  #    덮고 있었고, 나머지 세 축은 코드에 있으되 **아무도 안 재는 장식**이었다.
+  #    이 파일 주석이 스스로 «첫 실물 실행에서 100% 오탐을 낸 원인» 이라 적어둔 그 분기들이다.
+  # 🟥 컨트롤 설계: 이 셋은 env 토글이 없다(하드코딩). 그래서 «끄는» 대신 **같은 내용의 파일을
+  #    제외되지 않는 위치에 두는** 팔을 짝으로 둔다 — 한 변수는 «파일의 자리» 하나뿐이다.
+  #    짝이 없으면 「제외가 다 죽인다」와 「픽스처가 애초에 안 잡힌다」가 구분되지 않는다.
+  local SG rc_s ctl_s
+  _mk_self() { # $1=배치할 상대경로 (digest 이후 커밋된다)
+    SG="$(mktemp -d -t dlc_s.XXXXXX)" || return 10
+    ( mkdir -p "$SG/wiki/logs" && cd "$SG" && git init -q . \
+        && git config user.email t@t && git config user.name t
+      printf '# d\n## 📌 FH Immediate Application Candidates\n\n| # | 티어 | 내용 |\n|---|---|---|\n| **A1** | M | `zzz_tok` 후보 |\n\n## end\n' \
+        > wiki/digest.md
+      # 🟥 ⓐ(digest 자신) 는 **별도 파일이 아니라 digest 에 «덧붙여야»** 조건이 성립한다.
+      #    초판은 `> wiki/digest.md` 로 덮어써서 후보 절을 지웠고, 그러면 필터와 무관하게
+      #    rc=10 이 나와 **필터를 죽여도 초록**이었다 — 픽스처가 조건 위에 있지 않은 판
+      #    ([[feedback_anchor_can_be_decorative]] 원인 5). 손으로 재현해서 잡았다.
+      if [ "$1" = "digest.md" ]; then
+        printf 'zzz_tok 이 여기 있다 · zzz_ctl\n' >> wiki/digest.md
+        touch -t 200101010000 wiki/digest.md
+      else
+        touch -t 200101010000 wiki/digest.md
+        mkdir -p "$(dirname "wiki/$1")"
+        printf 'zzz_tok 이 여기 있다 · zzz_ctl\n' > "wiki/$1"
+      fi
+      git add -A && git commit -qm s ) >/dev/null 2>&1
+  }
+  _run_self() {
+    ( cd "$SG" && CLAUDE_PROJECT_DIR="$SG" DLC_TRACKED_PATHS="wiki" DLC_IGNORED_DIR="" \
+        DLC_CONTROLS="zzz_ctl" \
+        bash "$SELF_DIR/$(basename "${BASH_SOURCE[0]}")" "$SG/wiki/digest.md" ) >/dev/null 2>&1
+  }
+
+  # ⓐ digest 자신 — 자기 안에서 후보 토큰이 발견되면 전건이 자동 「착지」가 된다
+  _mk_self "digest.md"; _run_self; rc_s=$?
+  _t "★N-self a) digest 자신은 타깃이 아니다 → 미측정(10)" 10 "$rc_s"
+  rm -rf "$SG"
+  # ⓐ-CTRL 같은 내용을 제외되지 않는 이름으로 두면 «10 이 아니게» 된다 = 픽스처가 살아 있다
+  _mk_self "plain.md"; _run_self; ctl_s=$?
+  _t "★N-self a-CTRL) 제외 안 되는 자리면 10 이 아니다(픽스처 생존 증명)" "not10" "$([ "$ctl_s" -eq 10 ] && echo is10 || echo not10)"
+  rm -rf "$SG"
+
+  # ⓑ 생성 로그 — digest 를 만든 로그는 digest 어휘를 그대로 갖는다
+  _mk_self "logs/run.md"; _run_self; rc_s=$?
+  _t "★N-self b) 생성 로그(*/logs/*)는 타깃이 아니다 → 미측정(10)" 10 "$rc_s"
+  rm -rf "$SG"
+
+  # ⓒ 타 digest — 후보는 이월되며 다음 날 digest 에 다시 등장한다. 그걸 착지로 세면
+  #    「내일도 후보로 남았다」가 「오늘 착지했다」가 된다.
+  _mk_self "frontier_digest_2002_02_02.md"; _run_self; rc_s=$?
+  _t "★N-self c) 타 digest(*frontier_digest_*)는 타깃이 아니다 → 미측정(10)" 10 "$rc_s"
+  rm -rf "$SG"
+
   rm -rf "$EG"
   # ⚠️ **줄 단위로** 본다. `case *"A1"*"미착지"*` 는 마지막 요약줄("N건 중 M건 미착지")까지
   # 삼켜 오매칭한다 — 문자열 위치로 판정하는 prose-grep 함정([[feedback_typed_verdict_channel]]).
