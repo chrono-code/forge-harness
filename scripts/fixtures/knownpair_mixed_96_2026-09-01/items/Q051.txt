@@ -1,0 +1,1 @@
+`scripts/test_new_code_anchor_lanes.sh` — 실제 검사 로직은 `scripts/new_code_anchor_check.sh`이고, CI는 `.github/workflows/new-code-anchor.yml`에서 실행됩니다.

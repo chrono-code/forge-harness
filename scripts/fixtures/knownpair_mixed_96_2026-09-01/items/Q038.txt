@@ -1,0 +1,1 @@
+`scripts/new_code_anchor_check.sh` 입니다. (관련 워크플로: `.github/workflows/new-code-anchor.yml`, 테스트: `scripts/test_new_code_anchor_lanes.sh`)

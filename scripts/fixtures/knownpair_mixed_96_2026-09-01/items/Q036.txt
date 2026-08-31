@@ -1,0 +1,1 @@
+`.github/workflows/new-code-anchor.yml` — 새로 추가된 실행 파일이 어떤 테스트 레인에서도 안 돌리는지 검사하는 "New-code anchor" 게이트입니다. 다만 branch protection에는 `validate`만 필수 체크로 등록돼 있어, 현재는 리포트만 하고 머지를 막지는 않습니다.

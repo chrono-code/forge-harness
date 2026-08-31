@@ -1,0 +1,5 @@
+"새 코드 앵커(new code anchor)" 레인 테스트 스크립트 경로는 다음입니다.
+
+`scripts/test_new_code_anchor_lanes.sh`
+
+(대응 구현체는 `scripts/new_code_anchor_check.sh`, CI 워크플로는 `.github/workflows/new-code-anchor.yml`)

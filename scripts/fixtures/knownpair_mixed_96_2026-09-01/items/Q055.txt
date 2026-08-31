@@ -1,0 +1,3 @@
+`scripts/new_code_anchor_check.sh` 입니다.
+
+관련하여 `.github/workflows/new-code-anchor.yml`이 CI에서 이 스크립트를 호출하고, `scripts/test_new_code_anchor_lanes.sh`가 테스트 레인입니다.

@@ -1,0 +1,1 @@
+`scripts/new_code_anchor_check.sh`가 새 코드 앵커 검사를 담당하는 스크립트다. (테스트 레인은 `scripts/test_new_code_anchor_lanes.sh`, qasp용 어댑터는 `scripts/adapters/qasp_new_code_anchor.sh`.)
