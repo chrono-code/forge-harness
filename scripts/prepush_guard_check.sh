@@ -28,7 +28,7 @@ DEF_SRC="$REPO_ROOT/.claude/rules/.public-surface-patterns.defaults"
 
 # Test the STAGED blob when the hook is staged — same reasoning as universal_guard_check.sh: an
 # anchor that reads the worktree can be bypassed by staging a regression and restoring the worktree.
-WORK=$(mktemp -d) || exit 1
+WORK=$(mktemp -d) || exit 1; : "${WORK:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$WORK"' EXIT
 _status=$(git -C "$REPO_ROOT" -c core.quotePath=false diff --cached --name-status --no-renames 2>/dev/null \
           | awk -F'\t' '$2 == "templates/.git-hooks/pre-push" { print $1; exit }')
@@ -48,7 +48,7 @@ PATK="ghp""_abcdefghijklmnopqrstuvwxyz012345"
 DOCK="AKIAIOSFODNN7EXAMPLE"     # the documented example key: must be exempt, so it stays literal
 
 newrepo() {  # echoes a fresh repo path with the pattern layers in place and one base commit
-  local d; d=$(mktemp -d)
+  local d; d=$(mktemp -d); : "${d:?fixture root unset — refusing to run git in cwd}"
   mkdir -p "$d/.claude/rules" "$d/templates/.git-hooks" "$d/tracks/_meta"
   cp "$DEF_SRC" "$d/.claude/rules/.public-surface-patterns.defaults"
   # The operator override is GITIGNORED in the real repo, so it never enters history. Committing it

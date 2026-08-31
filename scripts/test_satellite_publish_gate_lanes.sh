@@ -39,7 +39,7 @@ pass=0; fail=0
 t() { if [ "$2" = "$3" ]; then echo "  ✅ $1"; pass=$((pass+1)); else echo "  ❌ $1 — got [$3] want [$2]"; fail=$((fail+1)); fi }
 
 run() { # $1 = digest body · $2 = psa_lib override ("dead") · $3 = arm 이름 → echoes "rc|state"
-  local td; td=$(mktemp -d)
+  local td; td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"
   mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$td/scripts/"
   cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$td/.claude/rules/" 2>/dev/null
@@ -86,7 +86,7 @@ r=$(run "$LEAK_BODY"  live leak);  t "P2 LEAK → 격리(.QUARANTINE)" "2|quaran
 r=$(run "$CLEAN_BODY" dead dead);  t "P3 스캐너 사망 → 보류(.UNSCANNED)" "3|unscanned" "$r"; P3RC=${r%%|*}
 
 # N1 — 게이트 미활성(FD_PUBLIC_TARGET 없음)이면 LEAK 본문이어도 게시된다 = FH 경로 무변경
-td=$(mktemp -d); mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
+td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"; mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
 cp "$ROOT/scripts/frontier_digest_daily.sh" "$ROOT/scripts/psa_scan_lib.sh" "$td/scripts/"
 cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$td/.claude/rules/" 2>/dev/null
 printf '%s\n' "$LEAK_BODY" > "$td/out/frontier_digest_$(date +%Y_%m_%d).md"
@@ -112,7 +112,7 @@ t "N2 control — LEAK 과 NOT-SCANNED 의 rc 가 다르다" "different" "$([ "$
 _prompt() { FH_DIR="$1" OUT_DIR=out HUMAN_DATE=2026-08-18 TODAY=2026_08_18 PROFILE_PATH="$2" \
   bash -c "$(sed -n '/^_build_prompt()/,/^}/p' "$ROOT/scripts/frontier_digest_daily.sh")
 _build_prompt"; }
-pd=$(mktemp -d); printf 'PROFILE_CANARY_BODY
+pd=$(mktemp -d); : "${pd:?fixture root unset — refusing to run git in cwd}"; printf 'PROFILE_CANARY_BODY
 ' > "$pd/p.md"
 case "$(_prompt "$pd" "p.md")" in *"PROFILE_CANARY_BODY"*) r=in ;; *) r=missing ;; esac
 t "P5 프로필이 프롬프트에 실제로 실린다"        "in" "$r"
@@ -130,7 +130,7 @@ rm -rf "$pd"
 
 # R2 · 공개 대상이면 로그가 OUT_DIR **밖**이다
 _logloc() { # $1 = FD_PUBLIC_TARGET 값 → echoes inside|outside
-  local td; td=$(mktemp -d); mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
+  local td; td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"; mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$td/scripts/"
   cp "$ROOT/scripts/psa_scan_lib.sh" "$td/scripts/"
   cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$td/.claude/rules/" 2>/dev/null
@@ -169,7 +169,7 @@ t "R2c-n control — 종전 형태(줄 끝 인용)도 여전히 가린다" "reda
 
 # R2d · **경로 쪽** 토큰 (cross-family/codex F2) — 파일명에 토큰이 들어가면 왼쪽이 남았다
 _leaky_name() {
-  local td; td=$(mktemp -d); mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
+  local td; td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"; mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$ROOT/scripts/psa_scan_lib.sh" "$td/scripts/"
   cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$td/.claude/rules/" 2>/dev/null
   printf 'HIGH\tZZ_SYNTHETIC_LEAK_TOKEN_ZZ\n' > "$td/.claude/rules/.public-surface-patterns"
@@ -190,7 +190,7 @@ t "R2d 파일명에 든 토큰도 로그에 안 남는다"       "redacted" "$(_
 
 # R3 · 같은 날 파일이 둘이면 **전부** 스캔한다 (head -1 이면 앞엣것만 보고 CLEAN 을 낸다)
 _two_files() {
-  local td; td=$(mktemp -d); mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
+  local td; td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"; mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$td/scripts/"
   cp "$ROOT/scripts/psa_scan_lib.sh" "$td/scripts/"
   cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$td/.claude/rules/" 2>/dev/null
@@ -214,7 +214,7 @@ t "R3b 둘째 파일이 실제로 격리된다"               "yes" "${r##*|}"
 
 # R3c · 선택자 자기모순(digest_ready 참인데 게이트가 볼 파일 0건) → **보류**, 게시 아님
 _selector_race() {
-  local td; td=$(mktemp -d); mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
+  local td; td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"; mkdir -p "$td/scripts" "$td/out" "$td/.claude/rules"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$ROOT/scripts/psa_scan_lib.sh" "$td/scripts/"
   cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$td/.claude/rules/" 2>/dev/null
   printf 'HIGH\tZZ_SYNTHETIC_LEAK_TOKEN_ZZ\n' > "$td/.claude/rules/.public-surface-patterns"
@@ -236,7 +236,7 @@ t "R3c 선택자 자기모순은 게시가 아니라 보류(3)" "3" "$(_selector
 #    장식 앵커다([[feedback_anchor_can_be_decorative]]). 되돌림 프로브가 그걸 잡았다.
 #    지금은 **러너를 돌리고 그 로그**를 읽는다. 러너가 어떻게 부르는지가 판정 대상이다.
 _runner_witness() { # echoes verdict-word from the log
-  local td; td=$(mktemp -d)
+  local td; td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"
   ( cd "$td" && git init -q . && git config user.email t@t && git config user.name t ) >/dev/null 2>&1
   mkdir -p "$td/scripts" "$td/out" "$td/knowledge"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$ROOT/scripts/digest_landing_check.sh" \
@@ -276,7 +276,7 @@ t "R1 러너가 부르는 형태에서 계기가 살아 있다(HARNESS-ERROR 아
 #    대시본을 뒤로 보내 **두 달 전 파일**을 직전으로 골랐고, 그 파일엔 후보 절이 없어 매 런
 #    HARNESS-ERROR 였다. 픽스처가 한 표기만 쓰면 레인 21개가 다 초록인 채로 이게 산다.
 _prev_pick() {
-  local td; td=$(mktemp -d); mkdir -p "$td/out"
+  local td; td=$(mktemp -d); : "${td:?fixture root unset — refusing to run git in cwd}"; mkdir -p "$td/out"
   # 🟥 **같은 연도**여야 재현된다. 첫 픽스처는 `2020-06-02` 를 썼는데 그건 로케일 정렬에서도
   #    올바르게 뒤로 가서 **버그 판본도 초록**이었다(되돌림 프로브가 잡은 세 번째 장식 앵커).
   #    실물 코퍼스의 표기를 그대로 쓴다: `2026-06-02` vs `2026_08_17`.
@@ -301,7 +301,7 @@ t "R5 표기가 섞여도 «직전»은 날짜상 최신이다" "frontier_digest
 #    없으면 **publish gate 가 영영 fail-closed** 였다 — 실측으로 `psa_scan_lib.sh 부재` 를 봤다.
 #    게다가 그 분기는 파일을 **격리하지 않아** «게시 안 함» 이 거짓이었다(digest 는 이미 트리에 있다).
 _engine_vs_target() { # echoes "rc|state"
-  local eng tgt; eng=$(mktemp -d); tgt=$(mktemp -d)
+  local eng tgt; eng=$(mktemp -d); : "${eng:?fixture root unset — refusing to run git in cwd}"; tgt=$(mktemp -d); : "${tgt:?fixture root unset — refusing to run git in cwd}"
   mkdir -p "$eng/scripts" "$eng/.claude/rules" "$tgt/out"      # 🟥 대상에는 scripts/ 를 안 만든다
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$ROOT/scripts/psa_scan_lib.sh" "$eng/scripts/"
   cp "$ROOT/.claude/rules/.public-surface-patterns.defaults" "$eng/.claude/rules/" 2>/dev/null
@@ -324,7 +324,7 @@ t "R6b 그래서 CLEAN 한 digest 가 실제로 게시된다"                "pu
 
 # R6c · 스캐너가 **진짜로** 없으면 «게시 안 함» 이 말뿐이 아니라 격리까지 간다
 _lib_absent() {
-  local eng tgt; eng=$(mktemp -d); tgt=$(mktemp -d)
+  local eng tgt; eng=$(mktemp -d); : "${eng:?fixture root unset — refusing to run git in cwd}"; tgt=$(mktemp -d); : "${tgt:?fixture root unset — refusing to run git in cwd}"
   mkdir -p "$eng/scripts" "$tgt/out"
   cp "$ROOT/scripts/frontier_digest_daily.sh" "$eng/scripts/"     # 🟥 psa_scan_lib.sh 는 안 넣는다
   printf '#!/usr/bin/env bash\nexit 0\n' > "$eng/scripts/stub-claude"; chmod +x "$eng/scripts/stub-claude"

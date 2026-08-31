@@ -327,6 +327,25 @@ fi
 # catch the eye. Fixing it is one line in validate.yml (set core.hooksPath before the selfcheck step)
 # and is deliberately NOT bundled here — see the handoff. Until then the only real measurement arm is
 # the author's machine, which is the exact shape portability_lint.sh was written to condemn.
+# ── prepush-guard known-pair (2026-08-31 배선) ─────────────────────────────────────────
+# WHY: 이 스크립트는 pre-push 게이트의 known-pair 앵커인데 **아무도 부르지 않았다**.
+# 그리고 그것이 실사고의 출처였다 — 픽스처 루트가 빈 값이 되면 레포 루트에 파일 13개를
+# 뿌린다(2026-08-31 고장 주입으로 재현: `mktemp` 가 rc=0 으로 빈 출력을 낼 때).
+# 「호출부가 없는 앵커는 산문」이므로 배선한다. 종료코드 계약은 0=통과 / 그 외=실패.
+if [ ! -f scripts/prepush_guard_check.sh ]; then
+  _absent_subject_verdict "prepush-guard known-pair" "scripts/prepush_guard_check.sh" || fail=1
+else
+  # 🟥 파이프 앞에서 rc 를 잡는다 — 표시 필터의 rc 를 읽으면 실패가 0 으로 보인다.
+  _pg_out="$(bash scripts/prepush_guard_check.sh 2>&1)"; _pg_rc=$?
+  if [ "$_pg_rc" -eq 0 ]; then
+    echo "PASS  prepush-guard known-pair"
+  else
+    echo "FAIL  prepush-guard known-pair (rc=$_pg_rc)"
+    [ -n "$_pg_out" ] && printf '%s\n' "$_pg_out" | tail -12 | sed 's/^/      /'
+    fail=1
+  fi
+fi
+
 if [ ! -f scripts/gate_anchor_check.sh ]; then
   _absent_subject_verdict "gate-anchor harness" "scripts/gate_anchor_check.sh" || fail=1
 else
