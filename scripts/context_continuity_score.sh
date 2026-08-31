@@ -426,7 +426,9 @@ $question"
     if [ "${RESCORE:-0}" != 1 ]; then
       args=(--arm "${qid}_${arm}" --reps "$REPS" --model "$MODEL" --out "$OUT" --prompt "$q")
       [ -n "$setup" ] && args+=(--setup "$setup")
-      bash "$RUNNER" "${args[@]}" >/dev/null 2>&1
+      # 🟥 심층 방어 — 이 호출은 `while … done < "$QSET"` 루프 «안»이라 stdin 이 qset 이다.
+      #    러너 쪽에도 `< /dev/null` 을 박았지만, 여기서 끊는 것이 근원이다(호출부 책임).
+      bash "$RUNNER" "${args[@]}" >/dev/null 2>&1 < /dev/null
     fi
     for r in $(seq 1 "$REPS"); do
       f="$OUT/${qid}_${arm}_r${r}.txt"

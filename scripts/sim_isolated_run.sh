@@ -329,8 +329,21 @@ for r in $(seq 1 "$REPS"); do
   #    ⚠️ 그러므로 이 산출 디렉터리는 «답을 아는» 자리다. 다른 팔이 읽지 못하도록 막는 것은
   #       fh_sim_write_path_isolation 의 `_deny_out` 이고, 그 결박이 이 덤프의 전제다.
   printf '%s' "$PROMPT" > "$OUTDIR/${ARM}_r${r}.prompt.txt"
+  # 🟥 `< /dev/null` 이 **하중이다** — 빼면 격리가 통째로 무너진다 (2026-08-31 확정).
+  #    `claude -p` 는 **stdin 이 TTY 가 아니면 그것을 읽어 프롬프트 뒤에 붙인다.**
+  #    호출부(`context_continuity_score.sh`)는 `while … done < "$QSET"` 루프 «안»에서 이 러너를
+  #    부르므로, 러너도 그 밑 claude 도 **stdin = 채점용 qset(정답 열 포함)** 을 상속했다.
+  #    ⇒ 모든 팔이 매 회차 **정답키 전체**를 받았다. ARM 도 CTRL 도.
+  #    known-pair (같은 모델·같은 플래그, 변수는 stdin 하나):
+  #      stdin=파일     → 판정줄은 NOTHING_APPENDED 인데 **본문이 미끼 토큰을 축자로 인용**한다
+  #      stdin=/dev/null → 미끼 토큰이 어디에도 안 나온다
+  #    🟥 그래서 이 결함은 «팔에게 물어보면» 안 잡힌다 — 팔은 그것을 «프롬프트 인젝션»이라
+  #    부르며 정직하게 거부하면서도, 거부문 안에서 정답을 말한다. 채점기는 그걸 토큰으로 센다.
+  #    이것이 회차 1~3 과 probe1~4 를 전부 무효로 만든 근인이고, 경로 deny·코퍼스 마스킹은
+  #    **원리적으로 못 막는다**(도구 읽기가 아니라 프롬프트 조립이다).
   ( cd "$WORK" && timeout "$TIMEOUT" claude -p "$PROMPT" \
-        --model "$MODEL" "${TOOLS[@]}" 2>"$OUTDIR/${ARM}_r${r}.stderr.txt" ) > "$OUTDIR/${ARM}_r${r}.txt"
+        --model "$MODEL" "${TOOLS[@]}" \
+        < /dev/null 2>"$OUTDIR/${ARM}_r${r}.stderr.txt" ) > "$OUTDIR/${ARM}_r${r}.txt"
   rc=$?
   bytes=$(wc -c < "$OUTDIR/${ARM}_r${r}.txt" | tr -d ' ')
 
