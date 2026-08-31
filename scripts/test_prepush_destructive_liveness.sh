@@ -50,6 +50,7 @@
 #
 # Usage: bash scripts/test_prepush_destructive_liveness.sh   → exit 0 anchor is live, 1 otherwise.
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 HOOK="$REPO_ROOT/templates/.git-hooks/pre-push"
@@ -95,7 +96,7 @@ fi
   # snapshots to differ. If git_state ever degrades into a constant (a hardcoded root, a swallowed
   # error path), this fires. Building the probe repo is itself fail-closed — an unbuildable control
   # is HARNESS_ERROR, never a silent skip.
-  _cmpdir=$(mktemp -d) || { echo "❌ CONTAINMENT CONTROL — cannot mktemp; NOT a pass"; exit 1; }
+  _cmpdir="$(fh_fixture_root "$(mktemp -d)")" || { echo "❌ CONTAINMENT CONTROL — cannot mktemp; NOT a pass"; exit 1; }
   if ! git -C "$_cmpdir" init -q >/dev/null 2>&1; then
     rm -rf "$_cmpdir"
     echo "❌ CONTAINMENT CONTROL — could not build the comparison repo; discrimination UNPROVEN (not a pass)"
@@ -115,7 +116,7 @@ fi
 GUARD_LINE='if [ "$r" = "refs/heads/${BASE_BRANCH}" ] || [ "$r" = "refs/heads/master" ] || [ "$r" = "refs/heads/main" ]; then'
 EXPECT_LANE='P4 delete INTEGRATION branch'
 
-C=$(mktemp -d) || exit 1
+C="$(fh_fixture_root "$(mktemp -d)")" || exit 1
 trap 'rm -rf "$C"' EXIT   # ③ DISCARD — unconditional, including on an early exit
 mkdir -p "$C/templates/.git-hooks" "$C/.claude/rules" "$C/scripts"
 cp "$HOOK" "$C/templates/.git-hooks/pre-push"
@@ -203,7 +204,7 @@ echo ""
 #     residual is a coverage limit on the CONTROL, not an open question about the SUBJECT.
 #   • Closing it properly needs a real old git (a container with 2.27), which is a CI decision, not
 #     something a shim can fake. Recorded as a named limit; not claimed closed.
-SHIM=$(mktemp -d) || exit 1
+SHIM="$(fh_fixture_root "$(mktemp -d)")" || exit 1
 trap 'rm -rf "$C" "$SHIM"' EXIT
 REALGIT=$(command -v git) || { echo "HARNESS_ERROR — no git on PATH"; exit 1; }
 cat > "$SHIM/git" <<EOF
@@ -222,8 +223,8 @@ chmod +x "$SHIM/git"
 
 # Known pair for the SHIM ITSELF. A shim that silently stopped intercepting would make stage ④ a
 # guaranteed green that measures nothing — the decorative-anchor failure, one level down.
-_kn=$(mktemp -d); ( cd "$_kn" && PATH="$SHIM:$PATH" git init -q . ) >/dev/null 2>&1; _knrc=$?
-_kp=$(mktemp -d); ( cd "$_kp" && PATH="$SHIM:$PATH" git init -q -b main . ) >/dev/null 2>&1; _kprc=$?
+_kn="$(fh_fixture_root "$(mktemp -d)")"; ( cd "$_kn" && PATH="$SHIM:$PATH" git init -q . ) >/dev/null 2>&1; _knrc=$?
+_kp="$(fh_fixture_root "$(mktemp -d)")"; ( cd "$_kp" && PATH="$SHIM:$PATH" git init -q -b main . ) >/dev/null 2>&1; _kprc=$?
 rm -rf "$_kn" "$_kp"
 if [ "$_knrc" -ne 0 ] || [ "$_kprc" -eq 0 ]; then
   echo "❌ PORTABILITY CONTROL INVALID — shim does not discriminate"
@@ -249,7 +250,7 @@ echo "④ portability: suite is GREEN under a git with no \`init -b\` — $(prin
 # The assertion is deliberately THREE-part. rc≠0 alone is not enough: the pre-fix suite ALSO
 # exited 1 (some lanes failed). What distinguishes honest from fail-open is that zero lanes were
 # scored and the abort is named. ([[feedback_gate_verification_must_execute]]: "막혔다"≠"옳게 막혔다".)
-DEAD=$(mktemp -d) || exit 1
+DEAD="$(fh_fixture_root "$(mktemp -d)")" || exit 1
 trap 'rm -rf "$C" "$SHIM" "$DEAD"' EXIT
 cat > "$DEAD/git" <<EOF
 #!/bin/bash
@@ -428,7 +429,7 @@ count_execs() {  # $1 = path to look for; $2 = root to scan (default: the real r
 # `.yaml` defect: presence of a control is not discrimination
 # ([[feedback_control_presence_is_not_discrimination]]). These lanes give each surface and each
 # reachability rule its own known-positive AND known-negative.
-_CALROOT=$(mktemp -d) || exit 1
+_CALROOT="$(fh_fixture_root "$(mktemp -d)")" || exit 1
 trap 'rm -rf "$C" "$SHIM" "$DEAD" "$_CALROOT"' EXIT
 _calfix() {  # $1 = subdir, $2 = relative file to create, $3 = contents
   mkdir -p "$_CALROOT/$1/$(dirname "$2")" || return 1

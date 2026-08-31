@@ -23,10 +23,11 @@
 # Usage: bash scripts/test_regression_guard_ci_lanes.sh   Exit: 0 = all behave; 1 = regression.
 
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WF="$REPO_ROOT/.github/workflows/regression-guard.yml"
 GUARD="$REPO_ROOT/templates/regression_guard.sh"
-T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+T="$(fh_fixture_root "$(mktemp -d)")"; trap 'rm -rf "$T"' EXIT
 FAIL=0
 
 # ── instrument calibration ───────────────────────────────────────────────────

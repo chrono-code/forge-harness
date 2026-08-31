@@ -20,22 +20,16 @@
 # Usage: bash scripts/test_marker_first_use_lanes.sh   Exit: 0 = all behave; 1 = regression.
 
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 # Script-relative, NOT `git rev-parse --show-toplevel` — same reason as the sibling marker lanes
 # (a vendored/nested checkout answers with the OUTER repo's root).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$REPO_ROOT/templates/.git-hooks/pre-commit"
-T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+T="$(fh_fixture_root "$(mktemp -d)")"; trap 'rm -rf "$T"' EXIT
 
-# ── 🟥 FIXTURE ROOT GUARD — 이 레인이 존재하기 하루 전에 정확히 이 결함이 발화했다.
-#    `test_script_caller_ratchet_lanes.sh` 의 `d="$(cd "$d" && pwd)"` 가 빈 값으로 붕괴해
-#    `git -C "" ` = cwd = **라이브 레포**가 됐고, `--no-verify` 라 훅도 안 걸렸다.
-#    불변식은 «빈 값인가»(증상)가 아니라 **«픽스처는 실레포에 쓰지 않는다»**(원인)다.
-case "$T" in
-  ""|/|"$HOME"|"$REPO_ROOT"|"$REPO_ROOT"/*)
-    echo "❌ HARNESS-ERROR — fixture root is unsafe: '$T'"
-    echo "   픽스처는 실레포에 쓰지 않는다. 초록을 보고하느니 중단한다."
-    exit 1 ;;
-esac
+# 🟥 픽스처 루트 가드는 **공용 lib** 이 진다 — 초판은 여기 인라인 사본이었고, 그때 스스로
+#    「공용 함수가 배선되면 이 사본은 지우고 그걸 불러라」고 적었다. 지금이 그때다
+#    ([[feedback_divergent_leniency_duplicate_normalizers]]: 관대함 갈린 중복은 무음 드롭을 만든다).
 
 sed -n '/^validate_first_use_leg()/,/^}/p' "$HOOK" > "$T/fn.sh"
 # 계기 캘리브레이션 — 빈 추출이면 모든 픽스처가 «아무것도 아닌 것»을 상대로 통과한다.
