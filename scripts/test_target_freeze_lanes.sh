@@ -11,9 +11,10 @@
 #    이 둘이 빠지면 3번째 시도도 같은 자리에서 무너진다.
 
 set -u
+. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/target_freeze.sh"
 pass=0; fail=0
-WORK=$(mktemp -d)
+WORK="$(fh_fixture_root "$(mktemp -d)")"
 trap 'rm -rf "$WORK"' EXIT
 R="$WORK/repo"
 

@@ -45,6 +45,7 @@
 #
 # Exit: 0 = every lane passed · 1 = a lane failed · 2 = the harness itself could not run.
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SELF_DIR/.." && pwd)"
@@ -57,7 +58,7 @@ REALGIT="$(command -v git 2>/dev/null)"
 [ -n "$REALGIT" ] || { echo "FAIL  runner-surface: git unavailable"; exit 2; }
 command -v python3 >/dev/null 2>&1 || { echo "FAIL  runner-surface: python3 unavailable"; exit 2; }
 
-WORK="$(mktemp -d)"
+WORK="$(fh_fixture_root "$(mktemp -d)")"
 trap 'rm -rf "$WORK"' EXIT
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  ✅ $1"; }
