@@ -104,7 +104,11 @@ self_test() {
   local T f=0 n=0 rc
   T=$(mktemp -d); trap 'rm -rf "$T"' RETURN
   t() { n=$((n+1)); if [ "$2" = "$3" ]; then echo "✅ $1 → $3"; else echo "❌ $1 → $3 (기대 $2)"; f=1; fi; }
-  bad() { scan_file "$1" 2>/dev/null | awk '/무앵커 [0-9]+건/{for(i=1;i<=NF;i++) if($i=="·"){print $(i+2)}}' | tr -d '건'; }
+  # 🟥 2026-08-31 — `awk ==` 가 이 로케일에서 **서로 다른 점 문자를 전부 같다**고 판정한다
+  #    (실측: `•` `‧` `∙` `・` `·` 다섯이 상호 동일. ASCII 는 정상 = 비ASCII 한정).
+  #    구분자를 잘못 잡으면 뽑는 «숫자»가 바뀐다 — 코퍼스는 `·`(57파일)와 `•`(1파일)를 둘 다 쓴다.
+  #    ⇒ `LC_ALL=C` 로 바이트 비교를 강제한다. [[feedback_locale_string_equality_breaks_nonascii]]
+  bad() { scan_file "$1" 2>/dev/null | LC_ALL=C awk '/무앵커 [0-9]+건/{for(i=1;i<=NF;i++) if($i=="·"){print $(i+2)}}' | tr -d '건'; }
 
   # known-positive: 앵커 없는 부재 주장
   printf '이 패턴은 선례가 없다.\n그래서 우리가 처음 만든다.\n' > "$T/ungrounded.md"

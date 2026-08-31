@@ -56,8 +56,10 @@ while IFS= read -r ref; do
     fail=1; continue
   fi
   n=$(git log --oneline "${base}..${ref}" 2>/dev/null | wc -l | tr -d ' ')
-  uniq=$(comm -23 <(git ls-tree -r --name-only "$ref" 2>/dev/null | sort) \
-                  <(git ls-tree -r --name-only "$base" 2>/dev/null | sort) | wc -l | tr -d ' ')
+  # 🟥 2026-08-31 — 로케일 접힘 방지. 여기가 접히면 unique path 가 줄어 REVIEW 판정이
+  #    CHECK/SAFE 로 강등된다(비가역 표면). [[feedback_locale_string_equality_breaks_nonascii]]
+  uniq=$(LC_ALL=C comm -23 <(git ls-tree -r --name-only "$ref" 2>/dev/null | LC_ALL=C sort) \
+                  <(git ls-tree -r --name-only "$base" 2>/dev/null | LC_ALL=C sort) | wc -l | tr -d ' ')
   if [ "$uniq" -gt 0 ]; then
     echo "REVIEW  $b — unique paths: $uniq, commits off base: $n → recover/integrate BEFORE delete"
     fail=1

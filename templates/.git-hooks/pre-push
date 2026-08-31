@@ -643,9 +643,14 @@ if [ -n "$DEL_BRANCHES" ]; then
         BLOCK=1; continue
       fi
       n=$(git rev-list --count "$BASE..$tip" 2>/dev/null || echo "?")
-      uniq=$(comm -23 \
-              <(git ls-tree -r --name-only "$tip"  2>/dev/null | sort) \
-              <(git ls-tree -r --name-only "$BASE" 2>/dev/null | sort) | grep -c . || true)
+      # 🟥 2026-08-31 — `comm`·`sort|uniq` 계열은 이 로케일에서 **서로 다른 비ASCII 문자열을
+      #    같다**고 접는다. 여기서 접히면 unique path 계수가 «줄어» REVIEW → CHECK/SAFE 로
+      #    강등되고, **고유 파일을 든 브랜치가 삭제된다** — 비가역 표면이다.
+      #    지금은 추적 파일 중 비ASCII 이름이 0건이라 안 터지지만, 하나 생기면 동시에 뚫린다.
+      #    ⇒ `LC_ALL=C` 로 못 박는다. [[feedback_locale_string_equality_breaks_nonascii]]
+      uniq=$(LC_ALL=C comm -23 \
+              <(git ls-tree -r --name-only "$tip"  2>/dev/null | LC_ALL=C sort) \
+              <(git ls-tree -r --name-only "$BASE" 2>/dev/null | LC_ALL=C sort) | grep -c . || true)
       if [ "${uniq:-0}" -gt 0 ] 2>/dev/null; then
         echo "  DELETE (branch): $r — REVIEW: $uniq unique path(s), $n commit(s) off $BASE → recover BEFORE deleting"
         BLOCK=1
