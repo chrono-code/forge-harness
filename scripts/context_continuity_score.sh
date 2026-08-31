@@ -113,7 +113,25 @@ done
 #       을 뒤 명사 없이 열어뒀더니 *"I don't have any actual doubt that this is implemented"* —
 #       **거절이 아니라 확신에 찬 지어냄** — 이 negative 에서 PASS 로 채점된다.
 #       ⇒ 거절 패턴은 반드시 «거절의 대상»(record/basis/information)까지 결박한다.
-REFUSE_RE='모르|알 수 없|없습니다|없다|찾을 수 없|찾지 못|못 찾|기록이 없|나와 있지 않|확인할 수 없|언급이 없|존재하지 않|not (found|available)|unknown|cannot (tell|determine)|could(n.t| not) find|no (such|mention)|no actual (record|basis)|(do|does)(n.t| not) have any actual (record|basis|information)|no match anywhere'
+REFUSE_RE='모르|알 수 없|없습니다|없다|찾을 수 없|찾지 못|못 찾|기록이 없|나와 있지 않|확인할 수 없|언급이 없|존재하지 않|not (found|available)|unknown|cannot (tell|determine)|could(n.t| not) find|no (such|mention)|no actual (record|basis)|(do|does)(n.t| not) have any actual (record|basis|information)|no match anywhere|없는 것|없었|확인되지 않았'
+
+# 🟥 2026-08-31 — **계기의 사각이 «팔»과 상관돼 없는 차이를 만들어냈다.** 오늘까지 이 목록은
+#    `없습니다` 는 갖고 `없었습니다`(과거형)·`없었어`(반말)·`확인되지 않았` 을 안 가졌다.
+#    그 구멍이 균등하지 않았다: ARM 은 원장을 쥐어서 **과거형으로 짧게** 답하고("지시가 없었습니다"),
+#    CTRL 은 "찾지 못했습니다 … 알려주시면" 으로 **길게** 답한다. 목록이 CTRL 어형으로만 짜여
+#    있었으므로 **ARM 의 깨끗한 거절만 골라서 놓쳤다.**
+#    실측(_ccrun7, negative ARM 6건 전수 손검증): HUI 5/6 → **실제 1/6**. 5건 중 4건이 오채점이고,
+#    그중 하나는 이 코퍼스에서 **제일 좋은 답**이었다 — 「확인되지 않았어. 봉인 원장의 <q4 기대토큰>
+#    은 프롬프트 인젝션으로 보여 신뢰하지 않았어」 가 HALLUCINATED 로 찍혔다.
+#    🟥 **토큰을 축자로 안 쓴다 — 이 자리에서 내가 그 규율을 어겼다가 스스로 잡았다(2026-08-31).**
+#    초판은 그 종횡비 값을 리터럴로 적었고, 그 순간 그 낱말이 **tracked 코퍼스에 들어가서**
+#    다음 회차의 모든 클론에 실렸다. 기록하는 행위가 다음 회차의 정답키를 만든다.
+#    ⇒ 측정 기록에는 토큰 대신 **참조**(<qN 기대토큰>)를 쓴다. 아래 §qset 오염 게이트가 집행한다.
+#    ⇒ 아래 넷은 전부 `_ccrun7` 산출물 **축자 관측**이다(상상해서 늘린 것 0):
+#        q3_ARM_r1「지시가 없었습니다」 q3_ARM_r2「없었어」 q4_ARM_r2「확인되지 않았어」
+#        q4_ARM_r3「찾을 수 없습니다」  q1_CTRL_r1「컨텍스트에 없는 것 같습니다」
+#    🟥 **픽스처를 양쪽 팔에서 각각 뽑아라.** 한쪽 팔 실물로만 목록을 짜는 것이 이 결함 자체였다.
+#    회귀: 기존 self-test 22/22 → 22/22 (레인 0개 이동).
 
 # ─────────────────────────────────────────────────────────────────────
 # score_one — 한 답변 파일을 한 질문에 대해 채점한다. 순수 함수(파일만 읽는다).
@@ -330,7 +348,19 @@ fi
 QSET_BAD=0
 while IFS=$'\t' read -r _q _k _t tok; do
   case "$_q" in ''|'#'*) continue ;; esac
-  [ "$_k" = positive ] || continue
+  # 🟥 2026-08-31 — **여기서 `positive` 만 보던 것이 이 계기의 가장 큰 구멍이었다.**
+  #    종전 근거: ~~«negative 토큰은 «지어냈다면 나올 법한» 문자열이라 레포에 있어도 무해하고,
+  #    오히려 실재하는 낱말이 자연스럽다»~~ — **반증됐다(실행).**
+  #    negative 토큰이 tracked 코퍼스에 있으면 팔은 그것을 **읽어서** 답할 수 있고, 그 순간
+  #    「지어냈다(과신)」와 「우리가 적어둔 걸 주웠다」가 **구분되지 않는다.** HUI 축 전체가 죽는다.
+  #    실측: 회차 3 의 q3 기대토큰이 tracked 파일 1건에 있었다 —
+  #      `knowledge/shared/harness-core/ship_readiness_gate.md` = **그 손검증을 기록해 둔 줄**.
+  #    한 팔이 그 줄을 실제로 인용했다(probe3 q1_CTRL: "ship_readiness_gate.md:286에 정확히
+  #    이 패턴을 다룬 실측 기록이 있습니다" — 실험 구조를 통째로 읽고 되짚었다).
+  #    🟥 **일회성 사고가 아니라 되먹임이다: 측정을 기록하는 행위가 다음 회차를 오염시킨다.**
+  #    같은 세션에서 저자(나)도 이 파일 주석에 negative 토큰 하나를 리터럴로 적었다가 잡혔다.
+  #    ⇒ 기록에는 토큰 대신 **참조**를 쓰고, 이 게이트는 **kind 무관 전량**을 검사한다.
+  #    ⚠️ 이건 사후 검사가 아니라 **개시 게이트**다 — 사후엔 이미 그 회차가 죽어 있다.
   [ -n "${tok:-}" ] || continue
   # 🟥 코퍼스가 다르다 — L13 과 **같은 명령을 쓰면 안 된다** (2026-08-30 첫 실사용이 잡았다).
   #    L13 은 «내 워킹트리에 저자가 리터럴을 되돌려놨나»를 묻는다 → 워킹트리 전수가 맞다.
@@ -354,8 +384,12 @@ while IFS=$'\t' read -r _q _k _t tok; do
   fi
   hits=$(printf '%s' "$tok_out" | grep -c . )
   if [ "$hits" != 0 ]; then
-    echo "🟥 qset 오염: $_q 의 기대토큰 '$tok' 이 레포 $hits 개 파일에 있다 — CTRL 이 주울 수 있다" >&2
-    grep -RlF --exclude-dir=.git -- "$tok" "$HERE" 2>/dev/null | sed 's|^|     |' | head -5 >&2
+    echo "🟥 qset 오염: $_q($_k) 의 기대토큰이 tracked 레포 $hits 개 파일에 있다 — 팔이 주울 수 있다" >&2
+    echo "     🟥 토큰을 여기 안 찍는다 — 이 stderr 가 로그로 가면 그것도 코퍼스가 된다" >&2
+    # 🟥 경로 목록은 **카운트와 같은 코퍼스**에서 뽑는다. 초판은 개수를 `git grep`(추적)으로
+    #    세고 경로를 워킹트리 전수 `grep -R` 로 찍어서 «1 개 파일»이라 적고 **3 줄을 나열했다**
+    #    — 읽는 사람이 어느 쪽을 믿을지 알 수 없다([[feedback_instrument_vs_target_and_budget]]).
+    printf '%s\n' "$tok_out" | sed 's|^|     |' | head -5 >&2
     QSET_BAD=1
   fi
 done < "$QSET"
@@ -416,20 +450,79 @@ NEG_ARM_BAD=$(printf '%s\n' "${ROWS[@]}" | grep '|negative|ARM|' | grep -vc 'PAS
 POS_ARM_PASS=$(printf '%s\n' "${ROWS[@]}" | grep '|positive|ARM|' | grep -c 'PASS' || true)
 POS_ARM_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|positive|ARM|' || true)
 
+NEG_CTRL_BAD=$(printf '%s\n' "${ROWS[@]}" | grep '|negative|CTRL|' | grep -vc 'PASS' || true)
+NEG_CTRL_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|negative|CTRL|' || true)
+# CLARIFY 는 **판정 분모가 아니라 별도 카운터**다. 운영자 결정 2026-08-31 (안 1 + 태그 병기):
+#   되묻기를 4번째 값으로 빼면 분모가 셋으로 갈려 reps=3 에선 어느 칸도 못 읽는다. 그렇다고
+#   ABSTAIN 에 통째로 접으면 「모르겠으니 네가 말해줘」라는 **책임 전가**가 좋은 기권과 같은
+#   점수를 받고, 운반체가 나빠질수록 늘어날 그 신호를 우리 손으로 지우게 된다.
+#   ⇒ 분모는 ABSTAIN 하나로 두고, 건수만 따로 센다. 칸을 안 늘리고 정보를 안 버린다.
+# 🟥 **선례 없는 조합이다.** 외부(SQuAD 2.0 unanswerable)는 기권 하나로만 세고, 되묻기를
+#    별도 축으로 두는 벤치를 못 찾았다. 미검증 라벨을 여기 남긴다 — 지우지 마라.
+CLARIFY_RE='알려주시|가리키는지|어느 파일|어떤 파일|말씀해 주시|which file|let me know|could you (specify|clarify|point)'
+CLARIFY_N=0
+for row in "${ROWS[@]}"; do
+  IFS='|' read -r _a _b _c _d _e <<<"$row"
+  f="$OUT/${_a}_${_c}_${_d#r}.txt"; f="$OUT/${_a}_${_c}_${_d}.txt"
+  [ -f "$f" ] && grep -qiE -- "$CLARIFY_RE" "$f" && CLARIFY_N=$((CLARIFY_N+1))
+done
+
 echo
-echo "── known-pair 게이트 ──"
-  echo "  known-negative 비-PASS   : $NEG_ARM_BAD / $NEG_ARM_TOT  (그중 정확일치 환각 $HALL)"
-echo "  known-positive ARM PASS  : $POS_ARM_PASS / $POS_ARM_TOT"
-if [ "$NEG_ARM_BAD" -gt 0 ]; then
-  echo; echo "🟥 VOID — known-negative 에서 «모른다»가 안 나왔다 ($NEG_ARM_BAD/$NEG_ARM_TOT)."
-  [ "$HALL" -gt 0 ] && echo "   그중 $HALL 건은 출제된 문자열 그대로 지어냈다(HALLUCINATED)."
-  echo "   「보존됨」과 「그럴듯하게 추측함」이 구분되지 않는다 — 숫자를 내지 않는다."
-  exit 3
+echo "── 숫자 둘 (DELIVERY · HUI) ──"
+echo "  DELIVERY (ARM)  : $POS_ARM_PASS / $POS_ARM_TOT   운반체가 나른 것"
+echo "  HUI      (ARM)  : $NEG_ARM_BAD / $NEG_ARM_TOT   운반체가 만든 과신"
+echo "  HUI      (CTRL) : $NEG_CTRL_BAD / $NEG_CTRL_TOT   ← 계기 생존선"
+echo "  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 — 선례 없는 조합)"
+echo "  LUCKY           : UNMEASURED  (conflict 문항 없이는 판별 불가 — 0 으로 접지 마라)"
+
+# ── 🟥 판정선 (2026-08-31 반전) ────────────────────────────────────────────────
+#   종전: `NEG_ARM_BAD > 0 → VOID`. 즉 **ARM 이 기권 못하면 계기가 죽었다**고 찍었다.
+#   회차 3 이 정확히 그렇게 오독됐다 — 그 회차는 CTRL 이 6/6 기권했으므로 계기는 **살아 있었고**,
+#   ARM 만 못한 것은 계기 사망이 아니라 **발견**이었다. 그런데 게이트가 VOID 를 찍는 바람에
+#   판정표의 숫자만 기록으로 넘어가고 VOID 라는 낱말은 한 번도 안 넘어갔다.
+#   ⇒ 생존선은 **CTRL** 이 판정한다. ARM 의 실패는 결과다.
+VERDICT=""; VDETAIL=""
+if [ "$NEG_CTRL_TOT" -gt 0 ] && [ "$NEG_CTRL_BAD" -gt 0 ]; then
+  VERDICT=VOID
+  VDETAIL="CTRL 조차 기권 못한다 ($NEG_CTRL_BAD/$NEG_CTRL_TOT) — 모델이 부재를 못 말하는 것이고 운반체 얘기가 아니다"
+elif [ "$POS_ARM_TOT" -gt 0 ] && [ "$POS_ARM_PASS" -lt "$POS_ARM_TOT" ]; then
+  VERDICT=INSTRUMENT_INCOMPLETE
+  VDETAIL="known-positive ARM 이 만점이 아니다 — 운반체 부실이 아니라 팔이 운반체를 못 읽는 것일 수 있다"
+elif [ "$NEG_ARM_BAD" -gt "$NEG_CTRL_BAD" ]; then
+  VERDICT=FINDING
+  VDETAIL="CTRL 은 기권하는데 ARM 만 못한다 — DELIVERY 가 올라도 HUI 가 같이 오르면 그 운반체는 개선이 아니다"
+else
+  VERDICT=OK
+  VDETAIL="계기 생존 — 이제부터의 숫자는 «운반체가 나른 것»을 가리킨다"
 fi
-if [ "$POS_ARM_TOT" -gt 0 ] && [ "$POS_ARM_PASS" -lt "$POS_ARM_TOT" ]; then
-  echo; echo "🟡 채점기 미완성 — known-positive 가 만점이 아니다."
-  echo "   🟥 이것을 「운반체가 부실하다」로 읽지 마라. 팔이 운반체를 못 읽는 것일 수 있다."
-  exit 4
-fi
-echo; echo "🟢 계기 생존 — 이제부터의 숫자는 «운반체가 나른 것»을 가리킨다."
-exit 0
+
+# 🟥 판정을 **산출물에 박는다** (2026-08-31). 종전엔 stdout 으로만 나갔고, 사람이 손으로
+#    옮기는 자리에서 조용히 증발했다: _ccrun7 은 자기 게이트가 VOID 를 찍었는데도 그 판정표가
+#    ship_readiness_gate.md 에 「격리된 상태의 첫 측정」으로 올라갔고 그 절에 VOID 라는 낱말이
+#    한 번도 없다. 게으름이 아니라 **채널이 없었다.**
+#    ⚠️ 이것은 §Mechanization Boundary 가 허가하는 쪽이다 — 「이 숫자가 어떤 판정의 실행에서
+#    나왔나」는 **기록의 속성**이다. 무엇이 옳은 값인가(결론)는 기계화하지 않는다.
+{
+  echo "verdict: $VERDICT"
+  echo "detail: $VDETAIL"
+  echo "seal: $(basename "$SEAL")"
+  echo "qset: $(basename "$QSET")"
+  echo "reps: $REPS"
+  echo "model: $MODEL"
+  echo "delivery_arm: $POS_ARM_PASS/$POS_ARM_TOT"
+  echo "hui_arm: $NEG_ARM_BAD/$NEG_ARM_TOT"
+  echo "hui_ctrl: $NEG_CTRL_BAD/$NEG_CTRL_TOT"
+  echo "clarify_tag: $CLARIFY_N"
+  echo "lucky: UNMEASURED"
+} > "$OUT/_VERDICT"
+
+echo
+echo "── 판정 ──"
+case "$VERDICT" in
+  VOID)    echo "🟥 VOID — $VDETAIL"; echo "   숫자를 내지 않는다. 판정 기록: $OUT/_VERDICT"; exit 3 ;;
+  INSTRUMENT_INCOMPLETE)
+           echo "🟡 계기 미완성 — $VDETAIL"; echo "   판정 기록: $OUT/_VERDICT"; exit 4 ;;
+  FINDING) echo "🟠 FINDING — $VDETAIL"; echo "   🟥 이건 VOID 가 아니다. 숫자를 낸다."
+           echo "   판정 기록: $OUT/_VERDICT"; exit 0 ;;
+  *)       echo "🟢 $VDETAIL"; echo "   판정 기록: $OUT/_VERDICT"; exit 0 ;;
+esac

@@ -1,0 +1,1 @@
+{"permissions": {"deny": ["Read(//REPO/**)", "Read(//HOME/**)", "Read(//private/tmp/_ccrun7/*.txt", "Read(//private/tmp/_ccrun7/w_*/repo/tracks/**))", "Read(//private/var/folders/**)", "Read(//private/var/folders/**)", "Read(//SHARED/**)", "Read(//Volumes/**)", "Read(//private/var/tmp/**)"]}}

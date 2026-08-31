@@ -162,6 +162,45 @@ fh_sim_write_path_isolation() { # $1=WORK $2=OUTDIR $3=REPO_ROOT $4=HOME → 0=�
       "$_deny_repo" "$_deny_home" "$_deny_out" "$_extra_out" "$_extra" > "$_w/.claude/settings.local.json"
   fi
 
+  # ── 🟥 조립 검증 (2026-08-31 신설) — 파싱만 보면 이 결함을 놓친다 ─────────────
+  #    회차 3(_ccrun7)은 위 문단이 고친 바로 그 파손을 안고 돌았다:
+  #      'Read(//private/tmp/_ccrun7/*.txt'                  ← 닫는 괄호 없음
+  #      'Read(//private/tmp/_ccrun7/w_*/repo/tracks/**))'   ← 괄호 둘
+  #    파손된 규칙은 매칭이 안 되므로 **형제 클론의 tracks/ 가 안 막혔고**, 거기 seal 이 있다.
+  #    그 회차의 CTRL 이 기대토큰을 축자로 댄 것이 그렇게 설명된다.
+  #    🟥 **그 JSON 은 «정상 파싱된다».** 파손은 구조가 아니라 규칙 문자열 «안»에 있다.
+  #    그래서 「JSON 파싱 레인」은 두 팔을 못 가르는 **장식**이다
+  #    ([[feedback_anchor_can_be_decorative]]). known-pair 로 확인했다:
+  #      K+ 회차3 실물 : JSON=OK · 문법위반 2 · 중복 1   ← 잡힌다
+  #      K- 현행 조립  : JSON=OK · 문법위반 0 · 중복 0   ← 안 잡힌다
+  #    ⇒ 검사는 셋이다: 파싱 ∧ 항목 문법(괄호 정확히 한 쌍) ∧ 중복 0.
+  #    🟥 fail-closed — 격리가 깨진 채로 재느니 안 재는 게 낫다. 이 함수의 rc 1 은 호출부에서
+  #    CONTAMINATED=1 + continue 로 이어져 **그 팔은 안 뜬다**(격리 없이는 회차를 시작 안 한다).
+  #    ⚠️ 문법 검사의 한계를 이름으로 남긴다: 패턴 «안»에 괄호를 쓰는 규칙은 이 검사가
+  #       거짓 위반으로 잡는다. 현재 조립은 그런 규칙을 안 만든다 — 만들게 되면 여기를 고쳐라.
+  if ! python3 - "$_w/.claude/settings.local.json" <<'_PYEOF'
+import json,re,sys
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception as e:
+    print("  ISOLATION-ASSEMBLY: JSON parse failed: %s" % e); sys.exit(1)
+rules=d.get("permissions",{}).get("deny",[])
+if not rules:
+    print("  ISOLATION-ASSEMBLY: deny list EMPTY — 격리 없음"); sys.exit(1)
+pat=re.compile(r'^[A-Za-z]+\([^()]*\)$')
+bad=[r for r in rules if not pat.match(r)]
+dup=sorted({r for r in rules if rules.count(r)>1})
+if bad or dup:
+    for r in bad: print("  ISOLATION-ASSEMBLY: malformed rule: %r" % r)
+    for r in dup: print("  ISOLATION-ASSEMBLY: duplicate rule: %r" % r)
+    sys.exit(1)
+sys.exit(0)
+_PYEOF
+  then
+    echo "  ❌ 격리 규칙 조립이 깨졌다 — **이 팔은 안 띄운다**(fail-closed)." >&2
+    return 1
+  fi
+
   return 0
 }
 
@@ -280,8 +319,18 @@ for r in $(seq 1 "$REPS"); do
   # verifiable (`git ls-files | grep CLAUDE` returns CLAUDE.md alone) rather than asserted.
   # `.claude/settings.json` is untracked too, so no hooks fire — which makes an arm resemble a
   # CONSUMER install. State that when scoring: this measures the shipped surface, not this node.
+  # ── 🟥 실행 기록 (2026-08-31 신설) — 「누출 기전을 못 짚었다」가 아니라 «볼 수 없었다» ──
+  #    회차 3(_ccrun7)에서 CTRL 산출물이 qset 기대토큰을 축자로 댔는데(4/6·3/6 파일,
+  #    known-negative 0), **팔이 무엇을 받았는지 재구성이 원리적으로 불가능**했다:
+  #    프롬프트는 어디에도 안 남고, `.err` 24개는 전부 0바이트이며(그건 *클론* 에러다),
+  #    아래 `2>/dev/null` 이 claude 자신의 stderr 를 통째로 버렸다.
+  #    ⇒ 두 채널을 연다. **마스킹하지 않는다** — 누출을 보려고 만든 계기가 누출을 가리면
+  #    계기가 아니다. 이 파일들은 정답 토큰을 그대로 담을 수 있고, 그것이 목적이다.
+  #    ⚠️ 그러므로 이 산출 디렉터리는 «답을 아는» 자리다. 다른 팔이 읽지 못하도록 막는 것은
+  #       fh_sim_write_path_isolation 의 `_deny_out` 이고, 그 결박이 이 덤프의 전제다.
+  printf '%s' "$PROMPT" > "$OUTDIR/${ARM}_r${r}.prompt.txt"
   ( cd "$WORK" && timeout "$TIMEOUT" claude -p "$PROMPT" \
-        --model "$MODEL" "${TOOLS[@]}" 2>/dev/null ) > "$OUTDIR/${ARM}_r${r}.txt"
+        --model "$MODEL" "${TOOLS[@]}" 2>"$OUTDIR/${ARM}_r${r}.stderr.txt" ) > "$OUTDIR/${ARM}_r${r}.txt"
   rc=$?
   bytes=$(wc -c < "$OUTDIR/${ARM}_r${r}.txt" | tr -d ' ')
 

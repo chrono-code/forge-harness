@@ -82,6 +82,47 @@ chk "L8b 강행은 명시 플래그로만"        "$(grep -c 'FH_SIM_NO_ISOLATIO
 # 🟥 심링크 비결정성 — 물리경로로 계산하지 않으면 같은 자리가 두 이름을 갖는다
 chk "L9 물리경로로 계산한다 (pwd -P)"   "$(grep -c 'pwd -P' "$R" | tr -d ' ' | awk '{print ($1>0)?"yes":"no"}')" yes
 
+# ── L10 조립 검증 (2026-08-31) — 🟥 «JSON 파싱 레인」은 이 결함을 통과시킨다 ──────────
+#    회차 3(_ccrun7)은 위 헤더가 고친 그 파손을 안고 **실제로 돌았다**. 고침은 들어갔는데
+#    **레인이 안 들어와서** 재발 감시가 0이었다([[feedback_built_but_not_wired]] 의 이웃).
+#    🟥 그 파손된 파일은 **JSON 으로 정상 파싱된다** — 파손이 구조가 아니라 규칙 문자열 «안»에
+#    있기 때문이다. 그래서 파싱만 보는 앵커는 두 팔을 못 가르는 장식이다
+#    ([[feedback_anchor_can_be_decorative]]). 검사는 셋이다: 파싱 ∧ 항목 문법 ∧ 중복 0.
+#    픽스처는 **실물**이다 — 그날의 클론에서 그대로 떠왔고, 홈 경로만 정화했다(정화 후에도
+#    BAD=2·DUP=1 로 판별력 동일함을 확인). 🟥 내가 만든 «쉬운 표기»가 아니라 **뚫린 표기**다
+#    ([[feedback_fixture_must_use_the_breaking_spelling]]).
+_asm_validate(){ python3 - "$1" <<'_PY'
+import json,re,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: print("JSON_FAIL"); sys.exit(1)
+rules=d.get("permissions",{}).get("deny",[])
+if not rules: print("EMPTY"); sys.exit(1)
+pat=re.compile(r'^[A-Za-z]+\([^()]*\)$')
+bad=[r for r in rules if not pat.match(r)]; dup=sorted({r for r in rules if rules.count(r)>1})
+print("BAD=%d DUP=%d" % (len(bad),len(dup)))
+sys.exit(1 if (bad or dup) else 0)
+_PY
+}
+_FX="$ROOT/scripts/fixtures/isolation_assembly_BROKEN_2026-08-30_ccrun7.json"
+# 🟥 픽스처 부재를 «통과»로 렌더하지 않는다 — 사라진 픽스처는 조용한 스킵이고 스킵은 청결로 보인다.
+if [ ! -f "$_FX" ]; then echo "❌ HARNESS-ERROR — 파손 픽스처 없음: $_FX"; exit 10; fi
+_asm_validate "$_FX" >/dev/null 2>&1
+chk "L10 회차3 실물 파손 조립 → 차단" "$([ $? -ne 0 ] && echo BLOCKED || echo passed)" BLOCKED
+# 🟥 장식 반증 — 그 픽스처가 JSON 으로는 «정상»임을 같은 레인에서 못 박는다.
+chk "L10b 그 픽스처는 JSON 으론 정상 (파싱 앵커 무력 증명)" \
+    "$(python3 -c "import json;json.load(open('$_FX'));print('JSON_OK')" 2>/dev/null)" JSON_OK
+# known-negative — 현행 조립이 통과하지 못하면 위 BLOCKED 는 «판별»이 아니라 «항상 차단»이다
+printf '{"permissions":{"deny":["Read(//a/**)","Read(//b/**)"]}}' > "$T/asm_ok.json"
+_asm_validate "$T/asm_ok.json" >/dev/null 2>&1
+chk "L10c 정상 조립 → 통과 (판별력)" "$([ $? -eq 0 ] && echo passed || echo BLOCKED)" passed
+# 빈 deny 는 «격리 없음»이지 «청결»이 아니다
+printf '{"permissions":{"deny":[]}}' > "$T/asm_empty.json"
+_asm_validate "$T/asm_empty.json" >/dev/null 2>&1
+chk "L10d 빈 deny → 차단 (부재≠청결)" "$([ $? -ne 0 ] && echo BLOCKED || echo passed)" BLOCKED
+# 🟥 배선 확인 — 검증이 러너 «안»에서 실제로 불리는가. 함수 밖에 있으면 위 넷은 장식이다.
+chk "L10e 러너가 조립 직후 검증을 부른다" \
+    "$(grep -c 'ISOLATION-ASSEMBLY' "$R" | awk '{print ($1>0)?"yes":"no"}')" yes
+
 echo
 if [ $FAIL -eq 0 ]; then echo "SIM PATH ISOLATION LANES: PASS"; else echo "SIM PATH ISOLATION LANES: FAIL"; fi
 exit $FAIL
