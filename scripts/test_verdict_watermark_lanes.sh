@@ -227,5 +227,22 @@ else
   no "L17 부수파일이 개수에 섞였다 ($_rd_ans → $_rd_ans2)"
 fi
 
+# ── L18~L20 마커의 complete (2026-08-31) — «무엇을 보증하나»를 마커가 스스로 적는다 ────────
+#    3층 수리: ①개수로 판정 → ②마커 → ③마커가 «루프가 끝났다»만 보증 → ④정의를 마커 안에.
+#    🟥 `.err` 조건이 하중이다: 실제 사고(적격 실행 16/48)는 **답변 파일이 있으면서** 클론
+#    에러가 16건이었다. 개수만 맞추면 같은 사고가 또 통과한다.
+mk "$T/cmp" yes; run "$T/cmp" >/dev/null 2>&1
+grep -q 'complete: yes' "$T/cmp/_ROUND_DONE" \
+  && ok "L18 정상 회차 → complete: yes" || no "L18 정상인데 complete 가 yes 가 아니다"
+grep -qE 'complete: .*정의: answers==rows' "$T/cmp/_ROUND_DONE" \
+  && ok "L19 complete 의 «정의»가 마커 안에 적힌다" \
+  || no "L19 정의가 없다 — 다음 사람이 «complete 면 데이터가 옳다»로 읽는다"
+# 🟥 실물 사고 형태: 개수는 맞는데 클론 에러가 있다
+printf 'fatal: destination path already exists\n' > "$T/cmp/_clone_q1_ARM_r1.err"
+run "$T/cmp" >/dev/null 2>&1
+grep -q 'complete: NO' "$T/cmp/_ROUND_DONE" \
+  && ok "L20 개수는 맞는데 클론 에러가 있으면 → complete: NO (판별력)" \
+  || no "L20 클론 에러를 무시했다 — 16/48 사고가 그대로 통과한다"
+
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

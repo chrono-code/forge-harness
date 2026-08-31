@@ -624,14 +624,25 @@ fi
 #      뒤에 쓰이므로, 있으면 산출물이 전부 닫혀 있다.
 #    🟥 그리고 개수는 `*_r[0-9].txt` 로 센다 — `*_r*.txt` 는 부수파일(prompt·stderr·
 #      setupdiff·treediff)까지 세서 **실측 24 를 120 으로** 부풀린다(같은 팔의 6번 슬립).
+# 🟥 마커는 «무엇을 보증하는지»를 스스로 적는다 (2026-08-31, 3층 수리).
+#    1층 개수로 완료를 판정했다              → 마커를 만들었다
+#    2층 마커가 「루프가 끝났다」만 보증했다   → 다른 팔의 적격 실행에서 16/48 인데 DONE 이 떴다
+#    3층 그래서 「complete: yes 가 «무엇을» 보증하나」 → **정의를 마커 안에 적는다**
+# 🟥 `.err` 를 조건에 넣는 것이 하중이다: 그 16/48 사고는 답변 파일이 «있으면서» 클론 에러가
+#    16건이었다. **개수만 맞추면 같은 사고가 또 통과한다.**
+_ans=$(ls "$OUT"/*_r[0-9].txt 2>/dev/null | wc -l | tr -d ' ')
+_errs=$(find "$OUT" -name '_clone_*.err' -size +0 2>/dev/null | wc -l | tr -d ' ')
+if [ "$_ans" = "${#ROWS[@]}" ] && [ "$_errs" = 0 ]; then _cmp=yes; else _cmp=NO; fi
 {
   echo "round: done"
   echo "verdict: $VERDICT"
   echo "seal: $(basename "$SEAL")"
   echo "qset: $(basename "$QSET")"
   echo "reps: $REPS"
-  echo "answers: $(ls "$OUT"/*_r[0-9].txt 2>/dev/null | wc -l | tr -d ' ')"
+  echo "answers: $_ans"
   echo "rows: ${#ROWS[@]}"
+  echo "clone_errors: $_errs"
+  echo "complete: $_cmp (정의: answers==rows ∧ clone_errors==0)"
 } > "$OUT/_ROUND_DONE"
 
 echo
