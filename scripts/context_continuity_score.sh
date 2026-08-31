@@ -88,7 +88,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER="$HERE/scripts/sim_isolated_run.sh"
 
 SEAL=""; QSET=""; REPS=1; MODEL="sonnet"; OUT=""; DELIVER=0
-SELFTEST=0; RESCORE=0; MANIFEST=""
+SELFTEST=0; RESCORE=0; MANIFEST=""; BASE_REF=""; BASE_SHA=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --seal)  SEAL="${2:-}"; shift 2 ;;
@@ -101,6 +101,8 @@ while [ $# -gt 0 ]; do
     # 🟥 팔 재실행 없이 «기존 산출물»만 다시 채점한다. 채점 규칙이 바뀌었을 때 24개 격리
     #    실행을 다시 태우지 않기 위해서다 — 그리고 재실행하면 **다른 답이 나와서** 규칙 변경의
     #    효과와 팔의 비결정성이 섞인다. 같은 파일에 새 규칙을 걸어야 한 변수만 움직인다.
+    --base-ref) BASE_REF="${2:-}"; shift 2 ;;   # 🟥 회차는 BASE 얕은 클론에서 돈다(§7-12)
+    --base-sha) BASE_SHA="${2:-}"; shift 2 ;;   #    ref 는 움직인다 — sha 를 둘 다 준다
     --rescore) RESCORE=1; shift ;;
     # 🟥 «지금 도는 qset/seal 이 «봉인된 그것»인가» 를 회차 시작 전에 대조한다.
     --manifest) MANIFEST="${2:-}"; shift 2 ;;
@@ -585,6 +587,9 @@ $question"
     LABELMAP+=("$label|$qid|$arm")
     if [ "${RESCORE:-0}" != 1 ]; then
       args=(--arm "$label" --reps "$REPS" --model "$MODEL" --out "$OUT" --prompt "$q")
+      # 🟥 BASE 핀을 러너로 넘긴다. 하나만 주면 러너가 rc=2 로 막는다(대조 불가).
+      [ -n "$BASE_REF" ] && args+=(--base-ref "$BASE_REF")
+      [ -n "$BASE_SHA" ] && args+=(--base-sha "$BASE_SHA")
       [ -n "$setup" ] && args+=(--setup "$setup")
       # 🟥 심층 방어 — 이 호출은 `while … done < <(_tsv_pipe "$QSET")` 루프 «안»이라 stdin 이 qset 이다.
       #    러너 쪽에도 `< /dev/null` 을 박았지만, 여기서 끊는 것이 근원이다(호출부 책임).

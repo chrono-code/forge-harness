@@ -226,6 +226,7 @@ _PYEOF
   return 0
 }
 
+BASE_REF=""; BASE_SHA=""
 ARM=""; REPS=1; PROMPT=""; MODE="observe"; MODEL="sonnet"; TIMEOUT=900; OUTDIR=""; NOHARNESS=0; SETUP=""; EXTRA=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -237,6 +238,8 @@ while [ $# -gt 0 ]; do
     --timeout) TIMEOUT="${2:-900}"; shift 2 ;;
     --out)     OUTDIR="${2:-}"; shift 2 ;;
     --no-harness) NOHARNESS=1; shift ;;   # CONTROL arm: drops project CLAUDE.md. Not isolation.
+    --base-ref) BASE_REF="${2:-}"; shift 2 ;;   # BASE 얕은 클론 (2026-09-01) — 아래 참조
+    --base-sha) BASE_SHA="${2:-}"; shift 2 ;;
     --setup)   SETUP="${2:-}"; shift 2 ;;  # shell run INSIDE each clone before the sim. See below.
     --extra-tools) EXTRA="${2:-}"; shift 2 ;;  # append tools to the mode's set. See TOOL VISIBILITY.
     *) echo "unknown flag: $1" >&2; exit 2 ;;
@@ -288,7 +291,29 @@ for r in $(seq 1 "$REPS"); do
   WORK="$WRAP/repo"
   # A disposable clone per REP, not per arm: two reps of the same arm contaminate each other
   # exactly as two different arms do. That was the measured failure — reps 1 and 2 of build_cron.
-  if ! git clone --quiet --local --no-hardlinks "$REPO_ROOT" "$WORK" 2>"$OUTDIR/_clone_${ARM}_r${r}.err"; then
+  # ── BASE 얕은 클론 (2026-09-01, §7-12) ──────────────────────────────────────
+  # 🟥 왜: 이 레포의 «개발 이력 자체»가 팔의 코퍼스에 들어간다. 세션 시작 컨텍스트가 최근 커밋을
+  #    싣고(실측: 팔이 5줄을 그대로 옮겼다), 그 줄들이 「팔의 클론에서 정답지를 없앤다」처럼
+  #    실험을 설명한다. 파일을 지워도 안 닫힌다 — 이력은 strip 대상이 아니다.
+  # 🟥 그리고 «지우는 것»이 오히려 악화시켰다: rm 만 하면 `git status` 가 51줄로 이름을 광고한다
+  #    (실측 0줄 → 52줄). 얕은 클론은 status 가 «원래» 0 이라 그 문제가 없다.
+  # 🟥 `file://` 이 «필수»다 — 로컬 «경로»로 주면 git 이 `--depth` 를 **조용히 무시**한다.
+  # 🟥 ref 는 움직인다. 그래서 sha 를 «둘 다» 받고 클론 후 대조한다 — 안 맞으면 다른 코퍼스다.
+  if [ -n "$BASE_REF" ] || [ -n "$BASE_SHA" ]; then
+    if [ -z "$BASE_REF" ] || [ -z "$BASE_SHA" ]; then
+      echo "  ❌ --base-ref 와 --base-sha 는 «둘 다» 필요하다(하나만 주면 대조를 못 한다)"; exit 2
+    fi
+    if ! git clone --quiet --depth 1 --branch "$BASE_REF" "file://$REPO_ROOT" "$WORK" 2>"$OUTDIR/_clone_${ARM}_r${r}.err"; then
+      echo "  ❌ r$r BASE CLONE FAILED — see $OUTDIR/_clone_${ARM}_r${r}.err"; continue
+    fi
+    _got="$(git -C "$WORK" rev-parse HEAD 2>/dev/null)"
+    case "$_got" in
+      "$BASE_SHA"*) : ;;
+      *) echo "  ❌ r$r BASE SHA MISMATCH — ref=$BASE_REF 기대=$BASE_SHA 실제=${_got:-읽기실패}"
+         echo "     🟥 ref 가 움직였다 = «다른 코퍼스»다. 회차를 재현할 수 없다."
+         rm -rf "$WRAP"; exit 9 ;;
+    esac
+  elif ! git clone --quiet --local --no-hardlinks "$REPO_ROOT" "$WORK" 2>"$OUTDIR/_clone_${ARM}_r${r}.err"; then
     echo "  ❌ r$r CLONE FAILED — see $OUTDIR/_clone_${ARM}_r${r}.err"
     continue
   fi
@@ -303,19 +328,13 @@ for r in $(seq 1 "$REPS"); do
   # 🟥 왜 deny 가 아니라 «제거»인가: deny 는 «못 읽게» 하고 이건 «없게» 한다. 없는 파일은
   #     Read·Grep·Glob·Bash 어느 것으로도 못 읽는다 — **도구 목록에 의존하지 않는다.**
   #     클론은 일회용이라 제거가 파괴적 표면이 아니다(원본은 안 건드린다).
-  # 🟥 목록으로 둔다 — 「팔이 읽으면 안 되는 자산」은 늘어난다. **실제로 늘었다(2026-09-01).**
-  # 🟥 `scripts/round` 추가 근거 — 이건 «시험 인지»가 아니라 **정답 유출**이다:
-  #     `eligcheck_qset.sh:30-31` 이 축자로 적는다 —
-  #       「negative: CTRL 이 «거절»해야 적격」 · 「conflict: CTRL 이 «원래값을 답해야» 적격」
-  #     이걸 읽은 팔의 거절은 «능력»이 아니라 **«힌트를 따른 것»**이다.
-  #     tracked 7개 591줄이 팔 클론에 통째로 있었다(`1421ca0` 이 만든 상태).
-  # 🟥 구분선 — «전부 지운다»가 답이 아니다. 팔의 클론은 «맥락유지를 재는 코퍼스»라
-  #     지나치게 비우면 잴 것이 없어진다:
-  #       지워야 함 = 이 회차를 «설계·집행·채점»하려고 만들어진 자산
-  #       있어야 함 = 이 레포가 회차와 «무관하게» 하던 일의 기록 — 그걸 읽고 답하는 것이 측정 대상
-  #     판별은 «어휘»가 아니라 **«만들어진 목적»**이다. 같은 `known-pair` 가
-  #     `harness_6axis_framework.md` 에 있으면 정상, `eligcheck_qset.sh` 에 있으면 회차 기계다.
-  #     🟥 그래서 `.github/`·`plugins/`·`knowledge/` 는 **넣지 않는다** — 지우면 측정 대상이 사라진다.
+  # 🟥 목록으로 둔다 — 「팔이 읽으면 안 되는 자산」은 늘어난다. 지금은 하나다.
+  # 🟥 `scripts/round` — 이건 «시험 인지»가 아니라 **정답 유출**이다:
+  #     `eligcheck_qset.sh:30-31` 이 축자로 「negative: CTRL 이 «거절»해야 적격」·
+  #     「conflict: CTRL 이 «원래값을 답해야» 적격」 을 적는다. 읽은 팔의 거절은
+  #     «능력»이 아니라 «힌트를 따른 것»이다.
+  # 🟥 2026-09-01: 러너 재작성 중 이 항목이 «조용히 사라졌다»(커밋 3265224 가 되돌려졌다).
+  #     arm_blind_probe 가 「히트 8→1」로 잡았다 — 프로브가 없었으면 회차가 그대로 열렸다.
   ARM_BLIND_PATHS=( "scripts/fixtures" "scripts/round" )
   for _bp in "${ARM_BLIND_PATHS[@]}"; do
     rm -rf "$WORK/$_bp"

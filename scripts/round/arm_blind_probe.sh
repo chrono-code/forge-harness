@@ -14,6 +14,12 @@ ck(){ if [ "$2" = "$3" ]; then echo "  🟢 $1 ($2)"; pass=$((pass+1))
       else echo "  🟥 $1 (기대 $3, 실제 $2)"; fail=$((fail+1)); fi; }
 
 W="$T/clone"
+# 🟥 이 프로브는 «깊은» 클론으로 잰다 — 의도적이다.
+#    회차는 BASE 얕은 클론에서 돌고, 거기엔 fixtures 가 «애초에 없어» strip 이 no-op 이다.
+#    no-op 을 «통과»로 찍으면 [[feedback_three_reasons_a_lane_is_green]] 의 ② —
+#    «입력이 그 자리를 안 지나갔다»를 «막았다»로 렌더하는 것이다.
+#    ⇒ strip 로직 자체는 깊은 클론에서만 검정 가능하고, 그 경로는 BASE 가 앞으로 옮겨지면
+#      다시 회차 경로가 된다. 그래서 남긴다.
 git clone --quiet --local --no-hardlinks "$ROOT" "$W" 2>/dev/null || { echo "🟥 클론 실패" >&2; exit 2; }
 
 # 🟥 조건을 «만든다». 이 프로브는 「이 트리에 픽스처가 있나」가 아니라 「제거 로직이 도나」를 잰다.

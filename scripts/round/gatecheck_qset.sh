@@ -87,7 +87,42 @@ GREP=/usr/bin/grep
 
 # 대상 = 팔이 실제로 받는 것. 러너와 «같은 방식»으로 만든다.
 C=$(mktemp -d); trap 'rm -rf "$C"' EXIT
-git clone --quiet --local --no-hardlinks "$R" "$C/repo" 2>/dev/null || { echo "🟥 클론 실패 — 중단"; exit 2; }
+# 🟥 게이트의 클론은 «팔의 클론과 같아야» 한다 — 아니면 계기와 대상이 어긋난다(§7-12).
+#    회차는 BASE 얕은 클론에서 돌므로 게이트도 거기서 재야 한다. 환경변수로 받는다
+#    (인자 자리를 더 늘리면 호출부가 갈린다 — 이미 7개다).
+#    🟥 `file://` 필수: 로컬 «경로»로 주면 git 이 --depth 를 조용히 무시한다.
+if [ -n "${FH_BASE_REF:-}" ] && [ -n "${FH_BASE_SHA:-}" ]; then
+  git clone --quiet --depth 1 --branch "$FH_BASE_REF" "file://$R" "$C/repo" 2>/dev/null \
+    || { echo "🟥 BASE 클론 실패 — 중단"; exit 2; }
+  _g="$(git -C "$C/repo" rev-parse HEAD 2>/dev/null)"
+  case "$_g" in "$FH_BASE_SHA"*) : ;;
+    *) echo "🟥 BASE sha 불일치 (기대 $FH_BASE_SHA 실제 ${_g:-읽기실패}) — ref 가 움직였다. 중단"; exit 2 ;;
+  esac
+elif [ -n "${FH_BASE_REF:-}${FH_BASE_SHA:-}" ]; then
+  echo "🟥 FH_BASE_REF 와 FH_BASE_SHA 는 «둘 다» 필요하다 — 중단"; exit 2
+else
+  git clone --quiet --local --no-hardlinks "$R" "$C/repo" 2>/dev/null || { echo "🟥 클론 실패 — 중단"; exit 2; }
+fi
+# ── 🟥 러너와 «같은» 클론이어야 한다 (2026-09-01, §7-11) ──────────────────────
+#    러너는 클론 직후 ARM_BLIND_PATHS 를 제거한다. 게이트가 그걸 안 하면 **팔이 안 볼 것까지
+#    보고 판정한다** — 계기와 대상이 어긋난다.
+#    방향: 이 게이트의 클론 사용은 «심은 값이 클론에 있나»(오염) 하나뿐이므로 어긋남은
+#    **과차단** 방향이다(팔에게 안 보이는 fixtures 안 문자열 때문에 정상 세트를 막는다).
+#    데이터를 썩히진 않지만 **과차단은 우회를 훈련시킨다** — 그래서 맞춘다.
+# 🟥 목록을 여기 다시 적지 않는다. 러너 소스에서 읽는다 — 「갈라 적을 수 있으면 갈린다」.
+_RUNNER="$R/scripts/sim_isolated_run.sh"
+if [ -f "$_RUNNER" ]; then
+  _n=0
+  while IFS= read -r _bp; do
+    [ -n "$_bp" ] || continue
+    rm -rf "$C/repo/$_bp"
+    [ -e "$C/repo/$_bp" ] && { echo "🟥 게이트 클론 strip 실패: $_bp — 중단"; exit 2; }
+    _n=$((_n+1))
+  done < <(sed -n 's/^ *ARM_BLIND_PATHS=( *\(.*\) *)/\1/p' "$_RUNNER" | tr -d '"' | tr ' ' '\n' | grep -v '^$')
+  [ "$_n" -gt 0 ] || { echo "🟥 러너에서 ARM_BLIND_PATHS 를 못 읽었다 — 게이트 클론이 팔과 다르다. 중단"; exit 2; }
+else
+  echo "🟥 러너를 못 찾았다($_RUNNER) — 팔과 같은 클론을 못 만든다. 중단"; exit 2
+fi
 hits(){ "$GREP" -rlF -- "$1" "$C/repo" 2>/dev/null | wc -l | tr -d ' '; }
 
 # ── 컨트롤 먼저. 죽어 있으면 아래 «0 히트»는 청결이 아니라 계기 사망이다 ──────────
