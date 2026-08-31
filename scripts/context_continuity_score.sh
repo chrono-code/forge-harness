@@ -396,7 +396,9 @@ done < "$QSET"
 if [ "$QSET_BAD" = 1 ]; then
   echo "🟥 회차를 시작하지 않는다. 오염된 토큰으로 재면 «운반체 덕»과 «레포에서 주움»이 안 갈린다." >&2
   echo "   강행: FH_QSET_CONTAMINATED_OK=1 (그러면 이 회차는 CTRL 상한이 오염됐다고 기록해라)" >&2
-  [ "${FH_QSET_CONTAMINATED_OK:-}" = 1 ] || exit 4
+  # 🟥 5 이지 4 가 아니다 — 4 는 INSTRUMENT_INCOMPLETE 다. 같은 코드를 쓰면 호출자가
+  #    「회차를 시작조차 안 했다」와 「다 돌았는데 계기가 미달이다」를 구분 못 한다.
+  [ "${FH_QSET_CONTAMINATED_OK:-}" = 1 ] || exit 5
   echo "   ⚠️ 강행됨 — 이 회차의 CTRL 은 상한이 오염됐다." >&2
 fi
 
@@ -514,33 +516,24 @@ echo "${WM}  HUI      (CTRL) : $NEG_CTRL_BAD / $NEG_CTRL_TOT   ← 계기 생존
 echo "${WM}  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 — 선례 없는 조합)"
 echo "${WM}  LUCKY           : UNMEASURED  (conflict 문항 없이는 판별 불가 — 0 으로 접지 마라)"
 
-# 🟥 판정을 **산출물에 박는다** (2026-08-31). 종전엔 stdout 으로만 나갔고, 사람이 손으로
-#    옮기는 자리에서 조용히 증발했다: _ccrun7 은 자기 게이트가 VOID 를 찍었는데도 그 판정표가
-#    ship_readiness_gate.md 에 「격리된 상태의 첫 측정」으로 올라갔고 그 절에 VOID 라는 낱말이
-#    한 번도 없다. 게으름이 아니라 **채널이 없었다.**
-#    ⚠️ 이것은 §Mechanization Boundary 가 허가하는 쪽이다 — 「이 숫자가 어떤 판정의 실행에서
-#    나왔나」는 **기록의 속성**이다. 무엇이 옳은 값인가(결론)는 기계화하지 않는다.
-{
-  echo "verdict: $VERDICT"
-  echo "detail: $VDETAIL"
-  echo "seal: $(basename "$SEAL")"
-  echo "qset: $(basename "$QSET")"
-  echo "reps: $REPS"
-  echo "model: $MODEL"
-  echo "delivery_arm: $POS_ARM_PASS/$POS_ARM_TOT"
-  echo "hui_arm: $NEG_ARM_BAD/$NEG_ARM_TOT"
-  echo "hui_ctrl: $NEG_CTRL_BAD/$NEG_CTRL_TOT"
-  echo "clarify_tag: $CLARIFY_N"
-  echo "lucky: UNMEASURED"
-} > "$OUT/_VERDICT"
-
+# 🟥 `_VERDICT` 파일은 **삭제했다**(2026-08-31). 반쪽 외부화였다.
+#    실측: 쓰는 곳 1 · **읽는 곳 0**(손검증 — grep 3건은 전부 `FH_GATE_VERDICT` 류 다른 식별자).
+#    그리고 `$OUT` 기본값이 `mktemp -d` 라 **휘발 디렉터리에 쓰고 아무도 안 보관했다.**
+#    담고 있던 seal/reps/model 은 위 헤더가 이미 찍고, 판정은 아래 워터마크가 «숫자 줄마다» 나른다.
+#    ⇒ 남는 건 「기계가 읽을 슬롯」이라는 이름뿐이고, 그것이 정확히 장식이다.
+#    소비처를 지금 지으면 **수요 없는 투기 빌드**다(그 소비처의 known-pair 가 안 선다는 것이
+#    이미 측정됐다 — 「이 라벨이 어느 주장에 붙나」는 결론이라 기계화하면 장식이 된다).
+# 🟥 **다만 «타입된 판정 채널»은 안 버린다** — 그건 **종료코드**이고, 그게 정본이다.
+#    그리고 여기를 들여다보다 진짜 결함을 찾았다: `exit 4` 가 **두 가지**를 뜻하고 있었다
+#    (오염 게이트 = 회차 시작조차 안 함 · INSTRUMENT_INCOMPLETE = 다 돌고 계기가 미달).
+#    호출자가 rc=4 만 보고 그 둘을 구분할 방법이 없었다 — 채널이 «타입돼 있다»는 말이 거짓이었다.
+#    ⇒ 오염 게이트를 **5** 로 분리했다. 레인이 넷을 고정한다(`test_verdict_watermark_lanes.sh`).
 echo
 echo "── 판정 ──"
 case "$VERDICT" in
-  VOID)    echo "🟥 VOID — $VDETAIL"; echo "   숫자를 내지 않는다. 판정 기록: $OUT/_VERDICT"; exit 3 ;;
+  VOID)    echo "🟥 VOID — $VDETAIL"; echo "   숫자를 내지 않는다."; exit 3 ;;
   INSTRUMENT_INCOMPLETE)
-           echo "🟡 계기 미완성 — $VDETAIL"; echo "   판정 기록: $OUT/_VERDICT"; exit 4 ;;
-  FINDING) echo "🟠 FINDING — $VDETAIL"; echo "   🟥 이건 VOID 가 아니다. 숫자를 낸다."
-           echo "   판정 기록: $OUT/_VERDICT"; exit 0 ;;
-  *)       echo "🟢 $VDETAIL"; echo "   판정 기록: $OUT/_VERDICT"; exit 0 ;;
+           echo "🟡 계기 미완성 — $VDETAIL"; exit 4 ;;
+  FINDING) echo "🟠 FINDING — $VDETAIL"; echo "   🟥 이건 VOID 가 아니다. 숫자를 낸다."; exit 0 ;;
+  *)       echo "🟢 $VDETAIL"; exit 0 ;;
 esac

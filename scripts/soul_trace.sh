@@ -175,7 +175,20 @@ while IFS= read -r fn; do
     ""|_*) continue ;;          # 제외 목록 — 비면 전수. 넓히려면 여기에 이름을 적어라.
   esac
   UNITS+=("hook:$fn")
-done < <(grep -oE '^validate_[a-z_]+\(\)' "$HOOK" | sed 's/()$//' | sort -u)
+done < <(
+  # 🟥 범위 확대 2026-08-31 — 「작명」에서 「선언된 시그니처」로.
+  #    D2 는 `validate_` 접두어로 좁혔는데, 그 규약 밖에 **진짜 마커 다리**가 하나 있었다:
+  #    `unread_markers()` — 「이 게이트가 어느 마커 파일을 읽는가」를 판정하고, 전용 레인
+  #    (`test_marker_address_lanes.sh`)까지 있으며, 뮤테이션으로 짝이 확인됐다(2026-08-31).
+  #    ⇒ 판별자를 **기록의 속성**으로 바꾼다(FH-T02): 이름이 `validate_` 이거나,
+  #      **정의 줄의 시그니처 주석이 마커를 인자로 선언**하면 마커 다리다.
+  #    ⚠️ 「본문에 marker 가 나오나」로 하면 안 된다 — 손검증 결과 `readme_first_screen_touched`
+  #      가 **주석 속 낱말 하나**로 잡히는 오탐이었다. 시그니처는 저자가 선언한 계약이라 안 흔들린다.
+  { grep -oE '^validate_[a-z_]+\(\)' "$HOOK" | sed 's/()$//'
+    grep -E '^[a-z_][a-z0-9_]*\(\).*#.*\$[0-9].*([Mm]arker|마커)' "$HOOK" \
+      | sed -E 's/^([a-z_][a-z0-9_]*)\(\).*/\1/'
+  } | sort -u
+)
 for f in "${TRACE_BACKWARD_GLOBS[@]}"; do [ -f "$f" ] && UNITS+=("lane:${f#"$REPO_ROOT"/}"); done
 if [ "${#UNITS[@]}" -eq 0 ]; then
   echo "❌ HARNESS-ERROR — backward 대상이 0개. 빈 집합은 «전부 추적됨»이 아니다."; exit 10

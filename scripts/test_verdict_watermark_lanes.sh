@@ -69,5 +69,45 @@ printf '%s' "$VOUT" | grep -q 'DELIVERY (ARM)  : 1 / 1' \
   && ok "L5 무효 회차도 숫자를 감추지 않는다 (나르기 ≠ 감추기)" \
   || no "L5 무효 회차에서 숫자가 사라졌다 — 저자가 로그를 뒤지게 된다"
 
+# ── L6~L9 타입된 판정 채널 = **종료코드** (2026-08-31) ────────────────────────────
+#    `_VERDICT` 파일을 지웠으므로(읽는 곳 0 · 휘발 디렉터리) 기계가 읽을 채널은 종료코드뿐이다.
+#    🟥 그리고 그 채널은 «타입돼 있다»는 말이 **거짓이었다** — `exit 4` 가 두 가지를 뜻했다:
+#       오염 게이트(회차 시작조차 안 함) · INSTRUMENT_INCOMPLETE(다 돌고 계기 미달).
+#    분리했고(오염=5), 여기서 넷을 고정한다. 안 고정하면 다음 저자가 다시 겹쳐 쓴다.
+run_rc(){ ( cd "$ROOT" && bash "$S" --seal "$T/seal.md" --qset "$2" --reps 1 \
+            --out "$1" --rescore >/dev/null 2>&1 </dev/null ); echo $?; }
+mk "$T/rc_void" no;  RC_VOID=$(run_rc "$T/rc_void" "$T/q.tsv")
+mk "$T/rc_ok"  yes; RC_OK=$(run_rc "$T/rc_ok"  "$T/q.tsv")
+[ "$RC_VOID" = 3 ] && ok "L6 VOID → exit 3" || no "L6 VOID 의 종료코드가 3 이 아니다 (got=$RC_VOID)"
+[ "$RC_OK"   = 0 ] && ok "L7 OK → exit 0"   || no "L7 OK 의 종료코드가 0 이 아니다 (got=$RC_OK)"
+# INSTRUMENT_INCOMPLETE: positive ARM 이 만점이 아니면 뜬다
+mkdir -p "$T/rc_inc"; mk "$T/rc_inc" yes
+printf '엉뚱한 답.\n' > "$T/rc_inc/q1_ARM_r1.txt"          # positive ARM → FAIL
+RC_INC=$(run_rc "$T/rc_inc" "$T/q.tsv")
+[ "$RC_INC" = 4 ] && ok "L8 INSTRUMENT_INCOMPLETE → exit 4" \
+  || no "L8 계기미완성의 종료코드가 4 가 아니다 (got=$RC_INC)"
+# 🟥 오염 게이트는 **5** 여야 한다. 4 면 위 L8 과 구분이 안 된다 — 그게 원래 결함이었다.
+printf 'q1\tpositive\t질문P\tforge-harness\n' > "$T/dirty.tsv"   # tracked 에 실재하는 토큰
+RC_DIRTY=$(run_rc "$T/rc_ok" "$T/dirty.tsv")
+[ "$RC_DIRTY" = 5 ] && ok "L9 오염 게이트 → exit 5 (L8 과 다른 값 — 채널이 실제로 타입됐다)" \
+  || no "L9 오염 게이트가 5 가 아니다 (got=$RC_DIRTY) — 4 면 계기미완성과 뭉개진다"
+
+# ── L10 🟥 계기의 계기 — L0 을 무력화하면 L1~L5 가 «조용히 초록»이 되나 ──────────
+#    한 층만 짓는다(무한 후퇴 금지). L0 은 「K+ 와 K- 가 실제로 다른 판정을 냈나」를 본다.
+#    그것이 죽었을 때 나머지가 그냥 통과하면 이 묶음 전체가 장식이다.
+#    ⇒ K+ 와 K- 를 **같은 픽스처**로 만들어(=L0 사망 조건) 나머지가 잡는지 실행으로 본다.
+mk "$T/deg" no; D1="$(run "$T/deg")"; D2="$(run "$T/deg")"   # 두 «팔»이 동일 = L0 사망
+_dl0=0; _drest=0
+printf '%s' "$D1" | grep -q 'VOID' && printf '%s' "$D2" | grep -q '🟢' || _dl0=1   # L0 는 죽는다
+_l4line=$(printf '%s' "$D2" | grep 'DELIVERY (ARM)' | head -1)
+case "$_l4line" in *VOID*|*INSTRUMENT_INCOMPLETE*) _drest=1 ;; esac  # L4 가 잡는가
+if [ "$_dl0" = 1 ] && [ "$_drest" = 1 ]; then
+  ok "L10 L0 사망 시 L4(컨트롤)가 잡는다 — 묶음이 조용히 초록이 되지 않는다"
+elif [ "$_dl0" = 1 ]; then
+  no "L10 🟥 L0 가 죽었는데 나머지가 전부 초록 — 이 묶음은 장식이다"
+else
+  no "L10 계기 오류 — L0 사망 조건을 못 만들었다 (dl0=$_dl0)"
+fi
+
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
