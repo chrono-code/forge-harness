@@ -121,7 +121,9 @@ esac
 mkdir -p "$TMP/socks_empty"
 FH_PEER_SCAN_FORCE=1 FH_PEER_SOCK_DIR="$TMP/socks"       bash "$CC" "$TMP/wt" >/dev/null 2>&1; RC_LOUD=$?
 FH_PEER_SCAN_FORCE=1 FH_PEER_SOCK_DIR="$TMP/socks_empty" bash "$CC" "$TMP/wt" >/dev/null 2>&1; RC_QUIET=$?
-[ "$RC_LOUD" = "$RC_QUIET" ] \
+# 🟥 «둘 다 같은 이유로 죽으면» 동일해서 통과한다(예: 스크립트 부재 → 둘 다 127).
+#    advisory 를 주장하려면 두 실행이 «실제로 돌았어야» 한다. 127 은 실행 실패다.
+[ "$RC_LOUD" != "127" ] && [ "$RC_QUIET" != "127" ] && [ "$RC_LOUD" = "$RC_QUIET" ] \
   && ok "W-7 ①-c is advisory — exit code identical with peers ($RC_LOUD) and without ($RC_QUIET)" \
   || ng "W-7 ①-c CHANGED the exit code ($RC_QUIET → $RC_LOUD) — it must not block a close"
 

@@ -116,7 +116,9 @@ fi
 before_n=$(out=$(_run); printf '%s\n' "$out" | awk '$1=="separator" && $2 ~ /^[0-9]+$/ {print $2; exit}')
 _run --fix-separators --quiet >/dev/null
 after_n=$(out=$(_run); printf '%s\n' "$out" | awk '$1=="separator" && $2 ~ /^[0-9]+$/ {print $2; exit}')
-if [ "$before_n" = "$after_n" ]; then
+# 🟥 awk 가 `separator` 줄을 못 찾으면 양변이 빈다 → ""="" 로 통과. 바로 위 주석이
+#    «zero 를 단언한 게 초판의 계기 오류»라고 적는데, 0 은 생각했고 «빈 값»은 안 했다.
+if [ -n "$before_n" ] && [ -n "$after_n" ] && [ "$before_n" = "$after_n" ]; then
   ok "H1b idempotent with anchor forms present (count stable at $after_n — the fenced example)"
 else
   bad "H1b count moved $before_n → $after_n across a second fix pass"

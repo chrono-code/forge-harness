@@ -181,7 +181,10 @@ _before="${_before//[^0-9]/}"; _before="${_before:-0}"
 _run g2 >/dev/null 2>&1
 _after="$(grep -c "g2" "$T/tracks/_chamber/INDEX.md" 2>/dev/null || true)"
 _after="${_after//[^0-9]/}"; _after="${_after:-0}"
-if [ "$_before" = "$_after" ]; then _t "L11 PASS — 재실행이 G4 원장(INDEX.md)을 중복 append 하지 않는다" 0 0
+# 🟥 `${_after:-0}` 정규화 때문에 INDEX.md 가 «없어도» 0=0 으로 통과한다. 멱등을 주장하려면
+#    원장이 실재해야 한다 — 부재는 skip 이 아니라 fail 이다.
+if [ ! -f "$T/tracks/_chamber/INDEX.md" ]; then echo "❌ L11 전제 파손: G4 원장(INDEX.md)이 없다 — 멱등을 잴 대상이 없다"; FAIL=$((FAIL+1));
+elif [ "$_before" = "$_after" ]; then _t "L11 PASS — 재실행이 G4 원장(INDEX.md)을 중복 append 하지 않는다" 0 0
 else echo "❌ L11 멱등 실패: $_before → $_after"; FAIL=$((FAIL+1)); fi
 
 # ── L13 ★이음매: 러너가 «증인 아티팩트»를 판정 후 변경하지 않는다 ────────────
@@ -203,7 +206,9 @@ _mk_actual g3
 _run g3; rc=$?
 _t "L13 PASS — ACTUAL 기록 후에도 완주한다" 0 "$rc"
 _b_at_end="$(_sha "$(_ws g3)/BUDGET.md")"
-if [ "$_b_at_verdict" = "$_b_at_end" ]; then
+# 🟥 빈 값 가드 — `_sha` 는 부재 파일에 «빈 문자열»을 낸다. 그러면 ""="" 로 통과하고
+#    「증인 아티팩트가 안 바뀌었다」가 «증거가 아예 없을 때» 가장 크게 참으로 보인다.
+if [ -n "$_b_at_verdict" ] && [ -n "$_b_at_end" ] && [ "$_b_at_verdict" = "$_b_at_end" ]; then
   _t "L13 ★이음매-a — 완주해도 증인 아티팩트(BUDGET.md)가 안 바뀐다" 0 0
 else
   echo "❌ L13 이음매-a 실패 — 러너가 증인 아티팩트를 변경했다(TAMPERED 재발)"; FAIL=$((FAIL+1))
