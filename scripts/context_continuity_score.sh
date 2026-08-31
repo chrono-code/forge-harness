@@ -567,6 +567,23 @@ fi
 #    (오염 게이트 = 회차 시작조차 안 함 · INSTRUMENT_INCOMPLETE = 다 돌고 계기가 미달).
 #    호출자가 rc=4 만 보고 그 둘을 구분할 방법이 없었다 — 채널이 «타입돼 있다»는 말이 거짓이었다.
 #    ⇒ 오염 게이트를 **5** 로 분리했다. 레인이 넷을 고정한다(`test_verdict_watermark_lanes.sh`).
+# ── 🟥 완료 마커 (2026-08-31) — «개수»로 완료를 판정하지 마라 ─────────────────────
+#    다른 팔이 42/42 를 보고 채점했는데 마지막 팔이 **그 파일을 아직 쓰는 중**이었다.
+#    교차대조 1행 불일치로 잡혔고 판정은 안 흔들렸지만 그건 운이다.
+#    ⇒ 회차 완료는 **이 마커의 존재**로만 판정한다. 마커는 모든 디스패치와 채점이 끝난
+#      뒤에 쓰이므로, 있으면 산출물이 전부 닫혀 있다.
+#    🟥 그리고 개수는 `*_r[0-9].txt` 로 센다 — `*_r*.txt` 는 부수파일(prompt·stderr·
+#      setupdiff·treediff)까지 세서 **실측 24 를 120 으로** 부풀린다(같은 팔의 6번 슬립).
+{
+  echo "round: done"
+  echo "verdict: $VERDICT"
+  echo "seal: $(basename "$SEAL")"
+  echo "qset: $(basename "$QSET")"
+  echo "reps: $REPS"
+  echo "answers: $(ls "$OUT"/*_r[0-9].txt 2>/dev/null | wc -l | tr -d ' ')"
+  echo "rows: ${#ROWS[@]}"
+} > "$OUT/_ROUND_DONE"
+
 echo
 echo "── 판정 ──"
 case "$VERDICT" in

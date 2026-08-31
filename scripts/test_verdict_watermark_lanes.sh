@@ -166,5 +166,25 @@ printf '%s' "$NC_OUT" | grep -q 'CARRIER-READ    : UNMEASURED' \
   && ok "L14 conflict 문항 0개면 CARRIER-READ 는 UNMEASURED (0 아님)" \
   || no "L14 conflict 부재를 0 으로 접었다"
 
+# ── L15~L17 회차 완료 마커 ─────────────────────────────────────────────────────
+#    🟥 「개수로 완료를 판정」이 다른 팔에서 실제 슬립을 냈다(42/42 를 보고 채점했는데 마지막
+#    팔이 아직 쓰는 중). 마커는 모든 디스패치·채점 뒤에 쓰이므로 «있으면 닫혔다»가 성립한다.
+mk "$T/rd" yes; RD_OUT="$(run "$T/rd")"
+[ -f "$T/rd/_ROUND_DONE" ] && ok "L15 회차가 끝나면 _ROUND_DONE 이 쓰인다" \
+  || no "L15 완료 마커가 없다 — 소비자가 «개수»로 판정하게 된다"
+# 🟥 개수는 `*_r[0-9].txt` 로 세야 한다. `*_r*.txt` 는 부수파일까지 세서 부풀린다.
+_rd_ans=$(grep '^answers:' "$T/rd/_ROUND_DONE" 2>/dev/null | awk '{print $2}')
+_rd_rows=$(grep '^rows:' "$T/rd/_ROUND_DONE" 2>/dev/null | awk '{print $2}')
+[ -n "$_rd_ans" ] && [ "$_rd_ans" = "$_rd_rows" ] \
+  && ok "L16 마커의 answers 가 rows 와 일치한다 (부수파일을 안 센다)" \
+  || no "L16 answers=$_rd_ans rows=$_rd_rows — 개수 세는 글롭이 부수파일을 삼켰다"
+# 🟥 컨트롤 — 부수파일을 만들어도 개수가 안 늘어야 한다. 없으면 L16 은 «우연히» 초록이다.
+: > "$T/rd/q1_ARM_r1.prompt.txt"; : > "$T/rd/q1_ARM_r1.stderr.txt"
+RD2="$(run "$T/rd")" >/dev/null 2>&1
+_rd_ans2=$(grep '^answers:' "$T/rd/_ROUND_DONE" 2>/dev/null | awk '{print $2}')
+[ "$_rd_ans2" = "$_rd_ans" ] \
+  && ok "L17 컨트롤 — 부수파일을 늘려도 answers 가 그대로다 (판별력)" \
+  || no "L17 부수파일이 개수에 섞였다 ($_rd_ans → $_rd_ans2)"
+
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
