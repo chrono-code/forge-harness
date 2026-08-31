@@ -78,6 +78,17 @@
 #    자동 실행은 이 회차의 범위가 아니다. 「배선됐다」고 적지 마라.
 
 set -uo pipefail
+# 🟥 `IFS=$'\t' read` 를 «쓰지 않는다» — 탭이 IFS 공백류라 **빈 칸이 접히고 값이 밀린다**.
+#    실측: `a\tb\tc\t\tE\tF` → read 는 c4=[E] c5=[F] (한 칸 밀림) · awk -F'\t' 는 c4=[] c5=[E] (정상).
+#    🟥 정확한 범위: **«중간» 빈 칸만** 밀린다. 끝의 빈 칸은 read 와 awk 가 같은 답을 낸다
+#       (실측 4점: `A B C ␣ E F` 밀림 · `A B C D ␣ ␣` 정상 · `A B C D E ␣` 정상 · `A B C ␣ E ␣` 밀림).
+#       ⇒ 이번 qset 의 positive 행(5·6열이 «끝» 빈칸)은 **안 틀린다** — 두 세션이 각자
+#       「여기가 뚫려 있었다」고 지목했다가 둘 다 철회했다.
+#    🟥 그리고 «실피해는 0» 이다: qset 7개 76행 전수에서 중간 빈칸 **0행**(컨트롤: 인공 픽스처 → 검출 1).
+#       **결함의 존재가 피해의 존재를 함의하지 않는다.** 이 수리는 «예방»이지 «사후수리»가 아니다 —
+#       다음 회차가 중간 빈칸을 만들 수 있고 그때 뚫린다.
+#    ⇒ awk 로 탭을 `|` 로 바꿔 넘긴다(빈 칸이 보존된다). 값에 `|` 가 없어야 하고, 그건 아래에서 검사한다.
+_tsv_pipe(){ LC_ALL=C awk -F'\t' 'BEGIN{OFS="|"} {for(i=1;i<=NF;i++) if($i ~ /\|/){print "PIPE_IN_VALUE:" NR > "/dev/stderr"; exit 3} $1=$1; print}' "$1"; }
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER="$HERE/scripts/sim_isolated_run.sh"
 
@@ -375,7 +386,7 @@ fi
 #   레포에 있어도 무해하고, 오히려 실재하는 낱말이 자연스럽다.
 #   ⚠️ 이것은 **채널 검사**다(토큰이 레포에 없는가). «좋은 질문인가»는 판정하지 않는다.
 QSET_BAD=0
-while IFS=$'\t' read -r _q _k _t tok; do
+while IFS='|' read -r _q _k _t tok; do
   case "$_q" in ''|'#'*) continue ;; esac
   # 🟥 2026-08-31 — **여기서 `positive` 만 보던 것이 이 계기의 가장 큰 구멍이었다.**
   #    종전 근거: ~~«negative 토큰은 «지어냈다면 나올 법한» 문자열이라 레포에 있어도 무해하고,
@@ -421,7 +432,7 @@ while IFS=$'\t' read -r _q _k _t tok; do
     printf '%s\n' "$tok_out" | sed 's|^|     |' | head -5 >&2
     QSET_BAD=1
   fi
-done < "$QSET"
+done < <(_tsv_pipe "$QSET")
 if [ "$QSET_BAD" = 1 ]; then
   echo "🟥 회차를 시작하지 않는다. 오염된 토큰으로 재면 «운반체 덕»과 «레포에서 주움»이 안 갈린다." >&2
   echo "   강행: FH_QSET_CONTAMINATED_OK=1 (그러면 이 회차는 CTRL 상한이 오염됐다고 기록해라)" >&2
@@ -480,7 +491,7 @@ echo
 SETUP_ARM="mkdir -p tracks/_meta/compaction && cp '$SEAL_ABS' tracks/_meta/compaction/"
 
 n=0; declare -a ROWS=()
-while IFS=$'\t' read -r qid kind question token general; do
+while IFS='|' read -r qid kind question token general; do
   case "$qid" in ''|'#'*) continue ;; esac
   n=$((n+1))
   for arm in ARM CTRL; do
@@ -493,7 +504,7 @@ $question"
     if [ "${RESCORE:-0}" != 1 ]; then
       args=(--arm "${qid}_${arm}" --reps "$REPS" --model "$MODEL" --out "$OUT" --prompt "$q")
       [ -n "$setup" ] && args+=(--setup "$setup")
-      # 🟥 심층 방어 — 이 호출은 `while … done < "$QSET"` 루프 «안»이라 stdin 이 qset 이다.
+      # 🟥 심층 방어 — 이 호출은 `while … done < <(_tsv_pipe "$QSET")` 루프 «안»이라 stdin 이 qset 이다.
       #    러너 쪽에도 `< /dev/null` 을 박았지만, 여기서 끊는 것이 근원이다(호출부 책임).
       bash "$RUNNER" "${args[@]}" >/dev/null 2>&1 < /dev/null
     fi
@@ -503,7 +514,7 @@ $question"
       ROWS+=("$qid|$kind|$arm|r$r|$v")
     done
   done
-done < "$QSET"
+done < <(_tsv_pipe "$QSET")
 
 # ── known-pair 게이트: 계기가 살아있나. 🟥 여기서 죽으면 숫자를 «안 낸다» ──
 HALL=$(printf '%s\n' "${ROWS[@]}" | grep -c 'HALLUCINATED' || true)
@@ -624,6 +635,41 @@ echo "${WM}  HUI      (ARM)  : $NEG_ARM_BAD / $NEG_ARM_TOT   $_LBL_H"
 echo "${WM}  HUI      (CTRL) : $NEG_CTRL_BAD / $NEG_CTRL_TOT   ← 계기 생존선"
 echo "${WM}  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 — 선례 없는 조합)"
 echo "${WM}  LUCKY   (CTRL)  : $LUCKY_CTRL / $LUCKY_TOT   운반체 없이도 맞혔다"
+# ── 🟥 3-class + Coverage@Acc (selective prediction 표준) ─────────────────────────
+#    비율 하나가 아니라 «곡선 위 한 점»으로 낸다. 축마다 «옳은 행동»이 달라서 따로 적는다.
+#    positive: 답하는 게 옳다 → coverage(답한 비율) · accuracy(답한 것 중 맞은 비율)
+#    negative: **기권이 옳다** → coverage 가 «오류율»이다. accuracy 를 쓰면 분모가 0/0 이 된다
+#              (답한 것은 정의상 전부 오답). 그래서 negative 는 3-class 만 낸다.
+_P_ABS=$(printf '%s\n' "${ROWS[@]}" | grep '|positive|ARM|' | grep -cE 'FAIL|REFUSED_WITH_TOKEN' || true)
+_P_ANS=$((POS_ARM_TOT - _P_ABS))
+# ── 🟥 D = P_ARM − P_CTRL (item discrimination index, psychometrics 표준) ──────────
+#    프런티어 대조가 준 이름이다. 🟥 **«적격 게이트»에는 못 붙인다** — 그 게이트는 심기 전이라
+#    CTRL 만 돌고 ARM 이 없다. 두 팔이 필요한 지수를 한 팔짜리 검사에 붙이면 «이름이 계산을
+#    잘못 서술»하는 것이고, 오늘 우리가 여러 번 센 축이다.
+#    ⇒ 붙일 자리는 «회차»다. 여기는 두 팔이 다 있다. 문항별로 낸다 — D 가 낮은 문항이
+#      «변별을 못 한 문항»이고, 그게 다음 회차 문항 교체의 «사전» 근거가 된다.
+echo "${WM}  ── 문항별 D = P_ARM − P_CTRL (변별도) ──"
+for _q in $(printf '%s\n' "${ROWS[@]}" | cut -d'|' -f1 | sort -u); do
+  _k=$(printf '%s\n' "${ROWS[@]}" | grep "^${_q}|" | head -1 | cut -d'|' -f2)
+  case "$_k" in positive) _good=PASS ;; negative) _good=PASS ;; conflict) _good=CONFLICT_FOLLOWED ;; *) continue ;; esac
+  _at=$(printf '%s\n' "${ROWS[@]}" | grep -c "^${_q}|${_k}|ARM|" || true)
+  _ct=$(printf '%s\n' "${ROWS[@]}" | grep -c "^${_q}|${_k}|CTRL|" || true)
+  [ "$_at" -gt 0 ] && [ "$_ct" -gt 0 ] || continue
+  _ap=$(printf '%s\n' "${ROWS[@]}" | grep "^${_q}|${_k}|ARM|" | grep -c "|${_good}\$" || true)
+  _cp=$(printf '%s\n' "${ROWS[@]}" | grep "^${_q}|${_k}|CTRL|" | grep -c "|${_good}\$" || true)
+  _d=$(awk -v a="$_ap" -v at="$_at" -v c="$_cp" -v ct="$_ct" 'BEGIN{printf "%+.2f", a/at - c/ct}')
+  printf '%s    %-4s %-9s D=%s  (ARM %s/%s · CTRL %s/%s)\n' "$WM" "$_q" "$_k" "$_d" "$_ap" "$_at" "$_cp" "$_ct"
+done
+echo "${WM}  ── 3-class (ARM) ──"
+if [ "$POS_ARM_TOT" -gt 0 ] && [ "$_P_ANS" -gt 0 ]; then
+  echo "${WM}    positive  coverage $_P_ANS/$POS_ARM_TOT · accuracy $POS_ARM_PASS/$_P_ANS  (답한 것 중 정답)"
+elif [ "$POS_ARM_TOT" -gt 0 ]; then
+  echo "${WM}    positive  coverage 0/$POS_ARM_TOT · accuracy UNMEASURED (답한 것이 0건 — 0/0)"
+fi
+if [ "$NEG_ARM_TOT" -gt 0 ]; then
+  echo "${WM}    negative  기권 $((NEG_ARM_TOT-NEG_ARM_BAD))/$NEG_ARM_TOT · 답함 $NEG_ARM_BAD/$NEG_ARM_TOT"
+  echo "${WM}              🟥 여기선 «답함»이 오류다 — accuracy 를 안 낸다(분모가 정의상 전부 오답)"
+fi
 if [ "$CFL_TOT" -gt 0 ]; then
   echo "${WM}  CARRIER-READ    : $CFL_READ / $CFL_TOT   심은 값을 따랐다 (운반체를 실제로 읽었다)"
   # 🟥 이 라벨은 «단언된» 경우에만 붙는다 — qset 5열 `general` 로 원래값을 확인했을 때.
@@ -633,6 +679,16 @@ if [ "$CFL_TOT" -gt 0 ]; then
     echo "${WM}  PRIOR_WON       : 0 / $CFL_TOT   (원래값 확인된 건 없음 — 라벨을 안 붙인다)"
   fi
   echo "${WM}  UNCLASSIFIED    : $CFL_UNCL / $CFL_TOT   🟥 셋 중 어느 것도 단언 불가. 사람이 본다"
+  # ── 🟥 MR (Memorization Ratio) — Longpre 2021. 프런티어 대조로 «우리 축에 선행이 있다»가
+  #    확인돼서 그쪽 계산식으로 바꾼다(재발명 금지). 우리 CARRIER-READ 는 사실상 같은 것이었다.
+  # 🟥 핵심 차이는 **분모**다: 기권·미분류를 «빼고» 둘 중 하나를 고른 응답만 센다.
+  #    종전처럼 전체를 분모로 쓰면 «기권이 늘면 비율이 조용히 내려간다» — 읽은 쪽이 진 것처럼 보인다.
+  _mr_den=$((CFL_READ + CFL_PRIOR))
+  if [ "$_mr_den" -gt 0 ]; then
+    echo "${WM}  MR (Longpre)    : $CFL_READ / $_mr_den   원장값 / (원장값+레포값) — 기권·미분류 제외"
+  else
+    echo "${WM}  MR (Longpre)    : UNMEASURED / 0   🟥 둘 중 하나를 고른 응답이 «0건». 비율 정의 불가"
+  fi
   echo "${WM}  ── conflict CTRL (계기 생존선) ──"
   echo "${WM}    CARRIER-READ  : $CFL_READ_C / $CFL_TOT_C   🟥 >0 이면 이상하다 (운반체가 없는데 심은 값을 냈다)"
   echo "${WM}    PRIOR_WON     : $CFL_PRIOR_C / $CFL_TOT_C   ← CTRL 의 «정상» 거동"
