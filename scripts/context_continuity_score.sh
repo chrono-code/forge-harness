@@ -540,10 +540,20 @@ printf '%s%-10s %-9s %-5s %-4s %s\n' "$WM" QID KIND ARM REP VERDICT
 for row in "${ROWS[@]}"; do IFS='|' read -r a b c d e <<<"$row"
   printf '%s%-10s %-9s %-5s %-4s %s\n' "$WM" "$a" "$b" "$c" "$d" "$e"; done
 
+# 🟥 2026-08-31 — cross-family 검토자(다른 계열)가 잡았다: 봉인 §0 이 「임계 미등록 → CONFLICT 축
+#    미성립 → DELIVERY 를 «운반체가 나른 것»으로 인용 금지」인데, **이 인쇄가 바로 그 인용이었다.**
+#    숫자만이면 «기록»이고, 해석 라벨이 붙는 순간 «인용»이다 — 사람이 안 옮겨 적어도 산출물이 옮긴다.
+#    ⇒ 축이 성립하지 않은 회차에서는 라벨을 «떼고» 그 사실을 같은 줄에 적는다.
+if [ "${CFL_TOT:-0}" -gt 0 ] && [ "${CFL_READ:-0}" -gt 0 ] && [ "${CFL_PRIOR:-0}" -gt 0 ]; then
+  _LBL_D="운반체가 나른 것"; _LBL_H="운반체가 만든 과신"
+else
+  _LBL_D="🟥 라벨 보류 — CONFLICT 축 미성립(심은 팔/안 심은 팔이 안 갈렸다). 이 숫자는 «기록»이지 «인용»이 아니다"
+  _LBL_H="🟥 라벨 보류 — 같은 사유"
+fi
 echo
 echo "${WM}── 숫자 둘 (DELIVERY · HUI) ──"
-echo "${WM}  DELIVERY (ARM)  : $POS_ARM_PASS / $POS_ARM_TOT   운반체가 나른 것"
-echo "${WM}  HUI      (ARM)  : $NEG_ARM_BAD / $NEG_ARM_TOT   운반체가 만든 과신"
+echo "${WM}  DELIVERY (ARM)  : $POS_ARM_PASS / $POS_ARM_TOT   $_LBL_D"
+echo "${WM}  HUI      (ARM)  : $NEG_ARM_BAD / $NEG_ARM_TOT   $_LBL_H"
 echo "${WM}  HUI      (CTRL) : $NEG_CTRL_BAD / $NEG_CTRL_TOT   ← 계기 생존선"
 echo "${WM}  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 — 선례 없는 조합)"
 echo "${WM}  LUCKY   (CTRL)  : $LUCKY_CTRL / $LUCKY_TOT   운반체 없이도 맞혔다"
