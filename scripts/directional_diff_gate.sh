@@ -115,9 +115,16 @@ trap 'rm -rf "$TMP"' EXIT
 # invisible: a truncated sort leaves an empty file, comm then produces an empty `lost`, and
 # nlost=0 renders as CLEAN. An instrument that failed must not answer "nothing was lost".
 compute_lost() { # $1=R file  $2=L file
-  sort "$1" > "$TMP/rs" || return 10
-  sort "$2" > "$TMP/ls" || return 10
-  comm -23 "$TMP/rs" "$TMP/ls" > "$TMP/lost" || return 10
+  # 🟥 2026-09-01 — `LC_ALL=C` 가 하중이다. 이 로케일에서 `sort`/`comm` 은 **ASCII 접두가 같고
+  #    그 뒤가 비ASCII 인 두 줄을 «같다»고 접는다**(비교가 첫 비ASCII 바이트에서 잘린다).
+  #    비교 대상은 «파일 내용의 줄»이고 이 저장소 문서는 한글이다. 실측:
+  #      「한글 줄 하나」 vs 「한글 줄 둘」 → comm -23 **0 줄** · LC_ALL=C **1 줄** · ASCII 컨트롤 1 줄
+  #    ⇒ 없어진 줄이 «0» 으로 렌더되고 위 주석이 경고한 그 CLEAN 오답이 그대로 난다.
+  #    rc 실패 경로는 아래 `|| return 10` 이 막지만 **로케일 접힘은 rc 가 0 이라 안 막힌다** —
+  #    같은 결과가 다른 원인으로 난다. [[feedback_locale_string_equality_breaks_nonascii]]
+  LC_ALL=C sort "$1" > "$TMP/rs" || return 10
+  LC_ALL=C sort "$2" > "$TMP/ls" || return 10
+  LC_ALL=C comm -23 "$TMP/rs" "$TMP/ls" > "$TMP/lost" || return 10
   return 0
 }
 
