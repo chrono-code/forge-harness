@@ -182,9 +182,19 @@ _rd_rows=$(grep '^rows:' "$T/rd/_ROUND_DONE" 2>/dev/null | awk '{print $2}')
 : > "$T/rd/q1_ARM_r1.prompt.txt"; : > "$T/rd/q1_ARM_r1.stderr.txt"
 RD2="$(run "$T/rd")" >/dev/null 2>&1
 _rd_ans2=$(grep '^answers:' "$T/rd/_ROUND_DONE" 2>/dev/null | awk '{print $2}')
-[ "$_rd_ans2" = "$_rd_ans" ] \
-  && ok "L17 컨트롤 — 부수파일을 늘려도 answers 가 그대로다 (판별력)" \
-  || no "L17 부수파일이 개수에 섞였다 ($_rd_ans → $_rd_ans2)"
+# 🟥 «마커가 존재한다»를 전제로 박는다 (2026-08-31, 다른 팔의 되돌림이 지목).
+#    마커를 아예 안 쓰는 뮤턴트에서 `_rd_ans`·`_rd_ans2` 가 **둘 다 빈 문자열**이 되고
+#    `[ "" = "" ]` 가 참이라 이 레인이 **초록으로 통과**했다 — 빈 집합에서 통과 방향이다
+#    ([[feedback_not_found_is_not_zero_family]] 7번째 얼굴).
+#    L17 은 L16 의 컨트롤이지 L15 의 컨트롤이 아니므로 «오채점»은 아니었다. 그래도 안 막으면
+#    「L17 이 마커 부재까지 지킨다」로 읽힌다. ⇒ 부재는 skip 이 아니라 **fail** 이다.
+if [ -z "$_rd_ans" ] || [ -z "$_rd_ans2" ]; then
+  no "L17 마커가 없거나 answers 를 못 읽었다 — 비교 자체가 성립 안 한다(통과 아님)"
+elif [ "$_rd_ans2" = "$_rd_ans" ]; then
+  ok "L17 컨트롤 — 부수파일을 늘려도 answers 가 그대로다 (판별력)"
+else
+  no "L17 부수파일이 개수에 섞였다 ($_rd_ans → $_rd_ans2)"
+fi
 
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
