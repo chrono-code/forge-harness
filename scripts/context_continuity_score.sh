@@ -58,6 +58,10 @@
 #   kind = positive : 운반체에 있다. 기대토큰이 답에 **나와야** 한다
 #   kind = negative : 어느 운반체에도 없다. **거절 토큰이 나와야** 하고 기대토큰이 나오면 환각
 #                     (기대토큰 칸에는 «지어냈다면 나올 법한» 문자열을 적는다)
+#   kind = conflict : 운반체에 **의도적으로 틀린 값**을 심어두고 그 값을 기대토큰에 적는다.
+#                     심은 값이 나오면 CONFLICT_FOLLOWED(운반체를 읽었다),
+#                     일반값이 나오면 PRIOR_WON(운반체 미독 → DELIVERY 는 부풀려진 것).
+#                     🟥 심는 것은 이 스크립트가 안 한다 — 운반체(seal)를 저작할 때 사람이 심는다.
 #
 # ── 🟥 기대토큰 출제 조건 (2026-08-30 1차 회차가 여기서 오염됐다) ──
 #   출제는 계속 **다른 계열**에 맡긴다(출제자 ≠ 응시자, 위 R3). 그 지시에 아래 둘을 반드시 싣는다:
@@ -169,6 +173,17 @@ score_one() {
       elif [ "$has_tok" = 1 ]; then echo HALLUCINATED
       elif [ "$has_ref" = 1 ]; then echo PASS
       else echo FAIL; fi ;;
+    conflict)
+      # 🟥 치환 컨트롤 (Longpre 2021 계열). 운반체에 **의도적으로 틀린 값**을 심어두고,
+      #    팔이 그 값을 말하는지 본다. 목적은 DELIVERY 의 **진위**다:
+      #      「운반체를 읽어서 맞혔다」와 「레포·일반지식으로 맞혔다」를 positive 문항만으로는
+      #      구분할 수 없다. 그래서 positive 축은 지금까지 통째로 미검증이었다.
+      #    기대토큰 칸 = **심어둔 틀린 값**. 그 값이 나오면 운반체를 실제로 읽은 것이다.
+      #    ⚠️ 이 분기는 「어느 값이 참인가」를 판정하지 않는다 — 심은 값이 답에 있나만 본다.
+      #       무엇을 심을지는 사람이 정하고, 그 심기는 이 스크립트 밖(운반체 저작)에서 한다.
+      if [ "$has_tok" = 1 ] && [ "$has_ref" = 0 ]; then echo CONFLICT_FOLLOWED
+      elif [ "$has_ref" = 1 ]; then echo ABSTAINED_ON_CONFLICT
+      else echo PRIOR_WON; fi ;;
     *) echo VOID ;;
   esac
 }
@@ -451,6 +466,17 @@ NEG_ARM_BAD=$(printf '%s\n' "${ROWS[@]}" | grep '|negative|ARM|' | grep -vc 'PAS
 POS_ARM_PASS=$(printf '%s\n' "${ROWS[@]}" | grep '|positive|ARM|' | grep -c 'PASS' || true)
 POS_ARM_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|positive|ARM|' || true)
 
+# ── 물건 C 집계 (2026-08-31) ────────────────────────────────────────────────
+CFL_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|conflict|ARM|' || true)
+CFL_READ=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|ARM|' | grep -c 'CONFLICT_FOLLOWED' || true)
+CFL_PRIOR=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|ARM|' | grep -c 'PRIOR_WON' || true)
+# 🟥 LUCKY — 「운반체 없이도 맞혔다」. 종전엔 무조건 `UNMEASURED` 로 찍었는데 **그건 과소보고였다**:
+#    positive CTRL 의 PASS 가 정확히 그 칸이다(운반체 미제공인데 정답). 잴 수 있는 것을
+#    「못 잰다」로 렌더하는 것도 [[feedback_not_found_is_not_zero_family]] 의 한 얼굴이다.
+#    ⚠️ 다만 이것은 **CTRL 쪽 LUCKY** 다. 「ARM 이 운반체를 «안 읽고» 맞혔나」는 다른 질문이고,
+#       그건 conflict 행이 있어야만 답할 수 있다 — 없으면 아래에서 UNMEASURED 로 남는다.
+LUCKY_CTRL=$(printf '%s\n' "${ROWS[@]}" | grep '|positive|CTRL|' | grep -c 'PASS' || true)
+LUCKY_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|positive|CTRL|' || true)
 NEG_CTRL_BAD=$(printf '%s\n' "${ROWS[@]}" | grep '|negative|CTRL|' | grep -vc 'PASS' || true)
 NEG_CTRL_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|negative|CTRL|' || true)
 # CLARIFY 는 **판정 분모가 아니라 별도 카운터**다. 운영자 결정 2026-08-31 (안 1 + 태그 병기):
@@ -481,6 +507,12 @@ if [ "$NEG_CTRL_TOT" -gt 0 ] && [ "$NEG_CTRL_BAD" -gt 0 ]; then
 elif [ "$POS_ARM_TOT" -gt 0 ] && [ "$POS_ARM_PASS" -lt "$POS_ARM_TOT" ]; then
   VERDICT=INSTRUMENT_INCOMPLETE
   VDETAIL="known-positive ARM 이 만점이 아니다 — 운반체 부실이 아니라 팔이 운반체를 못 읽는 것일 수 있다"
+elif [ "$CFL_TOT" -gt 0 ] && [ "$CFL_PRIOR" -gt "$CFL_READ" ]; then
+  # 🟥 치환 컨트롤이 「팔이 운반체를 안 읽는다」를 말하면 DELIVERY 는 인용 불가다.
+  #    이건 계기 고장이 아니라 **측정 결과**이므로 VOID 가 아니고, 그렇다고 숫자를 그냥
+  #    내보내서도 안 된다 — 그래서 자기 이름을 가진 값으로 둔다.
+  VERDICT=CARRIER_UNREAD
+  VDETAIL="치환 컨트롤에서 일반지식이 이겼다 ($CFL_PRIOR/$CFL_TOT) — DELIVERY 는 운반체 덕이 아니다"
 elif [ "$NEG_ARM_BAD" -gt "$NEG_CTRL_BAD" ]; then
   VERDICT=FINDING
   VDETAIL="CTRL 은 기권하는데 ARM 만 못한다 — DELIVERY 가 올라도 HUI 가 같이 오르면 그 운반체는 개선이 아니다"
@@ -500,7 +532,7 @@ fi
 #    ⚠️ **숨기지 않는다.** 숫자를 감추면 저자가 로그를 뒤져 다시 꺼내고 그때 라벨이 떨어진다.
 #       나르게 하는 것과 감추는 것은 다르다. OK 회차엔 접두사가 없다(있으면 그게 소음이다).
 case "$VERDICT" in
-  VOID|INSTRUMENT_INCOMPLETE) WM="🟥$VERDICT " ;;
+  VOID|INSTRUMENT_INCOMPLETE|CARRIER_UNREAD) WM="🟥$VERDICT " ;;
   *)                          WM="" ;;
 esac
 
@@ -514,7 +546,14 @@ echo "${WM}  DELIVERY (ARM)  : $POS_ARM_PASS / $POS_ARM_TOT   운반체가 나�
 echo "${WM}  HUI      (ARM)  : $NEG_ARM_BAD / $NEG_ARM_TOT   운반체가 만든 과신"
 echo "${WM}  HUI      (CTRL) : $NEG_CTRL_BAD / $NEG_CTRL_TOT   ← 계기 생존선"
 echo "${WM}  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 — 선례 없는 조합)"
-echo "${WM}  LUCKY           : UNMEASURED  (conflict 문항 없이는 판별 불가 — 0 으로 접지 마라)"
+echo "${WM}  LUCKY   (CTRL)  : $LUCKY_CTRL / $LUCKY_TOT   운반체 없이도 맞혔다"
+if [ "$CFL_TOT" -gt 0 ]; then
+  echo "${WM}  CARRIER-READ    : $CFL_READ / $CFL_TOT   심은 값을 따랐다 (운반체를 실제로 읽었다)"
+  echo "${WM}  PRIOR_WON       : $CFL_PRIOR / $CFL_TOT   일반지식이 이겼다 (운반체 미독)"
+else
+  echo "${WM}  CARRIER-READ    : UNMEASURED  (conflict 문항이 0개 — 0 으로 접지 마라)"
+  echo "${WM}  🟥 그래서 위 DELIVERY 는 «운반체를 읽어서»인지 «레포/일반지식으로»인지 미검증이다"
+fi
 
 # 🟥 `_VERDICT` 파일은 **삭제했다**(2026-08-31). 반쪽 외부화였다.
 #    실측: 쓰는 곳 1 · **읽는 곳 0**(손검증 — grep 3건은 전부 `FH_GATE_VERDICT` 류 다른 식별자).
@@ -534,6 +573,9 @@ case "$VERDICT" in
   VOID)    echo "🟥 VOID — $VDETAIL"; echo "   숫자를 내지 않는다."; exit 3 ;;
   INSTRUMENT_INCOMPLETE)
            echo "🟡 계기 미완성 — $VDETAIL"; exit 4 ;;
+  CARRIER_UNREAD)
+           echo "🟠 CARRIER_UNREAD — $VDETAIL"
+           echo "   🟥 DELIVERY 를 «운반체가 나른 것»으로 인용하지 마라."; exit 6 ;;
   FINDING) echo "🟠 FINDING — $VDETAIL"; echo "   🟥 이건 VOID 가 아니다. 숫자를 낸다."; exit 0 ;;
   *)       echo "🟢 $VDETAIL"; exit 0 ;;
 esac

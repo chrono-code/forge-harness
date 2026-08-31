@@ -109,5 +109,62 @@ else
   no "L10 계기 오류 — L0 사망 조건을 못 만들었다 (dl0=$_dl0)"
 fi
 
+# ── L11~L14 물건 C (치환 컨트롤) ────────────────────────────────────────────────
+#    🟥 왜 필요한가: positive 문항만으로는 「운반체를 읽어서 맞혔다」와 「레포·일반지식으로
+#    맞혔다」가 **구분되지 않는다.** 그래서 DELIVERY 축이 통째로 미검증이었다.
+#    운반체에 «의도적으로 틀린 값»을 심고 팔이 그 값을 따르는지 보면 갈린다.
+#    심는 것은 운반체 저작 단계이고, 채점기는 「심은 값이 답에 있나」만 본다(의미 판정 안 함).
+CPT="ZZCFLPLANT$(printf '%s' 5521)"     # 심은 «틀린» 값
+CGT="ZZCFLGENRL$(printf '%s' 5522)"     # 팔이 일반지식으로 낼 법한 값
+printf 'q1\tpositive\t질문P\t%s\nq3\tconflict\t질문C\t%s\n' "$PT" "$CPT" > "$T/qc.tsv"
+
+mkc(){ # $1=outdir  $2=follow|prior
+  mkdir -p "$1"
+  printf '답은 %s 입니다.\n' "$PT" > "$1/q1_ARM_r1.txt"
+  printf '모르겠습니다. 기록이 없습니다.\n' > "$1/q1_CTRL_r1.txt"
+  if [ "$2" = follow ]; then printf '원장에 따르면 %s 입니다.\n' "$CPT" > "$1/q3_ARM_r1.txt"
+  else                       printf '일반적으로 %s 입니다.\n' "$CGT" > "$1/q3_ARM_r1.txt"; fi
+  printf '일반적으로 %s 입니다.\n' "$CGT" > "$1/q3_CTRL_r1.txt"
+}
+runc(){ ( cd "$ROOT" && bash "$S" --seal "$T/seal.md" --qset "$T/qc.tsv" --reps 1 \
+          --out "$1" --rescore 2>&1 </dev/null ); }
+runc_rc(){ ( cd "$ROOT" && bash "$S" --seal "$T/seal.md" --qset "$T/qc.tsv" --reps 1 \
+             --out "$1" --rescore >/dev/null 2>&1 </dev/null ); echo $?; }
+
+mkc "$T/cf_follow" follow; CF_OUT="$(runc "$T/cf_follow")"
+mkc "$T/cf_prior"  prior;  CP_OUT="$(runc "$T/cf_prior")";  CP_RC=$(runc_rc "$T/cf_prior")
+
+# 🟥 known-pair — 두 팔이 «갈리나». 안 갈리면 이 축은 계기가 아니다.
+# 🟥 판정표의 «그 행»에 결박한다. 요약 줄에도 `PRIOR_WON` 이라는 **라벨**이 있어서,
+#    맨 grep 은 분기를 죽여도 초록을 낸다 — M1 뮤턴트가 실제로 그렇게 통과했다
+#    ([[feedback_control_presence_is_not_discrimination]]). 행 형식으로 앵커한다.
+printf '%s' "$CF_OUT" | grep -qE 'q3 +conflict +ARM +r1 +CONFLICT_FOLLOWED' && _a=yes || _a=no
+printf '%s' "$CP_OUT" | grep -qE 'q3 +conflict +ARM +r1 +PRIOR_WON'         && _b=yes || _b=no
+if [ "$_a" = yes ] && [ "$_b" = yes ]; then
+  ok "L11 known-pair — 심은 값을 따른 팔과 일반지식이 이긴 팔이 갈린다"
+else no "L11 치환 컨트롤이 두 팔을 못 가른다 (followed=$_a prior=$_b) — 이 축은 계기가 아니다"; fi
+
+# PRIOR_WON 우세면 DELIVERY 를 인용하면 안 된다 → 자기 이름을 가진 판정 + 종료코드
+printf '%s' "$CP_OUT" | grep -q 'CARRIER_UNREAD' \
+  && ok "L12 일반지식이 이기면 CARRIER_UNREAD 로 판정된다" \
+  || no "L12 PRIOR_WON 우세인데 판정이 CARRIER_UNREAD 가 아니다"
+[ "$CP_RC" = 6 ] && ok "L12b CARRIER_UNREAD → exit 6 (다른 판정과 구분되는 값)" \
+  || no "L12b CARRIER_UNREAD 의 종료코드가 6 이 아니다 (got=$CP_RC)"
+# 컨트롤 — 심은 값을 따랐으면 그 판정이 «안» 나와야 한다
+printf '%s' "$CF_OUT" | grep -q 'CARRIER_UNREAD' \
+  && no "L12c 컨트롤 실패 — 운반체를 읽었는데도 CARRIER_UNREAD 가 붙었다 (항상 차단)" \
+  || ok "L12c 컨트롤 — 운반체를 읽은 회차엔 CARRIER_UNREAD 가 안 붙는다"
+
+# ── L13 LUCKY 칸이 «실수»로 나오나 (종전엔 무조건 UNMEASURED 였다) ──────────────
+printf '%s' "$CF_OUT" | grep -qE 'LUCKY   \(CTRL\)  : [0-9]+ / [0-9]+' \
+  && ok "L13 LUCKY 가 숫자로 나온다 (잴 수 있는 것을 «못 잰다»로 렌더하지 않는다)" \
+  || no "L13 LUCKY 칸이 숫자가 아니다 — 과소보고다"
+
+# ── L14 conflict 행이 «없을» 때는 UNMEASURED (0 으로 접지 않는다) ───────────────
+mk "$T/nocfl" yes; NC_OUT="$(run "$T/nocfl")"
+printf '%s' "$NC_OUT" | grep -q 'CARRIER-READ    : UNMEASURED' \
+  && ok "L14 conflict 문항 0개면 CARRIER-READ 는 UNMEASURED (0 아님)" \
+  || no "L14 conflict 부재를 0 으로 접었다"
+
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
