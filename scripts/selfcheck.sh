@@ -1118,6 +1118,21 @@ else
   fail=1
 fi
 
+# 무효 워터마크 — 무효 회차의 «숫자 줄»이 자기 무효를 나르는가.
+# 🟥 회차 3 은 자기 게이트가 VOID 를 찍고도 그 숫자만 기록으로 넘어갔다(VOID 낱말은 0회).
+#    판정이 표 «밖»에 있었고 사람은 표를 복사하기 때문이다. 그 채널을 닫은 배선의 앵커다.
+#    subject-present-but-anchor-absent 는 SKIP 이 아니라 FAIL 이다 — 여기서도 같은 형태를 쓴다.
+if [ ! -f scripts/context_continuity_score.sh ]; then
+  _absent_subject_verdict "test_verdict_watermark_lanes.sh" "scripts/context_continuity_score.sh" || fail=1
+elif [ -f scripts/test_verdict_watermark_lanes.sh ]; then
+  if ! bash scripts/test_verdict_watermark_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_verdict_watermark_lanes.sh: context_continuity_score.sh present but its anchor is missing"
+  fail=1
+fi
+
 # daily_report — 어제 커밋 집계. 자기검사 10 레인(known-pair · 멱등 · 부재 표기).
 # 🟥 이 파일은 «한 번 존재했다가 사라진» 이력이 있다 — 2026-08-29 에 산출물 1건을 내고
 #    git 에 커밋된 적 없이 없어졌고, 로컬 바인딩만 「설치됨」이라 적고 있었다. 배선이

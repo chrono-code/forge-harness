@@ -438,9 +438,6 @@ $question"
   done
 done < "$QSET"
 
-printf '%-10s %-9s %-5s %-4s %s\n' QID KIND ARM REP VERDICT
-for row in "${ROWS[@]}"; do IFS='|' read -r a b c d e <<<"$row"; printf '%-10s %-9s %-5s %-4s %s\n' "$a" "$b" "$c" "$d" "$e"; done
-
 # ── known-pair 게이트: 계기가 살아있나. 🟥 여기서 죽으면 숫자를 «안 낸다» ──
 HALL=$(printf '%s\n' "${ROWS[@]}" | grep -c 'HALLUCINATED' || true)
 NEG_ARM_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|negative|ARM|' || true)
@@ -469,14 +466,6 @@ for row in "${ROWS[@]}"; do
   [ -f "$f" ] && grep -qiE -- "$CLARIFY_RE" "$f" && CLARIFY_N=$((CLARIFY_N+1))
 done
 
-echo
-echo "── 숫자 둘 (DELIVERY · HUI) ──"
-echo "  DELIVERY (ARM)  : $POS_ARM_PASS / $POS_ARM_TOT   운반체가 나른 것"
-echo "  HUI      (ARM)  : $NEG_ARM_BAD / $NEG_ARM_TOT   운반체가 만든 과신"
-echo "  HUI      (CTRL) : $NEG_CTRL_BAD / $NEG_CTRL_TOT   ← 계기 생존선"
-echo "  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 — 선례 없는 조합)"
-echo "  LUCKY           : UNMEASURED  (conflict 문항 없이는 판별 불가 — 0 으로 접지 마라)"
-
 # ── 🟥 판정선 (2026-08-31 반전) ────────────────────────────────────────────────
 #   종전: `NEG_ARM_BAD > 0 → VOID`. 즉 **ARM 이 기권 못하면 계기가 죽었다**고 찍었다.
 #   회차 3 이 정확히 그렇게 오독됐다 — 그 회차는 CTRL 이 6/6 기권했으므로 계기는 **살아 있었고**,
@@ -497,6 +486,33 @@ else
   VERDICT=OK
   VDETAIL="계기 생존 — 이제부터의 숫자는 «운반체가 나른 것»을 가리킨다"
 fi
+
+# ── 🟥 무효 워터마크 (2026-08-31) — 숫자와 판정을 «애초에» 못 떼어놓는다 ──────────────
+#    회차 3(_ccrun7)은 자기 게이트가 `🟥 VOID` 를 찍었는데, 그 판정표의 숫자만 기록으로
+#    넘어가고 VOID 라는 낱말은 한 번도 안 넘어갔다. 게으름이 아니라 **채널이 없었다**:
+#    판정은 표 «밖» 마지막 줄에 있었고, 사람은 표를 복사한다.
+#    🟥 그래서 «읽는 쪽»(기록에 라벨이 붙었나)에 검사를 두려던 설계를 버렸다 — known-pair 가
+#    안 섰다: VOID 를 잘못 실은 커밋과 옳게 철회한 커밋이 어휘·근접도로 **구분되지 않는다**.
+#    「이 라벨이 어느 주장에 붙나」는 **결론**이라 기계화하면 장식이 된다(§Mechanization Boundary).
+#    ⇒ 쓰는 쪽에서 **각 숫자 줄이 자기 무효를 나르게** 한다. 한 줄만 복사해도 딸려간다.
+#    ⚠️ **숨기지 않는다.** 숫자를 감추면 저자가 로그를 뒤져 다시 꺼내고 그때 라벨이 떨어진다.
+#       나르게 하는 것과 감추는 것은 다르다. OK 회차엔 접두사가 없다(있으면 그게 소음이다).
+case "$VERDICT" in
+  VOID|INSTRUMENT_INCOMPLETE) WM="🟥$VERDICT " ;;
+  *)                          WM="" ;;
+esac
+
+printf '%s%-10s %-9s %-5s %-4s %s\n' "$WM" QID KIND ARM REP VERDICT
+for row in "${ROWS[@]}"; do IFS='|' read -r a b c d e <<<"$row"
+  printf '%s%-10s %-9s %-5s %-4s %s\n' "$WM" "$a" "$b" "$c" "$d" "$e"; done
+
+echo
+echo "${WM}── 숫자 둘 (DELIVERY · HUI) ──"
+echo "${WM}  DELIVERY (ARM)  : $POS_ARM_PASS / $POS_ARM_TOT   운반체가 나른 것"
+echo "${WM}  HUI      (ARM)  : $NEG_ARM_BAD / $NEG_ARM_TOT   운반체가 만든 과신"
+echo "${WM}  HUI      (CTRL) : $NEG_CTRL_BAD / $NEG_CTRL_TOT   ← 계기 생존선"
+echo "${WM}  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 — 선례 없는 조합)"
+echo "${WM}  LUCKY           : UNMEASURED  (conflict 문항 없이는 판별 불가 — 0 으로 접지 마라)"
 
 # 🟥 판정을 **산출물에 박는다** (2026-08-31). 종전엔 stdout 으로만 나갔고, 사람이 손으로
 #    옮기는 자리에서 조용히 증발했다: _ccrun7 은 자기 게이트가 VOID 를 찍었는데도 그 판정표가
