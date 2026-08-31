@@ -256,7 +256,10 @@ _merge "$H"; SECOND_RC=$RC
 # DETERMINISM — both runs must reach the same verdict, so a failure is attributable to the snippet
 # that caused it rather than surfacing later inside the survivor filter.
 _eq "LT-1 verdict is deterministic across runs (no latent detonation)" \
-    "$([ "$FIRST_RC" = "$SECOND_RC" ] && echo DETERMINISTIC || echo LATENT)" "DETERMINISTIC"
+    "$([ "$FIRST_RC" = "127" ] || [ "$SECOND_RC" = "127" ] && echo NOT_RUN \
+        || { [ "$FIRST_RC" = "$SECOND_RC" ] && echo DETERMINISTIC || echo LATENT; })" "DETERMINISTIC"
+# 🟥 2026-08-31 — «둘 다 안 돌았다»(127)가 동일해서 DETERMINISTIC 으로 읽혔다. 결정성을 주장하려면
+#    두 실행이 «실제로» 돌았어야 한다. 안 돈 상태가 가장 결정적으로 보이는 것이 이 결함의 얼굴이다.
 # (GAP 2 retired — promoted to LT-1 above, 2026-08-08)
 
 # GAP 3 — INSTRUMENT COVERAGE, measured not asserted. Build the exact post-failure state (companion

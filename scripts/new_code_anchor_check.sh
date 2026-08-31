@@ -631,11 +631,29 @@ printf '%s\n' "$out" | awk -F'\t' '
 _bad="$(printf '%s\n' "$out" | awk -F'\t' '$1=="MENTION_ONLY" || $1=="NO_ANCHOR"' | grep -c . || true)"
 _bad="${_bad//[!0-9]/}"; _bad="${_bad:-0}"
 
-if [ "${_nsubj:-0}" = "0" ]; then
+# 🟥 2026-08-31 — `${_nsubj:-0}` 이 «SCOPE 줄이 아예 없다»(스캔 산출 파손/공백)를 «0»으로
+#    렌더했다. 그러면 바로 아래 분기가 *"measured zero, not an unrun scan"* 이라고 **단언**하는데,
+#    그건 정확히 이 경우에 못 대는 주장이다 — 미측정이 측정으로 승격된다.
+#    ⇒ «SCOPE 줄 부재»는 0 이 아니라 UNMEASURED 이고, 게이트이므로 fail-closed(exit 10)다.
+#    선례: session_close_check.sh:441(기본값 UNMEASURED) · test_chamber_sig_lanes.sh:94(비교 불가 기본값).
+if [ -z "$_nsubj" ]; then
+  echo "⛔ UNMEASURED: 스캔 산출에 SCOPE 줄이 없다 — 대상 개수를 «못 셌다»."
+  echo "   이것은 «0 개»가 아니다. 0 으로 접으면 스캔이 죽은 회차가 PASS 로 나간다."
+  exit 10
+fi
+
+if [ "$_nsubj" = "0" ]; then
   echo "   SCANNED, and the in-scope set is genuinely empty — this change adds no scripts/ executable."
   echo "   (That is a measured zero, not an unrun scan: the base resolved and the diff succeeded.)"
   echo "✅ new-code-anchor: PASS (0 in scope)"
   exit 0
+fi
+
+# 🟥 같은 축의 두 번째 자리 — `_bad` 도 «못 셌다»가 0 으로 접힌다. 위 SCOPE 가드가 대부분을
+#    막지만, `out` 이 SCOPE 만 있고 뒤가 잘린 경우가 남는다. 여기서도 «비었다»를 갈라낸다.
+if [ -z "$_bad" ]; then
+  echo "⛔ UNMEASURED: 위반 건수를 «못 셌다» — 0 으로 접지 않는다."
+  exit 10
 fi
 
 if [ "$_bad" -eq 0 ]; then
