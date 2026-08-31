@@ -63,7 +63,6 @@
 #
 # Usage: bash scripts/test_prepush_destructive_lanes.sh   → exit 0 all pairs hold, 1 otherwise.
 set -uo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 
 # FH_TEST_SUBJECT_ROOT points the suite at a COPY of the tree. It exists for the revert probe
 # ("disable the gate on a copy — does exactly this suite go red?"), which is the only way to tell a
@@ -82,7 +81,7 @@ fi
 
 # Test the STAGED blob when the hook is staged, same reasoning as the sibling anchor: an anchor that
 # reads the worktree is bypassed by staging a regression and restoring the worktree.
-WORK="$(fh_fixture_root "$(mktemp -d)")" || exit 1
+WORK=$(mktemp -d) || exit 1
 trap 'rm -rf "$WORK"' EXIT
 _status=$(git -C "$REPO_ROOT" -c core.quotePath=false diff --cached --name-status --no-renames 2>/dev/null \
           | awk -F'\t' '$2 == "templates/.git-hooks/pre-push" { print $1; exit }')
@@ -101,7 +100,7 @@ PASSED=0; FAILED=0
 # and an unresolvable base is itself one of the lanes — it must be resolvable everywhere else, or
 # every delete lane would block for the WRONG reason and the suite would be green for nothing).
 newrepo() {
-  local d; d="$(fh_fixture_root "$(mktemp -d)")" || return 1
+  local d; d=$(mktemp -d) || return 1
   mkdir -p "$d/.claude/rules" "$d/templates/.git-hooks" "$d/tracks/_meta" "$d/scripts" || return 1
   [ -f "$DEF_SRC" ] && cp "$DEF_SRC" "$d/.claude/rules/.public-surface-patterns.defaults"
   [ -f "$REPO_ROOT/scripts/psa_scan_lib.sh" ] && cp "$REPO_ROOT/scripts/psa_scan_lib.sh" "$d/scripts/psa_scan_lib.sh"

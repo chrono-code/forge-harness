@@ -19,12 +19,11 @@
 # Exit 0 = every asserting lane calibrated · 1 = the instrument is wrong.
 
 set -uo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECK="$SCRIPT_DIR/fh_node_check.sh"
 [ -f "$CHECK" ] || { echo "FAIL  subject missing: $CHECK"; exit 1; }
 
-TMPROOT="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/fh_infra_lanes.XXXXXX")")"
+TMPROOT=$(mktemp -d "${TMPDIR:-/tmp}/fh_infra_lanes.XXXXXX")
 trap 'rm -rf "$TMPROOT"' EXIT
 FAILED=0; PASSED=0; GAPS=0
 

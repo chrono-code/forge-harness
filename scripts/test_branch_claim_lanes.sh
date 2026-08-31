@@ -13,7 +13,6 @@
 # usage: bash scripts/test_branch_claim_lanes.sh
 
 set -uo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/branch_claim.sh"
 PASS=0; FAIL=0; LIVE_PID=""
 
@@ -25,7 +24,7 @@ cleanup() {
 trap cleanup EXIT
 
 _mkrepo() {
-  local d; d="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/bclaim.XXXXXX")")"
+  local d; d=$(mktemp -d "${TMPDIR:-/tmp}/bclaim.XXXXXX")
   git -C "$d" init -q -b main
   git -C "$d" config user.email t@t; git -C "$d" config user.name t
   echo x > "$d/f"; git -C "$d" add f; git -C "$d" commit -qm init
@@ -71,7 +70,7 @@ unset CLAUDE_PID
 # 판정을 바꾼다 — 실측 2026-08-09: 이 수정을 넣자 레인 ④ 가 즉시 깨졌다(실제 세션 5개).
 # **위의 CLAUDE_PID 와 같은 결함을 수리 그 자체가 재생산한 것**이라, 같은 처방을 붙인다.
 # 개별 레인은 필요할 때 이 값을 인라인으로 덮는다.
-SOCK_EMPTY="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/bcsock0.XXXXXX")")"
+SOCK_EMPTY=$(mktemp -d "${TMPDIR:-/tmp}/bcsock0.XXXXXX")
 export FH_CLAIM_SOCK_DIR="$SOCK_EMPTY"
 
 echo "[branch-claim] known-pair 앵커"
@@ -244,7 +243,7 @@ rm -rf "$R"
 #     그걸 0 으로 렌더한 게 라이브 결함이었다. 세 값이 **각각 다른 문장**을 내야 한다.
 #     ⚠️ 세 팔이 rc 는 전부 0(차단 안 함)이라 **rc 로는 구분이 안 된다** — 출력으로 잡는다.
 #        이 레인이 rc 만 봤으면 세 팔 다 통과하고 아무것도 안 잡았을 것이다.
-_sockdir() { local d; d="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/bcsock.XXXXXX")")"; echo "$d"; }
+_sockdir() { local d; d=$(mktemp -d "${TMPDIR:-/tmp}/bcsock.XXXXXX"); echo "$d"; }
 
 # ⑭ 소켓엔 살아있는 세션이 있는데 claim 은 0 → 「판정할 수 없다」
 R=$(_mkrepo); S=$(_sockdir); : > "$S/${PEERPID}.sock"
