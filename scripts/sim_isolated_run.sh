@@ -335,7 +335,15 @@ for r in $(seq 1 "$REPS"); do
   #     «능력»이 아니라 «힌트를 따른 것»이다.
   # 🟥 2026-09-01: 러너 재작성 중 이 항목이 «조용히 사라졌다»(커밋 3265224 가 되돌려졌다).
   #     arm_blind_probe 가 「히트 8→1」로 잡았다 — 프로브가 없었으면 회차가 그대로 열렸다.
-  ARM_BLIND_PATHS=( "scripts/fixtures" "scripts/round" )
+  # 🟥 `scripts/context_continuity_score.sh` — «공통 노출»이 «차등»으로 전환되는 자리다.
+  #     :386 `setup=""; [ "$arm" = ARM ] && setup="$SETUP_ARM"`
+  #     :388 `if [ "$DELIVER" = 1 ] && [ "$arm" = ARM ]; then`
+  #     ⇒ 이 분기를 읽은 팔은 «내 프롬프트에 봉인 줄이 있나»로 **자기 배정을 역추론**한다.
+  #     공통 노출은 «수준»만 옮기지만(차이는 남는다), 자기 배정을 알면 **비교 자체가 죽는다.**
+  # 🟥 지워도 conflict prior 가 안 죽는지 «먼저» 확인했다(실측, BASE 트리):
+  #     tool_result 1파일(채점기 밖) · Automati 33 · banner.png 4 — 채점기 안 0
+  #     compaction_probe.sh 7 중 1 · starter.md 22 중 1 — 여유 충분
+  ARM_BLIND_PATHS=( "scripts/fixtures" "scripts/round" "scripts/context_continuity_score.sh" )
   for _bp in "${ARM_BLIND_PATHS[@]}"; do
     rm -rf "$WORK/$_bp"
     # 🟥 rm 의 rc 를 안 믿는다 — 경로 오타면 rm 은 «성공»을 낸다(지울 게 없으니).
