@@ -38,13 +38,26 @@ set -uo pipefail
 GEN_RE='^w[0-9a-f]{8,}$'
 gen_one(){ printf 'w%s\n' "$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"; }
 
-if [ "${1:-}" = gen ]; then gen_one; exit 0; fi
+# ── seal 이름 (관측한 실물 규약, 2026-09-01) ─────────────────────────────────
+# 🟥 정규식이 «정본»이고 생성기는 그것에 «검정»된다. 두 곳에 따로 적으면 갈린다 —
+#    오늘 그 축(「갈라 적을 수 있으면 다시 갈린다」)이라 생성 직후 SEAL_RE 로 자기검사한다.
+#    통과 못 하면 이름을 «안 내고» 실패한다: 틀린 이름을 내면 회차가 통째로 무효다.
+SEAL_RE='^seal_[0-9a-f]{8}-[0-9a-f]{3}_[0-9]{8}-[0-9]{6}\.md$'
+gen_seal(){
+  local n
+  n="seal_$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')-$(od -An -N2 -tx1 /dev/urandom | tr -d ' \n' | cut -c1-3)_$(date +%Y%m%d-%H%M%S).md"
+  if printf '%s' "$n" | grep -qE "$SEAL_RE"; then printf '%s\n' "$n"; return 0; fi
+  echo "🟥 gen-seal 이 자기 검사기를 통과 못 했다: $n" >&2; return 1
+}
+
+if [ "${1:-}" = gen ];      then gen_one;  exit $?; fi
+if [ "${1:-}" = gen-seal ]; then gen_seal; exit $?; fi
 
 SEAL_NAME="${1:-}"; OUTDIR_NAME="${2:-}"; ARM_LABEL="${3:-}"
 [ -n "$SEAL_NAME" ] && [ -n "$OUTDIR_NAME" ] && [ -n "$ARM_LABEL" ] || {
   echo "usage: nameleak_check.sh gen | <seal-basename> <out-dir-basename> <arm-label>" >&2; exit 2; }
 
-SEAL_RE='^seal_[0-9a-f]{8}-[0-9a-f]{3}_[0-9]{8}-[0-9]{6}\.md$'
+# 🟥 SEAL_RE 는 위에서 «한 번만» 정의한다 — 생성기와 검사기가 같은 상수를 쓴다
 bad=0
 say(){ printf '  %s %s\n' "$1" "$2"; }
 

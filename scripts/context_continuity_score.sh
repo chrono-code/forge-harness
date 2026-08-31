@@ -516,6 +516,28 @@ SETUP_ARM="mkdir -p tracks/_meta/compaction && cp '$SEAL_ABS' tracks/_meta/compa
 NAMELEAK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/round/nameleak_check.sh"
 # 🟥 fail-closed: 없으면 «skipped» 가 아니라 실패다. 이름 누출은 회차를 통째로 무효화한다.
 [ -x "$NAMELEAK" ] || { echo "🟥 nameleak_check.sh 없음/실행불가: $NAMELEAK — 회차를 열지 않는다" >&2; exit 7; }
+# ── §7-10 🟥 개시 게이트를 «채점기가» 부른다 (2026-09-01) ──────────────────────
+# 왜: 게이트는 있었고 «옳게» 물었는데 **아무도 rc 를 소비하지 않았다.** 실측 —
+#     채점기의 gatecheck 호출 0건(컨트롤: nameleak 4 · sim_isolated_run 3 ⇒ 그 0 은 실측).
+#     2026-09-01 스모크런에서 저자가 rc=1 을 보고도 디스패치를 돌렸고, 오염된 세트로
+#     디스패치가 2배(4건) 났다. **실회차였으면 게이트가 막은 세트로 5시간이다.**
+# 🟥 그래서 «사람이 따로 돌린 결과»를 인자로 안 받는다. 자기신고를 받으면 그 무시가 그대로
+#    가능하다 — 오늘 사고는 「안 돌린 것」이 아니라 **「돌리고 무시한 것」**이다.
+# 🟥 스코프: 팔이 «도는» 경로만. rescore·self-test 는 게이트 없음(과차단은 검사 끄기를 훈련시킨다).
+# 🟥 부재 = 실패. 스킵 아님.
+if [ "${RESCORE:-0}" != 1 ] && [ "${SELFTEST:-0}" != 1 ]; then
+  # 🟥 폴백을 «두지 않는다». 2026-09-01 실측: `tracks/_meta/gatecheck_qset.sh` 는 낡은 사본이고
+  #    (nameleak 호출 0 · KNEG 생성 0) 정본이 없을 때 조용히 그것이 돌면 **이름 누출 검사가
+  #    통째로 빠진 채 회차가 열린다.** 「갈라 적을 수 있으면 갈린다」의 폴백 판이다 —
+  #    폴백은 «가용성»을 사지만 «무엇이 돌았는지»를 판다.
+  _GATE="$(dirname "${BASH_SOURCE[0]}")/round/gatecheck_qset.sh"
+  [ -f "$_GATE" ] || { echo "🟥 $_GATE 가 없다 — 회차를 열지 않는다(스킵 아님, 폴백 없음)" >&2; exit 8; }
+  if ! bash "$_GATE" "$QSET" "$SEAL" post '' '' "$(basename "${OUT%/}")" "$(bash "$NAMELEAK" gen)" >&2; then
+    echo "🟥 개시 게이트가 막았다 — 디스패치 0건으로 중단한다" >&2
+    exit 8
+  fi
+fi
+
 # 🟥 out-dir 도 «사람이 고르는 자리»다 — 그리고 팔 cwd 의 조상이다
 #    (`sim_isolated_run.sh:287-288`: WRAP="$OUTDIR/w_…" · WORK="$WRAP/repo").
 #    실제 누출 전례(`_ccfalsify`)가 «사람이 고른 out-dir 이름»이었다. 그래서 여기서 막는다 —
