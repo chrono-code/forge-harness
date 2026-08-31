@@ -82,7 +82,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER="$HERE/scripts/sim_isolated_run.sh"
 
 SEAL=""; QSET=""; REPS=1; MODEL="sonnet"; OUT=""; DELIVER=0
-SELFTEST=0; RESCORE=0
+SELFTEST=0; RESCORE=0; MANIFEST=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --seal)  SEAL="${2:-}"; shift 2 ;;
@@ -96,6 +96,8 @@ while [ $# -gt 0 ]; do
     #    실행을 다시 태우지 않기 위해서다 — 그리고 재실행하면 **다른 답이 나와서** 규칙 변경의
     #    효과와 팔의 비결정성이 섞인다. 같은 파일에 새 규칙을 걸어야 한 변수만 움직인다.
     --rescore) RESCORE=1; shift ;;
+    # 🟥 «지금 도는 qset/seal 이 «봉인된 그것»인가» 를 회차 시작 전에 대조한다.
+    --manifest) MANIFEST="${2:-}"; shift 2 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -429,6 +431,42 @@ if [ "$QSET_BAD" = 1 ]; then
   echo "   ⚠️ 강행됨 — 이 회차의 CTRL 은 상한이 오염됐다." >&2
 fi
 
+# ── 🟥 봉인 대조 (2026-08-31) — verify 가 «구조적으로» 못 잡는 자리 ──────────────────
+#    재stamp 할 때 인자를 안 바꾸면 «회차1 문항»을 봉인해놓고 «회차2»를 돌리게 된다.
+#    그때 `instrument_manifest.sh verify` 는 **rc=0 을 낸다** — 자기가 찍은 것과 같으니
+#    계기 대조는 «자기 일관»하다. 즉 verify 는 「무엇을 봉인했나」를 안 본다.
+#    ⇒ 채점기가 «자기가 받은 qset/seal» 이 매니페스트에 적힌 그것인지 직접 본다.
+# 🟥 판별자는 «경로»가 아니라 «해시»다 — 같은 경로에 다른 내용이 들어가면 경로 비교는 통과한다.
+# ⚠️ `--manifest` 미지정은 **차단이 아니라 UNVERIFIED** 다(self-test·rescore·개발 실행이 있다).
+#    그러나 «통과»로 렌더하지 않는다 — 마커에 UNVERIFIED 로 남고 화면에도 찍힌다.
+MANIFEST_MATCH=UNVERIFIED
+if [ -n "$MANIFEST" ]; then
+  if [ ! -s "$MANIFEST" ]; then
+    echo "🟥 매니페스트가 없거나 비었다: $MANIFEST — 대조 불가. 회차를 열지 않는다." >&2; exit 10
+  fi
+  _bad=0
+  for _pair in "qset:$QSET" "seal:$SEAL"; do
+    _lbl="${_pair%%:*}"; _f="${_pair#*:}"
+    _now="sha256:$(shasum -a 256 "$_f" | awk '{print $1}')"
+    # 🟥 매니페스트는 «레포 상대경로»로 적힌다. 호출자가 절대경로를 주면 그냥은 안 맞는다
+    #    — 레인이 실제로 그렇게 불러서 잡혔다(L21). 물리경로로 접두를 벗긴다.
+    _abs=$( cd "$(dirname "$_f")" 2>/dev/null && pwd -P )/$(basename "$_f")
+    _rel="${_abs#"$(cd "$HERE" && pwd -P)"/}"; _rel="${_rel#./}"
+    _rec=$(awk -v F="$_rel" '$1==F{print $2}' "$MANIFEST")
+    if [ -z "$_rec" ]; then
+      echo "🟥 매니페스트에 «${_rel}» 항목이 없다 — 봉인된 적 없는 $_lbl 으로 회차를 열 수 없다." >&2; _bad=1
+    elif [ "$_rec" != "$_now" ]; then
+      echo "🟥 봉인 불일치 ($_lbl): $_rel" >&2
+      echo "     매니페스트 $_rec" >&2; echo "     지금      $_now" >&2; _bad=1
+    fi
+  done
+  if [ "$_bad" = 1 ]; then
+    echo "🟥 봉인된 것과 «다른» 입력이다. 144 디스패치를 태우기 전에 멈춘다 (exit 10)." >&2; exit 10
+  fi
+  MANIFEST_MATCH=yes
+  echo "🟢 봉인 대조 — qset·seal 이 매니페스트와 일치한다"
+fi
+
 OUT="${OUT:-$(mktemp -d -t cc-score)}"
 mkdir -p "$OUT"
 SEAL_ABS="$(cd "$(dirname "$SEAL")" && pwd)/$(basename "$SEAL")"
@@ -643,6 +681,7 @@ if [ "$_ans" = "${#ROWS[@]}" ] && [ "$_errs" = 0 ]; then _cmp=yes; else _cmp=NO;
   echo "rows: ${#ROWS[@]}"
   echo "clone_errors: $_errs"
   echo "complete: $_cmp (정의: answers==rows ∧ clone_errors==0)"
+  echo "qset_matches_manifest: $MANIFEST_MATCH"
 } > "$OUT/_ROUND_DONE"
 
 echo

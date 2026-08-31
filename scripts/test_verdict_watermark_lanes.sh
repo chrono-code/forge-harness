@@ -244,5 +244,42 @@ grep -q 'complete: NO' "$T/cmp/_ROUND_DONE" \
   && ok "L20 개수는 맞는데 클론 에러가 있으면 → complete: NO (판별력)" \
   || no "L20 클론 에러를 무시했다 — 16/48 사고가 그대로 통과한다"
 
+# ── L21~L23 봉인 대조 (2026-08-31) — verify 가 «구조적으로» 못 잡는 자리 ──────────────
+#    재stamp 때 인자를 안 바꾸면 «회차1 문항»을 봉인해놓고 «회차2»를 돌린다. 그때
+#    `instrument_manifest.sh verify` 는 **rc=0** 이다 — 자기가 찍은 것과 같으니 자기 일관하다.
+#    🟥 판별자는 «경로»가 아니라 «해시»여야 한다: 같은 경로에 다른 내용이 오면 경로 비교는 통과한다.
+_MF="$ROOT/tracks/_meta/instrument_manifest_2026-08-31_round.txt"
+_SQ="$ROOT/tracks/_meta/qset_2026-08-31_round.tsv"
+_SS="$ROOT/tracks/_meta/seal_PLANTED_2026-08-31_round.md"
+if [ ! -s "$_MF" ] || [ ! -s "$_SQ" ]; then
+  no "L21 픽스처 부재 — 봉인 대조 레인을 검정할 수 없다(스킵 아님)"
+else
+  ( cd "$ROOT" && bash "$S" --seal "$_SS" --qset "$_SQ" --reps 5 --out /private/tmp/_run_0831 \
+      --rescore --manifest "$_MF" >/dev/null 2>&1 </dev/null ); _r=$?
+  [ "$_r" != 10 ] && ok "L21 봉인된 qset → 통과 (rc=$_r)" || no "L21 봉인된 qset 인데 막혔다"
+  # 🟥 같은 «경로», 다른 «내용» — 경로 비교였으면 뚫리는 자리
+  cp "$_SQ" "$T/q.bak"; printf '# probe\n' >> "$_SQ"
+  ( cd "$ROOT" && bash "$S" --seal "$_SS" --qset "$_SQ" --reps 5 --out /private/tmp/_run_0831 \
+      --rescore --manifest "$_MF" >/dev/null 2>&1 </dev/null ); _r2=$?
+  cp "$T/q.bak" "$_SQ"
+  [ "$_r2" = 10 ] && ok "L22 같은 경로·다른 내용 → 차단 (해시 비교임을 증명)" \
+    || no "L22 내용이 바뀌었는데 통과했다 (rc=$_r2) — 경로만 보고 있다"
+  # 🟥 미지정은 «통과»가 아니라 UNVERIFIED 로 «남아야» 한다
+  ( cd "$ROOT" && bash "$S" --seal "$_SS" --qset "$_SQ" --reps 5 --out /private/tmp/_run_0831 \
+      --rescore >/dev/null 2>&1 </dev/null )
+  grep -q 'qset_matches_manifest: UNVERIFIED' /private/tmp/_run_0831/_ROUND_DONE \
+    && ok "L23 --manifest 미지정 → 마커에 UNVERIFIED (통과로 안 접는다)" \
+    || no "L23 미지정인데 UNVERIFIED 가 기록에 없다"
+fi
+
+# ── L24 🟥 셸 이름-경계 스캐너를 «회귀에» 배선한다 ────────────────────────────────
+#    이 스캐너를 짓고도 «안 돌려서» 같은 날 같은 결함을 다시 넣었다(`«$_rel»`).
+#    도구를 만드는 것과 «부르는 것»은 다른 일이다 — 그래서 레인이 부른다.
+if [ -x "$ROOT/tracks/_meta/shell_name_boundary_scan.sh" ]; then
+  bash "$ROOT/tracks/_meta/shell_name_boundary_scan.sh" "$S" >/dev/null 2>&1 \
+    && ok "L24 채점기에 «이름 경계» 결함 0" \
+    || no "L24 채점기에 \$VAR+비ASCII 또는 \"\$VAR: 가 있다 — 조용히 틀린다"
+else no "L24 스캐너 없음 — 검사 못 함(스킵 아님)"; fi
+
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
