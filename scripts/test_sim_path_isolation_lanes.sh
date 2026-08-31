@@ -71,7 +71,11 @@ PY
 DENY=$(python3 -c 'import json,sys;print("\n".join(json.load(open(sys.argv[1]))["permissions"]["deny"]))' "$W1/.claude/settings.local.json" 2>/dev/null)
 chk "L3 실제 레포 경로를 막는다"  "$(printf '%s' "$DENY" | grep -cF "/fake_repo/**)" | tr -d ' ')" 1
 chk "L4 홈 경로를 막는다"         "$(printf '%s' "$DENY" | grep -cF "/fake_home/**)" | tr -d ' ')" 1
-chk "L5 중복 항목이 없다"         "$(printf '%s' "$DENY" | sort | uniq -d | grep -c . | tr -d ' ')" 0
+# 🟥 `LC_ALL=C` — 이 로케일(en_US.UTF-8)에서 `sort|uniq` 가 **ASCII 접두가 같고 비ASCII 가
+#    다른 두 줄을 «같다»고 접는다**(실측: `a한글` vs `a다른` → 접힘 · `x가` vs `y나` → 안 접힘.
+#    즉 «첫 비ASCII 바이트에서 잘린다»). deny 경로가 지금은 ASCII 라 안 걸리지만,
+#    **레포 경로에 비ASCII 가 있는 설치에서는 중복 검사가 무음으로 오작동한다.**
+chk "L5 중복 항목이 없다"         "$(printf '%s' "$DENY" | LC_ALL=C sort | LC_ALL=C uniq -d | grep -c . | tr -d ' ')" 0
 
 # ── L6 클론이 out 아래면: out 전체가 아니라 «다른 팔의 산출»만 막는다 ─────────────
 chk "L6 out-하위 클론이면 out 전체를 막지 않는다" \
