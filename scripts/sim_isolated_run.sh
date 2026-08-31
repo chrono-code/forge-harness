@@ -293,6 +293,28 @@ for r in $(seq 1 "$REPS"); do
     continue
   fi
 
+  # ── 🟥 팔이 읽으면 안 되는 tracked 자산을 «클론 안에서» 제거한다 (2026-09-01) ──────
+  # 왜: 얼린 정답지(`scripts/fixtures/knownpair_refusal_48_*`)가 tracked 가 되면서
+  #     **모든 팔의 클론에 들어갔다.** 실측 — negative 문항의 핵심 명사구가 그 안에 있다
+  #     (브랜드5·도시6·팀명7·향3·카페3·상자4·제품명7 히트, 「가상의」38/48 파일).
+  #     그러면 팔이 자기 질문과 거의 같은 문항의 **모범 거절 48개**를 찾는다 ⇒ 베끼거나
+  #     시험임을 추론한다. 둘 다 «저자에게 유리한» 방향이다.
+  #     자산을 tracked 로 옮기는 것이 그 자산이 «재는 코퍼스»를 바꾼 것이다.
+  # 🟥 왜 deny 가 아니라 «제거»인가: deny 는 «못 읽게» 하고 이건 «없게» 한다. 없는 파일은
+  #     Read·Grep·Glob·Bash 어느 것으로도 못 읽는다 — **도구 목록에 의존하지 않는다.**
+  #     클론은 일회용이라 제거가 파괴적 표면이 아니다(원본은 안 건드린다).
+  # 🟥 목록으로 둔다 — 「팔이 읽으면 안 되는 자산」은 늘어난다. 지금은 하나다.
+  ARM_BLIND_PATHS=( "scripts/fixtures" )
+  for _bp in "${ARM_BLIND_PATHS[@]}"; do
+    rm -rf "$WORK/$_bp"
+    # 🟥 rm 의 rc 를 안 믿는다 — 경로 오타면 rm 은 «성공»을 낸다(지울 게 없으니).
+    #    판정은 «제거 후에 정말 없는가»로 한다.
+    if [ -e "$WORK/$_bp" ]; then
+      echo "  ❌ r$r BLIND-STRIP FAILED — $_bp 가 클론에 남았다. 이 회차는 오염이다"
+      rm -rf "$WORK"; continue 2
+    fi
+  done
+
   # --setup: build the PRECONDITION the measurement needs, inside the clone, before the sim.
   # WHY THIS EXISTS: the first door-③ measurement (2026-08-29) scored 0/3 on both arms and the
   # number meant nothing — a fresh clone has no mapped project tracks, so door ③ can never reach

@@ -252,5 +252,14 @@ grep -qF "$BAIT" "$SLOG2" 2>/dev/null \
   && ok "L13b known-positive — 차단 없이 부르면 미끼가 실제로 도달한다 (레인이 판별한다)" \
   || no "L13b known-positive 실패 — 스텁이 stdin 을 못 읽는다. L13 의 초록은 무의미하다"
 
+# ── L24 🟥 «팔 눈가림» 자산이 클론에서 실제로 사라지나 ─────────────────────────────
+#    얼린 정답지가 tracked 가 되면서 모든 팔의 클론에 들어갔다(실측: negative 명사구 히트 6~7).
+#    deny 가 아니라 «제거»인 이유 — 없는 파일은 어떤 도구로도 못 읽는다.
+if [ -x "$ROOT/scripts/round/arm_blind_probe.sh" ]; then
+  bash "$ROOT/scripts/round/arm_blind_probe.sh" >/dev/null 2>&1 \
+    && ok "L24 팔 눈가림 자산이 클론에서 제거된다 (히트 >0 → 0)" \
+    || no "L24 눈가림 실패 — 팔이 정답지를 읽을 수 있다"
+else no "L24 프로브 없음 — 검사 못 함(스킵 아님)"; fi
+
 echo "sim_isolated_run lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
