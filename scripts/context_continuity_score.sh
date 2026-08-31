@@ -153,6 +153,26 @@ score_one() {
   local ans_file="$1" kind="$2" token="$3" general="${4:-}"
   [ -s "$ans_file" ] || { echo VOID; return 0; }        # 빈 출력은 «아니오»가 아니다
   local body; body="$(cat "$ans_file")"
+  # ── typed 채널 = «상위층». 대체가 아니다 (§7-7, 2026-09-01) ─────────────────
+  # 🟥 근인 정정: 「typed 로 가면 48 바가 비껴간다」는 물리 법칙이 아니라 «대체로 설계했기
+  #    때문»이었다. 계층으로 지으면 총오류에 **곱해진다**:
+  #      총오류 = P(미준수)×«산문 폴백» + P(준수)×«토큰 읽기»
+  #    ⇒ 얼린 48 바는 폴백 경로를 그대로 지나간다 — 계기가 대상이 지나가는 자리에 있다.
+  # 🟥 폴백은 «새로 짓지 않는다». 아래 REFUSE_RE 경로가 그대로 폴백이다.
+  # 🟥 판정 불가는 UNCLASSIFIED 다. **VOID 로 승격하지 않는다**(VOID 는 «빈 출력»만).
+  local verdict_tag=""
+  verdict_tag="$(printf '%s' "$body" | LC_ALL=C sed -n 's/.*<<VERDICT:\([A-Z_]*\)>>.*/\1/p' | tail -1)"
+  # 🟥 카운터를 여기서 증가시키면 «죽는다» — 호출부가 `v="$(score_one …)"` 라 서브셸이다.
+  #    실측: 명령치환 안의 변수 증가는 부모에 안 보인다. 그래서 «상태»가 아니라 «값»으로 나른다:
+  #    `TYPED_` 접두가 곧 경로 표시이고, 계수는 호출부가 ROWS 에서 한다. 공유 상태가 없다.
+  if [ -n "$verdict_tag" ]; then
+    case "$verdict_tag" in
+      REFUSED|ANSWERED|HALLUCINATED) echo "TYPED_$verdict_tag"; return 0 ;;
+      *) : ;;   # 🟥 모르는 토큰은 «준수»로 안 친다 — 아래 폴백으로 떨어진다
+    esac
+  fi
+  # 🟥 여기부터가 폴백이다. 도달 건수는 호출부가 «TYPED_ 접두가 없는 행»으로 센다.
+  #    0 이면 「전원 준수」와 「폴백 미배선」이 출력상 같다 — §7-7-ⓑ 의 되돌림 픽스처가 가른다.
   local has_tok=0 has_ref=0
   printf '%s' "$body" | grep -qF -- "$token" && has_tok=1
   printf '%s' "$body" | grep -qiE -- "$REFUSE_RE" && has_ref=1
@@ -560,6 +580,24 @@ done < <(_tsv_pipe "$QSET")
 if [ "${RESCORE:-0}" != 1 ]; then
   printf '%s\n' "${LABELMAP[@]}" > "$LABELMAP_FILE"
   echo "labelmap → $LABELMAP_FILE ($(grep -c . "$LABELMAP_FILE") 줄)"
+fi
+
+# ── §7-7 두 숫자. 🟥 «따로» 낸다. 곱한 값은 이 파일 어디에도 없다 ──────────────
+#    🟥 「곱하지 마라」를 주석으로 적는 것은 오늘 세 번 실패한 형태다. 그래서 **곱셈을 안 쓴다** —
+#    두 값을 담는 변수가 따로 있고, 둘을 결합하는 식이 존재하지 않는다. 레인이 그걸 검사한다.
+TYPED_N=$(printf '%s\n' "${ROWS[@]}" | grep -c '|TYPED_' || true); [ -n "$TYPED_N" ] || TYPED_N=0
+TOTAL_N=${#ROWS[@]}
+FALLBACK_N=$((TOTAL_N - TYPED_N))
+echo ""
+echo "── §7-7 두 숫자 (곱하지 않는다) ──"
+echo "  ② 규약 준수 (typed 경로) : $TYPED_N / $TOTAL_N"
+echo "  ① 폴백 도달 (산문 경로)  : $FALLBACK_N / $TOTAL_N"
+if [ "$FALLBACK_N" = 0 ]; then
+  echo "  🟥 폴백 도달 0 — «전원 준수»와 «폴백 미배선»이 출력상 같다."
+  echo "     가르는 것은 되돌림뿐이다: scripts/round/fallback_reach_probe.sh 를 돌려라"
+fi
+if [ "$TYPED_N" = 0 ] && [ "$TOTAL_N" -gt 0 ]; then
+  echo "  ⚠️  typed 0 — 이 회차는 규약을 안 줬거나 팔이 전원 미준수다. 둘은 다른 사실이다"
 fi
 
 # ── known-pair 게이트: 계기가 살아있나. 🟥 여기서 죽으면 숫자를 «안 낸다» ──

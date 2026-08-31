@@ -285,7 +285,12 @@ else no "L24 스캐너 없음 — 검사 못 함(스킵 아님)"; fi
 #    회차2 는 검사기가 없어서 뚫린 게 아니다. 아무도 «안 물어서» 뚫렸다. 그리고 그 다음엔
 #    검사기가 생겼는데 **호출부가 0개**였다(실측). ⇒ 존재를 묻는 레인은 그 둘을 다 놓친다.
 #    확인법: 검사기를 «통과만 하게» 스텁으로 바꾸면 게이트가 초록이 되나(되돌림 3단).
-_NLK="$ROOT/scripts/round/nameleak_check.sh"; _GK="$ROOT/scripts/round/gatecheck_qset.sh"
+# 🟥 두 경로를 «갈라» 잡지 않는다. 2026-09-01 에 이 한 줄 때문에 같은 정정을 두 번 했다 —
+#    저자 워크트리에선 검사기와 게이트가 같은 폴더(tracks/_meta)라 통했고, 거버너 트리에선
+#    게이트만 scripts/round/ 라 짝이 안 맞아 L25 넷이 죽었다. **레인이 자기 트리에서만 초록**.
+#    ⇒ 한 디렉터리 변수에서 «둘 다» 꺼낸다. 갈라 적을 수 있으면 다시 갈린다.
+_RD="$ROOT/scripts/round"
+_NLK="$_RD/nameleak_check.sh"; _GK="$_RD/gatecheck_qset.sh"
 _QK="$ROOT/tracks/_meta/qset_2026-09-01_round2.tsv"; _SK="$ROOT/tracks/_meta/seal_PLANTED_2026-09-01_round2.md"
 if [ -x "$_NLK" ] && [ -f "$_GK" ] && [ -f "$_QK" ] && [ -f "$_SK" ]; then
   bash "$_GK" "$_QK" "$_SK" post '' '' '_run_0901' 'C01_ARM' >/dev/null 2>&1
@@ -305,6 +310,34 @@ if [ -x "$_NLK" ] && [ -f "$_GK" ] && [ -f "$_QK" ] && [ -f "$_SK" ]; then
   [ "$?" = 5 ] && ok "L25d 검사기 부재 → 실패(스킵 아님)" || no "L25d 부재를 스킵으로 접는다"
   mv "$_mv" "$_NLK"; chmod +x "$_NLK"
 else no "L25 픽스처 없음 — 검사 못 함(스킵 아님)"; fi
+
+# ── L26 §7-7 — «두 숫자를 곱하지 않는다»를 «코드로» 검사한다 ────────────────────
+#    🟥 「곱하지 마라」를 주석에 적는 것은 오늘 세 번 실패한 형태다. 레인이 소스를 본다:
+#    TYPED_N 과 FALLBACK_N 을 결합하는 식(`*`·`/`·비율)이 존재하면 실패.
+if grep -q 'TYPED_N=' "$S"; then
+  # 🟥 초판 정규식은 `$TYPED_N / $TOTAL_N` 이라는 **표시용 구분자**를 나눗셈으로 오탐했다.
+  #    (오늘 그 축: 계기가 «형태»만 보고 «문맥»을 안 봤다.) ⇒ 산술 문맥 `$((…))` 안만 본다.
+  if grep -oE '\$\(\([^)]*\)\)' "$S" 2>/dev/null | grep -E '(TYPED_N|FALLBACK_N)' | grep -qE '[*/]'; then
+    no "L26a 두 숫자를 결합하는 식이 있다 — 곱하면 어느 쪽이 나빠졌는지 못 본다"
+  else ok "L26a 두 숫자 결합식 없음 (곱한 값이 소스에 없다)"; fi
+  grep -q '② 규약 준수' "$S" && grep -q '① 폴백 도달' "$S" \
+    && ok "L26b 두 숫자가 «따로» 출력된다" || no "L26b 두 숫자 중 하나가 안 찍힌다"
+  # 🟥 되돌림: 결합식을 «넣으면» L26a 가 실제로 무나
+  cp "$S" "$S.l26bak"
+  printf '\nBAD_RATIO=$((TYPED_N * 100))\n' >> "$S"
+  if grep -q 'TYPED_N \* 100' "$S"; then
+    if grep -oE '\$\(\([^)]*\)\)' "$S" 2>/dev/null | grep -E 'TYPED_N' | grep -qE '[*/]'; then ok "L26c [되돌림] 결합식을 넣으면 검사가 문다"
+    else no "L26c 결합식을 넣었는데 검사가 안 문다 — L26a 는 장식이다"; fi
+  else no "L26c 되돌림 적용 실패"; fi
+  mv -f "$S.l26bak" "$S"
+else no "L26 TYPED_N 이 채점기에 없다 — §7-7 미배선(스킵 아님)"; fi
+
+# ── L27 §7-7-ⓑ 폴백 도달 프로브를 «회귀에» 배선한다 ─────────────────────────────
+if [ -x "$ROOT/scripts/round/fallback_reach_probe.sh" ]; then
+  bash "$ROOT/scripts/round/fallback_reach_probe.sh" >/dev/null 2>&1 \
+    && ok "L27 폴백이 실제로 탄다 (깨진 토큰 3종)" \
+    || no "L27 폴백 미도달 — 폴백은 장식이고 48 바는 «인쇄»다"
+else no "L27 프로브 없음 — 검사 못 함(스킵 아님)"; fi
 
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
