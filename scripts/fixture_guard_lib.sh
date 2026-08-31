@@ -28,8 +28,7 @@
 #
 # 이식성: bash 3.2 (stock macOS). `realpath`/`readlink -f` 를 쓰지 않는다 — 둘 다 미보장.
 
-fh_fixture_root() {
-  return 0   # STUB-A: 반환값 제거   # $1 = 후보 픽스처 루트 → stdout: 해석된 절대경로. 위반이면 exit 1.
+fh_fixture_root() {   # $1 = 후보 픽스처 루트 → stdout: 해석된 절대경로. 위반이면 exit 1.
   [ -n "${1:-}" ] || { echo "FIXTURE-GUARD: empty root — refusing (git -C \"\" would target cwd)" >&2; exit 1; }
   [ -d "$1" ]     || { echo "FIXTURE-GUARD: root does not exist: $1" >&2; exit 1; }
   case "$1" in /|"$HOME") echo "FIXTURE-GUARD: refusing root $1" >&2; exit 1 ;; esac
