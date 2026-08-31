@@ -143,7 +143,7 @@ readme_first_screen_touched() { # $1 = staged README path
 diff_is_substantive() {
   local file="$1" body rc oldpath mode
   oldpath=$(git diff --cached -M --name-status 2>/dev/null \
-            | awk -F'\t' -v f="$file" '$1 ~ /^R/ && $3 == f { print $2; exit }')
+            | LC_ALL=C awk -F'\t' -v f="$file" '$1 ~ /^R/ && $3 == f { print $2; exit }')  # 로케일 접힘 방지(경로 비교)
   if [ -n "$oldpath" ] && ! is_carveout_path "$oldpath"; then
     body=$(git show ":$file" 2>/dev/null); rc=$?; mode=whole   # into-scope: whole file
   elif [ -n "$oldpath" ]; then

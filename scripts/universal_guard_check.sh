@@ -49,7 +49,7 @@ trap 'rm -rf "$SANDBOX"' EXIT
 stage_or_worktree() {  # <repo-relative path> <dest> ; echoes the source used
   local rel="$1" dest="$2" status
   status=$(git -C "$REPO_ROOT" -c core.quotePath=false diff --cached --name-status --no-renames 2>/dev/null \
-           | awk -F'\t' -v f="$rel" '$2 == f { print $1; exit }')
+           | LC_ALL=C awk -F'\t' -v f="$rel" '$2 == f { print $1; exit }')  # 로케일 접힘 방지(경로 비교)
   case "$status" in
     D) echo deleted-from-index; return 1 ;;   # the protected file is being REMOVED — never a pass
     '') : ;;                                  # not staged → worktree copy is what a commit keeps

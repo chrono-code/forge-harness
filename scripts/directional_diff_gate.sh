@@ -157,7 +157,7 @@ check_path() { # $1=repo $2=base_sha $3=path
   # Absent declaration = standalone/manual use; no binding is claimed and none is enforced.
   if [ -n "${DIRECTIONAL_DIFF_PINS:-}" ] && [ -f "${DIRECTIONAL_DIFF_PINS}" ]; then
     local want got
-    want=$(awk -F'\t' -v p="$path" '$2==p{print $1; exit}' "$DIRECTIONAL_DIFF_PINS")
+    want=$(LC_ALL=C awk -F'\t' -v p="$path" '$2==p{print $1; exit}' "$DIRECTIONAL_DIFF_PINS")  # 로케일 접힘 방지(pins 경로)
     if [ -z "$want" ]; then
       echo "  🟥 $path — UNDECIDABLE: pins declared but this path is not among them."
       echo "       Judging a file the caller did not pin means the verdict binds to nothing."

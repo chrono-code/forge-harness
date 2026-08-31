@@ -291,7 +291,8 @@ _control() {
       echo "  ⚠️  UNREADABLE $a §$n — the asset exists but cannot be read; this is an instrument error, NOT a stale probe"
       nofile=$((nofile+1)); continue
     fi
-    if ! printf '%s\n' "$_anchors_out" | awk -v n="$n" 'substr($0,1,length(n))==n{f=1} END{exit !f}'; then
+    # 🟡 지금은 «접두가 다르다»라 안 접히지만, 포맷이 바뀌어 양쪽 접두가 같아지면 즉시 뚫린다
+    if ! printf '%s\n' "$_anchors_out" | LC_ALL=C awk -v n="$n" 'substr($0,1,length(n))==n{f=1} END{exit !f}'; then
       echo "  ❌ STALE   $a §$n — no section by that name in the asset (renamed, or relocated by a split)"
       stale=$((stale+1))
     fi
