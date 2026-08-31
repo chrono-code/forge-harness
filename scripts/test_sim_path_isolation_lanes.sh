@@ -27,7 +27,18 @@ run_iso(){ # $1=WORK $2=OUT $3=REPO $4=HOME → settings 경로를 stdout 으로
   bash -c '. "$1"; fh_sim_write_path_isolation "$2" "$3" "$4" "$5" >/dev/null 2>&1; echo $?' \
        _ "$T/f.sh" "$1" "$2" "$3" "$4"
 }
-mk(){ local d="$T/$1"; mkdir -p "$d/repo"; printf '%s' "$d"; }
+# 🟥 2026-08-31 — 픽스처 클론 이름이 «뚫리는 표기»여야 한다.
+#    종전 `$T/c1/repo` 는 실물 형태(`<OUT>/w_<ARM>_r<N>/repo`)가 아니라서, 실물 deny 의
+#    `w_*/repo/tracks/**` 가 **매치될 수 없었다.** L7 이 그 결함을 잡으라고 있는데
+#    픽스처가 그 결함을 재현하지 못하는 형태였다 — 비교 연산을 고쳐도 초록이 나온 이유다.
+#    ⇒ 러너와 «같은 이름 규약»으로 만든다. [[feedback_fixture_must_use_the_breaking_spelling]]
+# 🟥 그리고 «이름»만으로는 부족했다 — **계층**까지 실물이어야 한다.
+#    실물: OUT=/private/tmp/_ccrunN · 클론=OUT/w_<ARM>_r<N>/repo   (클론이 OUT «두 층» 아래)
+#    종전 픽스처: OUT=$T/c1 · 클론=OUT/repo                        (한 층 아래)
+#    그래서 deny 의 `OUT/w_*/repo/tracks/**` 가 `$T/c1/w_*/...` 를 겨누고
+#    실제 클론 `$T/c1/repo` 와 **절대 매치될 수 없었다.** L7 이 초록이던 최종 원인이다.
+#    ⇒ mk 는 OUT 을 내고, 클론은 그 아래 `w_<name>_r1/repo` 에 만든다(러너와 동형).
+mk(){ local o="$T/$1"; mkdir -p "$o/w_$1_r1/repo"; printf '%s' "$o"; }
 # 🟥 픽스처 경로를 `/Users/x` 같은 «홈처럼 생긴» 리터럴로 쓰지 마라 — 공개표면 기밀 게이트가
 #    형태만 보고 MED leak 으로 막는다(2026-08-30 실측 3건). 오탐이지만 **게이트가 옳게 짖는다**:
 #    절대 홈 경로가 공개 파일에 리터럴로 들어가는 것은 실제 유출 형태다. 우회하지 않고
@@ -36,7 +47,7 @@ mkdir -p "$T/fake_repo" "$T/fake_home"
 _pt=$(cd "$T" && pwd -P)
 
 # ── L1 실행: 함수가 실제로 파일을 쓴다 ────────────────────────────────────────────
-O1=$(mk c1); W1="$O1/repo"
+O1=$(mk c1); W1="$O1/w_c1_r1/repo"
 rc=$(run_iso "$W1" "$O1" "$T/fake_repo" "$T/fake_home")
 chk "L1 격리 파일을 실제로 쓴다 (rc=0)" "$rc" 0
 chk "L1b 파일이 존재한다" "$([ -f "$W1/.claude/settings.local.json" ] && echo yes || echo no)" yes
@@ -69,10 +80,25 @@ chk "L6b 대신 다른 팔의 클론 트리를 막는다" \
     "$(printf '%s' "$DENY" | grep -c 'w_\*/repo/tracks' | tr -d ' ')" 1
 
 # ── L7 자기 클론을 막지 않는다 (첫 수리가 그렇게 자기 발을 쐈다) ──────────────────
+# 🟥 2026-08-31 — 이 레인이 «자기가 잡으라고 만들어진 결함»을 놓쳤다. 초록인 채로.
+#    종전 방식은 deny 항목에서 `/**)` 를 벗겨 «리터럴 접두»를 만들고 문자열 비교를 했다.
+#    그런데 실제 deny 는 `Read(//<OUT>/w_*/repo/tracks/**)` 처럼 **가운데 글롭**을 갖고,
+#    접두를 벗기면 `*` 가 리터럴로 남아 어떤 실제 경로와도 안 맞는다.
+#    **권한 엔진은 글롭 매칭을 한다.** 계기가 대상과 «다른 연산»을 쓰고 있었다.
+#    실측 known-pair (컨트롤 동반):
+#      Read(//OUT/w_*/repo/tracks/**)  현행 no  · 글롭 yes   ← 놓친 결함
+#      Read(//OUT/**)                  현행 yes · 글롭 yes   ← 글롭 없는 건 현행도 잡았다
+#      Read(//etc/**)                  현행 no  · 글롭 no    ← 컨트롤, 오탐 아님
+#    ⇒ 비교 연산을 권한 엔진과 «같게» 맞춘다. 짝: [[feedback_fixture_must_use_the_breaking_spelling]]
 _pw=$(cd "$W1" && pwd -P)
 _selfblock=0
 while IFS= read -r d; do
-  case "$d" in "Read(//"*"/**)") pfx="/${d#Read(//}"; pfx="${pfx%/**)}"; case "$_pw" in "$pfx"/*|"$pfx") _selfblock=1 ;; esac ;; esac
+  case "$d" in "Read(//"*")")
+    _pat="/${d#Read(//}"; _pat="${_pat%)}"
+    # 자기 클론 «안»의 실제 경로 형태로 물어본다 — 디렉터리 자신이 아니라 그 아래 파일이 대상이다
+    case "$_pw" in $_pat) _selfblock=1 ;; esac
+    case "$_pw/tracks/_meta/probe.md" in $_pat) _selfblock=1 ;; esac
+    case "$_pw/CLAUDE.md" in $_pat) _selfblock=1 ;; esac ;; esac
 done <<< "$DENY"
 chk "L7 자기 클론을 포함하는 deny 가 없다" "$_selfblock" 0
 
