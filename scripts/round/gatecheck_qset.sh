@@ -37,6 +37,31 @@ PHASE="${3:-post}"
 # 사용: gatecheck_qset.sh <qset> [seal] [pre|post] [qset-sha12] [seal-sha12]
 #       핀을 «안 주면» 검사를 건너뛴다 — 🟥 그건 통과가 아니라 UNVERIFIED 다. 그렇게 찍는다.
 _PIN_Q="${4:-}"; _PIN_S="${5:-}"
+# ── 이름 누출 검사 (2026-09-01 배선) ─────────────────────────────────────────
+# 🟥 «심는 값 검사와 같은 자리» — 회차를 열지 «말지»를 정하는 지점이다.
+#    회차2 는 검사기가 없어서가 아니라 **아무도 안 물어서** 뚫렸다.
+# 🟥 fail-closed: 스크립트가 없으면 «skipped» 가 아니라 실패다.
+#    (부재를 스킵으로 렌더하면 [[feedback_not_found_is_not_zero_family]] 그대로다)
+# 사용: gatecheck_qset.sh <qset> [seal] [pre|post] [qset-sha12] [seal-sha12] [out-dir] [arm-label]
+_NL_OUT="${6:-}"; _NL_ARM="${7:-}"
+_NL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/nameleak_check.sh"
+[ -x "$_NL" ] || _NL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../scripts/round" 2>/dev/null && pwd)/nameleak_check.sh"
+if [ -n "$SEAL" ]; then
+  if [ ! -x "$_NL" ]; then
+    echo "🟥 nameleak_check.sh 없음/실행불가 — 회차를 열지 않는다 (스킵 아님)" >&2; exit 5
+  fi
+  if [ -n "$_NL_OUT" ] && [ -n "$_NL_ARM" ]; then
+    if ! bash "$_NL" "$(basename "$SEAL")" "$_NL_OUT" "$_NL_ARM"; then
+      echo "🟥 이름 누출 — 회차를 열지 않는다" >&2; exit 5
+    fi
+  else
+    # 🟥 out-dir·라벨을 «안 준» 경우: seal 이름만이라도 본다. 그리고 «검사 못 한 칸»을 이름으로 남긴다.
+    if ! bash "$_NL" "$(basename "$SEAL")" "$(bash "$_NL" gen)" "$(bash "$_NL" gen)"; then
+      echo "🟥 이름 누출(seal) — 회차를 열지 않는다" >&2; exit 5
+    fi
+    echo "⚠️  nameleak  out-dir·라벨 UNVERIFIED — 인자를 안 줬다(통과가 아니다)"
+  fi
+fi
 if [ -n "$_PIN_Q" ]; then
   bash "$(dirname "${BASH_SOURCE[0]}")/target_pin.sh" "$Q" "$_PIN_Q" >/dev/null || {
     echo "🟥 PIN FAIL (qset) — 게이트를 돌리지 않는다. 최신본을 받아라" >&2
@@ -67,7 +92,12 @@ hits(){ "$GREP" -rlF -- "$1" "$C/repo" 2>/dev/null | wc -l | tr -d ' '; }
 
 # ── 컨트롤 먼저. 죽어 있으면 아래 «0 히트»는 청결이 아니라 계기 사망이다 ──────────
 KP=$(sed 's|ref: refs/heads/||' "$C/repo/.git/HEAD" 2>/dev/null)   # 닷디렉터리 안에만 있다
-kp=$(hits "$KP"); kn=$(hits 'zzNoSuchTokZZ')
+# 🟥 K- 는 «생성»한다. 리터럴로 박으면 이 파일이 tracked 가 되는 순간 클론 안에
+#    실재해서 컨트롤이 죽는다 — 2026-09-01 실측(1421ca0 이 이 파일을 tracked 로 만들자
+#    박아둔 'zzNoSuchTokZZ' 가 히트 1 이 되어 게이트가 exit 2 로 멈췄다).
+#    부재 토큰은 «없다고 믿는 문자열»이 아니라 «방금 만든 문자열»이어야 한다.
+KNEG="zzABSENT$$_$(date +%s%N 2>/dev/null || date +%s)zz"
+kp=$(hits "$KP"); kn=$(hits "$KNEG")
 printf '컨트롤  K+(닷디렉터리 전용 "%s")=%s  K-(부재)=%s\n' "$KP" "$kp" "$kn"
 if [ "$kp" -le 0 ] || [ "$kn" != 0 ]; then
   echo "🟥 계기 사망 — 닷디렉터리를 못 보거나 오탐이 있다. 아래 숫자를 믿지 마라."; exit 2

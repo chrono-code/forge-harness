@@ -281,5 +281,30 @@ if [ -x "$ROOT/tracks/_meta/shell_name_boundary_scan.sh" ]; then
     || no "L24 채점기에 \$VAR+비ASCII 또는 \"\$VAR: 가 있다 — 조용히 틀린다"
 else no "L24 스캐너 없음 — 검사 못 함(스킵 아님)"; fi
 
+# ── L25 🟥 «게이트가 이름 누출 검사를 부르나» — «검사기가 있나»가 아니다 ─────────────
+#    회차2 는 검사기가 없어서 뚫린 게 아니다. 아무도 «안 물어서» 뚫렸다. 그리고 그 다음엔
+#    검사기가 생겼는데 **호출부가 0개**였다(실측). ⇒ 존재를 묻는 레인은 그 둘을 다 놓친다.
+#    확인법: 검사기를 «통과만 하게» 스텁으로 바꾸면 게이트가 초록이 되나(되돌림 3단).
+_NLK="$ROOT/scripts/round/nameleak_check.sh"; _GK="$ROOT/scripts/round/gatecheck_qset.sh"
+_QK="$ROOT/tracks/_meta/qset_2026-09-01_round2.tsv"; _SK="$ROOT/tracks/_meta/seal_PLANTED_2026-09-01_round2.md"
+if [ -x "$_NLK" ] && [ -f "$_GK" ] && [ -f "$_QK" ] && [ -f "$_SK" ]; then
+  bash "$_GK" "$_QK" "$_SK" post '' '' '_run_0901' 'C01_ARM' >/dev/null 2>&1
+  [ "$?" = 5 ] && ok "L25a 누출 이름 → 게이트 차단(exit 5)" || no "L25a 누출 이름인데 게이트가 안 막는다"
+  cp "$_NLK" "$_NLK.lanebak"
+  printf '#!/usr/bin/env bash\n[ "${1:-}" = gen ] && { echo wdeadbeef01; exit 0; }\nexit 0\n' > "$_NLK"
+  if grep -q '^exit 0$' "$_NLK"; then
+    bash "$_GK" "$_QK" "$_SK" post '' '' '_run_0901' 'C01_ARM' >/dev/null 2>&1
+    [ "$?" = 0 ] && ok "L25b 스텁이면 게이트 통과 → 게이트가 «실제로 부른다»" \
+                 || no "L25b 스텁인데도 차단 — 게이트가 검사기를 안 부르고 딴 걸로 막는다"
+  else no "L25b 스텁 적용 실패 — 되돌림 무효"; fi
+  mv -f "$_NLK.lanebak" "$_NLK"; chmod +x "$_NLK"
+  bash "$_GK" "$_QK" "$_SK" post '' '' '_run_0901' 'C01_ARM' >/dev/null 2>&1
+  [ "$?" = 5 ] && ok "L25c 복원 → 다시 차단" || no "L25c 복원 실패 — 스텁이 남았다"
+  _mv="$_NLK.moved"; mv "$_NLK" "$_mv"
+  bash "$_GK" "$_QK" "$_SK" post '' '' 'w12345678' 'w87654321' >/dev/null 2>&1
+  [ "$?" = 5 ] && ok "L25d 검사기 부재 → 실패(스킵 아님)" || no "L25d 부재를 스킵으로 접는다"
+  mv "$_mv" "$_NLK"; chmod +x "$_NLK"
+else no "L25 픽스처 없음 — 검사 못 함(스킵 아님)"; fi
+
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

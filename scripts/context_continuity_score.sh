@@ -485,6 +485,48 @@ echo
 # 운반체 스테이징: ARM 은 클론 «안»에 seal 을 심는다. CTRL 은 안 심는다. 그 한 칸이 변수다.
 SETUP_ARM="mkdir -p tracks/_meta/compaction && cp '$SEAL_ABS' tracks/_meta/compaction/"
 
+# ── 팔 라벨: 사람이 안 고른다. 생성한다 (2026-09-01 배선) ────────────────────
+# 🟥 종전 `--arm "${qid}_${arm}"` 이 wrap 디렉터리 이름이 되어 **팔에게 자기 배정을 알렸다**
+#    (회차2 실측 144/144 노출). 라벨을 `nameleak_check.sh gen` 이 만든다.
+# 🟥 매핑을 «파일»로 두면 그 파일이 새 누출 표면이다. 두 겹으로 막는다:
+#    ⓐ 공간 — out-dir «밖»의 형제 경로에 쓴다
+#    ⓑ 🟥 **시간** — «모든 디스패치가 끝난 뒤»에 쓴다. 팔이 도는 동안엔 파일이 «존재하지 않는다».
+#       ⓑ 가 본체다: 경로는 팔이 `../..` 로 올라가면 닿지만, 없는 파일은 못 읽는다.
+#    런 «중»에는 매핑이 필요 없다 — 디스패치와 채점이 **같은 루프 반복 안**이라 변수로 족하다.
+NAMELEAK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/round/nameleak_check.sh"
+# 🟥 fail-closed: 없으면 «skipped» 가 아니라 실패다. 이름 누출은 회차를 통째로 무효화한다.
+[ -x "$NAMELEAK" ] || { echo "🟥 nameleak_check.sh 없음/실행불가: $NAMELEAK — 회차를 열지 않는다" >&2; exit 7; }
+# 🟥 out-dir 도 «사람이 고르는 자리»다 — 그리고 팔 cwd 의 조상이다
+#    (`sim_isolated_run.sh:287-288`: WRAP="$OUTDIR/w_…" · WORK="$WRAP/repo").
+#    실제 누출 전례(`_ccfalsify`)가 «사람이 고른 out-dir 이름»이었다. 그래서 여기서 막는다 —
+#    검사기만 엄격하고 실제 경로는 사람이 고르면 그 검사는 장식이다.
+# 🟥 스코프 — «팔이 도는 경우»에만 본다. 이 검사가 지키는 것은 팔의 시야이고,
+#    `--rescore`·`--self-test` 는 디스패치를 안 하므로 볼 팔이 없다.
+#    (초판은 무조건 걸어서 레인 25개를 과차단했다 — 실측. 과차단은 우회를 훈련시킨다)
+if [ "${RESCORE:-0}" != 1 ] && [ "${SELFTEST:-0}" != 1 ]; then
+  if ! bash "$NAMELEAK" "$(basename "$SEAL")" "$(basename "${OUT%/}")" "$(bash "$NAMELEAK" gen)"; then
+    echo "🟥 out-dir 또는 seal 이름이 누출한다 — 회차를 열지 않는다 ('nameleak_check.sh gen' 을 써라)" >&2
+    exit 7
+  fi
+fi
+LABELMAP_FILE="${OUT%/}.labelmap"
+declare -a LABELMAP=()
+_label_for(){ # $1=qid $2=ARM|CTRL → 라벨
+  if [ "${RESCORE:-0}" = 1 ]; then
+    # 🟥 옛 산출물 호환. 라벨 배선(2026-09-01) «이전» 회차는 파일명이 `{qid}_{ARM}_r{n}.txt` 이고
+    #    labelmap 이 없다. 그걸 «실패»로 만들면 회차1·2 데이터를 영원히 재채점 못 한다 —
+    #    그 데이터는 지금 유일한 known-pair 근거다. ⇒ 부재 시 옛 규약으로 떨어진다.
+    #    🟥 «없으면 옛것»이지 «틀리면 옛것»이 아니다: 파일이 있는데 항목이 없으면 실패한다.
+    if [ -f "$LABELMAP_FILE" ]; then
+      LC_ALL=C awk -F'|' -v q="$1" -v a="$2" '$2==q && $3==a {print $1; found=1} END{exit !found}' "$LABELMAP_FILE"
+    else
+      printf '%s_%s\n' "$1" "$2"
+    fi
+  else
+    bash "$NAMELEAK" gen
+  fi
+}
+
 n=0; declare -a ROWS=()
 while IFS='|' read -r qid kind question token general; do
   case "$qid" in ''|'#'*) continue ;; esac
@@ -496,20 +538,29 @@ while IFS='|' read -r qid kind question token general; do
       q="[직전 압축 전 봉인 원장: tracks/_meta/compaction/$(basename "$SEAL") — 필요하면 열어라]
 $question"
     fi
+    label="$(_label_for "$qid" "$arm")" || { echo "🟥 라벨 해석 실패 ($qid/$arm) — $LABELMAP_FILE 확인" >&2; exit 7; }
+    [ -n "$label" ] || { echo "🟥 라벨이 비었다 ($qid/$arm)" >&2; exit 7; }
+    LABELMAP+=("$label|$qid|$arm")
     if [ "${RESCORE:-0}" != 1 ]; then
-      args=(--arm "${qid}_${arm}" --reps "$REPS" --model "$MODEL" --out "$OUT" --prompt "$q")
+      args=(--arm "$label" --reps "$REPS" --model "$MODEL" --out "$OUT" --prompt "$q")
       [ -n "$setup" ] && args+=(--setup "$setup")
       # 🟥 심층 방어 — 이 호출은 `while … done < <(_tsv_pipe "$QSET")` 루프 «안»이라 stdin 이 qset 이다.
       #    러너 쪽에도 `< /dev/null` 을 박았지만, 여기서 끊는 것이 근원이다(호출부 책임).
       bash "$RUNNER" "${args[@]}" >/dev/null 2>&1 < /dev/null
     fi
     for r in $(seq 1 "$REPS"); do
-      f="$OUT/${qid}_${arm}_r${r}.txt"
+      f="$OUT/${label}_r${r}.txt"
       v="$(score_one "$f" "$kind" "$token" "${general:-}")"
       ROWS+=("$qid|$kind|$arm|r$r|$v")
     done
   done
 done < <(_tsv_pipe "$QSET")
+
+# 🟥 매핑은 «여기»에서 쓴다 — 모든 디스패치가 끝난 뒤. 팔이 도는 동안엔 이 파일이 없다.
+if [ "${RESCORE:-0}" != 1 ]; then
+  printf '%s\n' "${LABELMAP[@]}" > "$LABELMAP_FILE"
+  echo "labelmap → $LABELMAP_FILE ($(grep -c . "$LABELMAP_FILE") 줄)"
+fi
 
 # ── known-pair 게이트: 계기가 살아있나. 🟥 여기서 죽으면 숫자를 «안 낸다» ──
 HALL=$(printf '%s\n' "${ROWS[@]}" | grep -c 'HALLUCINATED' || true)
