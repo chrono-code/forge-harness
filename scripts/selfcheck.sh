@@ -589,6 +589,7 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_tenet_lanes.sh" \
   "scripts/sim_isolated_run.sh|scripts/test_sim_path_isolation_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_first_use_lanes.sh" \
+  "scripts/fixture_guard_lib.sh|scripts/test_fixture_guard_lanes.sh" \
   "scripts/stray_path_scan.sh|scripts/test_stray_path_lanes.sh" \
   "scripts/session_close_check.sh|scripts/test_stray_path_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_hook_leg_wiring_lanes.sh" \

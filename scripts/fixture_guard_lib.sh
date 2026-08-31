@@ -27,6 +27,12 @@
 #   T="$(fh_fixture_root "$(mktemp -d)")"
 #
 # 이식성: bash 3.2 (stock macOS). `realpath`/`readlink -f` 를 쓰지 않는다 — 둘 다 미보장.
+#
+# 🟥 **위치 의존이다 — 이 파일은 `scripts/` 에 살아야 한다.** 레포 루트를 `dirname(이 파일)/..`
+#    로 계산하므로, 다른 깊이에 복사되면 «레포» 의 의미가 바뀐다. 실측(2026-08-31, 한 변수만
+#    바꾼 대조): 임시 루트 바로 밑에 두면 그 부모(`/…/T`)를 레포로 보고 **정상 mktemp 픽스처까지
+#    거부**했고, `scripts/` 밑에 두면 통과했다. 방향은 **fail-closed(과차단)** 라 안전하지만,
+#    벤더링하면 모든 소비처가 시끄럽게 죽는다 — 옮길 거면 레포 루트 계산을 인자로 받게 바꿔라.
 
 fh_fixture_root() {   # $1 = 후보 픽스처 루트 → stdout: 해석된 절대경로. 위반이면 exit 1.
   [ -n "${1:-}" ] || { echo "FIXTURE-GUARD: empty root — refusing (git -C \"\" would target cwd)" >&2; exit 1; }

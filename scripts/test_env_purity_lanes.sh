@@ -3,7 +3,9 @@
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SB="$(fh_fixture_root "$(mktemp -d)")"; trap 'rm -rf "$SB"' EXIT
+SB="$(fh_fixture_root "$(mktemp -d)")"
+: "${SB:?fixture root unset — refusing to run git in cwd}"
+trap 'rm -rf "$SB"' EXIT
 mkdir -p "$SB/scripts" "$SB/knowledge/shared" "$SB/templates" "$SB/plugins" "$SB/.claude/rules"
 cp "$HERE/env_purity_scan.sh" "$SB/scripts/"
 printf 'planted-env-token\n' > "$SB/scripts/.env_purity_tokens.defaults"

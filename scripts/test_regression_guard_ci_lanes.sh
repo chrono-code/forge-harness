@@ -27,7 +27,9 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WF="$REPO_ROOT/.github/workflows/regression-guard.yml"
 GUARD="$REPO_ROOT/templates/regression_guard.sh"
-T="$(fh_fixture_root "$(mktemp -d)")"; trap 'rm -rf "$T"' EXIT
+T="$(fh_fixture_root "$(mktemp -d)")"
+: "${T:?fixture root unset — refusing to run git in cwd}"
+trap 'rm -rf "$T"' EXIT
 FAIL=0
 
 # ── instrument calibration ───────────────────────────────────────────────────

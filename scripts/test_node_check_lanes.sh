@@ -16,6 +16,7 @@ set -uo pipefail
 FH_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CHECK="$FH_REPO/scripts/fh_node_check.sh"
 TMP="$(fh_fixture_root "$(mktemp -d)")"
+: "${TMP:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$TMP"' EXIT
 
 PASS=0; FAIL=0
@@ -184,6 +185,7 @@ done
 # from under a peer session (measured 2026-08-09, two sessions/one worktree). If this feature ever
 # switches branches, that lane is what says so.
 _ap_root="$(fh_fixture_root "$(mktemp -d)")"
+: "${_ap_root:?fixture root unset — refusing to run git in cwd}"
 (
   cd "$_ap_root" || exit 1
   # Pin the branch name: `git init` uses init.defaultBranch, which is main on this

@@ -59,6 +59,7 @@ REALGIT="$(command -v git 2>/dev/null)"
 command -v python3 >/dev/null 2>&1 || { echo "FAIL  runner-surface: python3 unavailable"; exit 2; }
 
 WORK="$(fh_fixture_root "$(mktemp -d)")"
+: "${WORK:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$WORK"' EXIT
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  ✅ $1"; }

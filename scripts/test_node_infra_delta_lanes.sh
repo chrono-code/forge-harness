@@ -25,6 +25,7 @@ CHECK="$SCRIPT_DIR/fh_node_check.sh"
 [ -f "$CHECK" ] || { echo "FAIL  subject missing: $CHECK"; exit 1; }
 
 TMPROOT="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/fh_infra_lanes.XXXXXX")")"
+: "${TMPROOT:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$TMPROOT"' EXIT
 FAILED=0; PASSED=0; GAPS=0
 

@@ -15,6 +15,7 @@ set -u
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/target_freeze.sh"
 pass=0; fail=0
 WORK="$(fh_fixture_root "$(mktemp -d)")"
+: "${WORK:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$WORK"' EXIT
 R="$WORK/repo"
 

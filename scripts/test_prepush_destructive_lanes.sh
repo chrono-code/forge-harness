@@ -83,6 +83,7 @@ fi
 # Test the STAGED blob when the hook is staged, same reasoning as the sibling anchor: an anchor that
 # reads the worktree is bypassed by staging a regression and restoring the worktree.
 WORK="$(fh_fixture_root "$(mktemp -d)")" || exit 1
+: "${WORK:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$WORK"' EXIT
 _status=$(git -C "$REPO_ROOT" -c core.quotePath=false diff --cached --name-status --no-renames 2>/dev/null \
           | awk -F'\t' '$2 == "templates/.git-hooks/pre-push" { print $1; exit }')
@@ -102,6 +103,7 @@ PASSED=0; FAILED=0
 # every delete lane would block for the WRONG reason and the suite would be green for nothing).
 newrepo() {
   local d; d="$(fh_fixture_root "$(mktemp -d)")" || return 1
+  : "${d:?fixture root unset — refusing to run git in cwd}"
   mkdir -p "$d/.claude/rules" "$d/templates/.git-hooks" "$d/tracks/_meta" "$d/scripts" || return 1
   [ -f "$DEF_SRC" ] && cp "$DEF_SRC" "$d/.claude/rules/.public-surface-patterns.defaults"
   [ -f "$REPO_ROOT/scripts/psa_scan_lib.sh" ] && cp "$REPO_ROOT/scripts/psa_scan_lib.sh" "$d/scripts/psa_scan_lib.sh"

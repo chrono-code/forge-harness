@@ -26,6 +26,7 @@ trap cleanup EXIT
 
 _mkrepo() {
   local d; d="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/bclaim.XXXXXX")")"
+  : "${d:?fixture root unset — refusing to run git in cwd}"
   git -C "$d" init -q -b main
   git -C "$d" config user.email t@t; git -C "$d" config user.name t
   echo x > "$d/f"; git -C "$d" add f; git -C "$d" commit -qm init
@@ -72,6 +73,7 @@ unset CLAUDE_PID
 # **위의 CLAUDE_PID 와 같은 결함을 수리 그 자체가 재생산한 것**이라, 같은 처방을 붙인다.
 # 개별 레인은 필요할 때 이 값을 인라인으로 덮는다.
 SOCK_EMPTY="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/bcsock0.XXXXXX")")"
+: "${SOCK_EMPTY:?fixture root unset — refusing to run git in cwd}"
 export FH_CLAIM_SOCK_DIR="$SOCK_EMPTY"
 
 echo "[branch-claim] known-pair 앵커"
@@ -244,7 +246,9 @@ rm -rf "$R"
 #     그걸 0 으로 렌더한 게 라이브 결함이었다. 세 값이 **각각 다른 문장**을 내야 한다.
 #     ⚠️ 세 팔이 rc 는 전부 0(차단 안 함)이라 **rc 로는 구분이 안 된다** — 출력으로 잡는다.
 #        이 레인이 rc 만 봤으면 세 팔 다 통과하고 아무것도 안 잡았을 것이다.
-_sockdir() { local d; d="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/bcsock.XXXXXX")")"; echo "$d"; }
+_sockdir() { local d; d="$(fh_fixture_root "$(mktemp -d "${TMPDIR:-/tmp}/bcsock.XXXXXX")")"
+: "${d:?fixture root unset — refusing to run git in cwd}"
+echo "$d"; }
 
 # ⑭ 소켓엔 살아있는 세션이 있는데 claim 은 0 → 「판정할 수 없다」
 R=$(_mkrepo); S=$(_sockdir); : > "$S/${PEERPID}.sock"

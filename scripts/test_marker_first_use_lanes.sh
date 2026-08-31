@@ -25,7 +25,9 @@ set -uo pipefail
 # (a vendored/nested checkout answers with the OUTER repo's root).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$REPO_ROOT/templates/.git-hooks/pre-commit"
-T="$(fh_fixture_root "$(mktemp -d)")"; trap 'rm -rf "$T"' EXIT
+T="$(fh_fixture_root "$(mktemp -d)")"
+: "${T:?fixture root unset — refusing to run git in cwd}"
+trap 'rm -rf "$T"' EXIT
 
 # 🟥 픽스처 루트 가드는 **공용 lib** 이 진다 — 초판은 여기 인라인 사본이었고, 그때 스스로
 #    「공용 함수가 배선되면 이 사본은 지우고 그걸 불러라」고 적었다. 지금이 그때다

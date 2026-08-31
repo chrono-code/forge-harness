@@ -35,6 +35,7 @@ ng() { echo "❌ $1"; FAIL=$((FAIL+1)); }
 [ -f "$SUT" ] || { echo "ⓘ mapped_tracks.sh absent — subject missing when we looked (NOT a pass)"; exit 2; }
 
 TMP="$(fh_fixture_root "$(mktemp -d 2>/dev/null)")" || { echo "ⓘ mktemp failed — this suite's own setup broke (NOT a pass)"; exit 10; }
+: "${TMP:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
 git init -q "$TMP/main" 2>/dev/null || { echo "ⓘ git init failed — this suite's own setup broke (NOT a pass)"; exit 10; }
@@ -109,7 +110,9 @@ CO=$(cd "$TMP/wt" && bash "$SUT" --count-only 2>&1)
 if [ "$(id -u)" = "0" ]; then
   echo "  ⓘ root 로 실행 중 — 권한 레인 UNMEASURED (root 는 퍼미션을 우회한다, 통과 아님)"
 else
-  PD="$(fh_fixture_root "$(mktemp -d)")"; git init -q "$PD" 2>/dev/null
+  PD="$(fh_fixture_root "$(mktemp -d)")"
+  : "${PD:?fixture root unset — refusing to run git in cwd}"
+  git init -q "$PD" 2>/dev/null
   git -C "$PD" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i 2>/dev/null
   mkdir -p "$PD/tracks/qasp" "$PD/tracks/pmh"
   _perm_run() { ( cd "$PD" 2>/dev/null && bash "$SUT" 2>&1 ); }

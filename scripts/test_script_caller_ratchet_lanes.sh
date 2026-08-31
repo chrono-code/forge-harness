@@ -59,6 +59,7 @@ newfix() { mktemp -d "$FIXROOT/fix.XXXXXX"; }
 mkfix() {
   d="$(newfix)"
   d="$(fh_fixture_root "$d")"
+  : "${d:?fixture root unset — refusing to run git in cwd}"
   mkdir -p "$d/scripts" "$d/.github/workflows"
   printf '%s\n' '#!/usr/bin/env bash' 'echo alpha' > "$d/scripts/alpha.sh"
   printf 'exempt:\nbaseline:\n' > "$d/scripts/caller_zero_baseline.txt"
@@ -340,6 +341,7 @@ d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho old\n' > "$d/scripts/olddebt.sh"
 printf 'exempt:\nbaseline:\n  - scripts/olddebt.sh   # grandfathered measured debt\n' > "$d/scripts/caller_zero_baseline.txt"
 d="$(fh_fixture_root "$d")"
+: "${d:?fixture root unset — refusing to run git in cwd}"
 git -C "$d" -c init.defaultBranch=main init -q >/dev/null 2>&1
 git -C "$d" add scripts .github >/dev/null 2>&1
 git -C "$d" -c user.email=lane@example.invalid -c user.name=lane \
