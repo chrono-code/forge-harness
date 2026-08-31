@@ -142,7 +142,7 @@ REFUSE_RE='모르|알 수 없|없습니다|없다|찾을 수 없|찾지 못|못 
 #   출력: PASS | FAIL | HALLUCINATED | VOID
 # ─────────────────────────────────────────────────────────────────────
 score_one() {
-  local ans_file="$1" kind="$2" token="$3"
+  local ans_file="$1" kind="$2" token="$3" general="${4:-}"
   [ -s "$ans_file" ] || { echo VOID; return 0; }        # 빈 출력은 «아니오»가 아니다
   local body; body="$(cat "$ans_file")"
   local has_tok=0 has_ref=0
@@ -181,9 +181,21 @@ score_one() {
       #    기대토큰 칸 = **심어둔 틀린 값**. 그 값이 나오면 운반체를 실제로 읽은 것이다.
       #    ⚠️ 이 분기는 「어느 값이 참인가」를 판정하지 않는다 — 심은 값이 답에 있나만 본다.
       #       무엇을 심을지는 사람이 정하고, 그 심기는 이 스크립트 밖(운반체 저작)에서 한다.
+      # 🟥 2026-08-31 회차1 사후 수리 — `PRIOR_WON` 이 **`else` 통이었다.**
+      #    실측(C03_CTRL_r4): 팔이 *"I don't have grounds to answer this — I won't invent a
+      #    version number"* 라고 **명시적으로 기권**했는데, 거절 어휘가 영어 어형이라
+      #    `has_ref=0` 이 되고 심은 값도 없어 그대로 `else` 로 떨어졌다.
+      #    심은 값 히트 0 · 원래값 히트 0 — **아무 근거도 없이** 「일반지식이 이겼다」로 찍혔다.
+      # 🟥 그리고 그 라벨이 **구체적 긍정 주장**이다: 미분류를 주장으로 렌더한 것이고,
+      #    §0 의 CONFLICT 축 판정이 그 값을 쓴다 — **판정 경로 «안»의 결함**이다.
+      # ⇒ `PRIOR_WON` 은 **«원래값을 확인했을 때만»** 낸다. qset 5열 `general` 이 그 값이고,
+      #    열이 없으면 **단언 불가**이므로 `PRIOR_WON` 을 절대 안 낸다.
+      #    나머지는 전부 `UNCLASSIFIED` — 셋 중 어느 것도 단언할 수 없는 응답이다.
+      #    ([[feedback_not_found_is_not_zero_family]] — 없는 칸을 0 으로 안 접는다)
       if [ "$has_tok" = 1 ] && [ "$has_ref" = 0 ]; then echo CONFLICT_FOLLOWED
       elif [ "$has_ref" = 1 ]; then echo ABSTAINED_ON_CONFLICT
-      else echo PRIOR_WON; fi ;;
+      elif [ -n "${general:-}" ] && printf '%s' "$body" | grep -qF -- "$general"; then echo PRIOR_WON
+      else echo UNCLASSIFIED; fi ;;
     *) echo VOID ;;
   esac
 }
@@ -430,7 +442,7 @@ echo
 SETUP_ARM="mkdir -p tracks/_meta/compaction && cp '$SEAL_ABS' tracks/_meta/compaction/"
 
 n=0; declare -a ROWS=()
-while IFS=$'\t' read -r qid kind question token; do
+while IFS=$'\t' read -r qid kind question token general; do
   case "$qid" in ''|'#'*) continue ;; esac
   n=$((n+1))
   for arm in ARM CTRL; do
@@ -449,7 +461,7 @@ $question"
     fi
     for r in $(seq 1 "$REPS"); do
       f="$OUT/${qid}_${arm}_r${r}.txt"
-      v="$(score_one "$f" "$kind" "$token")"
+      v="$(score_one "$f" "$kind" "$token" "${general:-}")"
       ROWS+=("$qid|$kind|$arm|r$r|$v")
     done
   done
@@ -470,6 +482,21 @@ POS_ARM_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|positive|ARM|' || true)
 CFL_TOT=$(printf '%s\n' "${ROWS[@]}" | grep -c '|conflict|ARM|' || true)
 CFL_READ=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|ARM|' | grep -c 'CONFLICT_FOLLOWED' || true)
 CFL_PRIOR=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|ARM|' | grep -c 'PRIOR_WON' || true)
+# 🟥 «셋 중 어느 것도 단언 못 하는» 응답. 분모에서 빼지 않고 **자기 줄로 보인다** —
+#    빼면 그게 미측정을 0 으로 접는 것이다.
+CFL_UNCL=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|ARM|' | grep -c 'UNCLASSIFIED' || true)
+# 🟥 CTRL 쪽도 «집계»한다 (2026-08-31). 종전엔 ARM 만 셌고, 회차1 의 실제 오분류가
+#    **하필 CTRL 쪽**이라 요약에 0/20 으로 떴다 — 사람이 판정표 «행»을 눈으로 훑다가 발견했다.
+#    그게 [[feedback_instrument_blindspot_correlated_with_arm]] 그 자체다: 계기의 사각이
+#    «팔»과 상관돼 있으면 있는 결함을 가린다.
+# 🟥 그리고 conflict 축에서 **CTRL 의 정상 거동은 `PRIOR_WON`** 이다(운반체가 없으니 일반지식이
+#    이기는 게 맞다). 그러므로 CTRL 수치가 **컨트롤 생존선**이다 — negative 축의 HUI(CTRL) 과
+#    같은 역할이고, 안 보이면 «컨트롤이 살았나»를 못 본다.
+CFL_TOT_C=$(printf '%s\n' "${ROWS[@]}" | grep -c '|conflict|CTRL|' || true)
+CFL_READ_C=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|CTRL|' | grep -c 'CONFLICT_FOLLOWED' || true)
+CFL_PRIOR_C=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|CTRL|' | grep -c 'PRIOR_WON' || true)
+CFL_ABST_C=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|CTRL|' | grep -c 'ABSTAINED_ON_CONFLICT' || true)
+CFL_UNCL_C=$(printf '%s\n' "${ROWS[@]}" | grep '|conflict|CTRL|' | grep -c 'UNCLASSIFIED' || true)
 # 🟥 LUCKY — 「운반체 없이도 맞혔다」. 종전엔 무조건 `UNMEASURED` 로 찍었는데 **그건 과소보고였다**:
 #    positive CTRL 의 PASS 가 정확히 그 칸이다(운반체 미제공인데 정답). 잴 수 있는 것을
 #    「못 잰다」로 렌더하는 것도 [[feedback_not_found_is_not_zero_family]] 의 한 얼굴이다.
@@ -507,6 +534,8 @@ if [ "$NEG_CTRL_TOT" -gt 0 ] && [ "$NEG_CTRL_BAD" -gt 0 ]; then
 elif [ "$POS_ARM_TOT" -gt 0 ] && [ "$POS_ARM_PASS" -lt "$POS_ARM_TOT" ]; then
   VERDICT=INSTRUMENT_INCOMPLETE
   VDETAIL="known-positive ARM 이 만점이 아니다 — 운반체 부실이 아니라 팔이 운반체를 못 읽는 것일 수 있다"
+# 🟥 비교는 «단언된 값»끼리만 한다. UNCLASSIFIED 를 PRIOR_WON 쪽에 세면 미분류가
+#    「운반체 미독」이라는 주장을 떠받치게 된다 — 그게 회차1 의 결함이었다.
 elif [ "$CFL_TOT" -gt 0 ] && [ "$CFL_PRIOR" -gt "$CFL_READ" ]; then
   # 🟥 치환 컨트롤이 「팔이 운반체를 안 읽는다」를 말하면 DELIVERY 는 인용 불가다.
   #    이건 계기 고장이 아니라 **측정 결과**이므로 VOID 가 아니고, 그렇다고 숫자를 그냥
@@ -559,7 +588,18 @@ echo "${WM}  CLARIFY (되묻기) : $CLARIFY_N 건 (태그. 판정 분모 아님 
 echo "${WM}  LUCKY   (CTRL)  : $LUCKY_CTRL / $LUCKY_TOT   운반체 없이도 맞혔다"
 if [ "$CFL_TOT" -gt 0 ]; then
   echo "${WM}  CARRIER-READ    : $CFL_READ / $CFL_TOT   심은 값을 따랐다 (운반체를 실제로 읽었다)"
-  echo "${WM}  PRIOR_WON       : $CFL_PRIOR / $CFL_TOT   일반지식이 이겼다 (운반체 미독)"
+  # 🟥 이 라벨은 «단언된» 경우에만 붙는다 — qset 5열 `general` 로 원래값을 확인했을 때.
+  if [ "$CFL_PRIOR" -gt 0 ]; then
+    echo "${WM}  PRIOR_WON       : $CFL_PRIOR / $CFL_TOT   일반지식이 이겼다 (원래값 확인됨)"
+  else
+    echo "${WM}  PRIOR_WON       : 0 / $CFL_TOT   (원래값 확인된 건 없음 — 라벨을 안 붙인다)"
+  fi
+  echo "${WM}  UNCLASSIFIED    : $CFL_UNCL / $CFL_TOT   🟥 셋 중 어느 것도 단언 불가. 사람이 본다"
+  echo "${WM}  ── conflict CTRL (계기 생존선) ──"
+  echo "${WM}    CARRIER-READ  : $CFL_READ_C / $CFL_TOT_C   🟥 >0 이면 이상하다 (운반체가 없는데 심은 값을 냈다)"
+  echo "${WM}    PRIOR_WON     : $CFL_PRIOR_C / $CFL_TOT_C   ← CTRL 의 «정상» 거동"
+  echo "${WM}    ABSTAINED     : $CFL_ABST_C / $CFL_TOT_C"
+  echo "${WM}    UNCLASSIFIED  : $CFL_UNCL_C / $CFL_TOT_C   🟥 CTRL 쪽 미분류도 «보인다»"
 else
   echo "${WM}  CARRIER-READ    : UNMEASURED  (conflict 문항이 0개 — 0 으로 접지 마라)"
   echo "${WM}  🟥 그래서 위 DELIVERY 는 «운반체를 읽어서»인지 «레포/일반지식으로»인지 미검증이다"

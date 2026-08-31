@@ -116,7 +116,10 @@ fi
 #    심는 것은 운반체 저작 단계이고, 채점기는 「심은 값이 답에 있나」만 본다(의미 판정 안 함).
 CPT="ZZCFLPLANT$(printf '%s' 5521)"     # 심은 «틀린» 값
 CGT="ZZCFLGENRL$(printf '%s' 5522)"     # 팔이 일반지식으로 낼 법한 값
-printf 'q1\tpositive\t질문P\t%s\nq3\tconflict\t질문C\t%s\n' "$PT" "$CPT" > "$T/qc.tsv"
+# 🟥 5열 `general` = «원래값/일반값». 2026-08-31 신설 — 이게 없으면 `PRIOR_WON` 을 **단언 못 하고**
+#    응답은 `UNCLASSIFIED` 로 간다(회차1 에서 `PRIOR_WON` 이 `else` 통이었던 결함의 수리).
+#    ⇒ 이 레인이 PRIOR_WON 을 재려면 general 을 «줘야» 한다. 안 주면 레인이 옛 기대를 담는다.
+printf 'q1\tpositive\t질문P\t%s\nq3\tconflict\t질문C\t%s\t%s\n' "$PT" "$CPT" "$CGT" > "$T/qc.tsv"
 
 mkc(){ # $1=outdir  $2=follow|prior
   mkdir -p "$1"
@@ -154,6 +157,34 @@ printf '%s' "$CP_OUT" | grep -q 'CARRIER_UNREAD' \
 printf '%s' "$CF_OUT" | grep -q 'CARRIER_UNREAD' \
   && no "L12c 컨트롤 실패 — 운반체를 읽었는데도 CARRIER_UNREAD 가 붙었다 (항상 차단)" \
   || ok "L12c 컨트롤 — 운반체를 읽은 회차엔 CARRIER_UNREAD 가 안 붙는다"
+
+# ── L12d~L12f UNCLASSIFIED (2026-08-31 신설) — 🟥 «나머지 통»을 주장으로 렌더하지 않는다 ──
+#    회차1: 팔이 명시적으로 기권했는데(심은 값 0 · 원래값 0) 거절 어휘가 영어라 `has_ref=0` 이 되어
+#    `else` 로 떨어졌고 **「일반지식이 이겼다(운반체 미독)」** 로 인쇄됐다. 판정 경로 «안»의 결함이다.
+printf 'q1\tpositive\t질문P\t%s\nq3\tconflict\t질문C\t%s\n' "$PT" "$CPT" > "$T/qc_nogen.tsv"
+mkc "$T/cf_ung" prior
+UN_OUT="$( cd "$ROOT" && bash "$S" --seal "$T/seal.md" --qset "$T/qc_nogen.tsv" --reps 1 \
+           --out "$T/cf_ung" --rescore 2>&1 </dev/null )"
+printf '%s' "$UN_OUT" | grep -qE 'q3 +conflict +ARM +r1 +UNCLASSIFIED' \
+  && ok "L12d general 열이 없으면 PRIOR_WON 을 «단언 안 한다» → UNCLASSIFIED" \
+  || no "L12d general 없이 PRIOR_WON 이 나왔다 — 나머지 통이 주장으로 렌더된다"
+printf '%s' "$UN_OUT" | grep -q 'PRIOR_WON       : 0 /' \
+  && ok "L12e 그때 PRIOR_WON 라벨을 안 붙인다" \
+  || no "L12e 원래값 미확인인데 「일반지식이 이겼다」 라벨이 붙었다"
+printf '%s' "$UN_OUT" | grep -qE 'UNCLASSIFIED    : [1-9]' \
+  && ok "L12f UNCLASSIFIED 가 «자기 줄»로 보인다 (분모에서 안 뺀다)" \
+  || no "L12f UNCLASSIFIED 가 집계에 안 보인다 — 미분류를 0 으로 접었다"
+
+# ── L12g~L12h conflict CTRL 집계 (2026-08-31) — 계기의 사각이 «팔»과 상관되지 않게 ──────
+#    회차1 의 실제 오분류가 **하필 CTRL 쪽**이었고 요약엔 0/20 으로 떴다. 사람이 판정표 «행»을
+#    눈으로 훑다가 발견했지 집계가 알려준 게 아니다([[feedback_instrument_blindspot_correlated_with_arm]]).
+#    그리고 conflict 축에서 **CTRL 의 정상 거동은 PRIOR_WON** 이므로 CTRL 수치가 컨트롤 생존선이다.
+printf '%s' "$UN_OUT" | grep -q 'conflict CTRL (계기 생존선)' \
+  && ok "L12g conflict CTRL 집계가 «자기 절»로 나온다" \
+  || no "L12g CTRL 쪽 conflict 집계가 없다 — 그쪽 오분류가 구조적으로 안 보인다"
+printf '%s' "$UN_OUT" | grep -qE 'UNCLASSIFIED  : [0-9]+ / [0-9]+' \
+  && ok "L12h CTRL UNCLASSIFIED 가 숫자로 보인다 (0 으로 안 접는다)" \
+  || no "L12h CTRL UNCLASSIFIED 줄이 없다"
 
 # ── L13 LUCKY 칸이 «실수»로 나오나 (종전엔 무조건 UNMEASURED 였다) ──────────────
 printf '%s' "$CF_OUT" | grep -qE 'LUCKY   \(CTRL\)  : [0-9]+ / [0-9]+' \
