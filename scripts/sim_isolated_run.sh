@@ -139,7 +139,29 @@ fh_sim_write_path_isolation() { # $1=WORK $2=OUTDIR $3=REPO_ROOT $4=HOME → 0=�
     # 🟥 `*.txt` 만으로는 부족했다: 다른 팔의 **클론 트리**(`w_*/repo/**`)에 주입된 봉인 원장을
     #    읽을 수 있었다. 그것도 막고, **내 클론은 예외로 둔다**.
     case "$_p_work" in
-      "$_p_out"/*) _deny_out="//${_p_out#/}/*.txt"; _extra_out=",\"Read(//${_p_out#/}/w_*/repo/tracks/**)\"" ;;
+      "$_p_out"/*)
+        _deny_out="//${_p_out#/}/*.txt"
+        # 🟥 2026-08-31 — 종전 `w_*` 는 **자기 클론에도 매치**했다. 바로 위 주석이
+        #    「내 클론은 예외로 둔다」고 적어놓고 코드엔 그 예외가 없었다
+        #    ([[feedback_rule_misdescribes_its_own_machine]]). 조건 분기는 **항상 참**이라
+        #    (`WRAP="$OUTDIR/w_${ARM}_r${r}"`) 이 deny 가 모든 회차에 붙었고, 그래서
+        #    **팔은 자기 운반체를 한 번도 못 읽었다.** known-pair 로 확정:
+        #      자기 클론의 seal → BLOCKED · 같은 클론의 CLAUDE.md → 읽힘
+        #    ⇒ `DELIVERY` 는 한 번도 측정된 적이 없다. `_ccrun7` 의 positive ARM PASS 는
+        #      운반체가 아니라 stdin 으로 샌 정답키였다(두 결함이 서로를 가려줬다).
+        # 🟥 글롭으로는 「나만 빼고」를 표현할 수 없다. 그래서 설정을 쓰는 시점에
+        #    **이미 존재하는 형제만 이름으로** 막는다. 팔·rep 이 순차 루프이므로
+        #    (`for r in $(seq 1 "$REPS")` · `&`/`wait` 없음) 그 시점 열거는 완전하다 —
+        #    뒤에 생길 형제는 이 팔이 끝난 뒤에 만들어진다.
+        _extra_out=""
+        _my_wrap="$(basename "$(dirname "$_p_work")")"
+        for _sib in "$_p_out"/w_*; do
+          [ -d "$_sib" ] || continue
+          _sib_b="$(basename "$_sib")"
+          [ "$_sib_b" = "$_my_wrap" ] && continue          # 나는 뺀다 — 그게 이 수리의 전부다
+          _extra_out="$_extra_out,\"Read(//${_p_out#/}/$_sib_b/repo/tracks/**)\""
+        done
+        ;;
     esac
     # 🟥 cross-family(agy #1): 기본 `$TMPDIR`(macOS `/var/folders/**`)·공유 경로·마운트 볼륨이
     #    빠져 있었다. 산출물이 기본 TMPDIR 에 생기면 앞선 팔의 결과가 그대로 읽힌다.

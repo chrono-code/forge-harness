@@ -76,8 +76,31 @@ chk "L5 중복 항목이 없다"         "$(printf '%s' "$DENY" | sort | uniq -d
 # ── L6 클론이 out 아래면: out 전체가 아니라 «다른 팔의 산출»만 막는다 ─────────────
 chk "L6 out-하위 클론이면 out 전체를 막지 않는다" \
     "$(printf '%s' "$DENY" | grep -c "Read(//${O1#/})\$" | tr -d ' ')" 0
-chk "L6b 대신 다른 팔의 클론 트리를 막는다" \
-    "$(printf '%s' "$DENY" | grep -c 'w_\*/repo/tracks' | tr -d ' ')" 1
+# 🟥 2026-08-31 재작성 — 종전엔 `grep -c 'w_\*/repo/tracks'` 로 **문자열을 셌다.** 그런데
+#    그 글롭이 바로 결함이었다(자기 클론까지 매치). 수리하면 그 문자열이 사라져서 이 레인이
+#    「깨진다」 — 즉 **표기를 고정하고 있었지 행동을 재고 있지 않았다.**
+#    ⇒ 형제 클론을 실제로 만들고 **글롭 매칭으로** 「막히나」를 묻는다. 표기는 자유로워진다.
+#    그리고 이것이 요구된 known-pair 다: **자기 것은 안 막히고 형제 것은 막힌다**를
+#    «같은 실행»에서 단언한다. 하나만 보면 과차단/누출 중 하나를 놓친다.
+# 🟥 **새 픽스처를 쓴다.** 이 함수는 `settings.local.json` 이 이미 있으면 다시 안 쓴다
+#    (그게 fail-open 가드다). L1 의 클론을 재사용하면 형제를 만들어도 반영이 안 되고,
+#    그러면 이 레인은 «코드가 아니라 내 픽스처» 때문에 빨개진다 — 실제로 한 번 그랬다.
+O6=$(mk c6); W6="$O6/w_c6_r1/repo"
+mkdir -p "$O6/w_SIBLING_r1/repo/tracks"
+rc6=$(run_iso "$W6" "$O6" "$T/fake_repo" "$T/fake_home")
+chk "L6b-pre 격리 파일이 새로 쓰였다 (rc=0 — 아니면 아래는 무의미)" "$rc6" 0
+DENY6=$(python3 -c 'import json,sys;print(chr(10).join(json.load(open(sys.argv[1]))["permissions"]["deny"]))' "$W6/.claude/settings.local.json" 2>/dev/null)
+_sib_blocked=0; _self_blocked=0
+_selfp=$(cd "$W6" && pwd -P)/tracks/_meta/seal.md
+_sibp="$(cd "$O6" && pwd -P)/w_SIBLING_r1/repo/tracks/_meta/seal.md"
+while IFS= read -r d; do
+  case "$d" in "Read("*")") pat="/${d#Read(//}"; pat="${pat%)}"
+    case "$_sibp"  in $pat) _sib_blocked=1 ;; esac
+    case "$_selfp" in $pat) _self_blocked=1 ;; esac ;;
+  esac
+done <<< "$DENY6"
+chk "L6b 형제 팔의 클론 tracks/ 는 막힌다 (글롭 매칭으로 판정)" "$_sib_blocked" 1
+chk "L6c known-pair 짝 — 자기 클론 tracks/ 는 «안» 막힌다" "$_self_blocked" 0
 
 # ── L7 자기 클론을 막지 않는다 (첫 수리가 그렇게 자기 발을 쐈다) ──────────────────
 # 🟥 2026-08-31 — 이 레인이 «자기가 잡으라고 만들어진 결함»을 놓쳤다. 초록인 채로.
