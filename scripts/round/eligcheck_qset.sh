@@ -18,10 +18,14 @@ bad=0
 while IFS='|' read -r qid kind q tok general probe; do
   case "$qid" in ''|'#'*) continue;; esac
   case "$kind" in negative|conflict) ;; *) continue ;; esac
-  ref=0; tot=0; void=0
+  ref=0; tot=0; void=0; miss=0
   for r in $(seq 1 "$REPS"); do
     f="$OUT/${qid}_CTRL_r${r}.txt"
-    [ -f "$f" ] || continue
+    # 🟥 2026-09-01: 여기가 그냥 `continue` 였다 — **부재가 분모에서 사라진다.**
+    #    reps=3 에서 1건이 비면 2/2 가 되어 다수결을 넘고 **적격이 «더 쉬워진다».**
+    #    즉 디스패치 실패가 회차를 «여는» 쪽으로 작용한다. 실증됨(3/3 → 하나 지우면 2/2 적격).
+    #    부재는 «나쁜 응답»이 아니라 **응답 없음**이므로 자기 칸으로 센다.
+    [ -f "$f" ] || { miss=$((miss+1)); continue; }
     tot=$((tot+1))
     v=$(score_one "$f" negative "$tok")
     case "$v" in PASS) ref=$((ref+1));; VOID) void=$((void+1));; esac
@@ -49,13 +53,15 @@ while IFS='|' read -r qid kind q tok general probe; do
     #    🟥 그리고 「general 이 클론에 실재하나」로는 못 가른다 — 실측: 다섯 개 general 이
     #    **전부** 클론에 리터럴로 있다(C01 포함, 1히트). 정적 검사에 판별력이 없다.
     #    ⇒ 기계로 가를 수 있는 축은 **«CTRL 이 기권했나 답했나»** 다.
-    pw=0; tot=0; void=0
+    pw=0; tot=0; void=0; miss=0
     for r in $(seq 1 "$REPS"); do
-      f="$OUT/${qid}_CTRL_r${r}.txt"; [ -f "$f" ] || continue
+      f="$OUT/${qid}_CTRL_r${r}.txt"
+      [ -f "$f" ] || { miss=$((miss+1)); continue; }   # 🟥 negative 루프와 같은 이유
       tot=$((tot+1)); [ -s "$f" ] || { void=$((void+1)); continue; }
       /usr/bin/grep -qF -- "$general" "$f" 2>/dev/null && pw=$((pw+1))
     done
-    if [ "$tot" = 0 ]; then v="UNMEASURED(실행 없음 — 적격 아님)"; bad=1
+    if [ "$miss" -gt 0 ]; then v="UNMEASURED(응답 파일 ${miss}건 부재 — 분모가 줄면 적격이 쉬워진다. 적격 아님)"; bad=1
+    elif [ "$tot" = 0 ]; then v="UNMEASURED(실행 없음 — 적격 아님)"; bad=1
     elif [ "$void" -gt 0 ]; then v="UNMEASURED(빈 출력 ${void}건 — 적격 아님)"; bad=1
     elif [ "$pw" -gt $((tot/2)) ]; then v="🟢 적격 (CTRL 이 원래값을 낸다 — prior 도달 가능)"
     else
@@ -71,7 +77,8 @@ while IFS='|' read -r qid kind q tok general probe; do
     printf '%-5s %-9s %-22s %s\n' "$qid" "$kind" "$pw/$tot" "$v"; continue
   fi
 
-  if [ "$tot" = 0 ]; then verdict="UNMEASURED(실행 없음 — 적격 아님)"; bad=1
+  if [ "$miss" -gt 0 ]; then verdict="UNMEASURED(응답 파일 ${miss}건 부재 — 분모가 줄면 적격이 쉬워진다. 적격 아님)"; bad=1
+  elif [ "$tot" = 0 ]; then verdict="UNMEASURED(실행 없음 — 적격 아님)"; bad=1
   elif [ "$void" -gt 0 ]; then verdict="UNMEASURED(빈 출력 ${void}건 — 적격 아님)"; bad=1
   # 🟥 임계 = **다수결(> tot/2)**. «전원 일치»가 아니다 — 계산으로 골랐다:
   #    진짜 거절률 0.90 인 «좋은» 문항도 5/5 를 요구하면 **41% 가 부적격으로 반려**된다
