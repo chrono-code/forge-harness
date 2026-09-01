@@ -693,13 +693,26 @@ def selftest_jargon():
 
 def main():
     if '--self-test' in sys.argv: return selftest_jargon() or selftest_pacing()
+    # 🟥 2026-09-01 — «자기 판»을 config 로드 «전»에 찍는다. 오늘 실사고: 갈라진 옛 포크
+    #    (동반 저장소의 preprep, 724줄)를 돌려놓고 「설치본에 레인이 없다」고 보고했다 — 레인은
+    #    정본(776줄)에 있었고 귀속이 틀렸다. 🟥 첫 판은 이 줄을 `cfg` 로드 «뒤»에 뒀는데,
+    #    config 가 없으면 안 찍힌다 — 「내가 어느 판인가」가 «가장 필요한 순간»에 침묵한다.
+    #    ⚠️ 내장 `lane_*` 함수만으로는 판별이 «안 된다»(정본·포크 둘 다 7). 갈리는 것은
+    #    별도 모듈 레인(L9/L10/L11)이라 둘 다 센다.
+    #    [[feedback_rule_misdescribes_its_own_machine]] · [[feedback_instrument_vs_target_and_budget]]
+    _lanes = sorted(n[5:] for n in globals() if n.startswith('lane_') and callable(globals()[n]))
+    _mods = sorted(m for m in ('lane_promise', 'lane_adjacent_dup', 'lane_progression')
+                   if os.path.exists(os.path.join(HERE, m + '.py')))
+    print(f"── 발표 준비 하네스 v0.1 ──")
+    print(f"   판: {os.path.realpath(__file__)}")
+    print(f"   레인 {len(_lanes)}(내장): {' · '.join(_lanes)}")
+    print(f"   레인 {len(_mods)}(모듈): {' · '.join(m[5:] for m in _mods) if _mods else '🟥 없음 — 갈라진 사본일 수 있다'}")
     cfg_path = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') \
                else os.path.join(HERE, 'surfaces.yaml')
     cfg = load(cfg_path)
     root = os.path.expanduser(cfg['root'])
     surf = {s['id']: s for s in cfg['surfaces']}
 
-    print(f"── 발표 준비 하네스 v0.1 · {cfg['asset_family']} ──")
 
     # L3 inventory — 먼저 돈다. 무엇을 못 읽었는지가 뒤 레인의 계상 범위를 정한다
     texts, missing, unreadable = {}, [], []

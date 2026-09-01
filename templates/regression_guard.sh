@@ -291,7 +291,13 @@ count_regex_in() {
   echo "${n:-0}"
 }
 count_exact_line_in() {
-  printf '%s\n' "$1" | awk -v needle="$2" '$0 == needle { n++ } END { print n + 0 }'
+  # 🟥 2026-08-31 실히트 — 이 로케일에서 `awk ==` 는 **첫 비ASCII 바이트에서 비교를 자른다**.
+  #    ASCII 접두가 같으면 그 뒤 내용이 무엇이든 «같다»가 된다. 실측:
+  #      printf '한글 줄 하나\n또 다른 줄\n' | awk -v needle='전혀 다른 문장' '$0==needle{n++}'
+  #        → 로케일 **2** · LC_ALL=C **0** · ASCII 컨트롤 **0**
+  #    한글 줄이 대다수인 코퍼스라 **계수가 부풀고 오탐 매칭이 난다.** 이건 Axis 1 의 계수기다.
+  #    [[feedback_locale_string_equality_breaks_nonascii]]
+  printf '%s\n' "$1" | LC_ALL=C awk -v needle="$2" '$0 == needle { n++ } END { print n + 0 }'
 }
 # Extract a resolvable path token near a tombstone phrase and verify it exists on disk (repo root
 # or the tombstone file's own directory). Closes a demonstrated bypass: a bare phrase like "merged

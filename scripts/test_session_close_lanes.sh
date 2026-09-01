@@ -49,7 +49,7 @@ fi
 # Builds a throwaway repo whose HEAD commit touches (or does not touch) an FH asset path.
 _fixture() {  # $1=touch_fh_asset(0/1)  $2=completed-file body (empty = no file)
   local touch_fh="$1" body="$2" T
-  T=$(mktemp -d)
+  T=$(mktemp -d); : "${T:?fixture root unset — refusing to run git in cwd}"
   ( cd "$T" \
     && git init -q . \
     && git config user.email anchor@local && git config user.name anchor \
@@ -182,7 +182,7 @@ _probe_control() {  # $1=dir — returns 0 iff find -newer can separate a delibe
 }
 _granularity_probe() {
   local reps=200 ties=0 i P a b
-  P=$(mktemp -d) || { echo "   ↳ mtime granularity probe: UNCALIBRATED (mktemp -d failed) — no count reported"; return 0; }
+  P=$(mktemp -d) || { echo "   ↳ mtime granularity probe: UNCALIBRATED (mktemp -d failed) — no count reported"; return 0; }; : "${P:?fixture root unset — refusing to run git in cwd}"
   if ! _probe_control "$P"; then
     rm -rf "$P"
     echo "   ↳ mtime granularity probe: UNCALIBRATED (find -newer could not separate a deliberately separated pair) — no count reported"
@@ -291,7 +291,7 @@ rm -rf "$T"
 # 잡는 반쪽 구현은 ⑤-C-N 에서 통과해버린다 — 실제 카드가 「08-26 미팅」처럼 축약형을 쓴다.
 _carry_fixture() {  # $1=오늘카드 본문  $2=fh_completed 본문(빈 문자열=파일 없음)  → "REPO|STORE"
   local card_body="$1" done_body="$2" T S FUT
-  T=$(mktemp -d); S=$(mktemp -d)
+  T=$(mktemp -d); : "${T:?fixture root unset — refusing to run git in cwd}"; S=$(mktemp -d); : "${S:?fixture root unset — refusing to run git in cwd}"
   ( cd "$T" && git init -q . && git config user.email a@l && git config user.name a \
     && echo x > unrelated.txt && git add -A && git commit -qm fixture ) >/dev/null 2>&1
   mkdir -p "$T/tracks/_meta"
@@ -342,7 +342,7 @@ _carry_lane "⑤-C-L 완료로그에 있음 → 통과" "❌ ⑤-C carry-over �
   "$(_carry_fixture '# card' "- ✅ $_CF 미팅 — 취소 확정")"
 
 # ⑤-C-S: companion store 부재는 SKIPPED 여야 하고 **✅ 여서는 안 된다**.
-_T4=$(mktemp -d)
+_T4=$(mktemp -d); : "${_T4:?fixture root unset — refusing to run git in cwd}"
 ( cd "$_T4" && git init -q . && git config user.email a@l && git config user.name a \
   && echo x > u.txt && git add -A && git commit -qm f ) >/dev/null 2>&1
 mkdir -p "$_T4/tracks/_meta"; printf '# card\n' > "$_T4/tracks/_meta/reference_next_session_starter.md"
@@ -367,7 +367,7 @@ rm -rf "$_T4"
 # known-pair: a hostile store that WOULD trigger ⑤-C (its prior card carries a future date the
 # fixture card lacks) must produce SKIPPED, not a carry-over FAIL. POS arm first: prove the
 # hostile store really is hostile by feeding it to $CHECK ON PURPOSE.
-_ei=$(mktemp -d)
+_ei=$(mktemp -d); : "${_ei:?fixture root unset — refusing to run git in cwd}"
 mkdir -p "$_ei/store/tracks-meta" "$_ei/work/tracks/_meta"
 ( cd "$_ei/store" && git init -q . && git config user.email l@l && git config user.name l
   printf 'prior card\n- 2099-12-31 기한\n' > tracks-meta/reference_next_session_starter.md

@@ -1,0 +1,1 @@
+README/README.ko.md/README.ja.md/README.zh.md에서 배너 이미지로 쓰이는 PNG 경로는 `docs/banner.png`입니다.

@@ -53,6 +53,9 @@ case "${FH_STUB_MODE:-say}" in
   write)    echo "wrote"; : > "./LANE_SIDE_EFFECT.txt" ;;   # dirties its own clone
   machine)  echo "ok"; mkdir -p "$HOME/Library/LaunchAgents"
             : > "$HOME/Library/LaunchAgents/com.lane.probe.plist" ;;
+  # 🟥 stdin 을 그대로 받아 적는다 — 실물 `claude -p` 가 하는 짓을 재현한다.
+  #    진짜 CLI 는 stdin 이 TTY 가 아니면 그것을 «읽어 프롬프트 뒤에 붙인다».
+  stdin)    echo "stub answer"; cat >> "${FH_STUB_STDIN_LOG:-/dev/null}" ;;
 esac
 exit 0
 STUB
@@ -214,6 +217,49 @@ OUTDIR="$WORKROOT/o12b"; LOG12B="$WORKROOT/argv12b.log"; : > "$LOG12B"
 grep -q "Read,Grep,Glob,Bash" "$LOG12B" \
   && no "L12b control — Bash present WITHOUT --extra-tools (observe mode is not read-only)" \
   || ok "L12b control — no Bash without --extra-tools"
+
+# ── L13 stdin 격리 (2026-08-31) — 🟥 이 레인이 없으면 근인이 조용히 재발한다 ────────────
+#    실측: `claude -p` 는 **stdin 이 TTY 가 아니면 그것을 읽어 프롬프트 뒤에 붙인다.**
+#    호출부(`context_continuity_score.sh`)가 `while … done < "$QSET"` 루프 «안»에서 이 러너를
+#    부르므로, 러너도 claude 도 **stdin = 채점용 qset(정답 열 포함)** 을 상속했다.
+#    ⇒ 회차 1~3 과 probe1~4 의 모든 팔이 정답키 전체를 받았다. ARM 도 CTRL 도.
+#    🟥 경로 deny·코퍼스 마스킹은 **원리적으로 못 막는다** — 도구 읽기가 아니라 프롬프트 조립이다.
+#    🟥 그리고 «팔에게 물어보면» 안 잡힌다: 팔은 그것을 「프롬프트 인젝션」이라 부르며 정직하게
+#    거부하면서 **거부문 안에서 정답을 말하고**, 채점기는 그 문장을 토큰으로 센다.
+#    라이브 확인은 이미 났다(같은 문항 q2, 변수는 stdin 하나: 수리 전 3/3 → 수리 후 0/3).
+#    여기서는 **모델 없이 결함 자체**를 잰다 — 스텁이 자기가 받은 stdin 을 적는다.
+BAIT="ZZSTDINBAIT$(printf '%s' 7731)"
+OUTDIR="$WORKROOT/o13"; SLOG="$WORKROOT/stdin13.log"; : > "$SLOG"
+printf 'q1\tpositive\t질문\t%s\n' "$BAIT" > "$WORKROOT/bait.tsv"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=stdin FH_STUB_STDIN_LOG="$SLOG"    bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" < "$WORKROOT/bait.tsv" ) >/dev/null 2>&1
+# 🟥 컨트롤 먼저 — 스텁이 실제로 돌았나. 안 돌았으면 「미끼 0」은 통과가 아니라 계기 사망이다
+#    ([[feedback_absence_measurement_needs_control]] · 부재를 0 으로 렌더하지 않는다).
+if [ ! -s "$OUTDIR/a_r1.txt" ]; then
+  no "L13-CTRL 팔이 산출을 냈나 (미끼 0 이 계기 사망이 아님을 보증)"
+else
+  ok "L13-CTRL 팔이 산출을 냈다 ($(wc -c < "$OUTDIR/a_r1.txt" | tr -d ' ')B)"
+fi
+grep -qF "$BAIT" "$SLOG" 2>/dev/null \
+  && no "L13 stdin 이 claude 까지 샜다 — 미끼가 프롬프트 채널에 도달했다" \
+  || ok "L13 stdin 격리 — 미끼가 claude 에 도달하지 않는다"
+# 🟥 known-positive: 같은 스텁·같은 미끼가 «막지 않으면» 실제로 잡히는가.
+#    이게 없으면 위 레인은 「미끼가 원래 안 새는 것」과 구분되지 않는다
+#    ([[feedback_control_presence_is_not_discrimination]]).
+SLOG2="$WORKROOT/stdin13b.log"; : > "$SLOG2"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" FH_STUB_MODE=stdin FH_STUB_STDIN_LOG="$SLOG2" \
+   claude -p p < "$WORKROOT/bait.tsv" ) >/dev/null 2>&1
+grep -qF "$BAIT" "$SLOG2" 2>/dev/null \
+  && ok "L13b known-positive — 차단 없이 부르면 미끼가 실제로 도달한다 (레인이 판별한다)" \
+  || no "L13b known-positive 실패 — 스텁이 stdin 을 못 읽는다. L13 의 초록은 무의미하다"
+
+# ── L24 🟥 «팔 눈가림» 자산이 클론에서 실제로 사라지나 ─────────────────────────────
+#    얼린 정답지가 tracked 가 되면서 모든 팔의 클론에 들어갔다(실측: negative 명사구 히트 6~7).
+#    deny 가 아니라 «제거»인 이유 — 없는 파일은 어떤 도구로도 못 읽는다.
+if [ -x "$ROOT/scripts/round/arm_blind_probe.sh" ]; then
+  bash "$ROOT/scripts/round/arm_blind_probe.sh" >/dev/null 2>&1 \
+    && ok "L24 팔 눈가림 자산이 클론에서 제거된다 (히트 >0 → 0)" \
+    || no "L24 눈가림 실패 — 팔이 정답지를 읽을 수 있다"
+else no "L24 프로브 없음 — 검사 못 함(스킵 아님)"; fi
 
 echo "sim_isolated_run lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

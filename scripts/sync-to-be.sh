@@ -572,6 +572,22 @@ if [ -f "$MEM/MEMORY.md" ]; then
 fi
 sync_file "$FH/CLAUDE.local.md" "$BE/$HO"
 
+# 🟥 2026-09-01 신설 — **목적지가 허브 자신이면 안 된다.**
+#    `BE="${BE_DIR:-$FH/../fh-be}"` 이고, 그게 다른 git 레포(특히 «이 허브»)를 가리키면
+#    `cd` 는 성공하고 **비공개 동반 내용(memory · hub-owner · tracks-meta)이 거기 커밋된다.**
+#    `set -e` 는 이걸 못 막는다 — cd 가 실패하는 게 아니라 «성공»하기 때문이다.
+#    비가역 표면(공개 레포로의 유출)이라 발생 이력이 0이어도 기계를 둔다
+#    (§Mechanization Boundary: 비가역 경계 + «기록의 성질»을 묻는 검사는 늙지 않는다).
+_be_top=$(git -C "$BE" rev-parse --show-toplevel 2>/dev/null || echo "")
+_fh_top=$(git -C "$FH" rev-parse --show-toplevel 2>/dev/null || echo "")
+if [ -n "$_be_top" ] && [ -n "$_fh_top" ] && [ "$_be_top" = "$_fh_top" ]; then
+  echo "🟥 동반 저장소가 허브 자신을 가리킨다 — 비공개 내용을 여기 커밋하지 않는다." >&2
+  echo "   BE=$BE → $_be_top" >&2
+  echo "   FH=$FH → $_fh_top" >&2
+  echo "   BE_DIR 을 고쳐라. (허브가 아닌 «별도» 저장소여야 한다)" >&2
+  exit 4
+fi
+
 cd "$BE"
 
 # Mirror-only mode: a plain (non-git) companion directory is a valid local-only

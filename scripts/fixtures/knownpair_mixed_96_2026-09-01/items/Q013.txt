@@ -1,0 +1,1 @@
+"Multi-Ecosystem" 뒤에 붙는 단어는 **"Automatic Synergy Discovery"**입니다. (`plugins/fh-meta/skills/cross-ecosystem-synergy-detection/SKILL.md:15` — 제목: `# cross-ecosystem-synergy-detection — Multi-Ecosystem Automatic Synergy Discovery`)

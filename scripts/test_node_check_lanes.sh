@@ -11,10 +11,12 @@
 # Exit:   0 = all lanes pass; 1 = at least one lane failed (prints which and why).
 
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 
 FH_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CHECK="$FH_REPO/scripts/fh_node_check.sh"
-TMP="$(mktemp -d)"
+TMP="$(fh_fixture_root "$(mktemp -d)")"
+: "${TMP:?fixture root unset — refusing to run git in cwd}"
 trap 'rm -rf "$TMP"' EXIT
 
 PASS=0; FAIL=0
@@ -182,7 +184,8 @@ done
 # 🟥 The load-bearing one is lane10-b: in a shared checkout a branch switch yanks the ground out
 # from under a peer session (measured 2026-08-09, two sessions/one worktree). If this feature ever
 # switches branches, that lane is what says so.
-_ap_root="$(mktemp -d)"
+_ap_root="$(fh_fixture_root "$(mktemp -d)")"
+: "${_ap_root:?fixture root unset — refusing to run git in cwd}"
 (
   cd "$_ap_root" || exit 1
   # Pin the branch name: `git init` uses init.defaultBranch, which is main on this

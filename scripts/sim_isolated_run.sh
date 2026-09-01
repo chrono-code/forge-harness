@@ -139,7 +139,29 @@ fh_sim_write_path_isolation() { # $1=WORK $2=OUTDIR $3=REPO_ROOT $4=HOME → 0=�
     # 🟥 `*.txt` 만으로는 부족했다: 다른 팔의 **클론 트리**(`w_*/repo/**`)에 주입된 봉인 원장을
     #    읽을 수 있었다. 그것도 막고, **내 클론은 예외로 둔다**.
     case "$_p_work" in
-      "$_p_out"/*) _deny_out="//${_p_out#/}/*.txt"; _extra_out=",\"Read(//${_p_out#/}/w_*/repo/tracks/**)\"" ;;
+      "$_p_out"/*)
+        _deny_out="//${_p_out#/}/*.txt"
+        # 🟥 2026-08-31 — 종전 `w_*` 는 **자기 클론에도 매치**했다. 바로 위 주석이
+        #    「내 클론은 예외로 둔다」고 적어놓고 코드엔 그 예외가 없었다
+        #    ([[feedback_rule_misdescribes_its_own_machine]]). 조건 분기는 **항상 참**이라
+        #    (`WRAP="$OUTDIR/w_${ARM}_r${r}"`) 이 deny 가 모든 회차에 붙었고, 그래서
+        #    **팔은 자기 운반체를 한 번도 못 읽었다.** known-pair 로 확정:
+        #      자기 클론의 seal → BLOCKED · 같은 클론의 CLAUDE.md → 읽힘
+        #    ⇒ `DELIVERY` 는 한 번도 측정된 적이 없다. `_ccrun7` 의 positive ARM PASS 는
+        #      운반체가 아니라 stdin 으로 샌 정답키였다(두 결함이 서로를 가려줬다).
+        # 🟥 글롭으로는 「나만 빼고」를 표현할 수 없다. 그래서 설정을 쓰는 시점에
+        #    **이미 존재하는 형제만 이름으로** 막는다. 팔·rep 이 순차 루프이므로
+        #    (`for r in $(seq 1 "$REPS")` · `&`/`wait` 없음) 그 시점 열거는 완전하다 —
+        #    뒤에 생길 형제는 이 팔이 끝난 뒤에 만들어진다.
+        _extra_out=""
+        _my_wrap="$(basename "$(dirname "$_p_work")")"
+        for _sib in "$_p_out"/w_*; do
+          [ -d "$_sib" ] || continue
+          _sib_b="$(basename "$_sib")"
+          [ "$_sib_b" = "$_my_wrap" ] && continue          # 나는 뺀다 — 그게 이 수리의 전부다
+          _extra_out="$_extra_out,\"Read(//${_p_out#/}/$_sib_b/repo/tracks/**)\""
+        done
+        ;;
     esac
     # 🟥 cross-family(agy #1): 기본 `$TMPDIR`(macOS `/var/folders/**`)·공유 경로·마운트 볼륨이
     #    빠져 있었다. 산출물이 기본 TMPDIR 에 생기면 앞선 팔의 결과가 그대로 읽힌다.
@@ -162,9 +184,49 @@ fh_sim_write_path_isolation() { # $1=WORK $2=OUTDIR $3=REPO_ROOT $4=HOME → 0=�
       "$_deny_repo" "$_deny_home" "$_deny_out" "$_extra_out" "$_extra" > "$_w/.claude/settings.local.json"
   fi
 
+  # ── 🟥 조립 검증 (2026-08-31 신설) — 파싱만 보면 이 결함을 놓친다 ─────────────
+  #    회차 3(_ccrun7)은 위 문단이 고친 바로 그 파손을 안고 돌았다:
+  #      'Read(//private/tmp/_ccrun7/*.txt'                  ← 닫는 괄호 없음
+  #      'Read(//private/tmp/_ccrun7/w_*/repo/tracks/**))'   ← 괄호 둘
+  #    파손된 규칙은 매칭이 안 되므로 **형제 클론의 tracks/ 가 안 막혔고**, 거기 seal 이 있다.
+  #    그 회차의 CTRL 이 기대토큰을 축자로 댄 것이 그렇게 설명된다.
+  #    🟥 **그 JSON 은 «정상 파싱된다».** 파손은 구조가 아니라 규칙 문자열 «안»에 있다.
+  #    그래서 「JSON 파싱 레인」은 두 팔을 못 가르는 **장식**이다
+  #    ([[feedback_anchor_can_be_decorative]]). known-pair 로 확인했다:
+  #      K+ 회차3 실물 : JSON=OK · 문법위반 2 · 중복 1   ← 잡힌다
+  #      K- 현행 조립  : JSON=OK · 문법위반 0 · 중복 0   ← 안 잡힌다
+  #    ⇒ 검사는 셋이다: 파싱 ∧ 항목 문법(괄호 정확히 한 쌍) ∧ 중복 0.
+  #    🟥 fail-closed — 격리가 깨진 채로 재느니 안 재는 게 낫다. 이 함수의 rc 1 은 호출부에서
+  #    CONTAMINATED=1 + continue 로 이어져 **그 팔은 안 뜬다**(격리 없이는 회차를 시작 안 한다).
+  #    ⚠️ 문법 검사의 한계를 이름으로 남긴다: 패턴 «안»에 괄호를 쓰는 규칙은 이 검사가
+  #       거짓 위반으로 잡는다. 현재 조립은 그런 규칙을 안 만든다 — 만들게 되면 여기를 고쳐라.
+  if ! python3 - "$_w/.claude/settings.local.json" <<'_PYEOF'
+import json,re,sys
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception as e:
+    print("  ISOLATION-ASSEMBLY: JSON parse failed: %s" % e); sys.exit(1)
+rules=d.get("permissions",{}).get("deny",[])
+if not rules:
+    print("  ISOLATION-ASSEMBLY: deny list EMPTY — 격리 없음"); sys.exit(1)
+pat=re.compile(r'^[A-Za-z]+\([^()]*\)$')
+bad=[r for r in rules if not pat.match(r)]
+dup=sorted({r for r in rules if rules.count(r)>1})
+if bad or dup:
+    for r in bad: print("  ISOLATION-ASSEMBLY: malformed rule: %r" % r)
+    for r in dup: print("  ISOLATION-ASSEMBLY: duplicate rule: %r" % r)
+    sys.exit(1)
+sys.exit(0)
+_PYEOF
+  then
+    echo "  ❌ 격리 규칙 조립이 깨졌다 — **이 팔은 안 띄운다**(fail-closed)." >&2
+    return 1
+  fi
+
   return 0
 }
 
+BASE_REF=""; BASE_SHA=""
 ARM=""; REPS=1; PROMPT=""; MODE="observe"; MODEL="sonnet"; TIMEOUT=900; OUTDIR=""; NOHARNESS=0; SETUP=""; EXTRA=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -176,6 +238,8 @@ while [ $# -gt 0 ]; do
     --timeout) TIMEOUT="${2:-900}"; shift 2 ;;
     --out)     OUTDIR="${2:-}"; shift 2 ;;
     --no-harness) NOHARNESS=1; shift ;;   # CONTROL arm: drops project CLAUDE.md. Not isolation.
+    --base-ref) BASE_REF="${2:-}"; shift 2 ;;   # BASE 얕은 클론 (2026-09-01) — 아래 참조
+    --base-sha) BASE_SHA="${2:-}"; shift 2 ;;
     --setup)   SETUP="${2:-}"; shift 2 ;;  # shell run INSIDE each clone before the sim. See below.
     --extra-tools) EXTRA="${2:-}"; shift 2 ;;  # append tools to the mode's set. See TOOL VISIBILITY.
     *) echo "unknown flag: $1" >&2; exit 2 ;;
@@ -227,10 +291,68 @@ for r in $(seq 1 "$REPS"); do
   WORK="$WRAP/repo"
   # A disposable clone per REP, not per arm: two reps of the same arm contaminate each other
   # exactly as two different arms do. That was the measured failure — reps 1 and 2 of build_cron.
-  if ! git clone --quiet --local --no-hardlinks "$REPO_ROOT" "$WORK" 2>"$OUTDIR/_clone_${ARM}_r${r}.err"; then
+  # ── BASE 얕은 클론 (2026-09-01, §7-12) ──────────────────────────────────────
+  # 🟥 왜: 이 레포의 «개발 이력 자체»가 팔의 코퍼스에 들어간다. 세션 시작 컨텍스트가 최근 커밋을
+  #    싣고(실측: 팔이 5줄을 그대로 옮겼다), 그 줄들이 「팔의 클론에서 정답지를 없앤다」처럼
+  #    실험을 설명한다. 파일을 지워도 안 닫힌다 — 이력은 strip 대상이 아니다.
+  # 🟥 그리고 «지우는 것»이 오히려 악화시켰다: rm 만 하면 `git status` 가 51줄로 이름을 광고한다
+  #    (실측 0줄 → 52줄). 얕은 클론은 status 가 «원래» 0 이라 그 문제가 없다.
+  # 🟥 `file://` 이 «필수»다 — 로컬 «경로»로 주면 git 이 `--depth` 를 **조용히 무시**한다.
+  # 🟥 ref 는 움직인다. 그래서 sha 를 «둘 다» 받고 클론 후 대조한다 — 안 맞으면 다른 코퍼스다.
+  if [ -n "$BASE_REF" ] || [ -n "$BASE_SHA" ]; then
+    if [ -z "$BASE_REF" ] || [ -z "$BASE_SHA" ]; then
+      echo "  ❌ --base-ref 와 --base-sha 는 «둘 다» 필요하다(하나만 주면 대조를 못 한다)"; exit 2
+    fi
+    if ! git clone --quiet --depth 1 --branch "$BASE_REF" "file://$REPO_ROOT" "$WORK" 2>"$OUTDIR/_clone_${ARM}_r${r}.err"; then
+      echo "  ❌ r$r BASE CLONE FAILED — see $OUTDIR/_clone_${ARM}_r${r}.err"; continue
+    fi
+    _got="$(git -C "$WORK" rev-parse HEAD 2>/dev/null)"
+    case "$_got" in
+      "$BASE_SHA"*) : ;;
+      *) echo "  ❌ r$r BASE SHA MISMATCH — ref=$BASE_REF 기대=$BASE_SHA 실제=${_got:-읽기실패}"
+         echo "     🟥 ref 가 움직였다 = «다른 코퍼스»다. 회차를 재현할 수 없다."
+         rm -rf "$WRAP"; exit 9 ;;
+    esac
+  elif ! git clone --quiet --local --no-hardlinks "$REPO_ROOT" "$WORK" 2>"$OUTDIR/_clone_${ARM}_r${r}.err"; then
     echo "  ❌ r$r CLONE FAILED — see $OUTDIR/_clone_${ARM}_r${r}.err"
     continue
   fi
+
+  # ── 🟥 팔이 읽으면 안 되는 tracked 자산을 «클론 안에서» 제거한다 (2026-09-01) ──────
+  # 왜: 얼린 정답지(`scripts/fixtures/knownpair_refusal_48_*`)가 tracked 가 되면서
+  #     **모든 팔의 클론에 들어갔다.** 실측 — negative 문항의 핵심 명사구가 그 안에 있다
+  #     (브랜드5·도시6·팀명7·향3·카페3·상자4·제품명7 히트, 「가상의」38/48 파일).
+  #     그러면 팔이 자기 질문과 거의 같은 문항의 **모범 거절 48개**를 찾는다 ⇒ 베끼거나
+  #     시험임을 추론한다. 둘 다 «저자에게 유리한» 방향이다.
+  #     자산을 tracked 로 옮기는 것이 그 자산이 «재는 코퍼스»를 바꾼 것이다.
+  # 🟥 왜 deny 가 아니라 «제거»인가: deny 는 «못 읽게» 하고 이건 «없게» 한다. 없는 파일은
+  #     Read·Grep·Glob·Bash 어느 것으로도 못 읽는다 — **도구 목록에 의존하지 않는다.**
+  #     클론은 일회용이라 제거가 파괴적 표면이 아니다(원본은 안 건드린다).
+  # 🟥 목록으로 둔다 — 「팔이 읽으면 안 되는 자산」은 늘어난다. 지금은 하나다.
+  # 🟥 `scripts/round` — 이건 «시험 인지»가 아니라 **정답 유출**이다:
+  #     `eligcheck_qset.sh:30-31` 이 축자로 「negative: CTRL 이 «거절»해야 적격」·
+  #     「conflict: CTRL 이 «원래값을 답해야» 적격」 을 적는다. 읽은 팔의 거절은
+  #     «능력»이 아니라 «힌트를 따른 것»이다.
+  # 🟥 2026-09-01: 러너 재작성 중 이 항목이 «조용히 사라졌다»(커밋 3265224 가 되돌려졌다).
+  #     arm_blind_probe 가 「히트 8→1」로 잡았다 — 프로브가 없었으면 회차가 그대로 열렸다.
+  # 🟥 `scripts/context_continuity_score.sh` — «공통 노출»이 «차등»으로 전환되는 자리다.
+  #     :386 `setup=""; [ "$arm" = ARM ] && setup="$SETUP_ARM"`
+  #     :388 `if [ "$DELIVER" = 1 ] && [ "$arm" = ARM ]; then`
+  #     ⇒ 이 분기를 읽은 팔은 «내 프롬프트에 봉인 줄이 있나»로 **자기 배정을 역추론**한다.
+  #     공통 노출은 «수준»만 옮기지만(차이는 남는다), 자기 배정을 알면 **비교 자체가 죽는다.**
+  # 🟥 지워도 conflict prior 가 안 죽는지 «먼저» 확인했다(실측, BASE 트리):
+  #     tool_result 1파일(채점기 밖) · Automati 33 · banner.png 4 — 채점기 안 0
+  #     compaction_probe.sh 7 중 1 · starter.md 22 중 1 — 여유 충분
+  ARM_BLIND_PATHS=( "scripts/fixtures" "scripts/round" "scripts/context_continuity_score.sh" )
+  for _bp in "${ARM_BLIND_PATHS[@]}"; do
+    rm -rf "$WORK/$_bp"
+    # 🟥 rm 의 rc 를 안 믿는다 — 경로 오타면 rm 은 «성공»을 낸다(지울 게 없으니).
+    #    판정은 «제거 후에 정말 없는가»로 한다.
+    if [ -e "$WORK/$_bp" ]; then
+      echo "  ❌ r$r BLIND-STRIP FAILED — $_bp 가 클론에 남았다. 이 회차는 오염이다"
+      rm -rf "$WORK"; continue 2
+    fi
+  done
 
   # --setup: build the PRECONDITION the measurement needs, inside the clone, before the sim.
   # WHY THIS EXISTS: the first door-③ measurement (2026-08-29) scored 0/3 on both arms and the
@@ -280,8 +402,31 @@ for r in $(seq 1 "$REPS"); do
   # verifiable (`git ls-files | grep CLAUDE` returns CLAUDE.md alone) rather than asserted.
   # `.claude/settings.json` is untracked too, so no hooks fire — which makes an arm resemble a
   # CONSUMER install. State that when scoring: this measures the shipped surface, not this node.
+  # ── 🟥 실행 기록 (2026-08-31 신설) — 「누출 기전을 못 짚었다」가 아니라 «볼 수 없었다» ──
+  #    회차 3(_ccrun7)에서 CTRL 산출물이 qset 기대토큰을 축자로 댔는데(4/6·3/6 파일,
+  #    known-negative 0), **팔이 무엇을 받았는지 재구성이 원리적으로 불가능**했다:
+  #    프롬프트는 어디에도 안 남고, `.err` 24개는 전부 0바이트이며(그건 *클론* 에러다),
+  #    아래 `2>/dev/null` 이 claude 자신의 stderr 를 통째로 버렸다.
+  #    ⇒ 두 채널을 연다. **마스킹하지 않는다** — 누출을 보려고 만든 계기가 누출을 가리면
+  #    계기가 아니다. 이 파일들은 정답 토큰을 그대로 담을 수 있고, 그것이 목적이다.
+  #    ⚠️ 그러므로 이 산출 디렉터리는 «답을 아는» 자리다. 다른 팔이 읽지 못하도록 막는 것은
+  #       fh_sim_write_path_isolation 의 `_deny_out` 이고, 그 결박이 이 덤프의 전제다.
+  printf '%s' "$PROMPT" > "$OUTDIR/${ARM}_r${r}.prompt.txt"
+  # 🟥 `< /dev/null` 이 **하중이다** — 빼면 격리가 통째로 무너진다 (2026-08-31 확정).
+  #    `claude -p` 는 **stdin 이 TTY 가 아니면 그것을 읽어 프롬프트 뒤에 붙인다.**
+  #    호출부(`context_continuity_score.sh`)는 `while … done < "$QSET"` 루프 «안»에서 이 러너를
+  #    부르므로, 러너도 그 밑 claude 도 **stdin = 채점용 qset(정답 열 포함)** 을 상속했다.
+  #    ⇒ 모든 팔이 매 회차 **정답키 전체**를 받았다. ARM 도 CTRL 도.
+  #    known-pair (같은 모델·같은 플래그, 변수는 stdin 하나):
+  #      stdin=파일     → 판정줄은 NOTHING_APPENDED 인데 **본문이 미끼 토큰을 축자로 인용**한다
+  #      stdin=/dev/null → 미끼 토큰이 어디에도 안 나온다
+  #    🟥 그래서 이 결함은 «팔에게 물어보면» 안 잡힌다 — 팔은 그것을 «프롬프트 인젝션»이라
+  #    부르며 정직하게 거부하면서도, 거부문 안에서 정답을 말한다. 채점기는 그걸 토큰으로 센다.
+  #    이것이 회차 1~3 과 probe1~4 를 전부 무효로 만든 근인이고, 경로 deny·코퍼스 마스킹은
+  #    **원리적으로 못 막는다**(도구 읽기가 아니라 프롬프트 조립이다).
   ( cd "$WORK" && timeout "$TIMEOUT" claude -p "$PROMPT" \
-        --model "$MODEL" "${TOOLS[@]}" 2>/dev/null ) > "$OUTDIR/${ARM}_r${r}.txt"
+        --model "$MODEL" "${TOOLS[@]}" \
+        < /dev/null 2>"$OUTDIR/${ARM}_r${r}.stderr.txt" ) > "$OUTDIR/${ARM}_r${r}.txt"
   rc=$?
   bytes=$(wc -c < "$OUTDIR/${ARM}_r${r}.txt" | tr -d ' ')
 

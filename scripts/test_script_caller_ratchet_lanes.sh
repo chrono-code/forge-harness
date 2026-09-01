@@ -15,6 +15,7 @@
 # Usage: bash scripts/test_script_caller_ratchet_lanes.sh
 # Exit:  0 = all lanes pass · 1 = a lane failed
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/fixture_guard_lib.sh"   # 픽스처는 실레포에 쓰지 않는다
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The override exists for the REVERT PROBE: point the lanes at a deliberately neutered copy of the
@@ -47,8 +48,18 @@ newfix() { mktemp -d "$FIXROOT/fix.XXXXXX"; }
 # runner is itself a non-lane script under scripts/, so it entered its own population with no caller
 # and every fixture blocked on IT. The fixture, not the checker, was wrong — and it is worth keeping
 # written down, because a green version of that fixture would have been the worse outcome.
+# 🟥 2026-08-31: this helper returned an EMPTY string when its trap fired first (SIGTERM during a
+# selfcheck sweep), and every `git -C "$d"` below then resolved to the CURRENT DIRECTORY — the live
+# repo. A fixture lane committed 127 lines of a session's uncommitted work onto its real branch,
+# with `--no-verify` and a bogus hooksPath, so no gate saw it. `git -C ""` is fail-OPEN by
+# construction: an absent path is not an error, it is "here".
+# The guard below is deliberately about the INVARIANT, not the symptom — a fixture must never write
+# to a real repo — so it also catches a $d that is non-empty but wrongly points at one.
+
 mkfix() {
   d="$(newfix)"
+  d="$(fh_fixture_root "$d")"
+  : "${d:?fixture root unset — refusing to run git in cwd}"
   mkdir -p "$d/scripts" "$d/.github/workflows"
   printf '%s\n' '#!/usr/bin/env bash' 'echo alpha' > "$d/scripts/alpha.sh"
   printf 'exempt:\nbaseline:\n' > "$d/scripts/caller_zero_baseline.txt"
@@ -329,7 +340,8 @@ rm -rf "$d"
 d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho old\n' > "$d/scripts/olddebt.sh"
 printf 'exempt:\nbaseline:\n  - scripts/olddebt.sh   # grandfathered measured debt\n' > "$d/scripts/caller_zero_baseline.txt"
-d="$(cd "$d" && pwd)"
+d="$(fh_fixture_root "$d")"
+: "${d:?fixture root unset — refusing to run git in cwd}"
 git -C "$d" -c init.defaultBranch=main init -q >/dev/null 2>&1
 git -C "$d" add scripts .github >/dev/null 2>&1
 git -C "$d" -c user.email=lane@example.invalid -c user.name=lane \

@@ -1,0 +1,1 @@
+`.github/workflows/new-code-anchor.yml` — "New-code anchor" 워크플로. 새로 추가된 실행 파일이 그것을 실제로 돌리는 테스트 레인 없이 커밋되는 걸 막는 게이트다. 참고로 branch protection에는 등록 안 되어 있어 report만 하고 머지를 막지는 않는다(`validate`만 required check).

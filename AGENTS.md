@@ -175,6 +175,39 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    §Wave 1-D. **Recorded here because a rule living in only one entry point is invisible to the other
    runtime** — that is the gate-locality principle, and this line is it being applied rather than cited.
 
+   🟥 **`defeater:` — required on markers dated 2026-09-01 or later. A Codex-side author WILL hit this.**
+   One line answering **「if this success definition is wrong, what would be OBSERVED?」**
+   The hook (`validate_defeater_leg`) checks **non-vacuity only** (6+ words) — it cannot check whether
+   the answer is true. Markers dated before 2026-09-01 are **not** retroactively affected
+   (same grace pattern as `SOUL_PRESENT_GRACE_DATE`).
+   `defeater: 없음` / `none` / `n/a` is **legal** — a declared absence is a value, not silence.
+   🟥 A near-miss key (`defeaters:`, `반증:`, `defeater :`) is **blocked even when a correct
+   `defeater:` line also exists** — the author believes they wrote it and the gate cannot read it,
+   which is the quietest failure. Two `defeater:` lines are also blocked (readers take the first,
+   so an appended correction is silently shadowed).
+
+   Two more fields landed the same day, neither of them blocking-on-absence:
+   - `tenets:` — **optional**. If you cite IDs, every `FH-T\d\d` on that line must exist in
+     `.claude/soul_tenets.txt` (a typo is blocked rather than silently dropped). Citations are read
+     **from that line only** — naming an ID elsewhere in the marker is description, not citation.
+   - `soul-check:` — a closed enum **when present**; its absence passes (adoption is incremental).
+
+   External grounding for the shape (not invented here): atomic testable tenets
+   ([arXiv 2605.24229](https://arxiv.org/abs/2605.24229)) · defeaters and counterevidence
+   ([Assurance 2.0](https://arxiv.org/abs/2004.10474)) · the ≤7 / priority-ordered /
+   **opposite-must-be-defensible** discipline
+   ([AWS tenets](https://aws.amazon.com/blogs/enterprise-strategy/tenets-supercharging-decision-making/)).
+   Fixtures: `scripts/test_marker_soul_tenet_lanes.sh` · `scripts/test_hook_leg_wiring_lanes.sh`.
+   Spec: `.claude/rules/fh_4axis_gate.md` §Marker axis fields.
+   🟥 **Why this entry exists at all**: the CC-side spec did not describe `soul:` for **nine days**
+   while the hook was already blocking on it, and a blind floor-tier sim measured three arms writing
+   every other marker field and omitting that one. The defect was the wiring, not the model — and
+   a rule living in only one entry point is invisible to the other runtime.
+
+   ⚠️ **Also for Codex-side authors: `sim_isolated_run.sh` was not isolated until 2.14.0.**
+   Arms could read outside the clone — including the answer key of the very measurement they were
+   part of. Any sim number produced with ≤2.13.0 needs re-measuring.
+
 8. **Branch-surface claims:** GitHub branch protection is two independent layers — legacy
    protection and rulesets coexist, and the strictest wins. Read both
    `/repos/{owner}/{repo}/branches/{branch}/protection` and

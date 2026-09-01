@@ -687,5 +687,22 @@ CARRY_EOF
   fi
 fi
 
+# ── ①-e STRAY PATH (advisory) ────────────────────────────────────────────────
+# 🟥 `git status` 는 **빈 디렉터리를 안 보여준다**(`--porcelain` 도 `-uall` 도 0; 파일 하나
+#    넣으면 1 — known-pair 로 확인). 그래서 「트리 깨끗」이 이 클래스에 대해선 **부재 증명이
+#    아니다.** 2026-08-31 하루에 세 번 났고(거버너 레포 2 · 병렬 팔 레포 1) 세 번 다 «깨끗»
+#    보고 뒤에 발견됐다. 그중 하나는 채점기 레인의 전수 grep 을 rc=2 로 죽였다.
+# 🟥 **advisory 다 — 막지 않는다.** 빈 디렉터리 하나로 push 를 막으면 그것이 `--no-verify` 를
+#    훈련시키고, 같은 훅의 Destructive-Op 게이트를 무장해제한다. 시끄럽게 하되 안 막는다.
+if [ -x "$FH/scripts/stray_path_scan.sh" ]; then
+  _sp_out=$(bash "$FH/scripts/stray_path_scan.sh" "$FH" 2>&1); _sp_rc=$?
+  case "$_sp_rc" in
+    1) printf '%s\n' "$_sp_out" ;;
+    2) echo "⚠️  ①-e stray-path 스캔 불가 — UNMEASURED (0 으로 읽지 마라)" ;;
+  esac
+else
+  echo "⚠️  ①-e stray_path_scan.sh 없음 — skipped, not passed"
+fi
+
 echo "── close check: $([ "$FAIL" -eq 0 ] && echo CONSISTENT || echo VIOLATIONS) ──"
 exit "$FAIL"

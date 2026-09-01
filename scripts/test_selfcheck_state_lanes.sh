@@ -153,16 +153,31 @@ done
 # once-only invariant above (this one IS evadable by renaming), kept because it names the intent.
 _CALLS=$(grep -c '_show_failure "\$_out"' "$SELFCHECK")
 [ "$_CALLS" -ge 4 ]; chk $? "every lane block routes failure output through _show_failure (found $_CALLS, expected ≥4)"
-_TAILS=$(grep -c '"\$_out" | tail -' "$SELFCHECK" || true)
-[ "$_TAILS" -eq 0 ]; chk $? "no lane block still truncates with a raw tail (found $_TAILS, expected 0)"
+# 🟥 2026-08-31 — 「0 히트」가 «대상이 고쳐졌다»와 «내 패턴이 낡았다»를 못 가른다. 파일 부재는
+#    `[ "" -eq 0 ]` 이 rc=2 를 내서 시끄럽지만, **리팩터로 표기가 바뀐 경우는 조용히 PASS** 다.
+#    ⇒ ⓐ 같은 실행에 «패턴 언어가 아직 산다»는 컨트롤을 둔다 ⓑ 절단 어휘를 «동사 부류»로 넓힌다.
+_OUT_LIVE=$(grep -c '_out' "$SELFCHECK" || true); _OUT_LIVE="${_OUT_LIVE//[!0-9]/}"
+[ -n "$_OUT_LIVE" ] && [ "$_OUT_LIVE" -ge 1 ]
+chk $? "CONTROL — the \$_out vocabulary still exists in the target (found ${_OUT_LIVE:-<none>}); without this, the next assertion is vacuous"
+# 절단은 `tail` 하나가 아니다. head/cut/sed 도 같은 손실을 낸다.
+_TAILS=$(grep -cE '\$_out" *\| *(tail|head|cut|sed)' "$SELFCHECK" || true); _TAILS="${_TAILS//[!0-9]/}"
+[ -n "$_TAILS" ] && [ "$_TAILS" -eq 0 ]
+chk $? "no lane block still truncates its captured output (tail/head/cut/sed) (found ${_TAILS:-<unmeasured>}, expected 0)"
+# 🟥 남은 잔여, 이름으로: «내가 생각 못 한 절단 표기»는 여전히 통과한다. 컨트롤은 «어휘가 산다»를
+#    보증하지 «내 목록이 완전하다»를 보증하지 않는다.
 
 # The one non-lane caller that also destroys its evidence at the CALL SITE (not inside check()).
 # `check "..." bash -c '... >/dev/null'` discards the subject's stdout, and fh-codex-doctor writes
 # 100% of its diagnostics to stdout (measured: 686 B stdout / 0 B stderr) — so a strict-mode failure
 # would print a bare FAIL line with zero diagnosis. Anchored here because the fix is one line at the
 # call site and does NOT require touching check() itself.
-_CD=$(grep -c "fh-codex-doctor.js --strict >/dev/null" "$SELFCHECK" || true)
-[ "$_CD" -eq 0 ]; chk $? "fh-codex-doctor's stdout is not discarded at the call site (found $_CD, expected 0)"
+# 🟥 같은 축 — 호출자가 사라지거나 이름이 바뀌면 이 부재 단언이 공허해진다.
+_CD_LIVE=$(grep -c "fh-codex-doctor" "$SELFCHECK" || true); _CD_LIVE="${_CD_LIVE//[!0-9]/}"
+[ -n "$_CD_LIVE" ] && [ "$_CD_LIVE" -ge 1 ]
+chk $? "CONTROL — fh-codex-doctor is still invoked from the target (found ${_CD_LIVE:-<none>}); without this, the next assertion is vacuous"
+_CD=$(grep -c "fh-codex-doctor.js --strict >/dev/null" "$SELFCHECK" || true); _CD="${_CD//[!0-9]/}"
+[ -n "$_CD" ] && [ "$_CD" -eq 0 ]
+chk $? "fh-codex-doctor's stdout is not discarded at the call site (found ${_CD:-<unmeasured>}, expected 0)"
 
 # Byte-hostile input: a lane emitting invalid UTF-8 must not be reported as "no output". The
 # `tr -d '[:space:]'` form this guard originally used aborts on BSD with "Illegal byte sequence"

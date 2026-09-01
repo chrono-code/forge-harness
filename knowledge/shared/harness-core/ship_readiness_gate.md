@@ -253,9 +253,35 @@ above remains the unverified hypothesis it declares itself to be. An engine grad
 | Engine | Grade | Leg 1 — implemented ∧ wired | Leg 2 — known-pair, revert-probed | Leg 3 — self-test | 🟢 real firing |
 |---|---|---|---|---|---|
 | **ship-gate** (품질게이트) | 🟢 **GREEN** | pre-commit + pre-push, `core.hooksPath` verified live | ✅ 37 cross-family fixtures · 30 branch-claim · marker-floor. **2 revert arms, each reddening only its own lane** (neutering the degrade-grounds check surfaced `'client error'` passing on the substring `cli`; restoring the `single-family` free exit surfaced two more) | ✅ 3 suites `rc=0` | ✅ **twice in one session (2026-08-13)** — a commit blocked as `🚫 BLOCKED — resolve failing axes`, and a branch-claim block that stopped a commit from landing on a **peer session's branch** in a shared checkout |
-| **context-continuity** (맥락유지) | 🔵 **RC** | `compaction_probe` (PreCompact + UserPromptSubmit; snippet ships and `install-wizard` merges it by glob, not by name) · `session_close_check` (pre-push) · `digest_landing_check` · `utterance_landing_check` | ✅ 47 pairs after the 2026-08-13 fix, **4 revert arms**; session axis probed separately (deleting the card-last *verdict* — not its message — reddens its lane) | ✅ 47 · 10 · 8 · 8/8, all `rc=0` | ❌ **withheld, and the reason is the interesting part** — see below |
+| **context-continuity** (맥락유지) | 🟢 **GREEN** (승격 2026-09-01) | `compaction_probe` (PreCompact + UserPromptSubmit; snippet ships and `install-wizard` merges it by glob, not by name) · `session_close_check` (pre-push) · `digest_landing_check` · `utterance_landing_check` | ✅ 47 pairs after the 2026-08-13 fix, **4 revert arms**; session axis probed separately (deleting the card-last *verdict* — not its message — reddens its lane) | ✅ 47 · 10 · 8 · 8/8, all `rc=0` | ✅ **2026-09-01 — measured probe, n=1.** 사전등록 봉인 회차(BASE 얕은 클론 · arm-blind strip 검증 · `complete: yes ∧ qset_matches_manifest: yes`)에서 **운반체 포인터를 준 팔이 봉인 원장을 열어 24/24, 안 준 팔이 0~2/24, CTRL 은 세 칸 전부 0/24.** 컨트롤 생존(틀린 토큰 → `TYPED_FAIL`) · 손검증(팔이 타임스탬프를 축자 인용) · **두 세션 독립 재현**. 기권률은 세 칸 다 100% 유지 — 능력이 붙었는데 정지 가드가 안 상했다. 🟥 효과 귀속은 **deliver(포인터 제공)** 이지 규약(typed 채널)이 아니다(무효 회차도 규약이 버려진 채 23~24/24). 아래 §맥락유지-2026-09-01 |
 
-#### 🟥 맥락유지 — 2026-08-30 격리 수리 후 첫 «신호», 그리고 등급을 **안** 올리는 이유
+#### <a name="cc-20260901"></a>🟢 맥락유지 — 2026-09-01 승격. 그리고 그 «측정이 오늘 아침까지 0 으로 보였다»
+
+**승격 근거는 등급표의 `measured probe` 절이다**(🟢 = «정체성이 실제로 작동했음을 증명하는 구체적 원장 산출물, n≥1 — 실제 게이트 차단 · **measured probe** · 실제 오케스트레이션 기록»).
+```
+칸                       positive ARM PASS   CTRL PASS
+① 규약없음 × no-deliver        2 / 24           0 / 24
+② 규약    × no-deliver        0 / 24           0 / 24
+③ 규약    × deliver     🟢 **24 / 24**         0 / 24
+컨트롤  틀린 토큰으로 채점 → TYPED_FAIL (계기 생존) · 손검증 · 두 세션 독립 재현
+```
+🟥 **정직하게 갈라 적는다 — 이것은 «measured probe» 이지 «실세션이 압축에서 복구한 기록»이 아니다.** 후자가 더 강한 증거이고 오늘 그건 안 만들어졌다. 등급표가 measured probe 를 명시적으로 허용하므로 승격은 조항에 맞지만, 이 구분을 접으면 다음 사람이 더 강한 증거가 있다고 읽는다.
+
+🟥 **그리고 이 숫자는 같은 날 아침까지 «0» 으로 보였다.** 채점기가 typed 태그를 만나면 판정을 건너뛰고 즉시 return 했고, 집계 `grep -c 'PASS'` 가 그걸 0 으로 셌다(수리 = `4a5d325`). **「집계 버그」로 진단하고 집계만 고쳤으면 이 24/24 는 영영 0 이었다** — 증상을 원인으로 적으면 지표만 그럴듯해진다.
+
+**남은 정직 항목 — 승격이 이것들을 닫지 않는다**
+```
+ⓐ CTRL 침묵이 «능력»인지 «교리 준수»인지 안 갈린다 — 완전 분리라 무게는 작지만 배제는 안 된다
+ⓑ 「읽고도 답 안 함」 vs 「안 읽음」 — 도구 호출 로그가 산출물에 아예 없다(stderr·treediff 0B 실측)
+   ⇒ «안 봤다»가 아니라 «담기지 않았다». 다음 회차 러너가 담으면 관측된다
+ⓒ 🟢 닫혔다 — 적격 임계는 «봉인 전에 게이트를 돌려 N 을 정하고 kmin 을 계산한 뒤 봉인»으로 순서화
+ⓓ conflict 축은 이 배치에서 못 잰다 — 레포가 옳고 모델이 레포를 고르는 것이 정답이다
+```
+다음 회차 설계 = `tracks/_meta/DESIGN_2026-09-01_delivery_axis.md`.
+
+> **🟥 아래 절은 «대체됨»이다 — 지우지 않는다.** 2026-08-30 시점의 판단 기록이고, 그때 등급을 안 올린 이유(회차 VOID + 오염)가 **오늘 해소된 바로 그것**이다. 지우면 «왜 오늘이 그 시점인가»가 사라진다.
+
+#### 🟥 [SUPERSEDED 2026-09-01] 맥락유지 — 2026-08-30 격리 수리 후 첫 «신호», 그리고 등급을 **안** 올리는 이유
 
 이날 이 축의 회차가 **다섯 번 VOID** 났고, 넷은 증상이었고 하나가 근인이었다.
 
@@ -273,6 +299,48 @@ above remains the unverified hypothesis it declares itself to be. An engine grad
 물리경로(`pwd -P`)로 바꾸고 reps=3 양방향 일관을 확인한 뒤에야 «성립»이라 적었다.
 회귀 앵커 = `scripts/test_sim_path_isolation_lanes.sh` (11 레인, 되돌림에서 L3b 만 적색).
 
+🟥 **RETRACTED 2026-08-31 — 이 회차의 숫자를 전부 철회한다. 이중으로 죽었다.**
+① **러너 자신이 VOID 를 찍었다.** `/private/tmp/_ccrun7.log` 마지막 네 줄이 축자로
+   *«🟥 VOID — known-negative 에서 «모른다»가 안 나왔다 (5/6) … 숫자를 내지 않는다»* 인데,
+   그 판정표가 아래에 「첫 측정」으로 실렸고 이 절에 VOID 라는 낱말이 한 번도 없었다.
+   🟥 이건 저자의 게으름이 아니라 **채널 결함**이다 — 러너의 VOID 가 stdout 으로만 나가고
+   기록으로 넘어가는 자리가 없어서, 사람이 로그 마지막 줄을 읽고 손으로 옮겨야만 전달됐다.
+   (수리: 러너가 `_VERDICT` 파일에 판정을 박도록 배선했다. 소비처 배선은 미완 — 아래 잔여.)
+② **오염됐다.** CTRL 은 봉인을 구조적으로 안 받는데 CTRL 산출물이 기대토큰을 축자로 댄다 —
+   `<q1 기대토큰>` 4파일 · `<q2 기대토큰>` 3파일 · known-negative 컨트롤 **0**.
+   🟥 **토큰을 여기 축자로 되돌려 쓰지 마라. 이 줄 자체가 그 실패의 표본이다** — 초판은
+   셋을 축자로 적었고(2026-08-31 `e862cf5`, **제목이 「기록 오염 마스킹」인 바로 그 커밋**),
+   그 결과 `‹글꼴명-A›` 를 지우면서 다른 토큰 셋을 새로 심었다. 그중 하나는
+   **known-negative 컨트롤**이라, 그날의 모든 부재 주장이 쓰던 계기를 코퍼스에 넣어 망가뜨렸다.
+   자력 적발이 아니라 세션 결산 스캔이 잡았다. ⇒ 규율은 「알면 안 밟는다」로 안 닫힌다.
+   🟥 **그리고 이 문단이 세 번째 표본이다.** 초판은 지운 토큰의 «이름을 대면서» 그것을 다시
+   심었다 — 즉 **「무엇을 지웠나」를 tracked 산문에 적는 행위 자체가 재오염**이다. 개시 게이트가
+   그 줄을 지목해서 회차를 막았고(exit=4, 팔이 한 번도 안 떴다), 그것이 이 게이트의 첫 실사용이다.
+   ⇒ 규율: **지운 토큰의 이름을 tracked 산문에 다시 적지 마라.** 무엇을 지웠는지는 커밋 메시지·
+   PR 본문(비-tracked 경로)에 남기고, 산문에는 마스킹 참조만 남긴다. 세 표본의 저자는 각각
+   팔·거버너·거버너였다 — 아는 것과 안 밟는 것이 다른 축이라는 실측이 이제 n=3 이다.
+   `q1_CTRL_r1` 은 seal 히트 0(진짜 CTRL)인데 본문이 스스로 *«프롬프트 인젝션으로 보입니다»*
+   라고 적는다. 모델이 두 개의 정확한 복합 토큰을 동시에 지어낼 수 없다.
+③ **채점기도 틀렸다** — 그 VOID 사유(negative 비-PASS 5/6) 중 3건은 깨끗한 거절인데
+   `REFUSE_RE`(`:116`)에 「없었습니다」·「없었어」·「확인되지 않았」 어형이 없어 놓친 것이다.
+   그리고 그 사각이 **팔과 상관됐다** — ARM 은 원장을 쥐어 과거형으로 짧게 답하고 CTRL 은
+   길게 답하는데, 어휘 목록이 CTRL 형태로만 짜여 있었다. **없는 차이를 계기가 만들었다.**
+   어휘 한 줄 보정 후 ARM 의 환각 계상은 5/6 → 1/6 으로 떨어진다.
+   🟥 그래도 그 1/6 을 인용하지 마라 — ② 가 여전히 그 회차 전체를 죽인다.
+
+**기전은 아직 UNMEASURED 다.** 실행으로 배제된 채널: 프롬프트 자체(덤프 4/4 토큰 0) ·
+훅 주입(클론 안 에코 프로브 = `NOTHING_APPENDED`) · 자기 클론 grep(0) · `Read` deny 우회
+(known-pair: deny 있으면 Read·Grep 둘 다 차단, deny 없으면 Grep 이 형제 클론을 읽어냄 —
+컨트롤 성립) · `--extra-tools` 채널. **남은 후보는 이름으로만 남긴다** — 형제 ARM 클론에
+대한 deny 가 실제로 조립·집행됐나 · `act` 모드의 Bash 경유(`Read` deny 는 `Bash(cat)` 을
+안 덮는다). 「못 짚었다」를 「없다」로 접지 않는다.
+
+**살아남는 것은 숫자가 아니라 기전 둘이다**: ⓐ 계기의 사각이 팔과 상관되면 없는 차이를
+생산한다 ⓑ 계기 생존선은 ARM 이 아니라 **CTRL** 이다(CTRL 이 6/6 기권했으니 계기는 살아
+있었다 — 옛 판정선은 ARM 이 기권 못하면 VOID 로 찍어 그 회차를 오독했다).
+
+↓ **아래 표는 이력으로 남긴다. 채점·인용에 쓰지 마라.**
+
 **격리된 상태의 첫 측정 (reps=3, 사전등록 봉인 `8ecbb1ea…`)**:
 
 ```
@@ -281,10 +349,70 @@ positive PASS   5/6                0/6
 negative PASS   1/6                6/6
 ```
 
-🟢 **운반체는 작동한다** — 봉인 원장이 없으면 positive 를 **아무도** 못 맞힌다(0/6).
+🟥 **RETRACTED 2026-08-31 (2차) — 「운반체는 작동한다」는 근거가 없다. 열 이름 자체가 거짓이었다.**
+`ARM(운반체 있음)` 열의 팔은 **자기 운반체를 읽은 적이 없다.** 러너가 형제 클론 오염을 막으려고
+쓴 deny 가 `Read(//<OUTDIR>/w_*/repo/tracks/**)` 인데, `w_*` 가 **자기 클론에도 매치된다.**
+거버너 재현(글롭 vs 리터럴, 컨트롤 `/etc/passwd` 동반):
+```
+글롭 매칭   자기 seal → 🟥 MATCH (막힌다)        ← 권한 엔진이 하는 방식
+리터럴 비교  자기 seal → no match                 ← 레인 L7 이 쓰던 방식
+컨트롤      /etc/passwd → no match (오탐 아님)
+```
+같은 팔·같은 실행 known-pair 로도 확정됐다: 자기 클론의 seal **BLOCKED** / 같은 클론의
+`CLAUDE.md` **읽힘** ⇒ 「아무것도 못 읽는다」가 아니라 **「이 경로만 못 읽는다」**.
+실물 확인: `_ccrun7`·`_ccprobe2`·`_dil_round1` **전부** 그 deny 를 갖는다.
+
+🟥 **RETRACTED 2026-08-31 (3차) — 「두 결함이 서로를 가려주고 있었다」는 틀렸다. 결함 6 은
+`_ccrun7` 에 «없었다».** 초판은 *"`positive ARM 5/6 PASS` 는 … 상속된 stdin 으로 받은 정답키
+때문"* 이라고 **단정형으로** 적었다. 그 회차의 deny 목록은 **문법 파손** 상태였다 — 실물이
+픽스처로 남아 있다(`scripts/fixtures/isolation_assembly_BROKEN_2026-08-30_ccrun7.json`:
+`"Read(//…/*.txt"` 괄호 미닫힘 · `"…/tracks/**))"` 이중 닫힘). 파손된 항목은 걸리지 않으므로
+**`w_*` 자기-매치가 그 회차엔 적용되지 않았고, 팔은 운반체를 읽을 수 있었다.**
+기계 증거: `_ccrun7/q1_ARM_r1.txt` 가 봉인문 **134행을 번호까지 축자 인용**한다
+(`128. 피알 머지승인 ‹모델명-B›…`). 그 줄은 **stdin 에 없다** — stdin 이 나른 것은 qset TSV 뿐이다.
+⇒ 「두 결함이 동시에 있었다」는 **관측이 아니라 내 추론**이었고, 그 추론이 틀렸다. 결함 6 은
+조립이 fail-closed 로 고쳐진 **10b7da7(08-31 09:55) 이후** 회차부터 실재한다.
+
+🟢 **그리고 그 자리를 메우려다 «오염 없는 첫 DELIVERY 측정»이 나왔다.** 한 변수 known-pair,
+stdin 은 양쪽 다 닫힘, 운반체만 다르다(뮤턴트 = 자기 예외 제거, 되돌림 3단 해시 일치):
+```
+운반체 차단   ARM 0/6   CTRL 0/6
+운반체 읽힘   ARM 2/6   CTRL 0/6   ← 한 변수, 다른 결과 = 계기가 판별한다
+```
+CTRL 이 양쪽 0/6 이므로 **레포만으로는 아무도 못 맞힌다**(컨트롤 생존). 차이 2건은 운반체
+단독 기여다. ⚠️ **`reps=3` · 2문항 — 우리 바(≥3 rep 은 맞으나 문항 2)와 외부 바(≥30) 미달.
+인용 금지** — 이 줄이 지지하는 것은 «축이 살아났다»까지이고 «운반체가 작동한다»가 아니다.
+🟥 **초판이 이 자리에 「5/6 은 stdin 이 만들었다」고 적을 뻔한 것과 같은 오류를 반복하지 마라**:
+운반체 단독은 2/6 이고 ccrun7 은 5/6 이었지만, **그 차이를 stdin 탓으로 돌리려면 {stdin 열림 ×
+운반체 차단} 칸을 따로 돌려야 한다. 안 돌렸다 — 그 칸은 UNMEASURED 다.**
+
+⇒ **`DELIVERY` 는 이 문단이 쓰이기 전까지 «오염 없이 측정된 적이 없었다».** 아래 표의 네 숫자 전부 무효이고,
+「운반체가 작동한다」도 「운반체가 과신을 만든다」도 **지지되지 않는다**(반증도 아니다 — 미측정이다).
+🟥 그리고 `ABSTAINED_ON_CONFLICT` 가 지배적으로 나온 것도 «기권»이 아니라 **«못 읽음»의
+오분류**였다. 그 값에 레인을 안 지은 것이 결과적으로 다행이다.
+
+⚠️ **이 결함 계열을 잡으라고 만든 레인(L7)이 초록이었다** — 리터럴 접두 비교를 쓰는데 권한
+엔진은 글롭 매칭을 한다. **표기법 때문에 못 잡았다**([[feedback_fixture_must_use_the_breaking_spelling]]
+의 사촌 · 「컨트롤 있음 ≠ 판별력 있음」의 또 한 표본). 수리는 세 짝이 같이 가야 한다:
+자기-읽힘 ∧ 형제-차단을 **같은 실행에서** 단언 · L6b 문자열 카운트 갱신 · **L7 을 글롭 매칭으로**.
+
+↓ **아래 표는 이력으로 남긴다. 채점·인용에 쓰지 마라.**
+
+~~🟢 운반체는 작동한다 — 봉인 원장이 없으면 positive 를 아무도 못 맞힌다(0/6).~~
 🟥 **그런데 같은 운반체가 과신을 만든다** — negative 에서 ARM 1/6 vs CTRL 6/6.
-손검증: ARM 「슬라이드 본문 글꼴 관련 지시는 **Pretendard** 로 확인됩니다」(원장에 없다) ·
+손검증: ARM 「슬라이드 본문 글꼴 관련 지시는 **‹글꼴명-A›** 로 확인됩니다」(원장에 없다) ·
 CTRL 「…언급을 찾지 못했습니다. 어느 파일/세션을 가리키는지 알려주시면 확인해보겠습니다」.
+
+🟥 **‹글꼴명-A› 는 마스킹이다. 리터럴을 여기 되돌려 쓰지 마라.** 이 파일은 tracked 라
+**모든 sim 클론에 실린다** — 정답 토큰을 축자로 적으면 그 순간 다음 회차의 코퍼스가 오염되고,
+팔이 «지어냈는지 우리 기록을 읽었는지» 계기가 구분하지 못한다. 실측 2026-08-31: 이 줄의
+옛 리터럴이 tracked 히트 1건으로 잡혔고(컨트롤: 미등장 토큰 0건), 같은 축의 오염이
+`scripts/context_continuity_score.sh` 주석에도 2건 있었다. **기록하는 행위가 다음 측정을
+죽이는 자리**이고, 이건 그 회차의 사고가 아니라 구조적으로 반복된다.
+두 층 형태는 재발명이 아니라 `.public-surface-patterns`(gitignored 리터럴) /
+`.defaults`(tracked) 의 기존 선례를 그대로 쓴 것이다 — 리터럴은 gitignored 동반 저장소에만 둔다.
+⚠️ 마스킹은 **오염만** 막는다. 이 손검증이 성립하는지(=팔이 정말 지어냈는지)는 그 회차가
+오염돼 있었으므로 **여전히 미확정**이다. 아래 회차 무효 표기를 같이 읽어라.
 
 🟥 **사전등록의 한 갈래가 이 결과로 반증됐다.** 봉인 문서는 «negative 가 또 비-PASS 면 그건
 운반체 문제가 아니라 모델이 부재를 못 말한다는 별도 명제»라고 적었는데, **CTRL 이 6/6 으로

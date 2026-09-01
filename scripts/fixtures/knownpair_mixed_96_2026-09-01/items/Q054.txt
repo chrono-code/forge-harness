@@ -1,0 +1,1 @@
+도구 실행 결과를 나타내는 payload 타입명은 **`tool_result`** 입니다 (`scripts/compaction_probe.sh`에서 전사본 메시지 content 블록의 `"type": "tool_result"`로 확인됨).

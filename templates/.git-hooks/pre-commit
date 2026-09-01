@@ -143,7 +143,7 @@ readme_first_screen_touched() { # $1 = staged README path
 diff_is_substantive() {
   local file="$1" body rc oldpath mode
   oldpath=$(git diff --cached -M --name-status 2>/dev/null \
-            | awk -F'\t' -v f="$file" '$1 ~ /^R/ && $3 == f { print $2; exit }')
+            | LC_ALL=C awk -F'\t' -v f="$file" '$1 ~ /^R/ && $3 == f { print $2; exit }')  # 로케일 접힘 방지(경로 비교)
   if [ -n "$oldpath" ] && ! is_carveout_path "$oldpath"; then
     body=$(git show ":$file" 2>/dev/null); rc=$?; mode=whole   # into-scope: whole file
   elif [ -n "$oldpath" ]; then
@@ -1721,7 +1721,27 @@ validate_first_use_leg() { # $1 = marker path
   line=$(grep -m1 -E '^[[:space:]]*axes-run:' "$m" 2>/dev/null)
   [ -n "$line" ] || return 0            # axes-run 자체 부재는 위 검사가 이미 막는다
   # ⓔ 값 추출: `ⓔ=...` 부터 다음 축 키 직전까지
-  e_val=$(printf '%s' "$line" | sed -n 's/.*ⓔ=\([^ⓕ]*\).*/\1/p' | sed 's/[[:space:]]*$//')
+  # 🟥 2026-08-31 — 이 추출은 두 군데가 fail-OPEN 이었다. 둘 다 cross-family(codex/gpt-5.5)가
+  #    지목했고 실행으로 재현했다. 자력 적발은 앞의 하나뿐이다.
+  #  ① 앞 공백: 종전 sed 가 **뒤 공백만** 다듬어 `ⓔ= none` 이 `' none'` 으로 나와 어느 case
+  #     분기에도 안 맞고 통과했다. ⚠️ 다만 «축 강제를 통째로 껐다»는 **과대주장이다** — 이 다리
+  #     앞에서 `validate_marker_axes_run` 이 `(^|[[:space:]])ⓔ=[^[:space:]]` 를 요구하므로
+  #     그 입력은 거기서 먼저 막힌다(:2031 의 && 사슬). 이 다리 **단독으로는** 뚫렸다는 것이
+  #     정확한 서술이고, 초판 주석이 전체 게이트로 넓혀 적은 것을 여기서 정정한다.
+  #  ② 중복 키: `.*ⓔ=` 의 `.*` 가 탐욕적이라 **줄의 마지막 `ⓔ=`** 를 잡는다. 그래서
+  #     `… ⓔ=none ⓕ=되돌림 ⓔ=ran` 은 `ran` 이 추출되어 **끝까지 통과했다** — 이쪽은 앞의
+  #     axes_run 검사도 못 막는다(첫 `ⓔ=none` 이 그 검사를 만족시키기 때문이다). 실재하는
+  #     end-to-end fail-open 은 ②다.
+  #  처방: 키 경계에 고정 + **정확히 1개**일 것을 강제 + 양쪽 trim.
+  #  픽스처: scripts/test_marker_first_use_lanes.sh B5(앞공백) · B10(중복 키).
+  e_cnt=$(printf '%s' "$line" | grep -oE '(^|[[:space:]])ⓔ=' | wc -l | tr -d ' ')
+  if [ "$e_cnt" != "1" ]; then
+    echo "  ❌ MARKER — 'axes-run:' 한 줄에 'ⓔ=' 가 ${e_cnt}개다(정확히 1개여야 한다)."
+    echo "     0개면 축이 없는 것이고, 2개 이상이면 **뒤엣것이 앞엣것을 덮는다** — 어느 쪽도"
+    echo "     읽는 사람과 기계가 같은 값을 보지 않는다. 한 줄에 한 번만 적어라."
+    return 1
+  fi
+  e_val=$(printf '%s' "$line" | sed -n 's/.*[[:space:]]ⓔ=\([^ⓕ]*\).*/\1/p' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
   case "$e_val" in
     ''|none|None|NONE|-)
       echo "  ❌ MARKER — 이 커밋은 **새 계기를 추가**하는데 'axes-run' 의 ⓔ(첫 실사용)이 'none' 이다."

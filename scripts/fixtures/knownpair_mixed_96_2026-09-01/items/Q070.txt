@@ -1,0 +1,1 @@
+`scripts/new_code_anchor_check.sh` 입니다.

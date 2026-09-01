@@ -1,0 +1,1 @@
+`scripts/test_new_code_anchor_lanes.sh`가 새 코드 앵커 레인 테스트 스크립트입니다. (검증 대상 로직은 `scripts/new_code_anchor_check.sh`.)

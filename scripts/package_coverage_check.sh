@@ -45,6 +45,26 @@ ACCEPTED_ABSENT=(
   # — CLAUDE.md 가 «모든 새 install 을 막는 게이트는 엄격한 게이트가 아니라 우회 훈련기» 라 못박은
   # 그 형태다. 소비자용으로 열려면 override 부재 시의 degrade 를 따로 설계해야 하고, 안 했다.
   # `selfcheck.sh` 는 대상 부재 시 `_absent_subject_verdict` 로 빠지므로 패키지 모드에서 옳게 degrade 한다.
+  # 🟥 2026-09-01 — 아래 여섯은 «출하 문서가 이름을 대지만 selfcheck 가 실행하지 않는» 것들이다.
+  #    판별은 실측이다: `bash <경로>` 형태의 호출을 selfcheck 에서 센 결과 watermark 만 3회이고
+  #    나머지는 0회다 — 그래서 watermark 는 files[] 로 갔고 이 여섯은 여기 남는다.
+  #    🟥 소비자가 «필요로 하지 않는다»가 아니라 «이 레포의 연구·감사 계기다»가 이유다.
+  #    출하하면 소비자 트리에 안 도는 스크립트가 늘고, 그게 orphan 스캔의 소음이 된다.
+  "scripts/stray_path_scan.sh"          # 이 레포 경로 위생 스캐너 — 소비자 트리 구조가 다르다
+  "scripts/test_stray_path_lanes.sh"    # 위 레인
+  "scripts/test_fixture_guard_lanes.sh" # 픽스처 가드 레인 — 가드 자체(fixture_guard_lib)는 출하한다
+  "scripts/test_marker_first_use_lanes.sh"  # 4축 마커 first-use 레인 — 이 레포 마커 규약 전용
+  "scripts/round/fallback_reach_probe.sh"   # 맥락유지 회차 계기 — 소비자는 회차를 안 돌린다
+  # 🟥 round/ 계기 4종과 그 앵커 — 위 fallback_reach_probe 와 **같은 사유**다. 소비자는 회차를
+  #    안 돌리고, 넷은 이 레포의 측정 원장(사전등록·봉인·적격)을 전제로 한다. 앵커도 같이 안
+  #    나간다: 주체가 없는 트리에서 이 스위트는 첫 가드에서 exit 2(계기 오류)로 죽고, 그건
+  #    신선 설치를 적색으로 만드는 형태다. selfcheck 짝 표는 주체 부재 팔이 먼저 발화해 SKIP 한다.
+  "scripts/round/delta_guard.sh"
+  "scripts/round/target_pin.sh"
+  "scripts/round/instrument_manifest.sh"
+  "scripts/round/eligcheck_qset.sh"
+  "scripts/test_round_instruments_lanes.sh"
+  "scripts/fixtures/isolation_assembly_BROKEN_2026-08-30_ccrun7.json"  # 역사 산출물(등급표가 증거로 인용)
   "scripts/outbound_query_guard.sh"
   "scripts/test_outbound_query_lanes.sh"
   # 🟥 영혼(judgment-circuit) 3종 — **일부러 출하하지 않는다.** 위 outbound 가드와 같은 이유다.

@@ -1,0 +1,1 @@
+README.md에서 배너 이미지로 쓰이는 PNG 경로는 `docs/banner.png`입니다 (README.md:2에서 `https://raw.githubusercontent.com/chrono-meta/forge-harness/main/docs/banner.png`로 참조).

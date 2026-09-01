@@ -1,0 +1,1 @@
+`scripts/new_code_anchor_check.sh`가 새 코드 앵커 검사를 담당하는 셸 스크립트입니다.

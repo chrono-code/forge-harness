@@ -327,6 +327,25 @@ fi
 # catch the eye. Fixing it is one line in validate.yml (set core.hooksPath before the selfcheck step)
 # and is deliberately NOT bundled here — see the handoff. Until then the only real measurement arm is
 # the author's machine, which is the exact shape portability_lint.sh was written to condemn.
+# ── prepush-guard known-pair (2026-08-31 배선) ─────────────────────────────────────────
+# WHY: 이 스크립트는 pre-push 게이트의 known-pair 앵커인데 **아무도 부르지 않았다**.
+# 그리고 그것이 실사고의 출처였다 — 픽스처 루트가 빈 값이 되면 레포 루트에 파일 13개를
+# 뿌린다(2026-08-31 고장 주입으로 재현: `mktemp` 가 rc=0 으로 빈 출력을 낼 때).
+# 「호출부가 없는 앵커는 산문」이므로 배선한다. 종료코드 계약은 0=통과 / 그 외=실패.
+if [ ! -f scripts/prepush_guard_check.sh ]; then
+  _absent_subject_verdict "prepush-guard known-pair" "scripts/prepush_guard_check.sh" || fail=1
+else
+  # 🟥 파이프 앞에서 rc 를 잡는다 — 표시 필터의 rc 를 읽으면 실패가 0 으로 보인다.
+  _pg_out="$(bash scripts/prepush_guard_check.sh 2>&1)"; _pg_rc=$?
+  if [ "$_pg_rc" -eq 0 ]; then
+    echo "PASS  prepush-guard known-pair"
+  else
+    echo "FAIL  prepush-guard known-pair (rc=$_pg_rc)"
+    [ -n "$_pg_out" ] && printf '%s\n' "$_pg_out" | tail -12 | sed 's/^/      /'
+    fail=1
+  fi
+fi
+
 if [ ! -f scripts/gate_anchor_check.sh ]; then
   _absent_subject_verdict "gate-anchor harness" "scripts/gate_anchor_check.sh" || fail=1
 else
@@ -588,6 +607,10 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_check_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_tenet_lanes.sh" \
   "scripts/sim_isolated_run.sh|scripts/test_sim_path_isolation_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_marker_first_use_lanes.sh" \
+  "scripts/fixture_guard_lib.sh|scripts/test_fixture_guard_lanes.sh" \
+  "scripts/stray_path_scan.sh|scripts/test_stray_path_lanes.sh" \
+  "scripts/session_close_check.sh|scripts/test_stray_path_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_hook_leg_wiring_lanes.sh" \
   ".claude/soul_tenets.txt|scripts/test_marker_soul_tenet_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_precommit_staged_drift_lanes.sh" \
@@ -608,7 +631,12 @@ for _pair in \
   "plugins/fh-commons/skills/preprep/lane_adjacent_dup.py|scripts/test_preprep_adjacent_dup_lanes.sh" \
   "plugins/fh-commons/skills/preprep/lane_promise.py|scripts/test_preprep_promise_lanes.sh" \
   "plugins/fh-commons/skills/preprep/SKILL.md|scripts/test_preprep_drift_anchor.sh" \
-  "scripts/field_canon_preload.sh|scripts/test_skill_canon_preload_lanes.sh"
+  "scripts/field_canon_preload.sh|scripts/test_skill_canon_preload_lanes.sh" \
+  `# ── round/ 회차 계기 4종(2026-09-01). 넷 다 한 스위트가 잡는다 — 주체별로 행을 둔다 ──` \
+  "scripts/round/delta_guard.sh|scripts/test_round_instruments_lanes.sh" \
+  "scripts/round/target_pin.sh|scripts/test_round_instruments_lanes.sh" \
+  "scripts/round/instrument_manifest.sh|scripts/test_round_instruments_lanes.sh" \
+  "scripts/round/eligcheck_qset.sh|scripts/test_round_instruments_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then
@@ -1111,6 +1139,51 @@ elif [ -f scripts/test_sim_isolated_run_lanes.sh ]; then
   fi
 else
   echo "FAIL  test_sim_isolated_run_lanes.sh: sim_isolated_run.sh present but its anchor is missing"
+  fail=1
+fi
+
+# 무효 워터마크 — 무효 회차의 «숫자 줄»이 자기 무효를 나르는가.
+# 🟥 회차 3 은 자기 게이트가 VOID 를 찍고도 그 숫자만 기록으로 넘어갔다(VOID 낱말은 0회).
+#    판정이 표 «밖»에 있었고 사람은 표를 복사하기 때문이다. 그 채널을 닫은 배선의 앵커다.
+#    subject-present-but-anchor-absent 는 SKIP 이 아니라 FAIL 이다 — 여기서도 같은 형태를 쓴다.
+if [ ! -f scripts/context_continuity_score.sh ]; then
+  _absent_subject_verdict "test_verdict_watermark_lanes.sh" "scripts/context_continuity_score.sh" || fail=1
+elif [ -f scripts/test_verdict_watermark_lanes.sh ]; then
+  if ! bash scripts/test_verdict_watermark_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_verdict_watermark_lanes.sh: context_continuity_score.sh present but its anchor is missing"
+  fail=1
+fi
+
+# 무효 워터마크 — 무효 회차의 «숫자 줄»이 자기 무효를 나르는가.
+# 🟥 회차 3 은 자기 게이트가 VOID 를 찍고도 그 숫자만 기록으로 넘어갔다(VOID 낱말은 0회).
+#    판정이 표 «밖»에 있었고 사람은 표를 복사하기 때문이다. 그 채널을 닫은 배선의 앵커다.
+#    subject-present-but-anchor-absent 는 SKIP 이 아니라 FAIL 이다 — 여기서도 같은 형태를 쓴다.
+if [ ! -f scripts/context_continuity_score.sh ]; then
+  _absent_subject_verdict "test_verdict_watermark_lanes.sh" "scripts/context_continuity_score.sh" || fail=1
+elif [ -f scripts/test_verdict_watermark_lanes.sh ]; then
+  if ! bash scripts/test_verdict_watermark_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_verdict_watermark_lanes.sh: context_continuity_score.sh present but its anchor is missing"
+  fail=1
+fi
+
+# 무효 워터마크 — 무효 회차의 «숫자 줄»이 자기 무효를 나르는가.
+# 🟥 회차 3 은 자기 게이트가 VOID 를 찍고도 그 숫자만 기록으로 넘어갔다(VOID 낱말은 0회).
+#    판정이 표 «밖»에 있었고 사람은 표를 복사하기 때문이다. 그 채널을 닫은 배선의 앵커다.
+#    subject-present-but-anchor-absent 는 SKIP 이 아니라 FAIL 이다 — 여기서도 같은 형태를 쓴다.
+if [ ! -f scripts/context_continuity_score.sh ]; then
+  _absent_subject_verdict "test_verdict_watermark_lanes.sh" "scripts/context_continuity_score.sh" || fail=1
+elif [ -f scripts/test_verdict_watermark_lanes.sh ]; then
+  if ! bash scripts/test_verdict_watermark_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_verdict_watermark_lanes.sh: context_continuity_score.sh present but its anchor is missing"
   fail=1
 fi
 

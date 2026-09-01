@@ -50,7 +50,7 @@ fi
 # T5 — END-TO-END (the anchor a cross-family audit required): a helper that ACTUALLY reads stdin,
 # plus a synthetic DESTRUCTIVE ref, must still BLOCK. This is what T1-T4 cannot prove on their own —
 # they test the mechanism and the source layout; this tests the shipped hook's real behavior.
-T5_TMP=$(mktemp -d 2>/dev/null || echo "/tmp/fh_t5_$$") ; mkdir -p "$T5_TMP"
+T5_TMP=$(mktemp -d 2>/dev/null || echo "/tmp/fh_t5_$$"); : "${T5_TMP:?fixture root unset — refusing to run git in cwd}" ; mkdir -p "$T5_TMP"
 (
   cd "$T5_TMP" || exit 1
   git init -q . 2>/dev/null
@@ -83,7 +83,7 @@ fi
 # never fires — over-blocking trains MAIN_PUSH_OK=1 into muscle memory, which disarms it.
 _pp_run() { # _pp_run <refline> [env...]  -> echoes exit code
   local refline="$1"; shift
-  local d; d=$(mktemp -d 2>/dev/null || echo "/tmp/fh_pp_$$"); mkdir -p "$d/scripts"
+  local d; d=$(mktemp -d 2>/dev/null || echo "/tmp/fh_pp_$$"); : "${d:?fixture root unset — refusing to run git in cwd}"; mkdir -p "$d/scripts"
   ( cd "$d" && git init -q . 2>/dev/null
     printf '#!/usr/bin/env bash\nexit 0\n' > scripts/session_close_check.sh
     chmod +x scripts/session_close_check.sh
