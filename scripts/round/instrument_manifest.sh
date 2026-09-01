@@ -8,7 +8,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MODE="${1:?usage: instrument_manifest.sh stamp|verify <manifest> [qset]}"
-MF="${2:?manifest path}"; QSET="${3:-}"; SEAL="${4:-}"
+MF="${2:?manifest path}"; QSET="${3:-}"; SEAL="${4:-}"; GRADE="${5:-}"
 
 # ── 집합. 각 항목 옆에 «왜 이것이 계기인가» ────────────────────────────────────
 # 🟥 빠뜨리면 그 파일이 바뀌어도 봉인이 살아남는다. 넣는 기준은 «판정을 바꿀 수 있는가»다.
@@ -29,8 +29,17 @@ files+=("scripts/round/instrument_manifest.sh")
 #    실제로 그렇게 해봤고 즉시 깨졌다 — 그래서 인자로 받는다. 손추가 잔여는 이걸로 닫혔다.
 [ -n "$QSET" ] && files+=("$QSET")
 [ -n "$SEAL" ] && files+=("$SEAL")
+# 🟥 2026-09-01 신설 — **채점 지시문**. 그날 ①의 지시문이 디스크에서 사라졌고,
+#    「기억으로 재구성」과 「새로 쓰기」 사이에서 계기 동일성이 통째로 흔들렸다.
+#    채점 지시문은 «값을 정하는 것»이므로 채점기와 같은 급의 계기다.
+# 🟥 그런데 실제 사고는 «파일이 없음»이 아니라 **«인자를 안 넘김»** 이었다.
+#    인자가 비면 files 에 안 들어가고, 매니페스트는 그 부재를 **한 줄도 안 적는다** —
+#    「봉인 안 됨」과 「봉인됨」이 출력상 같아진다. 그래서 부재를 **명시적으로 적는다.**
+[ -n "$GRADE" ] && files+=("$GRADE")
 
 emit(){
+  # 🟥 채점 계기가 «인자로 안 온» 경우를 한 줄로 물질화한다. 안 적으면 부재가 안 보인다.
+  [ -n "$GRADE" ] || printf '%s  %s\n' "<grade-instruction>" "ABSENT"
   for f in "${files[@]}"; do
     if [ -f "$ROOT/$f" ]; then
       printf '%s  sha256:%s\n' "$f" "$(shasum -a 256 "$ROOT/$f" | awk '{print $1}')"
@@ -52,6 +61,14 @@ case "$MODE" in
           if [ "$_miss" -gt 0 ]; then
             echo "🟥 MISSING 항목 ${_miss}개 — 봉인 전에 해결해라"; exit 2
           fi
+          # 🟥 채점 계기 미봉인은 «MISSING(파일 없음)» 과 다른 상태다 — 종료코드를 가른다.
+          #    막지는 않는다(과차단은 우회를 훈련시킨다). 대신 «조용하지 않게» 한다.
+          if grep -q '^<grade-instruction>  ABSENT$' "$MF"; then
+            echo "🟥 채점 지시문이 봉인되지 않았다(5번째 인자 부재) — 매니페스트에 ABSENT 로 적었다"
+            echo "   채점 계기가 바뀌면 회차 간 비교가 성립하지 않는다. 봉인하려면:"
+            echo "   instrument_manifest.sh stamp <mf> <qset> <seal> <채점지시문>"
+            exit 3
+          fi
           exit 0 ;;
   verify) [ -f "$MF" ] || { echo "🟥 매니페스트 없음: $MF — 대조 불가(UNVERIFIED, 일치 아님)"; exit 2; }
           # 🟥 2026-09-01 수리. 종전 verify 는 `emit` 을 «지금 인자»로 다시 만들어 diff 했다.
@@ -64,9 +81,15 @@ case "$MODE" in
           #    그리고 반대 방향도 본다: 고정 집합의 계기가 매니페스트에 «없으면» 실패.
           #    (한 방향만 보면 새 계기를 추가하고 재stamp 안 한 상태가 조용히 통과한다)
           if [ -z "$QSET" ] && [ -z "$SEAL" ]; then
-            _bad=0
+            _bad=0; _incomplete=0
             while read -r _p _h; do
               [ -n "$_p" ] || continue
+              # 🟥 <grade-instruction> ABSENT 는 «파일»이 아니라 «상태 기록»이다.
+              #    파일로 검사하면 verify 가 자기 기록 때문에 영구 불일치를 낸다.
+              if [ "$_p" = "<grade-instruction>" ]; then
+                echo "🟥 채점 지시문이 봉인되지 않았다 — 이 회차의 숫자는 계기 동일성이 미보증이다"
+                _incomplete=1; continue
+              fi
               if [ ! -f "$ROOT/$_p" ]; then
                 echo "🟥 매니페스트가 적은 파일이 없다: $_p"; _bad=$((_bad+1)); continue
               fi
@@ -78,6 +101,12 @@ case "$MODE" in
             done
             if [ "$_bad" -gt 0 ]; then
               echo "🟥 계기 대조 **불일치** — 이 회차의 봉인은 무효다 (${_bad}건)"; exit 1
+            fi
+            # 🟥 «바뀐 게 없다»와 «봉인이 온전하다»는 다른 명제다. stamp 가 3 을 내는데
+            #    verify 가 0 을 내면, verify 만 돌리는 호출자는 미봉인 회차에서 초록을 본다.
+            #    종료코드를 갈라 둔다: 1=불일치 · 3=봉인 불완전(대조는 통과).
+            if [ "$_incomplete" -gt 0 ]; then
+              echo "🟡 대조는 통과했지만 **봉인이 불완전하다** — 채점 계기가 봉인 집합에 없다"; exit 3
             fi
             echo "🟢 계기 대조 일치 — 봉인이 유효하다 ($(grep -c . "$MF") 항목, sha256)"; exit 0
           fi
