@@ -253,9 +253,35 @@ above remains the unverified hypothesis it declares itself to be. An engine grad
 | Engine | Grade | Leg 1 — implemented ∧ wired | Leg 2 — known-pair, revert-probed | Leg 3 — self-test | 🟢 real firing |
 |---|---|---|---|---|---|
 | **ship-gate** (품질게이트) | 🟢 **GREEN** | pre-commit + pre-push, `core.hooksPath` verified live | ✅ 37 cross-family fixtures · 30 branch-claim · marker-floor. **2 revert arms, each reddening only its own lane** (neutering the degrade-grounds check surfaced `'client error'` passing on the substring `cli`; restoring the `single-family` free exit surfaced two more) | ✅ 3 suites `rc=0` | ✅ **twice in one session (2026-08-13)** — a commit blocked as `🚫 BLOCKED — resolve failing axes`, and a branch-claim block that stopped a commit from landing on a **peer session's branch** in a shared checkout |
-| **context-continuity** (맥락유지) | 🔵 **RC** | `compaction_probe` (PreCompact + UserPromptSubmit; snippet ships and `install-wizard` merges it by glob, not by name) · `session_close_check` (pre-push) · `digest_landing_check` · `utterance_landing_check` | ✅ 47 pairs after the 2026-08-13 fix, **4 revert arms**; session axis probed separately (deleting the card-last *verdict* — not its message — reddens its lane) | ✅ 47 · 10 · 8 · 8/8, all `rc=0` | ❌ **withheld, and the reason is the interesting part** — see below |
+| **context-continuity** (맥락유지) | 🟢 **GREEN** (승격 2026-09-01) | `compaction_probe` (PreCompact + UserPromptSubmit; snippet ships and `install-wizard` merges it by glob, not by name) · `session_close_check` (pre-push) · `digest_landing_check` · `utterance_landing_check` | ✅ 47 pairs after the 2026-08-13 fix, **4 revert arms**; session axis probed separately (deleting the card-last *verdict* — not its message — reddens its lane) | ✅ 47 · 10 · 8 · 8/8, all `rc=0` | ✅ **2026-09-01 — measured probe, n=1.** 사전등록 봉인 회차(BASE 얕은 클론 · arm-blind strip 검증 · `complete: yes ∧ qset_matches_manifest: yes`)에서 **운반체 포인터를 준 팔이 봉인 원장을 열어 24/24, 안 준 팔이 0~2/24, CTRL 은 세 칸 전부 0/24.** 컨트롤 생존(틀린 토큰 → `TYPED_FAIL`) · 손검증(팔이 타임스탬프를 축자 인용) · **두 세션 독립 재현**. 기권률은 세 칸 다 100% 유지 — 능력이 붙었는데 정지 가드가 안 상했다. 🟥 효과 귀속은 **deliver(포인터 제공)** 이지 규약(typed 채널)이 아니다(무효 회차도 규약이 버려진 채 23~24/24). 아래 §맥락유지-2026-09-01 |
 
-#### 🟥 맥락유지 — 2026-08-30 격리 수리 후 첫 «신호», 그리고 등급을 **안** 올리는 이유
+#### <a name="cc-20260901"></a>🟢 맥락유지 — 2026-09-01 승격. 그리고 그 «측정이 오늘 아침까지 0 으로 보였다»
+
+**승격 근거는 등급표의 `measured probe` 절이다**(🟢 = «정체성이 실제로 작동했음을 증명하는 구체적 원장 산출물, n≥1 — 실제 게이트 차단 · **measured probe** · 실제 오케스트레이션 기록»).
+```
+칸                       positive ARM PASS   CTRL PASS
+① 규약없음 × no-deliver        2 / 24           0 / 24
+② 규약    × no-deliver        0 / 24           0 / 24
+③ 규약    × deliver     🟢 **24 / 24**         0 / 24
+컨트롤  틀린 토큰으로 채점 → TYPED_FAIL (계기 생존) · 손검증 · 두 세션 독립 재현
+```
+🟥 **정직하게 갈라 적는다 — 이것은 «measured probe» 이지 «실세션이 압축에서 복구한 기록»이 아니다.** 후자가 더 강한 증거이고 오늘 그건 안 만들어졌다. 등급표가 measured probe 를 명시적으로 허용하므로 승격은 조항에 맞지만, 이 구분을 접으면 다음 사람이 더 강한 증거가 있다고 읽는다.
+
+🟥 **그리고 이 숫자는 같은 날 아침까지 «0» 으로 보였다.** 채점기가 typed 태그를 만나면 판정을 건너뛰고 즉시 return 했고, 집계 `grep -c 'PASS'` 가 그걸 0 으로 셌다(수리 = `4a5d325`). **「집계 버그」로 진단하고 집계만 고쳤으면 이 24/24 는 영영 0 이었다** — 증상을 원인으로 적으면 지표만 그럴듯해진다.
+
+**남은 정직 항목 — 승격이 이것들을 닫지 않는다**
+```
+ⓐ CTRL 침묵이 «능력»인지 «교리 준수»인지 안 갈린다 — 완전 분리라 무게는 작지만 배제는 안 된다
+ⓑ 「읽고도 답 안 함」 vs 「안 읽음」 — 도구 호출 로그가 산출물에 아예 없다(stderr·treediff 0B 실측)
+   ⇒ «안 봤다»가 아니라 «담기지 않았다». 다음 회차 러너가 담으면 관측된다
+ⓒ 🟢 닫혔다 — 적격 임계는 «봉인 전에 게이트를 돌려 N 을 정하고 kmin 을 계산한 뒤 봉인»으로 순서화
+ⓓ conflict 축은 이 배치에서 못 잰다 — 레포가 옳고 모델이 레포를 고르는 것이 정답이다
+```
+다음 회차 설계 = `tracks/_meta/DESIGN_2026-09-01_delivery_axis.md`.
+
+> **🟥 아래 절은 «대체됨»이다 — 지우지 않는다.** 2026-08-30 시점의 판단 기록이고, 그때 등급을 안 올린 이유(회차 VOID + 오염)가 **오늘 해소된 바로 그것**이다. 지우면 «왜 오늘이 그 시점인가»가 사라진다.
+
+#### 🟥 [SUPERSEDED 2026-09-01] 맥락유지 — 2026-08-30 격리 수리 후 첫 «신호», 그리고 등급을 **안** 올리는 이유
 
 이날 이 축의 회차가 **다섯 번 VOID** 났고, 넷은 증상이었고 하나가 근인이었다.
 
