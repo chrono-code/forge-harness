@@ -161,6 +161,71 @@ lint_file() {
     _emit "        → 하이픈을 **맨 뒤**로 옮기거나, \`tr\` 대신 셸 파라미터 확장을 써라."
     _hits=$((_hits+1))
   done < <(grep -nE "tr +-[a-z]* *'[^']*[^-'][-][^-'][^']*'" "$f" 2>/dev/null)
+
+  # ── [P11] 비인용 heredoc 본문의 백틱 = 조용한 명령치환 ──────────────────────────
+  # 🟥 2026-09-01, N=3 로 기계화(하루에 두 세션이 각각 겪었다).
+  #    `cat <<EOF` 는 본문을 **확장**한다. 그래서 본문의 백틱은 문자열이 아니라 **명령**이다:
+  #      · 그 명령이 없으면 → 그 자리가 **삭제**된다(문장이 문법적으로 멀쩡한 채 주어를 잃는다)
+  #      · 있으면 → 출력이 **오삽입**된다
+  #    실제 피해: 4축 마커의 한 낱말이 사라진 채 커밋됐다. 훅은 «필드 존재»만 보므로 안 막았다.
+  # 🟥 처방이 「인용 heredoc(`<<'EOF'`)을 써라」가 **아닌** 이유: 사고는 «확장이 필요해서»
+  #    비인용을 골랐을 때 난다. ⇒ **값을 미리 계산해 변수에 담고, 본문엔 변수만 넣어라.**
+  # 판별이 좁다: 비인용 heredoc 본문의 **이스케이프되지 않은** 백틱은 언제나 명령치환이다.
+  #    (\\` 는 리터럴이라 대상이 아니다 — 첫 실사용에서 그 형태 하나가 오탐으로 나왔다.)
+  #    인용 형태(`<<'EOF'` · `<<"EOF"`)는 확장이 없으므로 대상이 아니다.
+  # 🟥 python 은 **임시 파일**로 뺀다. 종전엔 `<(python3 - "$f" <<'P11PY' … )` 였는데
+  #    **프로세스 치환 안의 heredoc** 은 셸이 못 판다 — 본문에 `)` 가 하나 들어간 순간
+  #    `bad substitution` 으로 죽고, 이 린트는 그걸 삼켜 **「소견 없음」으로 렌더했다**(fail-open).
+  #    이 스크립트가 잡으라고 존재하는 «조용한 즉사» 클래스를 자기가 저질렀다.
+  _p11py=$(mktemp -t p11py) || _p11py=""
+  if [ -n "$_p11py" ]; then
+    cat > "$_p11py" <<'P11PY'
+import re, sys
+try:
+    lines = open(sys.argv[1], encoding='utf-8', errors='replace').read().split('\n')
+except OSError:
+    sys.exit(0)
+# 진짜 heredoc 여는 줄은 구분자 «뒤»에 줄끝이나 리다이렉션이 온다.
+# 이 꼬리 조건이 없으면 `sed 's/.*<<VERDICT:...'` 같은 «heredoc 처럼 생긴 문자열»을
+# 여는 줄로 읽고 파일 끝까지 heredoc 모드에 갇힌다 — 첫 실사용에서 오탐 119건이 났다.
+open_re = re.compile(
+    r"<<-?\s*(?P<q>['\"])?(?P<w>[A-Za-z_][A-Za-z0-9_]*)(?(q)(?P=q))\s*(?:[|>&;)]|$)")
+delim = None
+for i, l in enumerate(lines):
+    if delim is None:
+        m = open_re.search(l)
+        if m and not m.group('q'):
+            delim = m.group('w')
+        continue
+    if l.strip() == delim:
+        delim = None
+    else:
+        # \U0001f7e5 이스케이프된 백틱(\\`)은 리터럴이라 명령치환이 아니다 — 첫 실사용에서
+        #    유일하게 남은 소견이 정확히 그 형태였다(의도된 셸 shim 문자열).
+        #    ⇒ 규칙 진술도 정정된다: 「비인용 heredoc 의 백틱은 언제나 명령치환」이 아니라
+        #       **「이스케이프되지 않은 백틱은 언제나 명령치환」**이다.
+        stripped = re.sub(r'\\.', '', l)   # 이스케이프 시퀀스(백슬래시+1문자)를 먼저 지운다
+        if '\x60' in stripped:
+            print(i + 1)
+P11PY
+    _p11out=$(python3 "$_p11py" "$f" 2>&1); _p11rc=$?
+    rm -f "$_p11py"
+    if [ "$_p11rc" != 0 ]; then
+      _emit "  [UNMEASURED] $f — P11 검사기가 죽었다(rc=$_p11rc). 초록이 아니다."
+      _emit "        $(printf '%s' "$_p11out" | head -1)"
+    else
+      for n in $_p11out; do
+        body=$(sed -n "${n}p" "$f" 2>/dev/null)
+        printf '%s' "$body" | grep -qE '#[[:space:]]*portability-noqa:[[:space:]]*[^[:space:]]' && continue
+        _emit "  [P11] $f:$n"
+        _emit "        비인용 heredoc 본문의 백틱은 **명령치환**이다 — 없으면 그 자리가 삭제된다."
+        _emit "        → 값을 미리 계산해 변수에 담고 본문엔 변수만 넣어라."
+        _hits=$((_hits+1))
+      done
+    fi
+  else
+    _emit "  [UNMEASURED] $f — P11 임시파일 생성 실패. 초록이 아니다."
+  fi
 }
 
 # ── self-test (known-pair) ────────────────────────────────────────────────────
@@ -191,6 +256,22 @@ if [ "$SELFTEST" = 1 ]; then
   _ck "P2 known-positive (stat -f 선행)" 1 "$t/p2_pos.sh"
   printf 'm=$(stat -c %%Y "$1" 2>/dev/null || echo 0)\n' > "$t/p2_neg.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
   _ck "P2 known-negative (GNU-first)" 0 "$t/p2_neg.sh"
+  # P11 known-positive — 비인용 heredoc 본문에 백틱 (2026-09-01 실사고 형태)
+  #   🟥 픽스처를 printf 로 «조립»한다. 소스에 그대로 쓰면 이 파일 자신이 P11 에 걸린다 —
+  #      계기가 자기 픽스처에 걸리는 것은 P1 초판이 이미 한 번 겪은 형태다.
+  BQ=$(printf '\140')
+  printf 'cat <<EOF\nvalue is %snproc%s\nEOF\n' "$BQ" "$BQ" > "$t/p11_pos.sh"
+  _ck "P11 known-positive (비인용 heredoc + 백틱)" 1 "$t/p11_pos.sh"
+  # P11 known-negative ① — 인용 heredoc 이면 확장이 없다
+  printf "cat <<'EOF'\nvalue is %snproc%s\nEOF\n" "$BQ" "$BQ" > "$t/p11_neg_quoted.sh"
+  _ck "P11 known-negative (인용 heredoc → 확장 없음)" 0 "$t/p11_neg_quoted.sh"
+  # P11 known-negative ② — 비인용이지만 백틱이 없다
+  printf 'cat <<EOF\nvalue is $VAR\nEOF\n' > "$t/p11_neg_nobq.sh"
+  _ck "P11 known-negative (백틱 없음)" 0 "$t/p11_neg_nobq.sh"
+  # P11 컨트롤 — heredoc «밖»의 백틱은 이 규칙 대상이 아니다(다른 결함일 수는 있다)
+  printf 'x=%sdate%s\n' "$BQ" "$BQ" > "$t/p11_ctrl_outside.sh"
+  _ck "P11 컨트롤 (heredoc 밖 백틱 → 해당없음)" 0 "$t/p11_ctrl_outside.sh"
+
   # P5 PIPESTATUS
   printf 'cmd | tail -1\nrc=${PIPESTATUS[0]}\n' > "$t/p5_pos.sh"  # portability-noqa: self-test 픽스처 — 일부러 위반형을 쓴다
   _ck "P5 known-positive (PIPESTATUS)" 1 "$t/p5_pos.sh"
