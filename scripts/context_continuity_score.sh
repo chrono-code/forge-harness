@@ -88,7 +88,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER="$HERE/scripts/sim_isolated_run.sh"
 
 SEAL=""; QSET=""; REPS=1; MODEL="sonnet"; OUT=""; DELIVER=0
-SELFTEST=0; RESCORE=0; MANIFEST=""; BASE_REF=""; BASE_SHA=""
+SELFTEST=0; RESCORE=0; MANIFEST=""; BASE_REF=""; BASE_SHA=""; PROTOCOL_FILE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --seal)  SEAL="${2:-}"; shift 2 ;;
@@ -103,6 +103,7 @@ while [ $# -gt 0 ]; do
     #    효과와 팔의 비결정성이 섞인다. 같은 파일에 새 규칙을 걸어야 한 변수만 움직인다.
     --base-ref) BASE_REF="${2:-}"; shift 2 ;;   # 🟥 회차는 BASE 얕은 클론에서 돈다(§7-12)
     --base-sha) BASE_SHA="${2:-}"; shift 2 ;;   #    ref 는 움직인다 — sha 를 둘 다 준다
+    --protocol) PROTOCOL_FILE="${2:-}"; shift 2 ;;  # 🟥 규약 «문구»는 파일로 받는다 — 코드에 안 박는다
     --rescore) RESCORE=1; shift ;;
     # 🟥 «지금 도는 qset/seal 이 «봉인된 그것»인가» 를 회차 시작 전에 대조한다.
     --manifest) MANIFEST="${2:-}"; shift 2 ;;
@@ -578,6 +579,20 @@ while IFS='|' read -r qid kind question token general; do
   for arm in ARM CTRL; do
     setup=""; [ "$arm" = ARM ] && setup="$SETUP_ARM"
     q="$question"
+    # ── S5 ② «규약» — typed 채널의 «쓰는 쪽» (2026-09-01 배선) ──────────────────
+    # 🟥 §7-7 은 읽는 쪽(:166 의 <<VERDICT:…>> 파싱)만 지었고 «생산처»를 안 지었다.
+    #    닫힘 정의 넷을 짓기 «전»에 적었는데 그 정의 자체에 생산처가 없었다 —
+    #    「닫힘 정의를 먼저」가 완전성을 보장하지 않는다는 첫 실례다.
+    # 🟥 문구는 «처치»라 출제자가 쓴다. 여기(코드)엔 안 박고 파일로 받는다 —
+    #    채점기 저자가 문구를 쓰면 ②의 결과를 «저자가 만든 문구»가 만든 게 된다.
+    # 🟥 «뒤»에 붙인다. 앞에 오면 «지시»로 읽히고, 뒤에 와야 «답변 형식 안내»가 된다.
+    # 🟥 두 팔에 «똑같이» 붙는다 — 규약은 조건(cell) 수준 처치이지 팔 수준이 아니다.
+    if [ -n "$PROTOCOL_FILE" ]; then
+      [ -f "$PROTOCOL_FILE" ] || { echo "🟥 규약 파일 없음: $PROTOCOL_FILE — 회차를 열지 않는다" >&2; exit 11; }
+      q="$q
+
+$(cat "$PROTOCOL_FILE")"
+    fi
     if [ "$DELIVER" = 1 ] && [ "$arm" = ARM ]; then
       q="[직전 압축 전 봉인 원장: tracks/_meta/compaction/$(basename "$SEAL") — 필요하면 열어라]
 $question"
