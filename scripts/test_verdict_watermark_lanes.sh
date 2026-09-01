@@ -311,7 +311,19 @@ else no "L24 스캐너 없음 — 검사 못 함(스킵 아님)"; fi
 #    ⇒ 한 디렉터리 변수에서 «둘 다» 꺼낸다. 갈라 적을 수 있으면 다시 갈린다.
 _RD="$ROOT/scripts/round"
 _NLK="$_RD/nameleak_check.sh"; _GK="$_RD/gatecheck_qset.sh"
-_QK="$ROOT/tracks/_meta/qset_2026-09-01_round2.tsv"; _SK="$ROOT/tracks/_meta/seal_PLANTED_2026-09-01_round2.md"
+# 🟥 2026-09-01: 종전에는 회차2 의 실제 산출물(gitignored)을 참조해 CI 에서 «픽스처 없음»
+#    으로 적색이었다. 자기 픽스처를 짓는다 — L21 과 같은 처방(P9).
+# 🟥 seal 파일명은 **실물 규약 형태**로 짓는다(`seal_<8hex>-<3hex>_<YYYYMMDD>-<HHMMSS>.md`).
+#    아무 이름이나 쓰면 L25a 가 «라벨이 사람이 고른 것»이 아니라 «파일명이 형태 위반»으로
+#    막혀서, 초록이 의도한 축을 안 잰다.
+_L25="$ROOT/tracks/_meta/.l25_fixture_$$"
+mkdir -p "$_L25"
+_QK="$_L25/qset.tsv"; _SK="$_L25/seal_deadbeef-abc_20260901-101010.md"
+# 🟥 seal 에 답 토큰이 «있어야» 한다. 없으면 게이트가 «positive 인데 원장에 없다»(exit 4)로
+#    막고, 그러면 L25b 가 스텁을 넣어도 초록이 안 나온다 — 즉 이름누출 축을 안 재게 된다.
+_L25TOK="l25$$$(date +%s)"
+printf 'P01\tpositive\t봉인 원장의 토큰은?\t%s\n' "$_L25TOK" > "$_QK"
+printf '# 합성 봉인 (L25 픽스처)\n\n토큰은 %s 이다.\n' "$_L25TOK" > "$_SK"
 if [ -x "$_NLK" ] && [ -f "$_GK" ] && [ -f "$_QK" ] && [ -f "$_SK" ]; then
   bash "$_GK" "$_QK" "$_SK" post '' '' '_run_0901' 'C01_ARM' >/dev/null 2>&1
   [ "$?" = 5 ] && ok "L25a 누출 이름 → 게이트 차단(exit 5)" || no "L25a 누출 이름인데 게이트가 안 막는다"
@@ -330,6 +342,7 @@ if [ -x "$_NLK" ] && [ -f "$_GK" ] && [ -f "$_QK" ] && [ -f "$_SK" ]; then
   [ "$?" = 5 ] && ok "L25d 검사기 부재 → 실패(스킵 아님)" || no "L25d 부재를 스킵으로 접는다"
   mv "$_mv" "$_NLK"; chmod +x "$_NLK"
 else no "L25 픽스처 없음 — 검사 못 함(스킵 아님)"; fi
+rm -rf "$_L25"
 
 # ── L26 §7-7 — «두 숫자를 곱하지 않는다»를 «코드로» 검사한다 ────────────────────
 #    🟥 「곱하지 마라」를 주석에 적는 것은 오늘 세 번 실패한 형태다. 레인이 소스를 본다:
