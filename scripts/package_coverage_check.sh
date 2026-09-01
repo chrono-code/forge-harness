@@ -55,6 +55,15 @@ ACCEPTED_ABSENT=(
   "scripts/test_fixture_guard_lanes.sh" # 픽스처 가드 레인 — 가드 자체(fixture_guard_lib)는 출하한다
   "scripts/test_marker_first_use_lanes.sh"  # 4축 마커 first-use 레인 — 이 레포 마커 규약 전용
   "scripts/round/fallback_reach_probe.sh"   # 맥락유지 회차 계기 — 소비자는 회차를 안 돌린다
+  # 🟥 round/ 계기 4종과 그 앵커 — 위 fallback_reach_probe 와 **같은 사유**다. 소비자는 회차를
+  #    안 돌리고, 넷은 이 레포의 측정 원장(사전등록·봉인·적격)을 전제로 한다. 앵커도 같이 안
+  #    나간다: 주체가 없는 트리에서 이 스위트는 첫 가드에서 exit 2(계기 오류)로 죽고, 그건
+  #    신선 설치를 적색으로 만드는 형태다. selfcheck 짝 표는 주체 부재 팔이 먼저 발화해 SKIP 한다.
+  "scripts/round/delta_guard.sh"
+  "scripts/round/target_pin.sh"
+  "scripts/round/instrument_manifest.sh"
+  "scripts/round/eligcheck_qset.sh"
+  "scripts/test_round_instruments_lanes.sh"
   "scripts/fixtures/isolation_assembly_BROKEN_2026-08-30_ccrun7.json"  # 역사 산출물(등급표가 증거로 인용)
   "scripts/outbound_query_guard.sh"
   "scripts/test_outbound_query_lanes.sh"
