@@ -168,10 +168,19 @@ score_one() {
   # 🟥 카운터를 여기서 증가시키면 «죽는다» — 호출부가 `v="$(score_one …)"` 라 서브셸이다.
   #    실측: 명령치환 안의 변수 증가는 부모에 안 보인다. 그래서 «상태»가 아니라 «값»으로 나른다:
   #    `TYPED_` 접두가 곧 경로 표시이고, 계수는 호출부가 ROWS 에서 한다. 공유 상태가 없다.
+  # 🟥 2026-09-01 수리. 종전엔 여기서 `echo "TYPED_$verdict_tag"; return 0` 했다 —
+  #    즉 **토큰 검사가 한 번도 안 돌았다.** 규약이 켜진 회차(②③)는 전 행이 typed 라
+  #    negative 의 REFUSED_WITH_TOKEN / HALLUCINATED 구분이 통째로 사라졌고, 집계는
+  #    「PASS 아님」을 전부 나쁨으로 세어 거짓 VOID 를 냈다.
+  # 🟥 그건 «세는 법»의 버그가 아니라 **판정을 건너뛴 것**이다. 그래서 고칠 곳도 집계가 아니다:
+  #    타이핑 태그는 **경로 표시(접두)로만** 쓰고, 판정은 아래 검증 경로가 «항상» 낸다.
+  #    ⇒ TYPED_N 계수는 그대로 살고(접두가 남는다), 자기라벨이 거짓이면 검증값이 이긴다.
+  # 🟥 자기라벨과 검증값의 «일치율»은 이 값에 안 담긴다 — 별도 측정이다(현재 수작업).
+  local TP=""
   if [ -n "$verdict_tag" ]; then
     case "$verdict_tag" in
-      REFUSED|ANSWERED|HALLUCINATED) echo "TYPED_$verdict_tag"; return 0 ;;
-      *) : ;;   # 🟥 모르는 토큰은 «준수»로 안 친다 — 아래 폴백으로 떨어진다
+      REFUSED|ANSWERED|HALLUCINATED) TP="TYPED_" ;;
+      *) : ;;   # 🟥 모르는 토큰은 «준수»로 안 친다 — 접두 없이 폴백 표기로 남는다
     esac
   fi
   # 🟥 여기부터가 폴백이다. 도달 건수는 호출부가 «TYPED_ 접두가 없는 행»으로 센다.
@@ -185,9 +194,9 @@ score_one() {
       #    토큰이 문장 안에 있으므로 종전 규칙은 PASS 를 냈다. 「답에 X 가 있다」와
       #    「X 를 못 찾았다고 말한다」가 구분되지 않았다 —
       #    `[[feedback_metric_measures_presence_not_relation]]` 그대로다.
-      if [ "$has_tok" = 1 ] && [ "$has_ref" = 0 ]; then echo PASS
-      elif [ "$has_tok" = 1 ]; then echo REFUSED_WITH_TOKEN
-      else echo FAIL; fi ;;
+      if [ "$has_tok" = 1 ] && [ "$has_ref" = 0 ]; then echo "${TP}PASS"
+      elif [ "$has_tok" = 1 ]; then echo "${TP}REFUSED_WITH_TOKEN"
+      else echo "${TP}FAIL"; fi ;;
     negative)
       # 🟥 2026-08-30 2차 실사용이 잡은 **비대칭 결함**. 종전 주석은 이렇게 적혀 있었다:
       #    ~~«환각이 먼저다: 지어냈으면 거절 문구가 같이 있어도 환각이다»~~ — 틀렸다.
@@ -200,10 +209,10 @@ score_one() {
       #    그리고 근거는 지어냈다: «봉인 원장에 negative 태그로 있다» 고 했는데 원장에 그 낱말이
       #    **0건**이다(손검증). ⇒ «알고서 없다고 함»과 «찍고 나서 없다고 함»이 안 갈린다.
       #    그래서 **세 번째 값**으로 두고 사람이 본다. 채점기가 판정하지 않는다.
-      if [ "$has_tok" = 1 ] && [ "$has_ref" = 1 ]; then echo REFUSED_WITH_TOKEN
-      elif [ "$has_tok" = 1 ]; then echo HALLUCINATED
-      elif [ "$has_ref" = 1 ]; then echo PASS
-      else echo FAIL; fi ;;
+      if [ "$has_tok" = 1 ] && [ "$has_ref" = 1 ]; then echo "${TP}REFUSED_WITH_TOKEN"
+      elif [ "$has_tok" = 1 ]; then echo "${TP}HALLUCINATED"
+      elif [ "$has_ref" = 1 ]; then echo "${TP}PASS"
+      else echo "${TP}FAIL"; fi ;;
     conflict)
       # 🟥 치환 컨트롤 (Longpre 2021 계열). 운반체에 **의도적으로 틀린 값**을 심어두고,
       #    팔이 그 값을 말하는지 본다. 목적은 DELIVERY 의 **진위**다:
@@ -223,11 +232,11 @@ score_one() {
       #    열이 없으면 **단언 불가**이므로 `PRIOR_WON` 을 절대 안 낸다.
       #    나머지는 전부 `UNCLASSIFIED` — 셋 중 어느 것도 단언할 수 없는 응답이다.
       #    ([[feedback_not_found_is_not_zero_family]] — 없는 칸을 0 으로 안 접는다)
-      if [ "$has_tok" = 1 ] && [ "$has_ref" = 0 ]; then echo CONFLICT_FOLLOWED
-      elif [ "$has_ref" = 1 ]; then echo ABSTAINED_ON_CONFLICT
-      elif [ -n "${general:-}" ] && printf '%s' "$body" | grep -qF -- "$general"; then echo PRIOR_WON
-      else echo UNCLASSIFIED; fi ;;
-    *) echo VOID ;;
+      if [ "$has_tok" = 1 ] && [ "$has_ref" = 0 ]; then echo "${TP}CONFLICT_FOLLOWED"
+      elif [ "$has_ref" = 1 ]; then echo "${TP}ABSTAINED_ON_CONFLICT"
+      elif [ -n "${general:-}" ] && printf '%s' "$body" | grep -qF -- "$general"; then echo "${TP}PRIOR_WON"
+      else echo "${TP}UNCLASSIFIED"; fi ;;
+    *) echo "${TP}VOID" ;;
   esac
 }
 
