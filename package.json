@@ -178,6 +178,7 @@
     "scripts/prepush_guard_check.sh",
     "templates/predelete_check.test.sh",
     "scripts/test_prepush_destructive_lanes.sh",
+    "scripts/fixture_guard_lib.sh",
     "scripts/psa_scan_lib.sh",
     "scripts/test_psa_singlefile_lanes.sh",
     "scripts/session_close_check.sh",
