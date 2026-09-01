@@ -2969,3 +2969,29 @@
     같은 덤프를 셋에게 줬다면 디자이너가 잡은 축은 구조적으로 안 나왔다.
     적대검토가 남긴 미해결 셋(표본 n=1 · 동시 2변수 변경 · 비결정성 미배제)은 덱으로 못 닫고
     Q&A 대비로 핸드오프에 넘겼다 — 닫힌 척하지 않는다.
+- date: 2026-09-02
+  agent: UNATTRIBUTED — 이 세션(forge-harness-86)이 띄운 것이 아니다
+  count: 1
+  context: >-
+    ④-e 가 «오늘 디스패치 1건 · 원장 항목 0» 으로 ❌ 를 냈다. 🟥 그런데 이 세션은
+    Agent 를 한 번도 안 띄웠다(전 턴 전수 — 도구 호출은 Bash/Edit/SendMessage 뿐이고,
+    `run_in_background` Bash 둘은 서브에이전트가 아니다).
+    tally 실물(`tracks/_meta/.subagent_dispatch_tally`)은 **날짜 한 줄만** 적는다 —
+    2026-09-02 항목 1건, 파일 mtime 01:15.
+  outcome: pending
+  evidence: >-
+    🟥 **귀속 불가이고, 그건 계기의 성질이다.** SubagentStop 훅이
+    `HUB="${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}"` 로 경로를 잡는다 —
+    `CLAUDE_PROJECT_DIR` 이 안 잡히는 세션은 **어디서 돌든 허브의 tally 에 쓴다.**
+    같은 시각 이 머신에 다른 세션이 둘 있었다(`amphipod-23` · Orca
+    «Dispatch background conversation»). 즉 tally 는 **머신 전역**인데 ④-e 판정은
+    **세션 로컬**이라, 남의 디스패치가 내 마감을 막을 수 있다.
+    ⇒ 「내가 안 했다」와 「기록이 없다」를 구분할 수단이 이 파일에 **없다**.
+  note: >-
+    🟥 이 항목은 «디스패치 기록»이 아니라 **«귀속 불가 tally 의 기록»**이다.
+    outcome 을 accepted/rejected 로 적으면 60/40 승격 게이트를 오염시킨다 — 있지도 않은
+    호출의 성과를 세게 되니까. `pending` 으로 둔다.
+    🟥 정직 경계: 「남의 세션이 썼다」도 **추정**이다. 확인된 것은 ⓐ 이 세션은 안 띄웠다
+    ⓑ tally 경로가 머신 전역이다 — 둘뿐이고, ⓒ 「그래서 누가 썼나」는 미측정이다
+    ([[feedback_not_found_is_not_zero_family]]).
+    신호: tracks/_meta/fh_signal_2026-09-02_dispatch-tally-attribution.md
