@@ -268,7 +268,13 @@ _TOK="fx$$$(date +%s)"
 printf 'P01\tpositive\t봉인 원장의 세션 값은 무엇인가?\t%s\n' "$_TOK" >  "$_SQ"
 printf 'N01\tnegative\t원장에 없는 번호는 무엇인가?\tPR-%s\n' "$$"     >> "$_SQ"
 printf '# 합성 봉인 — session=%s\n\n세션 값은 %s 이다.\n' "$_TOK" "$_TOK" > "$_SS"
-( cd "$ROOT" && bash scripts/round/instrument_manifest.sh stamp "$_MF" "$_MQ" "$_MS" "합성 채점지시문" >/dev/null 2>&1 )
+# 🟥 매니페스트를 «직접» 쓴다. scripts/round/* 는 출하 대상이 아니고(선례:
+#    package_coverage_check.sh ACCEPTED_ABSENT «소비자는 회차를 안 돌린다»), 출하되는 이 레인이
+#    출하 안 되는 도구를 부르면 소비자 설치에서 같은 결함이 재현된다 — 실측으로 밟았다.
+#    형식은 「레포상대경로<공백2>sha256:해시」 두 줄이면 채점기의 조회에 충분하다.
+( cd "$ROOT" && for _p in "$_MQ" "$_MS"; do
+    printf '%s  sha256:%s\n' "$_p" "$(shasum -a 256 "$_p" | awk '{print $1}')"
+  done > "$_MF" )
 _OUT="$T/_run_l21"
 if [ ! -s "$_FX/manifest.txt" ] || [ ! -s "$_SQ" ]; then
   no "L21 픽스처 생성 실패 — 봉인 대조 레인을 검정할 수 없다(스킵 아님)"
