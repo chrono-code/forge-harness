@@ -315,8 +315,15 @@ else no "L24 스캐너 없음 — 검사 못 함(스킵 아님)"; fi
 #    저자 워크트리에선 검사기와 게이트가 같은 폴더(tracks/_meta)라 통했고, 거버너 트리에선
 #    게이트만 scripts/round/ 라 짝이 안 맞아 L25 넷이 죽었다. **레인이 자기 트리에서만 초록**.
 #    ⇒ 한 디렉터리 변수에서 «둘 다» 꺼낸다. 갈라 적을 수 있으면 다시 갈린다.
+# 🟥 경로를 «리터럴»로 쓴다. 조립(`"$_RD/x.sh"`)하면 new_code_anchor_check 의 변수 추적이
+#    못 따라가 실제로 실행하는데도 MENTION_ONLY 로 잡힌다(실측 2026-09-01: arm_blind_probe 는
+#    `bash "$ROOT/scripts/round/arm_blind_probe.sh"` 라 EXECUTED, 우리는 조립이라 MENTION_ONLY).
+#    한 디렉터리 변수에서 꺼내려던 원래 의도(양쪽이 갈리지 않게)는 아래 _RD 대조로 유지한다.
 _RD="$ROOT/scripts/round"
-_NLK="$_RD/nameleak_check.sh"; _GK="$_RD/gatecheck_qset.sh"
+_NLK="$ROOT/scripts/round/nameleak_check.sh"
+_GK="$ROOT/scripts/round/gatecheck_qset.sh"
+[ "$_NLK" = "$_RD/nameleak_check.sh" ] && [ "$_GK" = "$_RD/gatecheck_qset.sh" ] \
+  || no "L25 경로 대조 실패 — 리터럴과 조립이 갈렸다"
 # 🟥 2026-09-01: 종전에는 회차2 의 실제 산출물(gitignored)을 참조해 CI 에서 «픽스처 없음»
 #    으로 적색이었다. 자기 픽스처를 짓는다 — L21 과 같은 처방(P9).
 # 🟥 seal 파일명은 **실물 규약 형태**로 짓는다(`seal_<8hex>-<3hex>_<YYYYMMDD>-<HHMMSS>.md`).
@@ -348,6 +355,16 @@ if [ -x "$_NLK" ] && [ -f "$_GK" ] && [ -f "$_QK" ] && [ -f "$_SK" ]; then
   [ "$?" = 5 ] && ok "L25d 검사기 부재 → 실패(스킵 아님)" || no "L25d 부재를 스킵으로 접는다"
   mv "$_mv" "$_NLK"; chmod +x "$_NLK"
 else no "L25 픽스처 없음 — 검사 못 함(스킵 아님)"; fi
+
+# ── L25e 🟥 nameleak_check 를 «직접» 부른다 — L25a~d 는 게이트를 통한 간접 호출뿐이라
+#    앵커 게이트가 MENTION_ONLY 로 본다. 간접 호출은 그 도구의 앵커가 아니다.
+if [ -x "$ROOT/scripts/round/nameleak_check.sh" ]; then
+  _gen=$(bash "$ROOT/scripts/round/nameleak_check.sh" gen 2>/dev/null)
+  case "$_gen" in
+    w[0-9a-f][0-9a-f]*) ok "L25e gen 이 생성기 형태의 라벨을 낸다 ($_gen)" ;;
+    *) no "L25e gen 출력이 생성기 형태가 아니다 ($_gen)" ;;
+  esac
+else no "L25e nameleak_check 실행불가 — 검사 못 함(스킵 아님)"; fi
 rm -rf "$_L25"
 
 # ── L26 §7-7 — «두 숫자를 곱하지 않는다»를 «코드로» 검사한다 ────────────────────
