@@ -248,29 +248,49 @@ grep -q 'complete: NO' "$T/cmp/_ROUND_DONE" \
 #    재stamp 때 인자를 안 바꾸면 «회차1 문항»을 봉인해놓고 «회차2»를 돌린다. 그때
 #    `instrument_manifest.sh verify` 는 **rc=0** 이다 — 자기가 찍은 것과 같으니 자기 일관하다.
 #    🟥 판별자는 «경로»가 아니라 «해시»여야 한다: 같은 경로에 다른 내용이 오면 경로 비교는 통과한다.
-_MF="$ROOT/tracks/_meta/instrument_manifest_2026-08-31_round.txt"
-_SQ="$ROOT/tracks/_meta/qset_2026-08-31_round.tsv"
-_SS="$ROOT/tracks/_meta/seal_PLANTED_2026-08-31_round.md"
-if [ ! -s "$_MF" ] || [ ! -s "$_SQ" ]; then
-  no "L21 픽스처 부재 — 봉인 대조 레인을 검정할 수 없다(스킵 아님)"
+# 🟥 2026-09-01: 종전에는 «2026-08-31 회차의 실제 산출물»을 참조해서, gitignored 라
+#    CI 체크아웃에 없었고 L21 이 «픽스처 부재»로 적색이었다(레인이 자기 트리에서만 초록).
+#    ⇒ 픽스처를 **실제 도구로 지어서** 쓴다. instrument_manifest.sh 를 실제로 «실행»하므로
+#    그 도구의 MENTION_ONLY 앵커도 같이 닫힌다 — 이름만 부르는 것은 앵커가 아니다.
+# 🟥 픽스처는 레포 «안»에 있어야 한다: 매니페스트가 레포 상대경로로 적히고 채점기가 그
+#    접두를 벗겨 대조하므로, 레포 밖 경로는 구조적으로 안 맞는다.
+# 🟥 «상대경로»로 부른다. 매니페스트는 레포 상대경로로 적히고 채점기가 그 접두를 벗겨
+#    대조하므로, 절대경로로 부르면 항목을 못 찾아 exit 10 이 된다(실측 2026-09-01 재현).
+_FXR="tracks/_meta/.l21_fixture_$$"
+_FX="$ROOT/$_FXR"
+mkdir -p "$_FX"
+_MF="$_FXR/manifest.txt"; _SQ="$_FX/qset.tsv"; _SS="$_FX/seal.md"
+_MQ="$_FXR/qset.tsv"; _MS="$_FXR/seal.md"
+# 🟥 토큰을 «리터럴로 박지 않는다» — 채점기의 오염 게이트가 tracked 레포에서 기대토큰을
+#    주울 수 있는지 보고 exit 5 로 막는다(실측: 첫 판이 그렇게 막혔고 게이트가 옳았다).
+#    런타임 생성이라 이 파일 어디에도 답이 안 적힌다.
+_TOK="fx$$$(date +%s)"
+printf 'P01\tpositive\t봉인 원장의 세션 값은 무엇인가?\t%s\n' "$_TOK" >  "$_SQ"
+printf 'N01\tnegative\t원장에 없는 번호는 무엇인가?\tPR-%s\n' "$$"     >> "$_SQ"
+printf '# 합성 봉인 — session=%s\n\n세션 값은 %s 이다.\n' "$_TOK" "$_TOK" > "$_SS"
+( cd "$ROOT" && bash scripts/round/instrument_manifest.sh stamp "$_MF" "$_MQ" "$_MS" "합성 채점지시문" >/dev/null 2>&1 )
+_OUT="$T/_run_l21"
+if [ ! -s "$_FX/manifest.txt" ] || [ ! -s "$_SQ" ]; then
+  no "L21 픽스처 생성 실패 — 봉인 대조 레인을 검정할 수 없다(스킵 아님)"
 else
-  ( cd "$ROOT" && bash "$S" --seal "$_SS" --qset "$_SQ" --reps 5 --out /private/tmp/_run_0831 \
+  ( cd "$ROOT" && bash "$S" --seal "$_MS" --qset "$_MQ" --reps 5 --out "$_OUT" \
       --rescore --manifest "$_MF" >/dev/null 2>&1 </dev/null ); _r=$?
   [ "$_r" != 10 ] && ok "L21 봉인된 qset → 통과 (rc=$_r)" || no "L21 봉인된 qset 인데 막혔다"
   # 🟥 같은 «경로», 다른 «내용» — 경로 비교였으면 뚫리는 자리
   cp "$_SQ" "$T/q.bak"; printf '# probe\n' >> "$_SQ"
-  ( cd "$ROOT" && bash "$S" --seal "$_SS" --qset "$_SQ" --reps 5 --out /private/tmp/_run_0831 \
+  ( cd "$ROOT" && bash "$S" --seal "$_MS" --qset "$_MQ" --reps 5 --out "$_OUT" \
       --rescore --manifest "$_MF" >/dev/null 2>&1 </dev/null ); _r2=$?
   cp "$T/q.bak" "$_SQ"
   [ "$_r2" = 10 ] && ok "L22 같은 경로·다른 내용 → 차단 (해시 비교임을 증명)" \
     || no "L22 내용이 바뀌었는데 통과했다 (rc=$_r2) — 경로만 보고 있다"
   # 🟥 미지정은 «통과»가 아니라 UNVERIFIED 로 «남아야» 한다
-  ( cd "$ROOT" && bash "$S" --seal "$_SS" --qset "$_SQ" --reps 5 --out /private/tmp/_run_0831 \
+  ( cd "$ROOT" && bash "$S" --seal "$_MS" --qset "$_MQ" --reps 5 --out "$_OUT" \
       --rescore >/dev/null 2>&1 </dev/null )
-  grep -q 'qset_matches_manifest: UNVERIFIED' /private/tmp/_run_0831/_ROUND_DONE \
+  grep -q 'qset_matches_manifest: UNVERIFIED' "$_OUT/_ROUND_DONE" \
     && ok "L23 --manifest 미지정 → 마커에 UNVERIFIED (통과로 안 접는다)" \
     || no "L23 미지정인데 UNVERIFIED 가 기록에 없다"
 fi
+rm -rf "$_FX"
 
 # ── L24 🟥 셸 이름-경계 스캐너를 «회귀에» 배선한다 ────────────────────────────────
 #    이 스캐너를 짓고도 «안 돌려서» 같은 날 같은 결함을 다시 넣었다(`«$_rel»`).
