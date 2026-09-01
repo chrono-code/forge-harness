@@ -177,7 +177,13 @@ lint_file() {
   #    **프로세스 치환 안의 heredoc** 은 셸이 못 판다 — 본문에 `)` 가 하나 들어간 순간
   #    `bad substitution` 으로 죽고, 이 린트는 그걸 삼켜 **「소견 없음」으로 렌더했다**(fail-open).
   #    이 스크립트가 잡으라고 존재하는 «조용한 즉사» 클래스를 자기가 저질렀다.
-  _p11py=$(mktemp -t p11py) || _p11py=""
+  # 🟥 2026-09-01 CI 가 잡았다: `mktemp -t p11py` 는 macOS 에서 통하고 **GNU 에서 죽는다**
+  #    (`too few X's in template`). 이식성 린트 «안»의 이식성 결함이고, 이 린트가 잡으라고
+  #    존재하는 클래스 그 자체다. 로컬은 초록이었다 — 「로컬 초록 ≠ CI 초록」.
+  # 🟥 **이 수리는 이 머신에서 검증 불가다** — macOS mktemp 는 X 없는 템플릿도, X 있는
+  #    템플릿도 «둘 다» 받는다(실측 rc=0/rc=0). 그러니 로컬 초록은 이 수리에 대해 아무것도
+  #    증명하지 않는다. **GNU 동작의 유일한 계기는 CI 다.** 미검증이라고 적어둔다.
+  _p11py=$(mktemp -t p11py.XXXXXX 2>/dev/null || mktemp) || _p11py=""
   if [ -n "$_p11py" ]; then
     cat > "$_p11py" <<'P11PY'
 import re, sys
