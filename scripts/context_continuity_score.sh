@@ -593,9 +593,14 @@ while IFS='|' read -r qid kind question token general; do
 
 $(cat "$PROTOCOL_FILE")"
     fi
+    # 🟥 2026-09-01: 여기가 `$question` 을 다시 읽어 위에서 붙인 규약을 버렸다.
+    #    그래서 ③(규약×deliver) 의 ARM 은 실제로는 «규약없음×deliver» 였고, 그것을
+    #    「deliver 가 규약 준수를 죽인다」는 «발견» 으로 낼 뻔했다(ARM 0/72 · CTRL 72/72).
+    #    🟥 바로 위 주석이 «두 팔에 똑같이 붙는다» 라고 적어둔 불변식을 **다섯 줄 아래에서** 깨뜨렸다 —
+    #    산문은 인접해 있어도 floor 가 아니다. 앞에 붙이되 **누적된 $q 위에** 붙인다.
     if [ "$DELIVER" = 1 ] && [ "$arm" = ARM ]; then
       q="[직전 압축 전 봉인 원장: tracks/_meta/compaction/$(basename "$SEAL") — 필요하면 열어라]
-$question"
+$q"
     fi
     label="$(_label_for "$qid" "$arm")" || { echo "🟥 라벨 해석 실패 ($qid/$arm) — $LABELMAP_FILE 확인" >&2; exit 7; }
     [ -n "$label" ] || { echo "🟥 라벨이 비었다 ($qid/$arm)" >&2; exit 7; }

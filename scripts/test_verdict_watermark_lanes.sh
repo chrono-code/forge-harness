@@ -339,5 +339,31 @@ if [ -x "$ROOT/scripts/round/fallback_reach_probe.sh" ]; then
     || no "L27 폴백 미도달 — 폴백은 장식이고 48 바는 «인쇄»다"
 else no "L27 프로브 없음 — 검사 못 함(스킵 아님)"; fi
 
+# ── L28 🟥 «처치 둘을 곱했을 때» — deliver 분기가 누적된 $q 를 버리면 안 된다 ───
+#    2026-09-01 사고: deliver 분기가 `$question` 을 다시 읽어 위에서 붙인 규약을 버렸다.
+#    → ③(규약×deliver) 의 ARM 은 실제로는 «규약없음×deliver» 였고, ARM 0/72 · CTRL 72/72 를
+#    「deliver 가 규약 준수를 죽인다」는 «발견» 으로 낼 뻔했다.
+#    🟥 known-pair 를 «한 인자씩» 만 돌리면 조합이 여는 경로를 구조적으로 못 본다.
+if grep -q 'DELIVER" = 1 \] && \[ "$arm" = ARM' "$S"; then
+  _dl=$(grep -n 'DELIVER" = 1 \] && \[ "$arm" = ARM' "$S" | head -1 | cut -d: -f1)
+  _blk=$(sed -n "${_dl},$((_dl+4))p" "$S")
+  if printf '%s' "$_blk" | grep -q '^\$question"$'; then
+    no "L28 deliver 분기가 \$question 을 다시 읽는다 — 규약이 버려진다"
+  else ok "L28 deliver 분기가 누적된 \$q 위에 붙인다"; fi
+  # 🟥 되돌림: 버그를 다시 넣으면 L28 이 실제로 무나
+  #    🟥 **사본에서** 돌린다. $S 는 라이브 채점기이고 이 뮤턴트는 «실제 버그»다 —
+  #    테스트가 중간에 죽으면 채점기가 조용히 망가진 채 남는다(L26c 의 덧붙임과 등급이 다르다).
+  _l28c=$(mktemp -t l28copy) || _l28c=""
+  if [ -n "$_l28c" ] && cp "$S" "$_l28c"; then
+    _mut=$((_dl+2))   # 블록의 셋째 줄이 그 자리다 (정규식 곡예 대신 줄번호로)
+    awk -v n="$_mut" 'NR==n{print "$question\""; next} {print}' "$_l28c" > "$_l28c.m" && mv -f "$_l28c.m" "$_l28c"
+    _blk2=$(sed -n "${_dl},$((_dl+4))p" "$_l28c")
+    if printf '%s' "$_blk2" | grep -q '^\$question"$'; then
+      ok "L28b [되돌림] 버그를 넣으면 검사가 문다 (사본에서)"
+    else no "L28b 되돌림 적용 실패 — L28 은 미검증이다(장식 가능)"; fi
+    rm -f "$_l28c" "$_l28c.m"
+  else no "L28b 사본을 못 만들었다 — 되돌림 미검증(스킵 아님)"; fi
+else no "L28 deliver 분기를 못 찾았다 — 검사 못 함(스킵 아님)"; fi
+
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
