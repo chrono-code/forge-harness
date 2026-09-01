@@ -353,7 +353,9 @@ if grep -q 'DELIVER" = 1 \] && \[ "$arm" = ARM' "$S"; then
   # 🟥 되돌림: 버그를 다시 넣으면 L28 이 실제로 무나
   #    🟥 **사본에서** 돌린다. $S 는 라이브 채점기이고 이 뮤턴트는 «실제 버그»다 —
   #    테스트가 중간에 죽으면 채점기가 조용히 망가진 채 남는다(L26c 의 덧붙임과 등급이 다르다).
-  _l28c=$(mktemp -t l28copy) || _l28c=""
+  # 🟥 `mktemp -t l28copy` 는 macOS 에서 통하고 **GNU 에서 죽는다**(too few X's).
+  #    P11 에서 같은 결함을 고치면서 **이 형제를 안 봤다** — 반쪽-픽스 전파경계.
+  _l28c=$(mktemp -t l28copy.XXXXXX 2>/dev/null || mktemp) || _l28c=""
   if [ -n "$_l28c" ] && cp "$S" "$_l28c"; then
     _mut=$((_dl+2))   # 블록의 셋째 줄이 그 자리다 (정규식 곡예 대신 줄번호로)
     awk -v n="$_mut" 'NR==n{print "$question\""; next} {print}' "$_l28c" > "$_l28c.m" && mv -f "$_l28c.m" "$_l28c"
