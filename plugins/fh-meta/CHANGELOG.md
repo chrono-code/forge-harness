@@ -1,5 +1,29 @@
 # forge-harness (fh-meta) Changelog
 
+### [2.15.1] — 2026-09-03 — 채점기·회차 게이트 fail-closed 4자리 + REFUSE_RE 결박 + 정체성 ④ 🟢
+
+### 🟥 BREAKING (gate): 회차 게이트가 «깨진 qset» 을 더는 통과시키지 않는다
+**무엇이 이제 막히나**: `scripts/round/eligcheck_qset.sh` · `gatecheck_qset.sh` · `context_continuity_score.sh` 에서
+TSV 파서가 죽거나(값에 `|` · 파일 부재) 채점 행이 0 이면 종전엔 «🟢 전 문항 적격 / 선통과 / 계기 생존» rc 0 이었다
+(프로세스 치환이 rc 를 삼켰다). 이제 파서 실패 → rc 2·3, 채점 행 0 → eligcheck 3 · gatecheck 6 · 채점기 12.
+**처방**: rc≠0 을 «부적격»으로 읽어라. positive 전용 qset 을 eligcheck 에 넣지 마라(이제 positive 행도 채점된다 — 아래).
+
+### 🟥 BREAKING (gate): eligcheck 가 positive 문항을 채점한다 — CTRL 이 토큰을 한 번이라도 내면 DEAD_CONTROL
+종전엔 positive 행이 조용히 건너뛰어졌다(설계는 있고 코드가 없던 자리). 처방: 회차4 이후 positive 문항은 CTRL 사전 디스패치 후 이 게이트를 통과해야 봉인한다.
+
+### 🟥 BREAKING (gate): REFUSE_RE 가 맨몸 부정을 거절로 안 읽는다
+`없습니다|없다|없는 것|없었` 는 거절 대상 명사(기록·근거·항목…)에 결박됐다 — 설명문 안의 「반대 의견은 없었습니다」는 더는 거절이 아니다.
+얼린 바 48/48 · 96/96 유지. 처방: 기존 회차 숫자는 재산출 대상(negative 축 과차단 감소 방향). 브래킷은 ASCII 전용, grep 은 `LC_ALL=C` 핀.
+
+### 🟥 BREAKING (gate): ccs 오염 게이트가 6열 qset 에서 눈뜬다
+`read` 4변수가 6열에서 토큰을 `"tok||"` 로 삼켜 git grep 이 영원히 0 히트였다. 처방: 6열 qset 회차는 오염 게이트를 다시 통과해야 한다(재검: round2 2건 실피해 0).
+
+### 같이 들어온 것
+- `capability_effect_probe.sh`: 스냅샷 부재 dir → «부작용 없음» 오판 → SNAPSHOT_ERROR → RC_HARNESS(10)
+- `target_pin.sh` mtime GNU/BSD 분기 레인(P6~P8, stat 흉내) · 레인 E0·E4~E9·G1~G5·L16·L29
+- salience-splitter description 다이어트(561→375자) — 등재 준비
+- **정체성 ④ 프런티어 답습 🔵 → 🟢** (2026-09-03 운영자 판정, 근거 `ship_readiness_gate.md` ④ 행). 정체성별 단계: Ⓑ①②③④ 🟢 · ⑤ 🔵(2회차 «플로어에서 안 뜬다» — 배선 결함으로 기록, 다음 사전등록)
+
 ### [2.15.0] — 2026-09-02 — 게이트 정본을 Codex 진입점에 미러 + round/ 계기에 앵커
 
 ### 🟥 BREAKING (gate): `axes-run:` 한 줄에 `ⓔ=` 는 **정확히 하나**여야 한다
