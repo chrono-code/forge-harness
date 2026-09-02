@@ -128,9 +128,29 @@ else
   [ "$_rc" -ne 0 ]; chk "E4 값에 '|' → 파서 exit 3 이 «0 행 통과»로 접히지 않는다 (rc≠0) [got=$_rc]" "$?" 0
   ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_absent.tsv" "$T/out" 1 ) >/dev/null 2>&1; _rc=$?
   [ "$_rc" -ne 0 ]; chk "E5 qset 파일 부재 → rc≠0 (없음≠빈 qset≠전 문항 적격) [got=$_rc]" "$?" 0
-  printf 'P01\tpositive\tq?\tTOK\t\t\n' > "$T/eq_pos.tsv"       # 채점 대상 행 0 — «잰 것 없음»
+  printf '# comment only\n' > "$T/eq_pos.tsv"       # 채점 대상 행 0 — «잰 것 없음» (positive 는 2026-09-02 부터 채점 대상이라 주석만 남긴다)
   ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_pos.tsv" "$T/out" 1 ) >/dev/null 2>&1; _rc=$?
   [ "$_rc" -ne 0 ]; chk "E6 negative/conflict 행 0 → rc≠0 (빈 집합은 «전 문항 적격»이 아니다) [got=$_rc]" "$?" 0
+  # ── E7–E9 positive 적격 분기 (2026-09-02) — CTRL 이 토큰을 «내면» DEAD_CONTROL ──────────────
+  printf 'P01\tpositive\tq?\tZZQQPOS\t\t\n' > "$T/eq_p.tsv"
+  printf '그런 값은 기록에 없습니다.\n' > "$T/out/P01_CTRL_r1.txt"
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_p.tsv" "$T/out" 1 ) >/dev/null 2>&1
+  chk "E7 CONTROL positive: CTRL 이 토큰을 안 냄 → 적격(0)" "$?" 0
+  printf '값은 ZZQQPOS 입니다.\n' > "$T/out/P01_CTRL_r1.txt"
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_p.tsv" "$T/out" 1 ) >/dev/null 2>&1
+  chk "E8 positive: CTRL 이 토큰을 냄 → DEAD_CONTROL 부적격(1)" "$?" 1
+  printf '그런 값은 기록에 없습니다.\n' > "$T/out/P01_CTRL_r1.txt"; rm -f "$T/out/P01_CTRL_r2.txt"
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_p.tsv" "$T/out" 2 ) >/dev/null 2>&1
+  chk "E9 positive: reps=2 인데 응답 1건 부재 → UNMEASURED 부적격(1)" "$?" 1
+  printf '<<VERDICT:ANSWERED>> ZZQQPOS\n' > "$T/out/P01_CTRL_r1.txt"   # typed 형 — TYPED_PASS 도 «토큰이 나왔다»
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_p.tsv" "$T/out" 1 ) >/dev/null 2>&1
+  chk "E8b positive: typed 마커 + 토큰(TYPED_PASS) → DEAD_CONTROL(1)" "$?" 1
+  printf '기록에 없습니다. ZZQQPOS 은 기록에 없습니다.\n' > "$T/out/P01_CTRL_r1.txt"   # 거절+토큰 — REFUSED_WITH_TOKEN 도 토큰 유출
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_p.tsv" "$T/out" 1 ) >/dev/null 2>&1
+  chk "E8c positive: 거절+토큰(REFUSED_WITH_TOKEN) → DEAD_CONTROL(1)" "$?" 1
+  printf 'P01\tpositive\tq?\t\t\t\n' > "$T/eq_p_notok.tsv"; printf '아무 말\n' > "$T/out/P01_CTRL_r1.txt"
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_p_notok.tsv" "$T/out" 1 ) >/dev/null 2>&1
+  chk "E8d positive: 기대 토큰 빈 칸 → UNMEASURED(1), «전부 DEAD_CONTROL» 아님" "$?" 1
 fi
 
 # ───────────────────────── gatecheck_qset ─────────────────────────

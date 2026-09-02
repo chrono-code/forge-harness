@@ -103,12 +103,18 @@ GIT_META_WATCH=""
 # 비용이 떨어진다 — 정확도를 깎아 비용을 맞추려던 게 잘못된 트레이드였다.
 
 _snapshot() {  # $1=dir → "file <path>" + "sha  path" + dir/기타 축 (정렬)
+  # 🟥 2026-09-02 (B1 «빈 값 양변») — 종전엔 대상 디렉터리가 없거나 find 가 죽으면 출력이
+  #    «빈 문자열»이었고, before/after 둘 다 비면 `[ "$before" = "$after" ]` 가 참이라
+  #    changed=0 → «부작용 없음» 으로 접혔다. 빈 샌드박스(정당한 빈 출력)와 구분이 없었다.
+  #    ⇒ 첫 줄에 «무엇을 찍었나»를, 실패는 SNAPSHOT_ERROR 로 **값 안에** 남긴다. 호출부가 검사한다.
+  if [ ! -d "$1" ]; then printf 'SNAPSHOT_ERROR nodir %s\n' "$1"; return 1; fi
+  printf 'snapshot-of %s\n' "$1"
   local _flist; _flist=$(mktemp "${TMPDIR:-/tmp}/fh_flist.XXXXXX")
   {
     # `.git` 은 통째로 제외한다 — `git status` 류가 `.git/index` 를 정당하게 갱신하므로
     # 전체를 재면 읽기 전용 capability 가 거짓 VIOLATION 을 받는다. 대신 아래에서
     # **실행으로 이어지는 표면만** 골라 넣는다.
-    find "$1" -type f -not -path '*/.git/*' 2>/dev/null
+    find "$1" -type f -not -path '*/.git/*' 2>/dev/null || printf 'SNAPSHOT_ERROR find-rc %s\n' "$?"
     local w
     for w in $GIT_META_WATCH; do
       [ -e "$w" ] || continue
@@ -368,6 +374,13 @@ $out2"
   after=$(_snapshot "$sandbox")
   local out_after; out_after=$(_snapshot "$outside")
 
+  # 🟥 스냅샷 «실패»는 «같음»이 아니다 — 양쪽이 같이 죽으면 종전엔 changed=0 이었다.
+  case "$before$after$out_before$out_after" in
+    *"\nSNAPSHOT_ERROR "*|"SNAPSHOT_ERROR "*)   # 줄머리 센티널만 — 파일명에 SNAPSHOT_ERROR 가 들어가도 안 걸린다(codex B8)
+      _cleanup_probe; rm -rf "$outside"
+      printf '🟥 HARNESS_ERROR %s — 스냅샷 실패(SNAPSHOT_ERROR). «변화 없음»이 아니라 «못 쟀다»\n' "$cap"
+      return "$RC_HARNESS" ;;
+  esac
   local changed outside_changed
   changed=$([ "$before" = "$after" ] && echo 0 || echo 1)
   outside_changed=$([ "$out_before" = "$out_after" ] && echo 0 || echo 1)

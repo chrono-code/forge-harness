@@ -18,16 +18,19 @@ pass=0; fail=0
 ck(){ if [ "$2" = "$3" ]; then echo "  🟢 $1"; pass=$((pass+1))
       else echo "  🟥 $1 (기대 $3, 실제 $2)"; fail=$((fail+1)); fi; }
 
-printf '없습니다. <<VERDICT:REFUSED>>\n'  > "$T/ok.txt"
-printf '없습니다. <<VERDICT:BOGUS>>\n'    > "$T/bogus.txt"   # 🟥 깨진 토큰
-printf '없습니다. <<VERDICT:REFUSED\n'    > "$T/trunc.txt"   # 🟥 잘린 토큰
+# 🟥 2026-09-02: 거절문을 «기록에 없습니다.»로 바꿨다 — REFUSE_RE 가 맨몸 「없습니다」를 명사에 결박한 뒤로
+#    한 낱말 「없습니다.」는 거절이 아니다(실제 거절 어형은 «기록에/근거가 없습니다»; 얼린 바 48·96 손실 0).
+#    이 프로브가 재는 것은 typed/폴백 «경로»지 거절 «어형»이 아니라, 픽스처를 실제 어형으로 맞춘다.
+printf '기록에 없습니다. <<VERDICT:REFUSED>>\n'  > "$T/ok.txt"
+printf '기록에 없습니다. <<VERDICT:BOGUS>>\n'    > "$T/bogus.txt"   # 🟥 깨진 토큰
+printf '기록에 없습니다. <<VERDICT:REFUSED\n'    > "$T/trunc.txt"   # 🟥 잘린 토큰
 printf '기록에 없습니다.\n'                > "$T/plain.txt"   # 토큰 없음
 
 ck "정상 토큰 → typed 경로"        "$(score_one "$T/ok.txt"    negative zzTOK)" TYPED_PASS
 # 🟥 2026-09-01 신설 — «typed 경로에서도 토큰 검사가 도는가».
 #    종전엔 태그가 있으면 즉시 return 해서 토큰을 안 봤다. 그래서 아래 두 줄이 «둘 다»
 #    TYPED_REFUSED 로 접혔다 — 정확한 거절과 지어낸 거절이 구분되지 않았다.
-printf '없습니다. zzTOK 은 없습니다. <<VERDICT:REFUSED>>\n' > "$T/tokref.txt"
+printf '기록에 없습니다. zzTOK 은 기록에 없습니다. <<VERDICT:REFUSED>>\n' > "$T/tokref.txt"
 printf 'zzTOK 입니다. <<VERDICT:REFUSED>>\n'                > "$T/tokhal.txt"
 ck "🟥 typed + 토큰 + 거절 → 검증이 돈다"  "$(score_one "$T/tokref.txt" negative zzTOK)" TYPED_REFUSED_WITH_TOKEN
 ck "🟥 typed + 토큰 + 거절없음 → 검증이 돈다" "$(score_one "$T/tokhal.txt" negative zzTOK)" TYPED_HALLUCINATED
