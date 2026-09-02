@@ -133,5 +133,26 @@ else
   [ "$_rc" -ne 0 ]; chk "E6 negative/conflict 행 0 → rc≠0 (빈 집합은 «전 문항 적격»이 아니다) [got=$_rc]" "$?" 0
 fi
 
+# ───────────────────────── gatecheck_qset ─────────────────────────
+# 🟥 하중선: 파서가 죽으면 루프가 «0 행»을 받고 bad=0·unchecked=0 → 「🟢 개시 게이트 선통과」 rc 0.
+#    실측(2026-09-02, 원본): 값에 `|` · 빈 qset · 헤더뿐 · 파일 부재 → 넷 다 rc 0. 넷 다 비-0 이어야 한다.
+#    seal 이름은 실물 규약 형태여야 nameleak 이 먼저 막지 않는다(L25 와 같은 이유).
+_GK="${GATECHECK_UNDER_TEST:-$R/gatecheck_qset.sh}"
+_GTOK="zzG$$$(date +%s)"
+printf 'P01\tpositive\tq?\t%s\t\t\n' "$_GTOK" > "$T/g_ok.tsv"
+printf 'P01\tpositive\tq|x?\t%s\t\t\n' "$_GTOK" > "$T/g_pipe.tsv"
+: > "$T/g_empty.tsv"; printf '# header only\n' > "$T/g_hdr.tsv"
+_GSEAL="$T/seal_deadbeef-abc_20260901-101010.md"; printf 'seal %s\n' "$_GTOK" > "$_GSEAL"
+( cd "$ROOT" && bash "$_GK" "$T/g_ok.tsv" "$_GSEAL" post ) >/dev/null 2>&1
+chk "G1 CONTROL 정상 1행 + seal → 선통과(0)" "$?" 0
+( cd "$ROOT" && bash "$_GK" "$T/g_pipe.tsv" "$_GSEAL" post ) >/dev/null 2>&1; _rc=$?
+[ "$_rc" -ne 0 ]; chk "G2 값에 '|' → 파서 exit 3 이 «0 행 선통과»로 접히지 않는다 (rc≠0) [got=$_rc]" "$?" 0
+( cd "$ROOT" && bash "$_GK" "$T/g_empty.tsv" "$_GSEAL" post ) >/dev/null 2>&1; _rc=$?
+[ "$_rc" -ne 0 ]; chk "G3 빈 qset → rc≠0 (빈 집합은 «선통과»가 아니다) [got=$_rc]" "$?" 0
+( cd "$ROOT" && bash "$_GK" "$T/g_hdr.tsv" "$_GSEAL" post ) >/dev/null 2>&1; _rc=$?
+[ "$_rc" -ne 0 ]; chk "G4 헤더뿐 qset → rc≠0 [got=$_rc]" "$?" 0
+( cd "$ROOT" && bash "$_GK" "$T/g_absent.tsv" "$_GSEAL" post ) >/dev/null 2>&1; _rc=$?
+[ "$_rc" -ne 0 ]; chk "G5 qset 파일 부재 → rc≠0 (없음≠빈 qset≠선통과) [got=$_rc]" "$?" 0
+
 echo "round-instrument lanes: $P passed, $F failed"
 [ "$F" -eq 0 ]

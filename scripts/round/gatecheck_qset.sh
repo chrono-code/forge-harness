@@ -181,6 +181,17 @@ ref_probe(){ "$GREP" -rlE -- "$1" "$C/repo" 2>/dev/null | wc -l | tr -d ' '; }
 #    다를 수 있다). 그리고 누가 이걸 `$4==prev` 로 «단순화»하면 그 순간 뚫린다.
 #    ⚠️ 이건 오늘의 «셸 이름-경계» 일가와 **다른 축**이다: 그건 「어디까지가 이름인가」,
 #    이건 「두 문자열이 같은가」. 공통점은 **비ASCII 에서만 조용히 틀린다**는 것뿐이다.
+# 🟥 파싱을 «먼저 물질화»하고 rc 를 본다 — eligcheck(55a10ce)와 같은 모양. 프로세스 치환
+#    (`< <(_tsv_pipe)`)은 awk 가 exit 3(값에 `|`)/2(파일 부재)로 죽어도 루프에 «0 행»만 주고
+#    rc 는 버린다 → bad=0·unchecked=0 → 「🟢 개시 게이트 선통과」 rc 0.
+#    실측(2026-09-02): 값에 `|` 하나 · 빈 qset · 헤더뿐 · 파일 부재 → 넷 다 «🟢 선통과» rc 0.
+#    0 행은 «선통과»가 아니라 «잰 게 없다»다. $C 의 EXIT trap 이 이 파일도 같이 지운다.
+_TSVP="$C/qset.pipe"
+_tsv_pipe "$Q" > "$_TSVP"; _prc=$?
+if [ "$_prc" -ne 0 ]; then
+  echo "🟥 UNMEASURED — qset 파싱 실패(rc=$_prc): 값에 '|' 가 있거나 파일을 못 읽었다. 회차를 열지 않는다" >&2
+  exit 2
+fi
 _dup=$(LC_ALL=C awk -F'\t' 'NF>=4 && $1!~/^#/ && $1!="" {if(seen[$4]++) print $1}' "$Q")
 if [ -n "$_dup" ]; then
   echo "🟥 중복 기대토큰 — 두 문항이 독립이 아니다. 임계(Fisher N)가 거짓이 된다:"
@@ -188,11 +199,12 @@ if [ -n "$_dup" ]; then
   bad_dup=1
 else bad_dup=0; fi
 
-bad=$bad_dup; unchecked=0
+bad=$bad_dup; unchecked=0; scored=0
 printf '%-4s %-9s %-8s %-8s %s\n' QID KIND CLONE REF NOTE
 while IFS='|' read -r qid kind q tok general probe; do
   case "$qid" in ''|'#'*) continue;; esac
   [ -n "${tok:-}" ] || continue
+  scored=$((scored+1))
   n=$(hits "$tok"); note=""
   [ "$n" != 0 ] && { note="🟥 클론 오염 — 팔이 주울 수 있다"; bad=1; }
   # ── 🟥 봉인 원장 쪽 검사 (2026-08-31 신설, 검토자 승인) ────────────────────────
@@ -237,12 +249,17 @@ while IFS='|' read -r qid kind q tok general probe; do
       fi ;;
   esac
   printf '%-4s %-9s %-8s %-8s %s\n' "$qid" "$kind" "$n" "$refn" "$note"
-done < <(_tsv_pipe "$Q")
+done < "$_TSVP"
 
 echo
 # 🟥 `UNCHECKED` 를 «통과»로 렌더하지 않는다. 봉인 미지정이면 원장 쪽 계약(positive 는 원장에
 #    있어야·negative 는 없어야·conflict 는 심겼어야)이 **한 건도 검사되지 않았다.**
 #    「선통과」라고만 찍으면 읽는 사람이 «다 봤다»로 읽는다 — 오늘 우리가 센 그 얼굴이다.
+# 🟥 검사된 행 0 은 «선통과»가 아니다 — 빈 qset·헤더뿐·기대토큰 없는 행뿐인 세트는 «잰 것 없음».
+#    6 을 쓴다: 1(부적격)·2(계기/입력 중단)·3(부분 통과 UNCHECKED)·4(핀)·5(이름 누출)와 겹치지 않는다.
+if [ "$scored" = 0 ]; then
+  echo "🟥 UNMEASURED — 검사된 행이 0 이다. «선통과»가 아니다 — 회차를 열지 않는다" >&2; exit 6
+fi
 if [ "$bad" != 0 ]; then echo "🟥 이 세트로 회차를 열면 안 된다"; exit 1
 elif [ "$unchecked" != 0 ]; then
   echo "🟡 부분 통과 — 클론 오염 축은 통과, **원장 축 ${unchecked}건 UNCHECKED**(봉인 미지정)."

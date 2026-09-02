@@ -636,7 +636,8 @@ for _pair in \
   "scripts/round/delta_guard.sh|scripts/test_round_instruments_lanes.sh" \
   "scripts/round/target_pin.sh|scripts/test_round_instruments_lanes.sh" \
   "scripts/round/instrument_manifest.sh|scripts/test_round_instruments_lanes.sh" \
-  "scripts/round/eligcheck_qset.sh|scripts/test_round_instruments_lanes.sh"
+  "scripts/round/eligcheck_qset.sh|scripts/test_round_instruments_lanes.sh" \
+  "scripts/round/gatecheck_qset.sh|scripts/test_round_instruments_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then
