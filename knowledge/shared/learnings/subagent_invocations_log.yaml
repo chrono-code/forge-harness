@@ -2995,3 +2995,21 @@
     ⓑ tally 경로가 머신 전역이다 — 둘뿐이고, ⓒ 「그래서 누가 썼나」는 미측정이다
     ([[feedback_not_found_is_not_zero_family]]).
     신호: tracks/_meta/fh_signal_2026-09-02_dispatch-tally-attribution.md
+- date: 2026-09-02
+  agent: general-purpose (2) + codex exec sidecar (1) — 프로 세션(Fable 5.1 거버너)
+  count: 3
+  context: >-
+    운영자 «자체개발 거버너모드 · 병렬로». ⓐ ⑤ 증폭자 측정 사전등록 초안(블라인드) ⓑ 카드 미결 2건
+    (eligcheck _tsv_pipe fail-open · target_pin mtime 분기) 조사+패치 제안(패치는 텍스트로 회신,
+    적용은 거버너가 본 체크아웃에서) ⓒ codex 타계열 적대검토(그 diff).
+  outcome: accepted
+  evidence: >-
+    ⓐ prereg_2026-09-02_identity5-natural-proposal.md 230줄 — 팔·P0/P1/P2·성립/반증·추출기 분리·
+    미해결 5항 명시. 거버너가 base 핀만 추가 후 봉인. ⓑ 두 패치 모두 거버너 되돌림 재현 성공
+    (HEAD 사본 E4/E5 적색 · GNU 뮤턴트 P6 적색) + 카드가 가리킨 파일이 죽은 사본이고 정본에 같은
+    구멍이 있음을 잡음(카드 오류 정정). ⓒ 7 지적 → 4 수리(S1·A4·A5·B7) 3 기각(소스 근거).
+  note: >-
+    ⓑ 는 «조사·제안형» 임무로 짰고 트리를 안 건드렸다(2026-08-21 사이드카 트리 편집 사고 규율).
+    Fable 5.1 거버너 관찰: 서브에이전트 보고를 동의로 안 받고 넷 다 실행으로 재현했다 —
+    그 과정에서 codex 3항을 소스로 기각. 자력 적발 0 은 ④ sim 1회차 VOID(out 경로 오용)와
+    selfcheck 오귀속 위험(VOID1 디렉터리)에서 — 둘 다 계기 출력이 잡았지 성실함이 잡은 게 아니다.

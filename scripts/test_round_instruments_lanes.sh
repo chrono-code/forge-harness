@@ -60,6 +60,28 @@ chk "P4 접두 8자 미만 → 인자오류(2)" "$?" 2
 bash "$R/target_pin.sh" >/dev/null 2>&1
 chk "P5 인자 없음 → 2" "$?" 2
 
+# 🟥 P6–P8 mtime 이식성 분기 — rc 로는 안 갈린다(두 분기 중 하나를 지워도 rc=0). 판별자는
+#    출력의 `mtime=` 값이 UNKNOWN 으로 «접히는가»다. 이 머신은 BSD stat 이라 GNU 분기는 실물로
+#    못 태운다 ⇒ PATH 앞에 «한 옵션만 받는 stat 흉내»를 두고 각 분기를 따로 태운다.
+#    실측(2026-09-02, 스크래치 뮤턴트): GNU 분기 삭제 → GNU 흉내 밑에서 UNKNOWN ·
+#    BSD 분기 삭제 → BSD 흉내 밑에서 UNKNOWN · 둘 다 있으면 둘 다 값. P8 은 「둘 다 거절」 컨트롤 —
+#    UNKNOWN 이 «나올 수 있음»을 같은 실행에서 보인다(안 나오면 판별자가 죽은 것).
+_TP="${TARGET_PIN_UNDER_TEST:-$R/target_pin.sh}"
+mkdir -p "$T/shim_gnu" "$T/shim_bsd" "$T/shim_none"
+# 🟥 cross-family(codex, 2026-09-02) A4·A5: 흉내가 «$1 만» 보고 레인이 «mtime= 뒤 아무 글자»를 받았다 —
+#    `%y`→`%Q` 뮤턴트도, `warning mtime=garbage` 를 찍고 죽는 대상도 초록이었다. ⇒ 흉내는 argv 전체
+#    (`-c %y <실재파일>` / `-f %Sm <실재파일>`)를 검사하고, 레인은 rc=0 ∧ **흉내가 낸 리터럴과 정확히 일치**를 요구한다.
+_GNU_LIT="2026-01-01 00:00:00.000000000 +0000"; _BSD_LIT="Jan  1 00:00:00 2026"
+printf '#!/usr/bin/env bash\n[ "$1" = "-c" ] && [ "$2" = "%%y" ] && [ -e "${3:-}" ] || exit 1\necho "%s"\n' "$_GNU_LIT" > "$T/shim_gnu/stat"
+printf '#!/usr/bin/env bash\n[ "$1" = "-f" ] && [ "$2" = "%%Sm" ] && [ -e "${3:-}" ] || exit 1\necho "%s"\n' "$_BSD_LIT" > "$T/shim_bsd/stat"
+printf '#!/usr/bin/env bash\nexit 1\n' > "$T/shim_none/stat"
+chmod +x "$T/shim_gnu/stat" "$T/shim_bsd/stat" "$T/shim_none/stat"
+# _mt 는 «rc<TAB>mtime값» 한 줄을 낸다 — 명령 치환 안에서 변수를 못 올리니 값에 같이 실어 보낸다
+_mt(){ local _o _rc; _o="$(PATH="$1:$PATH" bash "$_TP" "$T/pin.txt" "${H:0:12}" 2>&1)"; _rc=$?; printf '%s\t%s' "$_rc" "$(printf '%s' "$_o" | sed -n 's/.*mtime=//p')"; }
+_r="$(_mt "$T/shim_gnu")";  _v="${_r#*	}"; [ "${_r%%	*}" = 0 ] && [ "$_v" = "$_GNU_LIT" ]; chk "P6 GNU stat(-c %y f 만) 밑에서 mtime 이 흉내 리터럴과 일치 ∧ rc 0 (GNU 분기 생존) [got=${_v:-∅}]" "$?" 0
+_r="$(_mt "$T/shim_bsd")";  _v="${_r#*	}"; [ "${_r%%	*}" = 0 ] && [ "$_v" = "$_BSD_LIT" ]; chk "P7 BSD stat(-f %Sm f 만) 밑에서 mtime 이 흉내 리터럴과 일치 ∧ rc 0 (BSD 분기 생존) [got=${_v:-∅}]" "$?" 0
+_r="$(_mt "$T/shim_none")"; _v="${_r#*	}"; [ "${_r%%	*}" = 0 ] && [ "$_v" = UNKNOWN ]; chk "P8 CONTROL stat 전부 거절 → UNKNOWN 으로 접힘이 «보인다» [got=${_v:-∅}]" "$?" 0
+
 # ───────────────────── instrument_manifest ─────────────────────
 printf 'qid\tkind\n' > "$T/q.tsv"; printf 'seal\n' > "$T/seal.md"; printf 'grade\n' > "$T/grade.md"
 MF="$T/mf.txt"
@@ -78,9 +100,11 @@ bash "$R/instrument_manifest.sh" bogus "$MF" >/dev/null 2>&1
 chk "M6 모르는 모드 → 2" "$?" 2
 
 # ───────────────────────── eligcheck_qset ─────────────────────────
-SRCF="$ROOT/scripts/context_continuity_score.sh"
+SRCF="${CCS_UNDER_TEST:-$ROOT/scripts/context_continuity_score.sh}"
 if [ ! -f "$SRCF" ]; then
-  echo "SKIP  E1–E3 채점기 부재(scripts/context_continuity_score.sh) — 적격 게이트를 잴 수 없다"
+  # 🟥 cross-family(codex, 2026-09-02) B7: 종전엔 SKIP 만 찍고 rc 0 — 채점기(tracked)가 사라져도 스위트가
+  #    초록이었다. 부재는 «잴 수 없음»이지 «통과»가 아니다 → 적색으로 센다.
+  chk "E0 채점기 부재(scripts/context_continuity_score.sh) — E1–E5 를 잴 수 없다(통과 아님)" 1 0
 else
   mkdir -p "$T/out"
   printf 'N01\tnegative\tq?\tZZQQTOKEN\t\t\n' > "$T/eq.tsv"
@@ -94,6 +118,19 @@ else
   printf '그런 기록은 저장소에 없습니다.\n' > "$T/out/N01_CTRL_r1.txt"
   ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$R/eligcheck_qset.sh" "$T/eq.tsv" "$T/out" 2 ) >/dev/null 2>&1
   chk "E3 reps=2 인데 응답 1건 부재 → 부적격(1), 다수결로 접히지 않는다" "$?" 1
+  # 🟥 하중선: 파서가 죽으면 루프가 «0 행»을 받는다. 0 행 = 「전 문항 적격」이 아니다.
+  #    실측(2026-09-02): 값에 `|` 하나 → PIPE_IN_VALUE 로 awk exit 3 → 프로세스 치환이라 rc 가 버려지고
+  #    bad=0 → rc 0 «🟢 전 문항 적격». qset 파일 부재(awk rc 2)도 같은 얼굴. 둘 다 비-0 이어야 한다.
+  _EL="${ELIGCHECK_UNDER_TEST:-$R/eligcheck_qset.sh}"
+  printf 'ZZQQTOKEN 입니다.\n' > "$T/out/N01_CTRL_r1.txt"       # 답해버린 CTRL — 행이 채점됐다면 반드시 1
+  printf 'N01\tnegative\tq|x?\tZZQQTOKEN\t\t\n' > "$T/eq_pipe.tsv"
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_pipe.tsv" "$T/out" 1 ) >/dev/null 2>&1; _rc=$?
+  [ "$_rc" -ne 0 ]; chk "E4 값에 '|' → 파서 exit 3 이 «0 행 통과»로 접히지 않는다 (rc≠0) [got=$_rc]" "$?" 0
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_absent.tsv" "$T/out" 1 ) >/dev/null 2>&1; _rc=$?
+  [ "$_rc" -ne 0 ]; chk "E5 qset 파일 부재 → rc≠0 (없음≠빈 qset≠전 문항 적격) [got=$_rc]" "$?" 0
+  printf 'P01\tpositive\tq?\tTOK\t\t\n' > "$T/eq_pos.tsv"       # 채점 대상 행 0 — «잰 것 없음»
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_pos.tsv" "$T/out" 1 ) >/dev/null 2>&1; _rc=$?
+  [ "$_rc" -ne 0 ]; chk "E6 negative/conflict 행 0 → rc≠0 (빈 집합은 «전 문항 적격»이 아니다) [got=$_rc]" "$?" 0
 fi
 
 echo "round-instrument lanes: $P passed, $F failed"
