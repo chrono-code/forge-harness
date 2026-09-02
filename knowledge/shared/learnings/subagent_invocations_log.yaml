@@ -3013,3 +3013,21 @@
     Fable 5.1 거버너 관찰: 서브에이전트 보고를 동의로 안 받고 넷 다 실행으로 재현했다 —
     그 과정에서 codex 3항을 소스로 기각. 자력 적발 0 은 ④ sim 1회차 VOID(out 경로 오용)와
     selfcheck 오귀속 위험(VOID1 디렉터리)에서 — 둘 다 계기 출력이 잡았지 성실함이 잡은 게 아니다.
+- date: 2026-09-02
+  agent: general-purpose (5) + fh-meta:persona-innovator (1) + codex exec sidecar (4) — 야간 자율주행
+  count: 10
+  context: >-
+    운영자 «🔧 넷 다 하고 정체성 오늘 닫을 수 있는 것까지, 주간 감사 후 마감 — 이노베이터 활용 자율주행».
+    ⓐ ④ 블라인드 채점 추출기(claude) ⓑ arm 실험 EASY-v2 합류·검증 ⓒ 맥락유지 회차4 사전 준비
+    ⓓ 열린 13항 트리아지 ⓔ ⑤ r2 사전등록 초안 ⓕ 이노베이터 Mode F. codex: ④ 추출기 ×2(1회 오염 폐기) ·
+    #585 diff 적대 · #587 diff 적대.
+  outcome: accepted
+  evidence: >-
+    ⓐ 10/10 추출, codex 재실행과 9/10 일치(불일치 1 손검증) ⓑ codex 4/4 OBVIOUS → 게이트 PASS → 봉인 2
+    ⓒ «positive 게이트 구현 없음» 실측 — 회차4 차단 사유를 잡음(설계≠코드) ⓓ 13항 표 + A2·B1 패치(known-pair 7/7,
+    얼린 바 48/96) ⓔ 373줄 사전등록, 포인터 4 실재 검증 ⓕ 옵션 3·컨트롤 2·선행자산 5·부제 3.
+    codex: #585 7→4 수리, #587 8→6 수리(로케일·PASS 형태 등 실수리).
+  note: >-
+    ⓒ 회신이 «못 연다»를 낸 것이 가장 값졌다 — 설계가 «새 기계가 아니다»라 적었고 코드가 없었다(rule_misdescribes_its_own_machine).
+    ⓕ 는 Write 도구가 없어 거버너가 옮겼다(persona-innovator 도구셋 한계, 기록). codex 추출기 1회는 정답지가
+    같은 디렉터리에 있어 오염 → 폐기·재실행. 전 회신을 거버너가 실행으로 재현했고 codex 기각 5건은 소스 근거.
