@@ -13,11 +13,22 @@ SRC="${SRC:-scripts/context_continuity_score.sh}"
 QSET="${1:?usage: eligcheck.sh <qset.tsv> <outdir-with-CTRL>}"; OUT="${2:?}"; REPS="${3:-5}"
 eval "$(grep -m1 '^REFUSE_RE=' "$SRC")"
 sed -n '/^score_one() {/,/^}/p' "$SRC" > /tmp/_so_e.sh; . /tmp/_so_e.sh
+# 🟥 파싱을 «먼저 물질화»하고 rc 를 본다. 프로세스 치환(`< <(_tsv_pipe)`)은 awk 가 exit 3 으로 죽어도
+#    루프에 «0 행»만 전달하고 rc 는 버려진다 → bad=0 → 「🟢 전 문항 적격」. 실증됨(값에 `|` 하나 → PASS).
+#    qset 파일 부재(awk rc 2)도 같은 얼굴이다. 0 행은 «전 문항 적격»이 아니라 «잰 게 없다»다.
+_TSVP="$(mktemp "${TMPDIR:-/tmp}/elig_tsv.XXXXXX")" || { echo "🟥 mktemp 실패 — UNMEASURED" >&2; exit 10; }
+trap 'rm -f "$_TSVP"' EXIT
+_tsv_pipe "$QSET" > "$_TSVP"; _prc=$?
+if [ "$_prc" -ne 0 ]; then
+  echo "🟥 UNMEASURED — qset 파싱 실패(rc=$_prc): 값에 '|' 가 있거나 파일을 못 읽었다. 회차를 열지 않는다" >&2
+  exit 3
+fi
 printf '%-5s %-9s %-22s %s\n' QID KIND 'CTRL 거절/전체' 판정
-bad=0
+bad=0; scored=0
 while IFS='|' read -r qid kind q tok general probe; do
   case "$qid" in ''|'#'*) continue;; esac
   case "$kind" in negative|conflict) ;; *) continue ;; esac
+  scored=$((scored+1))
   ref=0; tot=0; void=0; miss=0
   for r in $(seq 1 "$REPS"); do
     f="$OUT/${qid}_CTRL_r${r}.txt"
@@ -88,6 +99,13 @@ while IFS='|' read -r qid kind q tok general probe; do
   elif [ "$ref" -gt $((tot/2)) ]; then verdict="🟢 적격 (거절 다수결)"
   else verdict="🟥 부적격 — CTRL 이 답했다 ($((tot-ref))/${tot}). 출제자에게 반려"; bad=1; fi
   printf '%-5s %-9s %-22s %s\n' "$qid" "$kind" "$ref/$tot" "$verdict"
-done < <(_tsv_pipe "$QSET")
-echo; [ "$bad" = 0 ] && echo "🟢 전 문항 적격" || echo "🟥 부적격 문항이 있다 — 회차를 열지 않는다"
+done < "$_TSVP"
+# 🟥 cross-family(codex, 2026-09-02) S1: 채점된 행이 0 이어도 「전 문항 적격」이었다 — 빈 qset ·
+#    헤더뿐인 qset · positive 만 있는 qset 전부 rc 0. «잰 것이 없다»는 «전부 통과»가 아니다
+#    ([[feedback_not_found_is_not_zero_family]] 의 빈 집합 얼굴). positive 전용 회차라면 이 게이트를
+#    부를 이유가 없고, 불렀다면 답은 «잴 것 없음» 이다.
+if [ "$scored" = 0 ]; then
+  echo; echo "🟥 UNMEASURED — negative/conflict 행이 0 이다. 잰 것이 없으므로 «적격»이 아니다" >&2; exit 3
+fi
+echo; [ "$bad" = 0 ] && echo "🟢 전 문항 적격 (${scored}행 채점)" || echo "🟥 부적격 문항이 있다 — 회차를 열지 않는다"
 exit $bad

@@ -405,6 +405,20 @@ fi
 [ -n "$SEAL" ] && [ -f "$SEAL" ] || { echo "🟥 --seal <실재 파일> 필요" >&2; exit 2; }
 [ -n "$QSET" ] && [ -f "$QSET" ] || { echo "🟥 --qset <실재 파일> 필요" >&2; exit 2; }
 [ -x "$RUNNER" ] || [ -f "$RUNNER" ] || { echo "🟥 러너 없음: $RUNNER" >&2; exit 2; }
+# 🟥 파싱을 «먼저 물질화»하고 rc 를 본다 — eligcheck(55a10ce)·gatecheck 와 같은 모양. 아래 두 루프
+#    (오염 게이트 · 디스패치/채점)가 같은 프로세스 치환 `< <(_tsv_pipe "$QSET")` 을 썼고, awk 가
+#    exit 3(값에 `|`)으로 죽으면 둘 다 «0 행»을 받는다: 오염 0 → 디스패치 0 → ROWS 비어 → 판정선의
+#    분모가 전부 0 이라 어느 분기도 안 걸려 «🟢 계기 생존» rc 0.
+#    실측(2026-09-02, bash 5.3 = CI 의 bash): 값에 `|` 하나 · 빈 qset → 🟢 rc 0. bash 3.2 에서는
+#    `"${ROWS[@]}"` 가 set -u 에 unbound 로 죽어 rc 1 이 나는데 그건 우연이지 게이트가 아니다.
+#    ⚠️ 이 파일은 «파싱된 qset» 이다 — 루프 안 stdin 은 여전히 qset 이므로 러너 호출의
+#    `< /dev/null` 은 그대로 필요하다(아래 :6xx 주석).
+_TSVP="$(mktemp "${TMPDIR:-/tmp}/ccs_tsv.XXXXXX")" || { echo "🟥 mktemp 실패 — UNMEASURED" >&2; exit 2; }
+trap 'rm -f "$_TSVP"' EXIT
+_tsv_pipe "$QSET" > "$_TSVP"; _prc=$?
+if [ "$_prc" -ne 0 ]; then
+  echo "🟥 qset 파싱 실패(rc=$_prc): 값에 '|' 가 있거나 파일을 못 읽었다. 회차를 열지 않는다" >&2; exit 2
+fi
 
 # ── 🟥 qset 오염 게이트 (수리 ③ 의 기계 절반, 2026-08-30) ──────────────────────
 #   헤더의 출제 조건은 **출제자에게 하는 말**이라 다음 회차를 못 막는다. 1차 회차가 그렇게
@@ -412,9 +426,14 @@ fi
 #   판정 대상은 **positive 토큰만**이다 — negative 토큰은 «지어냈다면 나올 법한» 문자열이라
 #   레포에 있어도 무해하고, 오히려 실재하는 낱말이 자연스럽다.
 #   ⚠️ 이것은 **채널 검사**다(토큰이 레포에 없는가). «좋은 질문인가»는 판정하지 않는다.
-QSET_BAD=0
-while IFS='|' read -r _q _k _t tok; do
+QSET_BAD=0; QROWS=0
+# 🟥 (별개 결함, 2026-09-02 실측) `read -r _q _k _t tok` 은 마지막 변수가 «남은 필드 전부»를 받는다.
+#    6 열 qset(5·6 열이 비어도)에서는 tok="<토큰>||" 이 되어 `git grep -F` 가 영원히 0 히트 —
+#    오염 게이트가 6 열 세트에서 통째로 눈을 감았다(4 열: 146 파일 히트 exit 5 · 6 열: 0 히트 통과).
+#    ⇒ 열 수만큼 변수를 받는다(4 열 세트에선 뒤 둘이 빈 채로 남아 무해).
+while IFS='|' read -r _q _k _t tok _general _probe; do
   case "$_q" in ''|'#'*) continue ;; esac
+  QROWS=$((QROWS+1))
   # 🟥 2026-08-31 — **여기서 `positive` 만 보던 것이 이 계기의 가장 큰 구멍이었다.**
   #    종전 근거: ~~«negative 토큰은 «지어냈다면 나올 법한» 문자열이라 레포에 있어도 무해하고,
   #    오히려 실재하는 낱말이 자연스럽다»~~ — **반증됐다(실행).**
@@ -459,7 +478,7 @@ while IFS='|' read -r _q _k _t tok; do
     printf '%s\n' "$tok_out" | sed 's|^|     |' | head -5 >&2
     QSET_BAD=1
   fi
-done < <(_tsv_pipe "$QSET")
+done < "$_TSVP"
 if [ "$QSET_BAD" = 1 ]; then
   echo "🟥 회차를 시작하지 않는다. 오염된 토큰으로 재면 «운반체 덕»과 «레포에서 주움»이 안 갈린다." >&2
   echo "   강행: FH_QSET_CONTAMINATED_OK=1 (그러면 이 회차는 CTRL 상한이 오염됐다고 기록해라)" >&2
@@ -467,6 +486,11 @@ if [ "$QSET_BAD" = 1 ]; then
   #    「회차를 시작조차 안 했다」와 「다 돌았는데 계기가 미달이다」를 구분 못 한다.
   [ "${FH_QSET_CONTAMINATED_OK:-}" = 1 ] || exit 5
   echo "   ⚠️ 강행됨 — 이 회차의 CTRL 은 상한이 오염됐다." >&2
+fi
+# 🟥 채점 가능한 행 0 = «잰 것 없음». 디스패치 «전»에 막는다(144 디스패치를 안 태운다).
+#    12 를 쓴다 — 1·2·3·4·5·6·7·8·10·11 과 겹치지 않고, «입력이 틀렸다»(2)와 «입력에 잴 게 없다»를 가른다.
+if [ "$QROWS" = 0 ]; then
+  echo "🟥 UNMEASURED — qset 에 채점 가능한 행이 0 이다(빈 qset·헤더뿐). 회차를 열지 않는다" >&2; exit 12
 fi
 
 # ── 🟥 봉인 대조 (2026-08-31) — verify 가 «구조적으로» 못 잡는 자리 ──────────────────
@@ -620,7 +644,7 @@ $q"
       [ -n "$BASE_REF" ] && args+=(--base-ref "$BASE_REF")
       [ -n "$BASE_SHA" ] && args+=(--base-sha "$BASE_SHA")
       [ -n "$setup" ] && args+=(--setup "$setup")
-      # 🟥 심층 방어 — 이 호출은 `while … done < <(_tsv_pipe "$QSET")` 루프 «안»이라 stdin 이 qset 이다.
+      # 🟥 심층 방어 — 이 호출은 `while … done < "$_TSVP"` 루프 «안»이라 stdin 이 (파싱된) qset 이다.
       #    러너 쪽에도 `< /dev/null` 을 박았지만, 여기서 끊는 것이 근원이다(호출부 책임).
       bash "$RUNNER" "${args[@]}" >/dev/null 2>&1 < /dev/null
     fi
@@ -630,7 +654,7 @@ $q"
       ROWS+=("$qid|$kind|$arm|r$r|$v")
     done
   done
-done < <(_tsv_pipe "$QSET")
+done < "$_TSVP"
 
 # 🟥 매핑은 «여기»에서 쓴다 — 모든 디스패치가 끝난 뒤. 팔이 도는 동안엔 이 파일이 없다.
 if [ "${RESCORE:-0}" != 1 ]; then

@@ -63,6 +63,7 @@ ACCEPTED_ABSENT=(
   "scripts/round/target_pin.sh"
   "scripts/round/instrument_manifest.sh"
   "scripts/round/eligcheck_qset.sh"
+  "scripts/round/gatecheck_qset.sh"          # 같은 이유 — 회차 개시 게이트, 소비자 표면 아님 (2026-09-02 짝표 등재로 참조가 생겼다)
   "scripts/test_round_instruments_lanes.sh"
   "scripts/fixtures/isolation_assembly_BROKEN_2026-08-30_ccrun7.json"  # 역사 산출물(등급표가 증거로 인용)
   "scripts/outbound_query_guard.sh"

@@ -11,7 +11,7 @@
 # ⇒ 쓰는 쪽에서 나르게 한다. 이 레인은 «한 줄만 복사해도 딸려오나»를 축자로 검정한다.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-S="$ROOT/scripts/context_continuity_score.sh"
+S="${CCS_UNDER_TEST:-$ROOT/scripts/context_continuity_score.sh}"   # 되돌림 프로브용 오버라이드(원본 사본을 가리켜 L29 가 빨개지는지 본다)
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 pass=0; fail=0
 ok(){ printf '  ✅ %s\n' "$1"; pass=$((pass+1)); }
@@ -422,6 +422,32 @@ if grep -q 'DELIVER" = 1 \] && \[ "$arm" = ARM' "$S"; then
     rm -f "$_l28c" "$_l28c.m"
   else no "L28b 사본을 못 만들었다 — 되돌림 미검증(스킵 아님)"; fi
 else no "L28 deliver 분기를 못 찾았다 — 검사 못 함(스킵 아님)"; fi
+
+
+# ── L29 (2026-09-02, 전파 — eligcheck 와 같은 `_tsv_pipe` 프로세스 치환 구멍) ──
+SEAL29="$T/seal_deadbeef-abc_20260901-101010.md"; : > "$SEAL29"
+run29(){ ( cd "$ROOT" && bash "$S" --seal "$SEAL29" --qset "$1" --reps 1 --out "$2" --rescore 2>&1 </dev/null ); }
+# ── L29 🟥 파서 실패/0 행이 «🟢 계기 생존»으로 접히지 않는다 ─────────────────────────
+#    실측(2026-09-02, 원본, bash 5.3): 값에 `|` 하나 · 빈 qset → 두 루프가 0 행 → ROWS 비어 →
+#    판정선 분모 전부 0 → 「🟢 계기 생존」 rc 0. bash 3.2 는 unbound 로 rc 1 — 우연이지 게이트가 아니다.
+PT="ZZL29POS$(printf '%s' 4419)"
+printf 'q1\tpositive\t질문P\t%s\t\t\n' "$PT" > "$T/q6.tsv"           # 6 열 컨트롤 (round2 실물 폭)
+printf 'q1\tpositive\t질문|P\t%s\t\t\n' "$PT" > "$T/q_pipe.tsv"
+: > "$T/q_empty.tsv"
+mkdir -p "$T/o"; printf '답은 %s 입니다.\n' "$PT" > "$T/o/q1_ARM_r1.txt"; printf '모르겠습니다. 기록이 없습니다.\n' > "$T/o/q1_CTRL_r1.txt"
+O=$(run29 "$T/q6.tsv" "$T/o"); rc=$?
+[ "$rc" = 0 ] && printf '%s' "$O" | grep -q '🟢' && ok "L29a CONTROL 6열 정상 qset → 🟢 rc 0" || no "L29a 컨트롤이 죽었다 (rc=$rc) — 아래는 무의미"
+O=$(run29 "$T/q_pipe.tsv" "$T/o"); rc=$?
+# 🟥 «크래시»는 게이트가 아니다 — bash 3.2 는 set -u 의 `"${ROWS[@]}"` unbound 로 rc 1 에 죽어 rc≠0 이
+#    «우연히» 나온다(bash 5.3 = CI 에선 🟢 rc 0). 그래서 unbound 를 명시적으로 배제한다.
+if [ "$rc" -ne 0 ] && ! printf '%s' "$O" | grep -q '🟢 계기 생존' && ! printf '%s' "$O" | grep -q 'unbound variable'; then ok "L29b 값에 '|' → 타입된 차단(rc≠0 ∧ 🟢 없음 ∧ 크래시 아님) [rc=$rc]"; else no "L29b 파서 실패가 «🟢 계기 생존»으로 접히거나 크래시로만 막힌다 [rc=$rc]"; fi
+O=$(run29 "$T/q_empty.tsv" "$T/o"); rc=$?
+if [ "$rc" -ne 0 ] && ! printf '%s' "$O" | grep -q '🟢 계기 생존' && ! printf '%s' "$O" | grep -q 'unbound variable'; then ok "L29c 빈 qset → 타입된 차단(rc≠0 ∧ 🟢 없음 ∧ 크래시 아님) [rc=$rc]"; else no "L29c 빈 qset 이 «🟢 계기 생존»으로 접히거나 크래시로만 막힌다 [rc=$rc]"; fi
+# ── L29d 🟥 오염 게이트가 6 열 qset 에서 눈을 감지 않는다 (read 가 뒤 열을 tok 에 삼키는 결함) ──
+#    실측(원본): 4 열 + tracked 토큰 → exit 5 · 6 열 같은 토큰 → 통과. 토큰은 «이 파일 자신»에 확실히 있는 낱말.
+printf 'q1\tpositive\t질문P\tcontext_continuity\t\t\n' > "$T/q6c.tsv"
+O=$(run29 "$T/q6c.tsv" "$T/o"); rc=$?
+[ "$rc" = 5 ] && ok "L29d 6열 qset 의 tracked 토큰 → 오염 차단(5)" || no "L29d 6열 qset 에서 오염 게이트가 눈을 감는다 [rc=$rc]"
 
 echo "verdict watermark lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
