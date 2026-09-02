@@ -27,8 +27,35 @@ printf '%-5s %-9s %-22s %s\n' QID KIND 'CTRL 거절/전체' 판정
 bad=0; scored=0
 while IFS='|' read -r qid kind q tok general probe; do
   case "$qid" in ''|'#'*) continue;; esac
-  case "$kind" in negative|conflict) ;; *) continue ;; esac
+  case "$kind" in negative|conflict|positive) ;; *) continue ;; esac
   scored=$((scored+1))
+  # ── positive 적격 (2026-09-02 신설 — DESIGN_2026-09-01_delivery_axis.md §3) ─────────────────
+  #    negative 와 «같은 루프, 방향만 반대»: CTRL(운반체 없는 팔)이 기대 토큰을 «내면» 그 문항은
+  #    운반체 없이도 답이 나오는 것이라 delivery 를 못 잰다 → DEAD_CONTROL(부적격).
+  #    🟥 임계는 다수결이 아니라 «한 번이라도»다 — negative 는 «거절이 다수»면 되지만 positive 는
+  #    CTRL 이 3중 1회만 맞혀도 그 문항의 ARM 적중이 «운반체 덕»인지 «베이스 모델 덕»인지 안 갈린다.
+  #    부재·빈 출력은 negative 와 같이 UNMEASURED(분모가 줄면 적격이 쉬워진다).
+  #    🟥 이 분기가 없던 것이 회차4 를 못 열게 한 실물이다(round4_prep_2026-09-02.md) — 설계는
+  #    「새 기계가 아니다」라 적었고 코드는 없었다([[feedback_rule_misdescribes_its_own_machine]]).
+  if [ "$kind" = positive ]; then
+    # 🟥 cross-family(codex, 2026-09-02) A5: 기대 토큰이 비면 `grep -F ""` 가 전부 매칭 → 전 문항 DEAD_CONTROL. 결함 행은 UNMEASURED
+    if [ -z "${tok:-}" ]; then printf '%-5s %-9s %-22s %s\n' "$qid" "$kind" "-" "UNMEASURED(기대 토큰 없음 — qset 결함, 적격 아님)"; bad=1; continue; fi
+    pv=0; tot=0; void=0; miss=0
+    for r in $(seq 1 "$REPS"); do
+      f="$OUT/${qid}_CTRL_r${r}.txt"
+      [ -f "$f" ] || { miss=$((miss+1)); continue; }
+      tot=$((tot+1)); [ -s "$f" ] || { void=$((void+1)); continue; }
+      v=$(score_one "$f" positive "$tok")
+      # 🟥 codex S4: score_one 은 TYPED_ 접두와 REFUSED_WITH_TOKEN 도 낸다 — 둘 다 «토큰이 나왔다»다. PASS 리터럴만 세면 놓친다
+      case "$v" in *PASS|*REFUSED_WITH_TOKEN) pv=$((pv+1));; esac
+    done
+    if [ "$miss" -gt 0 ]; then verdict="UNMEASURED(응답 파일 ${miss}건 부재 — 적격 아님)"; bad=1
+    elif [ "$tot" = 0 ]; then verdict="UNMEASURED(실행 없음 — 적격 아님)"; bad=1
+    elif [ "$void" -gt 0 ]; then verdict="UNMEASURED(빈 출력 ${void}건 — 적격 아님)"; bad=1
+    elif [ "$pv" -gt 0 ]; then verdict="🟥 DEAD_CONTROL — CTRL 이 토큰을 냈다 ($pv/$tot). 운반체 없이도 답이 나온다 — 문항 교체"; bad=1
+    else verdict="🟢 적격 (CTRL 토큰 0/$tot — delivery 를 잴 수 있다)"; fi
+    printf '%-5s %-9s %-22s %s\n' "$qid" "$kind" "CTRL토큰 $pv/$tot" "$verdict"; continue
+  fi
   ref=0; tot=0; void=0; miss=0
   for r in $(seq 1 "$REPS"); do
     f="$OUT/${qid}_CTRL_r${r}.txt"
@@ -105,7 +132,7 @@ done < "$_TSVP"
 #    ([[feedback_not_found_is_not_zero_family]] 의 빈 집합 얼굴). positive 전용 회차라면 이 게이트를
 #    부를 이유가 없고, 불렀다면 답은 «잴 것 없음» 이다.
 if [ "$scored" = 0 ]; then
-  echo; echo "🟥 UNMEASURED — negative/conflict 행이 0 이다. 잰 것이 없으므로 «적격»이 아니다" >&2; exit 3
+  echo; echo "🟥 UNMEASURED — negative/conflict/positive 행이 0 이다. 잰 것이 없으므로 «적격»이 아니다" >&2; exit 3
 fi
 echo; [ "$bad" = 0 ] && echo "🟢 전 문항 적격 (${scored}행 채점)" || echo "🟥 부적격 문항이 있다 — 회차를 열지 않는다"
 exit $bad
