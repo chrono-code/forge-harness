@@ -645,6 +645,7 @@ for _pair in \
   "plugins/fh-commons/skills/preprep/lane_adjacent_dup.py|scripts/test_preprep_adjacent_dup_lanes.sh" \
   "plugins/fh-commons/skills/preprep/lane_promise.py|scripts/test_preprep_promise_lanes.sh" \
   "plugins/fh-commons/skills/preprep/SKILL.md|scripts/test_preprep_drift_anchor.sh" \
+  "scripts/test_preprep_drift_anchor.sh|scripts/test_preprep_drift_anchor_lanes.sh" \
   "scripts/field_canon_preload.sh|scripts/test_skill_canon_preload_lanes.sh" \
   `# ── round/ 회차 계기 4종(2026-09-01). 넷 다 한 스위트가 잡는다 — 주체별로 행을 둔다 ──` \
   "scripts/round/delta_guard.sh|scripts/test_round_instruments_lanes.sh" \

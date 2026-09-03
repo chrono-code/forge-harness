@@ -16,7 +16,16 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$HERE/plugins/fh-commons/skills/preprep"
 # standalone 배포 위치는 환경변수로 받는다. 기본값을 박으면 다른 머신에서 거짓 SKIP 이 된다.
-DIST="${PREPREP_STANDALONE_DIR:-}"
+# 🟥 2026-09-03 — 그런데 «아무도 그 변수를 안 걸어서» D2 가 여태 SKIP 이었고, 그 사이 컴패니언
+#    저장소의 fork(724줄)가 정본(789줄)과 갈라져 L9~L11 을 안 부르고 있었다 — 정본 주석이 이미
+#    한 번 적어 둔 사고의 2회째(fh_signal_2026-09-03_preprep-standalone-anchor-skip.md). 슬롯은
+#    있고 소비처가 0 인 형태. 처방: 명시 변수가 없으면 운영자 로컬 바인딩이 이미 export 하는
+#    FH_COMPANION_STORE 아래 preprep/ 을 «자동 후보»로 쓴다 — 기본값을 박는 게 아니라 이미
+#    선언된 경로를 읽는 것이라 다른 머신에서 거짓 SKIP 을 만들지 않는다(없으면 여전히 SKIP).
+DIST="${PREPREP_STANDALONE_DIR:-}"; DIST_SRC="PREPREP_STANDALONE_DIR"
+if [ -z "$DIST" ] && [ -n "${FH_COMPANION_STORE:-}" ] && [ -d "${FH_COMPANION_STORE}/preprep" ]; then
+  DIST="${FH_COMPANION_STORE}/preprep"; DIST_SRC="FH_COMPANION_STORE/preprep (자동 후보)"
+fi
 PASS=0; FAIL=0; SKIP=0
 ok(){ echo "  ✅ $1"; PASS=$((PASS+1)); }
 ng(){ echo "  ❌ $1"; FAIL=$((FAIL+1)); }
@@ -41,16 +50,16 @@ fi
 
 # D2 — standalone 대조
 if [ -z "$DIST" ]; then
-  sk "D2 standalone 대조 — PREPREP_STANDALONE_DIR 미설정이라 배포본을 못 찾았다"
+  sk "D2 standalone 대조 — PREPREP_STANDALONE_DIR 미설정이고 FH_COMPANION_STORE/preprep 도 없어 배포본을 못 찾았다. UNCHECKED — 배포본이 있는 머신이면 둘 중 하나를 export 해라"
 elif [ ! -d "$DIST" ]; then
-  ng "D2 PREPREP_STANDALONE_DIR 이 가리키는 곳이 없다: $DIST (설정됐는데 부재 = 드리프트 아니라 배선 결함)"
+  ng "D2 $DIST_SRC 이 가리키는 곳이 없다: $DIST (설정됐는데 부재 = 드리프트 아니라 배선 결함)"
 else
   drift=""
   for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py; do
     if [ ! -f "$DIST/$f" ]; then drift="$drift $f(부재)"
     elif ! cmp -s "$SRC/$f" "$DIST/$f"; then drift="$drift $f(갈림)"; fi
   done
-  [ -z "$drift" ] && ok "D2 standalone 코드 5파일이 단일 소스와 바이트 동일" \
+  [ -z "$drift" ] && ok "D2 standalone 코드 5파일이 단일 소스와 바이트 동일 ($DIST_SRC)" \
                   || ng "D2 드리프트:$drift ⇒ 사본이 둘이 됐다. 단일 소스에서 다시 뽑아라"
 fi
 
