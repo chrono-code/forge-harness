@@ -142,6 +142,11 @@ else
   [ "$_rc" -ne 0 ]; chk "E10-ctrl labelmap 마저 없으면 부재 → 적격 아님(rc≠0, 분모 접힘 없음) [got=$_rc]" "$?" 0
   ( cd "$ROOT" && bash scripts/context_continuity_score.sh --arms BOGUS --self-test ) >/dev/null 2>&1; _rc=$?
   [ "$_rc" -eq 2 ]; chk "E11 채점기 --arms 닫힌 enum: BOGUS → rc 2 [got=$_rc]" "$?" 0
+  # ── E12 --arms CTRL 은 «봉인 전» 실행 — --seal 없이 인자 검사를 지난다(다음 검사 = qset) ──────────
+  _m=$( cd "$ROOT" && bash scripts/context_continuity_score.sh --arms CTRL --qset "$T/definitely_absent.tsv" --out "$T/o12" 2>&1 ); _rc=$?
+  printf '%s' "$_m" | grep -q -- '--qset' && ! printf '%s' "$_m" | grep -q -- '--seal <실재 파일> 필요'; chk "E12 --arms CTRL + --seal 없음 → seal 이 아니라 qset 에서 멈춘다(봉인 전 실행 허용) [rc=$_rc]" "$?" 0
+  _m=$( cd "$ROOT" && bash scripts/context_continuity_score.sh --arms both --qset "$T/definitely_absent.tsv" --out "$T/o12" 2>&1 ); _rc=$?
+  printf '%s' "$_m" | grep -q -- '--seal <실재 파일> 필요'; chk "E12-ctrl --arms both 는 종전대로 --seal 필수 [rc=$_rc]" "$?" 0
   # ── E7–E9 positive 적격 분기 (2026-09-02) — CTRL 이 토큰을 «내면» DEAD_CONTROL ──────────────
   printf 'P01\tpositive\tq?\tZZQQPOS\t\t\n' > "$T/eq_p.tsv"
   printf '그런 값은 기록에 없습니다.\n' > "$T/out/P01_CTRL_r1.txt"
