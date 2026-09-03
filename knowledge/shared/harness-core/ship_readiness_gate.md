@@ -878,7 +878,7 @@ incubator entry absorbed into deep-clarify) — the identity-② weakness surfac
 > external-grounding=질문하기), 그 대응은 새로 만든 것이 아니라 이 표에 이미 있던 것이다.
 
 **Verdict (2026-08-09 — supersedes the 2026-07-14 line)**: FH is tagged **`v0.1.0` = honest baseline**,
-not all-green. ~~③⑤ are 🟢, **①②④ are 🔵 RC**~~ → **2026-08-16: ①③⑤ are 🟢, ②④ are 🔵 RC**,
+not all-green. ~~③⑤ are 🟢, **①②④ are 🔵 RC**~~ → **2026-08-16: ①③⑤ are 🟢, ②④ are 🔵 RC**, → **2026-08-21: ② 🟢** → **2026-09-03: ④ 🟢**(운영자 판정) → **2026-09-04: ⑤ 🟢**(#604, 운영자 «충분히 검토되었다면 승격 승인») — 🟥 **이로써 ①②③④⑤ + Ⓑ 여섯 행이 전부 🟢 이다.** CLAUDE.md §④-b 의 major ⓑ(«정체성 다섯이 전부 🟢 = identity-v1.0.0 급 사건»)에 해당하는 첫 순간이다. 태깅(`identity-v1.0.0`)과 npm major 는 **운영자 결정**이고 이 문장은 사건을 기록할 뿐 번호를 올리지 않는다. 한계는 각 행 셀에 있다 — 전부 🟢 이 «반증 없음»은 아니다(⑤ 는 2주 반증 예측을 달고 올라갔다).
 **none 🔴** — the `v0.1.0` notes state this and make no
 all-green claim (per the refined 0.x↔1.0 mapping above). **`identity-v1.0.0` remains the all-green target.**
 🟥 **①의 🟢 은 기준이 바뀐 결과다** — 옛 dominance 절로 재면 오늘도 🔵 이고, 두 번 쟀고 둘 다
