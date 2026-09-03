@@ -1,0 +1,50 @@
+name: publish
+
+# npm Trusted Publishing (OIDC) — 태그 v<version> 푸시 → 사람 토큰·OTP 없이 provenance 발행.
+# 🟥 왜 이 형태인가 (2026-09-03): 사람 계정 토큰 발행은 매번 OTP 웹 인증을 요구했고(2.15.0·2.15.1 둘 다),
+#    «2FA 우회 토큰» 은 npm 이 제한 예고한 데다 머신에 영구 비밀을 남긴다. OIDC 는 둘 다 없다.
+#    npmjs 쪽 1회 등록(패키지 Settings → Trusted publisher → GitHub Actions: chrono-meta / forge-harness /
+#    publish.yml / environment 비움)이 선행조건 — 등록 전엔 이 워크플로가 E404/ENEEDAUTH 로 실패한다.
+#    prepublishOnly 6단 게이트(신선도·락스텝·커버리지·매니페스트·공개표면)는 그대로 돈다.
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+  id-token: write   # OIDC — 이것이 토큰을 대체한다
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: npm ≥ 11.5 (Trusted Publishing 지원)
+        run: npm install -g npm@latest && npm --version
+      - name: tag == package.json version (락스텝의 바깥 고리)
+        run: |
+          v=$(node -p "require('./package.json').version")
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "🟥 tag $GITHUB_REF_NAME != package.json v$v"; exit 1; }
+      - name: tag commit == origin/main HEAD (freshness 게이트가 요구하는 «main 의 트리»)
+        # 🟥 태그 체크아웃은 detached 라 publish_freshness_check 가 «HEAD 가 main 이 아니다»로 막는다.
+        #    태그가 main 끝을 가리킬 때만 발행한다 — 우리 흐름(머지 직후 태그)에선 항상 참이고,
+        #    옛 커밋에 태그를 달아 «과거 트리를 발행» 하는 경로는 여기서 죽는다(의도).
+        run: |
+          git fetch -q origin main
+          [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "🟥 tag is not at origin/main HEAD — refusing"; exit 1; }
+          git checkout -q -B main origin/main
+      - name: publish (prepublishOnly 게이트 경유, provenance)
+        run: npm publish --provenance --access public
+      - name: verify on registry
+        run: |
+          v=$(node -p "require('./package.json').version")
+          got=$(npm view @chrono-meta/fh-gate@"$v" version)
+          [ "$got" = "$v" ] || { echo "🟥 registry shows '$got' not '$v'"; exit 1; }
+          echo "✅ @chrono-meta/fh-gate@$v on registry"
