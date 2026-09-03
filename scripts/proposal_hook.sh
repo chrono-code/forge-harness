@@ -27,8 +27,12 @@
 #                 string that happens to contain `exit 2` does not fire (r4 HARD 0/5).
 #   Bash path   : an edit made through the shell (sed -i · > · >> · tee) — the r4 miss (T2 r5 edited
 #                 via Bash, hook 0). No old/new here, so the rule is weaker: target file class AND the
-#                 command text outside quotes carries a token. Named residual: a Bash edit whose token
-#                 lives only inside the sed replacement string is quote-stripped away → no fire.
+#                 the RAW command text (quotes included) carries a token. Quotes are NOT stripped on
+#                 this path — in `sed -i 's/exit 1/exit 2/' x.sh` the token is inside the quotes by
+#                 construction, and stripping made the path silent on exactly the shape it exists for
+#                 (found by the Air node 2026-09-03; the original lane's known-positive only fired
+#                 because its token sat outside the quotes). Named residual now: over-fire when a
+#                 quoted token elsewhere in the command co-occurs with a script-file edit (advisory).
 #
 # DEGRADE DIRECTION: advisory, exit 0 always, no permissionDecision (same contract as pipe_verdict_guard).
 #   Unparseable payload → silent. python3 absent → silent (a dead interpreter must not block edits).
@@ -57,7 +61,7 @@ elif tn=="Bash":
     cmd=(ti.get("command","") or "").replace("\n"," ")
     m=re.search(r"(?:sed\s+-i\S*(?:\s+(?:\x27[^\x27]*\x27|\"[^\"]*\"|\S+)){1,2}\s+|>>?\s*|tee\s+(?:-a\s+)?)[\"\x27]?([^\s\"\x27|;&)<>]+\.sh)\b", cmd)
     if m:
-        fp=m.group(1); flag="1" if re.search(TOK, strip(cmd)) else "0"
+        fp=m.group(1); flag="1" if re.search(TOK, cmd) else "0"   # raw cmd, NOT strip(): in a sed -i the token lives INSIDE the quoted expression by construction (Air 2026-09-03: a1 silent, known-positive only fired because its token sat outside the quotes)
 print(fp, flag)
 ' 2>/dev/null) || exit 0
 [ -n "${FP:-}" ] || exit 0
