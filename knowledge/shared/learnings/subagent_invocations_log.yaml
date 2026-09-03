@@ -3031,3 +3031,17 @@
     ⓒ 회신이 «못 연다»를 낸 것이 가장 값졌다 — 설계가 «새 기계가 아니다»라 적었고 코드가 없었다(rule_misdescribes_its_own_machine).
     ⓕ 는 Write 도구가 없어 거버너가 옮겼다(persona-innovator 도구셋 한계, 기록). codex 추출기 1회는 정답지가
     같은 디렉터리에 있어 오염 → 폐기·재실행. 전 회신을 거버너가 실행으로 재현했고 codex 기각 5건은 소스 근거.
+- date: 2026-09-03
+  agent: UNATTRIBUTED — 이 세션(forge-harness-d5, 프로)이 띄운 것이 아니다
+  count: 2
+  context: >-
+    ④-e 가 «오늘 디스패치 2 · 원장 0» 으로 ❌. 자정 이후 이 세션의 Agent 호출은 0 (도구 호출은 Bash·gh·npm 뿐).
+    tally 실물 `tracks/_meta/.subagent_dispatch_tally` 에 2026-09-03 두 줄. 같은 시각 이 머신에서 sim 추출기
+    `claude -p` 40건과 sim 팔이 돌았으나 SubagentStop 은 Agent 도구에만 걸린다 — 출처 미확인.
+  outcome: pending
+  evidence: >-
+    #584(2026-09-02) 와 같은 얼굴 — tally 는 머신 전역(`CLAUDE_PROJECT_DIR` 미설정 세션이 허브 tally 에 쓴다),
+    ④-e 는 세션 로컬. «내가 안 했다»와 «기록이 없다»를 가를 수단이 없다.
+  note: >-
+    디스패치 기록이 아니라 귀속 불가 tally 의 기록. outcome 은 pending (60/40 게이트 오염 방지).
+    두 번째 발생(N=2) — 세 번째면 tally 에 session id 를 싣는 기계화 후보(fh_signal_2026-09-02_dispatch-tally-attribution.md).
