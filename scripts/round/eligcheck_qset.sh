@@ -11,6 +11,18 @@ set -uo pipefail
 _tsv_pipe(){ LC_ALL=C awk -F'\t' 'BEGIN{OFS="|"} {for(i=1;i<=NF;i++) if($i ~ /\|/){print "PIPE_IN_VALUE:" NR > "/dev/stderr"; exit 3} $1=$1; print}' "$1"; }
 SRC="${SRC:-scripts/context_continuity_score.sh}"
 QSET="${1:?usage: eligcheck.sh <qset.tsv> <outdir-with-CTRL>}"; OUT="${2:?}"; REPS="${3:-5}"
+# 🟥 CTRL 응답 파일 해석(2026-09-03): 채점기는 2026-09-01 부터 익명 라벨 `w<hex>_r<r>.txt` 로 쓰고
+#    `<out>.labelmap`(label|qid|arm) 을 남긴다. 옛 이름 `${qid}_CTRL_r${r}.txt` 가 없고 labelmap 이 있으면
+#    거기서 CTRL 라벨을 찾아 그 파일을 쓴다 — 회차4 가 «CTRL 전용 사전 디스패치(채점기 --arms CTRL)» 산출을
+#    그대로 적격 게이트에 넣을 수 있게 하는 이음매. 둘 다 없으면 종전대로 «부재»(분모 접힘 방지 그대로).
+_ctrl_file() {  # $1=qid $2=rep → 경로(존재 여부는 호출부가 본다)
+  local f="$OUT/${1}_CTRL_r${2}.txt" lm="${OUT%/}.labelmap" lab
+  if [ ! -f "$f" ] && [ -f "$lm" ]; then
+    lab=$(LC_ALL=C awk -F'|' -v q="$1" '$2==q && $3=="CTRL" {print $1; exit}' "$lm")
+    [ -n "$lab" ] && f="$OUT/${lab}_r${2}.txt"
+  fi
+  printf '%s' "$f"
+}
 eval "$(grep -m1 '^REFUSE_RE=' "$SRC")"
 sed -n '/^score_one() {/,/^}/p' "$SRC" > /tmp/_so_e.sh; . /tmp/_so_e.sh
 # 🟥 파싱을 «먼저 물질화»하고 rc 를 본다. 프로세스 치환(`< <(_tsv_pipe)`)은 awk 가 exit 3 으로 죽어도
@@ -42,7 +54,7 @@ while IFS='|' read -r qid kind q tok general probe; do
     if [ -z "${tok:-}" ]; then printf '%-5s %-9s %-22s %s\n' "$qid" "$kind" "-" "UNMEASURED(기대 토큰 없음 — qset 결함, 적격 아님)"; bad=1; continue; fi
     pv=0; tot=0; void=0; miss=0
     for r in $(seq 1 "$REPS"); do
-      f="$OUT/${qid}_CTRL_r${r}.txt"
+      f="$(_ctrl_file "$qid" "$r")"
       [ -f "$f" ] || { miss=$((miss+1)); continue; }
       tot=$((tot+1)); [ -s "$f" ] || { void=$((void+1)); continue; }
       v=$(score_one "$f" positive "$tok")
@@ -58,7 +70,7 @@ while IFS='|' read -r qid kind q tok general probe; do
   fi
   ref=0; tot=0; void=0; miss=0
   for r in $(seq 1 "$REPS"); do
-    f="$OUT/${qid}_CTRL_r${r}.txt"
+    f="$(_ctrl_file "$qid" "$r")"
     # 🟥 2026-09-01: 여기가 그냥 `continue` 였다 — **부재가 분모에서 사라진다.**
     #    reps=3 에서 1건이 비면 2/2 가 되어 다수결을 넘고 **적격이 «더 쉬워진다».**
     #    즉 디스패치 실패가 회차를 «여는» 쪽으로 작용한다. 실증됨(3/3 → 하나 지우면 2/2 적격).
@@ -93,7 +105,7 @@ while IFS='|' read -r qid kind q tok general probe; do
     #    ⇒ 기계로 가를 수 있는 축은 **«CTRL 이 기권했나 답했나»** 다.
     pw=0; tot=0; void=0; miss=0
     for r in $(seq 1 "$REPS"); do
-      f="$OUT/${qid}_CTRL_r${r}.txt"
+      f="$(_ctrl_file "$qid" "$r")"
       [ -f "$f" ] || { miss=$((miss+1)); continue; }   # 🟥 negative 루프와 같은 이유
       tot=$((tot+1)); [ -s "$f" ] || { void=$((void+1)); continue; }
       /usr/bin/grep -qF -- "$general" "$f" 2>/dev/null && pw=$((pw+1))

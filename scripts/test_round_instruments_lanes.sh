@@ -131,6 +131,17 @@ else
   printf '# comment only\n' > "$T/eq_pos.tsv"       # 채점 대상 행 0 — «잰 것 없음» (positive 는 2026-09-02 부터 채점 대상이라 주석만 남긴다)
   ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_pos.tsv" "$T/out" 1 ) >/dev/null 2>&1; _rc=$?
   [ "$_rc" -ne 0 ]; chk "E6 negative/conflict 행 0 → rc≠0 (빈 집합은 «전 문항 적격»이 아니다) [got=$_rc]" "$?" 0
+  # ── E10–E11 labelmap 해석 + 채점기 --arms (2026-09-03, 회차4 이음매) ─────────────────────────
+  mkdir -p "$T/lm"; printf 'N01\tnegative\tq?\tZZQQTOKEN\t\t\n' > "$T/eq_lm.tsv"
+  printf 'wdeadbeef|N01|CTRL\nwcafe|N01|ARM\n' > "$T/lm.labelmap"      # 채점기 라벨맵 형식 그대로
+  printf 'ZZQQTOKEN 입니다.\n' > "$T/lm/wdeadbeef_r1.txt"                # 익명 라벨 파일만 있고 옛 이름은 없다
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_lm.tsv" "$T/lm" 1 ) >/dev/null 2>&1
+  chk "E10 옛 이름 부재 + labelmap 있음 → 익명 라벨 CTRL 파일을 읽어 채점(답해버림=부적격 1)" "$?" 1
+  rm -f "$T/lm.labelmap"
+  ( cd "$ROOT" && SRC=scripts/context_continuity_score.sh bash "$_EL" "$T/eq_lm.tsv" "$T/lm" 1 ) >/dev/null 2>&1; _rc=$?
+  [ "$_rc" -ne 0 ]; chk "E10-ctrl labelmap 마저 없으면 부재 → 적격 아님(rc≠0, 분모 접힘 없음) [got=$_rc]" "$?" 0
+  ( cd "$ROOT" && bash scripts/context_continuity_score.sh --arms BOGUS --self-test ) >/dev/null 2>&1; _rc=$?
+  [ "$_rc" -eq 2 ]; chk "E11 채점기 --arms 닫힌 enum: BOGUS → rc 2 [got=$_rc]" "$?" 0
   # ── E7–E9 positive 적격 분기 (2026-09-02) — CTRL 이 토큰을 «내면» DEAD_CONTROL ──────────────
   printf 'P01\tpositive\tq?\tZZQQPOS\t\t\n' > "$T/eq_p.tsv"
   printf '그런 값은 기록에 없습니다.\n' > "$T/out/P01_CTRL_r1.txt"
