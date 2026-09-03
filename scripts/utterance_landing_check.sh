@@ -132,7 +132,7 @@ done
 _probe_hits() {
   local pat="$1"; shift
   grep -lE -- "$pat" "$@" 2>/dev/null
-  return "${PIPESTATUS[0]:-$?}"
+  return "${PIPESTATUS[0]:-$?}"  # portability-noqa: shebang (line 1) pins bash — PIPESTATUS is a real array there, unlike zsh
 }
 
 # ── 1단계: 컨트롤. 살아있음을 증명하기 전에는 타깃을 인쇄하지 않는다 ──
@@ -179,7 +179,7 @@ MISS=0; N=0
 while IFS=$'\t' read -r kind pat label; do
   [ "${kind:-}" = "TARGET" ] || continue
   N=$((N+1))
-  hits=$(_probe_hits "$pat" "${FILES[@]}" | wc -l | tr -d ' '); _rc=${PIPESTATUS[0]}
+  hits=$(_probe_hits "$pat" "${FILES[@]}" | wc -l | tr -d ' '); _rc=${PIPESTATUS[0]}  # portability-noqa: shebang (line 1) pins bash — PIPESTATUS is a real array there, unlike zsh
   if [ "$_rc" -ge 2 ]; then
     printf "  🟥 %-46s 프로브 오류\n" "${label:-$pat}"
     BAD_PAT="${BAD_PAT:+$BAD_PAT, }TARGET/${label:-$pat}"

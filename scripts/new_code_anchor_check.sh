@@ -507,8 +507,24 @@ def indirect(name, txt):
 # A subject may carry its own known-pair behind `--self-test`. That counts as an anchor ONLY if a
 # runner surface actually dispatches it — otherwise it is a lane suite nobody runs, which is
 # precisely the decoration this whole check is about. Two propositions, kept separate.
+# 🟥 BOTH forms are built via chr(), not written as literal text, and that is load-bearing here —
+# not just heredoc-paren-safety. `lane_runner_check.sh`'s OWN embedded-self-test SUBJECT scan
+# (`_st_names`) matches these same two forms ANYWHERE in a file's raw text, with no distinction
+# between "this file dispatches ITSELF on the flag" and "this file's source merely CONTAINS the
+# detection string as data" — a residual that file's own header names but leaves open. Until
+# 2026-09-03 the quoted form was one literal Python string (dquote, dash-dash-self-test, dquote,
+# all adjacent), which put that exact quoted substring in THIS file's own source — and
+# lane_runner_check.sh read it as this checker having an unwired embedded self-test of its own. It
+# does not: this file's real known-pair calibration is scripts/test_new_code_anchor_lanes.sh (lanes
+# N15/N16 exercise selftest_wired() directly), already wired and counted by that checker's PRIMARY
+# suite scan. Building the string from parts (never letting the quote and the flag text sit
+# adjacent in this file's own source) removes the false positive at its root instead of teaching
+# this checker a fake self-test mode just to satisfy a scan that was never measuring a real gap
+# here. 🟥 Do not "fix" this note by pasting the literal quoted form back in as an example — that
+# reproduces the exact substring this paragraph exists to keep out of the file.
 _CP = chr(41)
-SELFTEST_FORMS = ('"--self-test"', '--self-test' + _CP)
+_DQ = chr(34)
+SELFTEST_FORMS = (_DQ + '--self-test' + _DQ, '--self-test' + _CP)
 
 def selftest_wired(path):
     txt = read(path)

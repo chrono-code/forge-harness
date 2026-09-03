@@ -229,6 +229,7 @@ if printf '%s' "$OUT" | grep -q "$PROBE_SUITE" && [ "$RC" -ne 0 ]; then
   ok "L1 untracked .github/workflows runner does NOT certify a suite as WIRED"
 else
   bad "L1 untracked workflow still certifies the suite (rc=$RC) — D-5 is live"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 D="$(_lrc_fixture lrc_tracked_wf workflow 1)" || { echo "FAIL harness: fixture build"; exit 2; }
@@ -237,6 +238,7 @@ if [ "$RC" -eq 0 ] && ! printf '%s' "$OUT" | grep -q "no runner and no declarati
   ok "L2 TRACKED workflow runner still certifies WIRED (no over-block)"
 else
   bad "L2 over-block: a runner that IS in the index was dropped (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 D="$(_lrc_fixture lrc_untracked_hook hook 0)" || { echo "FAIL harness: fixture build"; exit 2; }
@@ -245,6 +247,7 @@ if printf '%s' "$OUT" | grep -q "$PROBE_SUITE" && [ "$RC" -ne 0 ]; then
   ok "L3 untracked templates/.git-hooks runner does NOT certify WIRED (second spelling)"
 else
   bad "L3 the hook glob still resolves against disk — the repair was partial (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 D="$(_lrc_fixture lrc_untracked_script script 0)" || { echo "FAIL harness: fixture build"; exit 2; }
@@ -253,6 +256,7 @@ if printf '%s' "$OUT" | grep -q "$PROBE_SUITE" && [ "$RC" -ne 0 ]; then
   ok "L4 untracked scripts/*.sh runner does NOT certify WIRED (third spelling)"
 else
   bad "L4 the scripts glob still resolves against disk (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 # ── L5: UNMEASURED is not zero ────────────────────────────────────────────────────────────────
@@ -264,6 +268,7 @@ if [ "$RC" -ne 0 ] && printf '%s' "$OUT" | grep -qi "UNMEASURED"; then
   ok "L5 empty index in tracked territory → UNMEASURED, refuses to report zero runners"
 else
   bad "L5 an empty index was folded into a verdict (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 # ── L6: no index at all (an unpacked npm tarball) degrades to disk, LABELLED ──────────────────
@@ -287,6 +292,7 @@ if [ "$RC" -eq 1 ] && printf '%s' "$OUT" | grep -q "$PROBE_SUBJ"; then
   ok "L7 untracked .github/workflows runner does NOT certify a script as having a caller"
 else
   bad "L7 untracked workflow still counts as a caller (rc=$RC) — D-5 is live"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 D="$(_rat_fixture rat_tracked_wf workflow 1)" || { echo "FAIL harness: fixture build"; exit 2; }
@@ -295,6 +301,7 @@ if [ "$RC" -eq 0 ]; then
   ok "L8 TRACKED workflow runner still counts as a caller (no over-block)"
 else
   bad "L8 over-block: a runner that IS in the index was dropped (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 D="$(_rat_fixture rat_untracked_hook hook 0)" || { echo "FAIL harness: fixture build"; exit 2; }
@@ -303,6 +310,7 @@ if [ "$RC" -eq 1 ] && printf '%s' "$OUT" | grep -q "$PROBE_SUBJ"; then
   ok "L9 untracked templates/.git-hooks runner does NOT count as a caller (second spelling)"
 else
   bad "L9 the hook glob still resolves against disk — the repair was partial (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 # ══ FAIL-BEFORE for D-5 itself ════════════════════════════════════════════════════════════════
@@ -396,6 +404,7 @@ else
     ok "L16 fail-before: the first repair PASSES with a totally broken git (defect reproduced)"
   else
     bad "L16 fail-before did NOT reproduce (rc=$RC) — L12/L13 then prove nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 
@@ -410,6 +419,7 @@ else
     ok "L17 fail-before: the first repair PASSES with a totally broken git (defect reproduced)"
   else
     bad "L17 fail-before did NOT reproduce (rc=$RC) — L14/L15 then prove nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 
@@ -425,6 +435,7 @@ if [ "$RC" -ne 0 ] && printf '%s' "$OUT" | grep -q "$PROBE_SUITE"; then
   ok "L18 a TRACKED hidden .github/workflows/.x.yml does NOT certify WIRED (glob hides dotfiles)"
 else
   bad "L18 the index surface is WIDER than the glob.glob it replaced (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 D="$(_lrc_fixture lrc_dothook dothook 1)" || { echo "FAIL harness: fixture build"; exit 2; }
@@ -433,6 +444,7 @@ if [ "$RC" -ne 0 ] && printf '%s' "$OUT" | grep -q "$PROBE_SUITE"; then
   ok "L19 a TRACKED hidden file inside the .git-hooks DOT-DIRECTORY does NOT certify WIRED"
 else
   bad "L19 dotfile parity was fixed in one spelling only (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 D="$(_rat_fixture rat_dothook dothook 1)" || { echo "FAIL harness: fixture build"; exit 2; }
@@ -441,6 +453,7 @@ if [ "$RC" -eq 1 ] && printf '%s' "$OUT" | grep -q "$PROBE_SUBJ"; then
   ok "L20 caller-ratchet: a TRACKED hidden runner does NOT count as a caller"
 else
   bad "L20 caller-ratchet's surface is wider than glob.glob (rc=$RC)"
+  printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
 fi
 
 echo "── fail-before: dotfile guard (removed, executed) ────────────────────────────────────────"
@@ -454,6 +467,7 @@ else
     ok "L21 fail-before: without the guard the hidden runner DOES certify (defect reproduced)"
   else
     bad "L21 fail-before did NOT reproduce (rc=$RC) — L18/L19 then prove nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 
@@ -468,6 +482,7 @@ else
     ok "L22 fail-before: without the guard the hidden runner DOES count as a caller"
   else
     bad "L22 fail-before did NOT reproduce (rc=$RC) — L20 then proves nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 
@@ -527,6 +542,7 @@ else
     ok "L26 fail-before: reading the body from disk certifies the unstaged line (defect reproduced)"
   else
     bad "L26 fail-before did NOT reproduce (rc=$RC) — L24 then proves nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 
@@ -542,6 +558,7 @@ else
     ok "L27 fail-before: reading the body from disk certifies the unstaged line (defect reproduced)"
   else
     bad "L27 fail-before did NOT reproduce (rc=$RC) — L25 then proves nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 
@@ -588,6 +605,7 @@ else
     ok "L30 fail-before: the isfile filter silently drops the tracked runner (defect reproduced)"
   else
     bad "L30 fail-before did NOT reproduce (rc=$RC) — L28 then proves nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 
@@ -603,6 +621,7 @@ else
     ok "L31 fail-before: the isfile filter silently drops the tracked runner (defect reproduced)"
   else
     bad "L31 fail-before did NOT reproduce (rc=$RC) — L29 then proves nothing"
+    printf '%s\n' "$OUT" | tail -3 | sed 's/^/       /'
   fi
 fi
 

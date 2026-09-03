@@ -42,43 +42,43 @@ echo "── node-check lanes ──"
 # LANE 1 (S3-1) — NOT a git repo. The git-hook floor cannot be installed here at all, so it is
 # N/A, not missing. Reporting it would be an unfixable notice repeating every session forever.
 mkdir -p "$TMP/nogit"
-out="$(run "$TMP/nogit" "$TMP/s1" FH_MACHINE_ID=nogitbox)"
+out="$(run "$TMP/nogit" "$TMP/s1" FH_MACHINE_ID=nogitbox)"; rc=$?
 # POSITIVE CONTROL: assert what MUST appear alongside what must not. Absence-only lanes are
 # satisfied by a script that prints nothing at all — an `exit 0` stub passed lanes 1, 4 and 7
 # (cross-family mutation 2026-07-30), so each now pins an expected utterance too.
 case "$out" in
-  *"Missing mechanical floor"*) bad "lane1 non-git: must NOT claim a missing floor (N/A, unfixable)" "$out" ;;
+  *"Missing mechanical floor"*) bad "lane1 non-git: must NOT claim a missing floor (N/A, unfixable)" "rc=$rc | $out" ;;
   *"first session for this clone"*) ok "lane1 non-git: N/A on the git floor, but still reports the node event" ;;
-  *) bad "lane1 non-git: silent — a stub would pass this lane" "$out" ;;
+  *) bad "lane1 non-git: silent — a stub would pass this lane" "rc=$rc | $out" ;;
 esac
 
 # LANE 2 (S3-2) — hooks exist but belong to another framework (husky/pre-commit). Executable ≠ FH's
 # gate. Silence here is the exact accident this check was built for: FH gates absent, machine quiet.
 mk_git_hub "$TMP/husky" no
-out="$(run "$TMP/husky" "$TMP/s2" FH_MACHINE_ID=huskybox)"
+out="$(run "$TMP/husky" "$TMP/s2" FH_MACHINE_ID=huskybox)"; rc=$?
 case "$out" in
   *"Missing mechanical floor"*) ok "lane2 foreign hooks: FH gate absence reported" ;;
-  *) bad "lane2 foreign hooks: non-FH hooks were accepted as FH floors" "$out" ;;
+  *) bad "lane2 foreign hooks: non-FH hooks were accepted as FH floors" "rc=$rc | $out" ;;
 esac
 
 # LANE 3 (S3-3) — Mode D user on a FRESH clone: companion store present, settings.local.json absent
 # (it is gitignored, so a clone never has it). This is the MEASURED 2026-07-30 incident. Must speak.
 mk_git_hub "$TMP/moded" yes
 mkdir -p "$TMP/companion/.git"
-out="$(run "$TMP/moded" "$TMP/s3" FH_MACHINE_ID=modedbox BE_DIR="$TMP/companion")"
+out="$(run "$TMP/moded" "$TMP/s3" FH_MACHINE_ID=modedbox BE_DIR="$TMP/companion")"; rc=$?
 case "$out" in
   *companion-load*) ok "lane3 fresh Mode D clone: companion-load absence surfaced" ;;
-  *) bad "lane3 fresh Mode D clone: SILENT — the measured incident would recur" "$out" ;;
+  *) bad "lane3 fresh Mode D clone: SILENT — the measured incident would recur" "rc=$rc | $out" ;;
 esac
 
 # LANE 4 (M2-4) — public non-Mode-D user: no companion store anywhere. The companion item must not
 # appear, or the majority path gets a false positive for a feature it does not use.
 mk_git_hub "$TMP/public" yes
-out="$(run "$TMP/public" "$TMP/s4" FH_MACHINE_ID=publicbox)"
+out="$(run "$TMP/public" "$TMP/s4" FH_MACHINE_ID=publicbox)"; rc=$?
 case "$out" in
-  *companion-load*) bad "lane4a non-Mode-D: companion item shown to a user with no store" "$out" ;;
+  *companion-load*) bad "lane4a non-Mode-D: companion item shown to a user with no store" "rc=$rc | $out" ;;
   *"first session for this clone"*) ok "lane4a non-Mode-D: companion absent, node event still reported" ;;
-  *) bad "lane4a non-Mode-D: silent — a stub would pass this lane" "$out" ;;
+  *) bad "lane4a non-Mode-D: silent — a stub would pass this lane" "rc=$rc | $out" ;;
 esac
 
 # LANE 4b (S4-1) — CLAUDE.local.md is Claude Code's STANDARD local-override file; anyone may keep
@@ -86,9 +86,9 @@ esac
 # gets a companion notice every session forever (state-based emission makes it permanent, not
 # one-shot). Only the binding INSIDE the file counts.
 printf '# my local notes\nuse tabs not spaces\n' > "$TMP/public/CLAUDE.local.md"
-out="$(run "$TMP/public" "$TMP/s4b" FH_MACHINE_ID=publicbox)"
+out="$(run "$TMP/public" "$TMP/s4b" FH_MACHINE_ID=publicbox)"; rc=$?
 case "$out" in
-  *companion-load*) bad "lane4b plain CLAUDE.local.md: existence alone classified the user as Mode D" "$out" ;;
+  *companion-load*) bad "lane4b plain CLAUDE.local.md: existence alone classified the user as Mode D" "rc=$rc | $out" ;;
   *) ok "lane4b plain CLAUDE.local.md: not treated as a Mode D signal" ;;
 esac
 
@@ -106,10 +106,10 @@ for binding in 'BE_DIR=/x/store' 'companion store: ~/notes' '컴패니언 스토
                'vault: ~/vaults/notes' 'gbrain ingest target: ~/gbrain' 'backend: obsidian'; do
   i=$((i+1))
   printf '# local\n%s\n' "$binding" > "$TMP/public/CLAUDE.local.md"
-  out="$(run "$TMP/public" "$TMP/s4c$i" FH_MACHINE_ID=publicbox)"
+  out="$(run "$TMP/public" "$TMP/s4c$i" FH_MACHINE_ID=publicbox)"; rc=$?
   case "$out" in
     *companion-load*) ok "lane4c.$i Mode D detected via: $binding" ;;
-    *) bad "lane4c.$i binding present but Mode D not detected: $binding" "$out" ;;
+    *) bad "lane4c.$i binding present but Mode D not detected: $binding" "rc=$rc | $out" ;;
   esac
 done
 rm -f "$TMP/public/CLAUDE.local.md"
@@ -136,24 +136,24 @@ done
 # exist and working hooks read as missing.
 mk_git_hub "$TMP/wt" yes
 git -C "$TMP/wt" worktree add -q "$TMP/wt_linked" -b lane7 2>/dev/null
-out="$(run "$TMP/wt_linked" "$TMP/s7" FH_MACHINE_ID=wtbox)"
+out="$(run "$TMP/wt_linked" "$TMP/s7" FH_MACHINE_ID=wtbox)"; rc=$?
 case "$out" in
-  *"Missing mechanical floor"*) bad "lane7 worktree: false missing-floor (hooks resolve to the main gitdir)" "$out" ;;
+  *"Missing mechanical floor"*) bad "lane7 worktree: false missing-floor (hooks resolve to the main gitdir)" "rc=$rc | $out" ;;
   *"first session for this clone"*) ok "lane7 worktree: hooks resolved correctly, node event reported" ;;
-  *) bad "lane7 worktree: silent — a stub would pass this lane" "$out" ;;
+  *) bad "lane7 worktree: silent — a stub would pass this lane" "rc=$rc | $out" ;;
 esac
 
 # LANE 8 (M3-3) — python3 unavailable: the companion verdict is UNMEASURED, never silently "fine".
 # Simulated by a PATH with no python3, for a Mode D hub (so the check is applicable).
 mk_git_hub "$TMP/nopy" yes
 mkdir -p "$TMP/emptybin" "$TMP/companion2/.git"
-out="$(PATH="$TMP/emptybin:/usr/bin:/bin" run "$TMP/nopy" "$TMP/s8" FH_MACHINE_ID=nopybox BE_DIR="$TMP/companion2")"
+out="$(PATH="$TMP/emptybin:/usr/bin:/bin" run "$TMP/nopy" "$TMP/s8" FH_MACHINE_ID=nopybox BE_DIR="$TMP/companion2")"; rc=$?
 if command -v python3 >/dev/null 2>&1 && [ -x /usr/bin/python3 ]; then
   ok "lane8 skipped: /usr/bin/python3 exists so absence cannot be simulated via PATH"
 else
   case "$out" in
     *UNMEASURED*|*unmeasured*) ok "lane8 no python3: reported UNMEASURED, not silence" ;;
-    *) bad "lane8 no python3: absence read as pass" "$out" ;;
+    *) bad "lane8 no python3: absence read as pass" "rc=$rc | $out" ;;
   esac
 fi
 
@@ -249,11 +249,11 @@ else
   fi
   git -C "$_dn" fetch -q origin >/dev/null 2>&1
   _h0="$(git -C "$_dn" rev-parse HEAD)"
-  run "$_dn" "$_ap_root/s_a" >/dev/null 2>&1
+  _out_a="$(run "$_dn" "$_ap_root/s_a" 2>&1)"; _rc_a=$?
   if [ "$(git -C "$_dn" rev-parse HEAD)" != "$_h0" ]; then
     ok "lane10-a APPLY: consented + on default branch → fast-forwarded"
   else
-    bad "lane10-a APPLY: consented + on default branch did NOT fast-forward (feature inert — every refuse lane below is then vacuous)" "$_h0"
+    bad "lane10-a APPLY: consented + on default branch did NOT fast-forward (feature inert — every refuse lane below is then vacuous)" "before=$_h0 rc=$_rc_a out=$_out_a"
   fi
 
   # b — the envelope. Never applies off the default branch, and NEVER switches branches.
@@ -267,13 +267,13 @@ else
   # version of this lane asserted only those two and stayed green against a defeated envelope —
   # decorative. The tip that must not move is the CURRENT branch's own.
   _f0="$(git -C "$_dn" rev-parse feat-x)"
-  run "$_dn" "$_ap_root/s_b" >/dev/null 2>&1
+  _out_b="$(run "$_dn" "$_ap_root/s_b" 2>&1)"; _rc_b=$?
   if [ "$(git -C "$_dn" rev-parse "$_DEF")" = "$_m0" ] \
      && [ "$(git -C "$_dn" rev-parse feat-x)" = "$_f0" ] \
      && [ "$(git -C "$_dn" branch --show-current)" = "feat-x" ]; then
     ok "lane10-b ENVELOPE: off default branch → no apply on EITHER branch, no switch"
   else
-    bad "lane10-b ENVELOPE: a branch tip moved off the default branch — the shared-checkout hazard" "main=$_m0->$(git -C "$_dn" rev-parse "$_DEF") feat-x=$_f0->$(git -C "$_dn" rev-parse feat-x) branch=$(git -C "$_dn" branch --show-current)"
+    bad "lane10-b ENVELOPE: a branch tip moved off the default branch — the shared-checkout hazard" "main=$_m0->$(git -C "$_dn" rev-parse "$_DEF") feat-x=$_f0->$(git -C "$_dn" rev-parse feat-x) branch=$(git -C "$_dn" branch --show-current) rc=$_rc_b out=$_out_b"
   fi
   git -C "$_dn" switch -q "$_DEF" >/dev/null 2>&1
 
@@ -285,29 +285,29 @@ p=sys.argv[1]; s=open(p,encoding='utf-8').read()
 open(p,'w',encoding='utf-8').write(re.sub(r'\nstanding_consent:\n(?:  .*\n|    .*\n)*', '\n', s, count=1))
 PYX
   _h1="$(git -C "$_dn" rev-parse HEAD)"
-  run "$_dn" "$_ap_root/s_c" >/dev/null 2>&1
+  _out_c="$(run "$_dn" "$_ap_root/s_c" 2>&1)"; _rc_c=$?
   [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h1" ] \
     && ok "lane10-c NO-GRANT: absent standing_consent → no apply" \
-    || bad "lane10-c NO-GRANT: applied without a grant" "$_h1"
+    || bad "lane10-c NO-GRANT: applied without a grant" "before=$_h1 rc=$_rc_c out=$_out_c"
 
   # d — expired lease. A lease nobody enforces is not a lease.
   cp "$_ap_root/uap.bak" "$_dn/tracks/_meta/user_adaptation_profile.md"
   sed -i.bak2 's/expires: [0-9-]*/expires: 2020-01-01/' "$_dn/tracks/_meta/user_adaptation_profile.md"
   _h2="$(git -C "$_dn" rev-parse HEAD)"
-  run "$_dn" "$_ap_root/s_d" >/dev/null 2>&1
+  _out_d="$(run "$_dn" "$_ap_root/s_d" 2>&1)"; _rc_d=$?
   [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h2" ] \
     && ok "lane10-d EXPIRED: past-dated lease → no apply" \
-    || bad "lane10-d EXPIRED: applied under an expired lease" "$_h2"
+    || bad "lane10-d EXPIRED: applied under an expired lease" "before=$_h2 rc=$_rc_d out=$_out_d"
   cp "$_ap_root/uap.bak" "$_dn/tracks/_meta/user_adaptation_profile.md"
 
   # e — divergence. --ff-only must refuse rather than absorb, and local work must survive.
   (cd "$_dn" && echo local-only > mine.txt && git add -A && git commit -qm diverge) >/dev/null 2>&1
   _h3="$(git -C "$_dn" rev-parse HEAD)"
-  run "$_dn" "$_ap_root/s_e" >/dev/null 2>&1
+  _out_e="$(run "$_dn" "$_ap_root/s_e" 2>&1)"; _rc_e=$?
   if [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h3" ] && [ -f "$_dn/mine.txt" ]; then
     ok "lane10-e DIVERGED: ff refused, local commit survives"
   else
-    bad "lane10-e DIVERGED: local history was moved or lost" "$_h3 -> $(git -C "$_dn" rev-parse HEAD)"
+    bad "lane10-e DIVERGED: local history was moved or lost" "$_h3 -> $(git -C "$_dn" rev-parse HEAD) rc=$_rc_e out=$_out_e"
   fi
 
   # f — WRONG CLASS. The refusal that the other three arms structurally cannot produce.
@@ -367,7 +367,7 @@ PYX
   if [ "$_h5" = "$(git -C "$_dn" rev-parse "origin/$_DEF")" ]; then
     bad "lane10-f VACUOUS: clone is not behind origin, so 'no apply' proves nothing" "$_h5"
   fi
-  run "$_dn" "$_ap_root/s_f" >/dev/null 2>&1
+  _out_f="$(run "$_dn" "$_ap_root/s_f" 2>&1)"; _rc_f=$?
   _filewide=0
   bash "$FH_REPO/scripts/consent_registry_check.sh" \
        "$_dn/tracks/_meta/consent_classes.yaml" \
@@ -375,9 +375,9 @@ PYX
   if [ "$(git -C "$_dn" rev-parse HEAD)" = "$_h5" ] && [ "$_filewide" = "0" ]; then
     ok "lane10-f WRONG-CLASS: another class granted, this one only in prose → no apply (file-wide check still 0)"
   elif [ "$_filewide" != "0" ]; then
-    bad "lane10-f VACUOUS: the fixture broke the file-wide verdict (rc=$_filewide), so it re-tests lane10-c's axis, not the class join" "rebuild the fixture so the bare check returns 0"
+    bad "lane10-f VACUOUS: the fixture broke the file-wide verdict (rc=$_filewide), so it re-tests lane10-c's axis, not the class join" "rebuild the fixture so the bare check returns 0 | run_rc=$_rc_f run_out=$_out_f"
   else
-    bad "lane10-f WRONG-CLASS: applied on a class that was never granted" "$_h5 -> $(git -C "$_dn" rev-parse HEAD)"
+    bad "lane10-f WRONG-CLASS: applied on a class that was never granted" "$_h5 -> $(git -C "$_dn" rev-parse HEAD) run_rc=$_rc_f run_out=$_out_f"
   fi
   cp "$_ap_root/uap.bak" "$_dn/tracks/_meta/user_adaptation_profile.md"
 
@@ -387,10 +387,10 @@ PYX
   (cd "$_ap_root/up" && echo newer3 > f.txt && git commit -qam ahead3) >/dev/null 2>&1
   git -C "$_dn" fetch -q origin >/dev/null 2>&1
   _h4="$(git -C "$_dn" rev-parse HEAD)"
-  run "$_dn" "$_ap_root/s_f" >/dev/null 2>&1
+  _out_ctrl="$(run "$_dn" "$_ap_root/s_f" 2>&1)"; _rc_ctrl=$?
   [ "$(git -C "$_dn" rev-parse HEAD)" != "$_h4" ] \
     && ok "lane10-CONTROL: apply arm still fires after the refuse arms (instrument alive)" \
-    || bad "lane10-CONTROL: apply arm went inert — the refuse lanes above prove nothing" "$_h4"
+    || bad "lane10-CONTROL: apply arm went inert — the refuse lanes above prove nothing" "before=$_h4 rc=$_rc_ctrl out=$_out_ctrl"
 fi
 rm -rf "$_ap_root"
 

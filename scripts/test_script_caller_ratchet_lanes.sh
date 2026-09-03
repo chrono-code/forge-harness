@@ -118,7 +118,7 @@ rm -rf "$d"
 d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/orphan.sh"
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\n' > "$d/.github/workflows/ci.yml"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'scripts/orphan.sh'; then
   ok "L1 known-positive — undeclared zero-caller blocks (exit 1) and is NAMED"
 else
@@ -143,7 +143,7 @@ printf '#!/usr/bin/env bash\necho old\n' > "$d/scripts/olddebt.sh"
 printf '#!/usr/bin/env bash\necho new\n' > "$d/scripts/newdebt.sh"
 printf 'exempt:\nbaseline:\n  - scripts/olddebt.sh   # grandfathered measured debt\n' > "$d/scripts/caller_zero_baseline.txt"
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\nbash scripts/olddebt.sh\n' > "$d/.github/workflows/ci.yml"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'scripts/newdebt.sh' \
    && ! printf '%s' "$o" | grep -q 'FAIL.*olddebt'; then
   ok "L3 identity-keyed — count unchanged (1→1) yet the NEW callerless script blocks"
@@ -203,7 +203,7 @@ rm -rf "$d"
 d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/orphan.sh"
 printf '#!/usr/bin/env bash\n#   bash scripts/orphan.sh   <- usage example\nbash scripts/alpha.sh\n' > "$d/.github/workflows/ci.yml"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'scripts/orphan.sh'; then
   ok "L8 mention≠invocation — a commented usage line does not certify a caller"
 else
@@ -240,7 +240,7 @@ printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/daily.sh"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/autopilot.sh"
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\n' > "$d/.github/workflows/ci.yml"
 printf '%s\n' '<plist>' '<!-- point this at scripts/daily.sh instead -->' '<string>/x/scripts/autopilot.sh</string>' '</plist>' > "$d/scripts/x.plist"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'scripts/daily.sh' \
    && ! printf '%s' "$o" | grep -q '· scripts/autopilot.sh'; then
   ok "L11 plist — <string> dispatch wires autopilot, an XML-commented path does NOT wire daily"
@@ -266,7 +266,7 @@ d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/fixed.sh"
 printf 'exempt:\nbaseline:\n  - scripts/fixed.sh   # was debt, wired since\n' > "$d/scripts/caller_zero_baseline.txt"
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\nbash scripts/fixed.sh\n' > "$d/.github/workflows/ci.yml"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 # 🟥 The grep is 'now WIRED', not 'shrink-only'. When the shrink-only ENFORCEMENT lanes below were
 # added, the checker started printing a `shrink-only: UNMEASURED` line on every non-git fixture —
 # which contains the substring 'shrink-only' and would have kept THIS lane green even if the
@@ -301,7 +301,7 @@ rm -rf "$d"
 d="$(gitfix)"
 printf '#!/usr/bin/env bash\necho new\n' > "$d/scripts/newdebt.sh"
 printf 'exempt:\nbaseline:\n  - scripts/newdebt.sh   # freshly added debt, the illegal move\n' > "$d/scripts/caller_zero_baseline.txt"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'SHRINK-ONLY' \
    && printf '%s' "$o" | grep -q 'scripts/newdebt.sh'; then
   ok "L15 shrink-only — a NEW baseline: entry blocks (exit 1) and is NAMED"
@@ -326,7 +326,7 @@ rc="$(rcof "$d")"
 # labels were printed.
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\nbash scripts/newdebt.sh\n' > "$d/.github/workflows/ci.yml"
 printf 'exempt:\nbaseline:\n' > "$d/scripts/caller_zero_baseline.txt"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "0" ] && printf '%s' "$o" | grep -q 'shrink-only WORKTREE_ONLY' \
    && ! printf '%s' "$o" | grep -q 'ENFORCED'; then
   ok "L15c twin — an unchanged baseline: passes, labelled WORKTREE_ONLY (never ENFORCED vs HEAD)"
@@ -364,7 +364,7 @@ rm -rf "$d"
 # 🟥 Three-valued on purpose. "could not compare" must never render as "compared, nothing found".
 d="$(mkfix)"          # deliberately NOT a git repo
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\n' > "$d/.github/workflows/ci.yml"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "0" ] && printf '%s' "$o" | grep -q 'shrink-only UNMEASURED' \
    && printf '%s' "$o" | grep -q 'shrink-only: UNMEASURED'; then
   ok "L17 degrade — no base: labelled UNMEASURED in BOTH the body and the PASS line, non-blocking"
@@ -387,7 +387,7 @@ rm -rf "$d"
 d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/foo.sh"
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\nbash scripts/foo.sh.bak --quiet\n' > "$d/.github/workflows/ci.yml"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'scripts/foo.sh$'; then
   ok "L18 token boundary — a .bak suffix does NOT wire foo.sh (blocks, exit 1)"
 else
@@ -405,7 +405,7 @@ d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/foo.sh"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/myfoo.sh"
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\nbash scripts/myfoo.sh\n' > "$d/.github/workflows/ci.yml"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q '· scripts/foo.sh' \
    && ! printf '%s' "$o" | grep -q '· scripts/myfoo.sh'; then
   ok "L18c token boundary — myfoo.sh is wired, foo.sh is not; the longer name does not cover it"
@@ -442,7 +442,7 @@ d="$(mkfix)"
 printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/daily.sh"
 printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\n' > "$d/.github/workflows/ci.yml"
 printf '%s\n' '<plist>' '<string>/path/to/forge-harness/scripts/daily.sh</string>' '</plist>' > "$d/scripts/x.plist"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q '· scripts/daily.sh' \
    && printf '%s' "$o" | grep -q 'PLACEHOLDER path'; then
   ok "L19 placeholder plist — /path/to/ does not wire, and the run SAYS why (named, not silent)"
@@ -466,7 +466,7 @@ rm -rf "$d"
 d="$(gitfix)"
 printf '#!/usr/bin/env bash\necho new\n' > "$d/scripts/newdebt.sh"
 printf 'exempt:\nbaseline:\n  - scripts/newdebt.sh   # freshly added debt, the illegal move\n' > "$d/scripts/caller_zero_baseline.txt"
-rc="$(rcofx "$d" --base HEAD)"; o="$(runx "$d" --base HEAD)"
+o="$(runx "$d" --base HEAD)"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'SHRINK-ONLY'; then
   ok "L20 explicit --base — the named ref is used and the new baseline: entry blocks"
 else
@@ -516,7 +516,7 @@ d="$(gitfix2)"
 # accidentally re-testing the worktree case that already had power.
 st="$(git -C "$d" status --short)"
 [ -z "$st" ] || no "L21 SETUP — fixture tree is not clean, the lane would measure the wrong thing" "$st"
-rc="$(FH_RATCHET_REQUIRE_BASE=1 rcof "$d")"; o="$(FH_RATCHET_REQUIRE_BASE=1 run "$d")"
+o="$(FH_RATCHET_REQUIRE_BASE=1 run "$d")"; rc=$?
 if [ "$rc" = "2" ] && printf '%s' "$o" | grep -q 'not a usable comparison'; then
   ok "L21 base≠HEAD — a self-comparison under CI settings is exit 2, not a vacuous pass"
 else
@@ -526,8 +526,7 @@ fi
 # ── L21b known-NEGATIVE twin — the SAME tree with a REAL base actually CATCHES it ─────────────
 # 🟥 Without this twin L21 would also be green if the fix simply made CI always exit 2. The claim
 # under test is that naming an immutable base RESTORES the verdict, not that it suppresses it.
-rc="$(FH_RATCHET_BASE_REF=HEAD~1 FH_RATCHET_REQUIRE_BASE=1 rcof "$d")"
-o="$(FH_RATCHET_BASE_REF=HEAD~1 FH_RATCHET_REQUIRE_BASE=1 run "$d")"
+o="$(FH_RATCHET_BASE_REF=HEAD~1 FH_RATCHET_REQUIRE_BASE=1 run "$d")"; rc=$?
 if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q 'SHRINK-ONLY' \
    && printf '%s' "$o" | grep -q 'scripts/newdebt.sh'; then
   ok "L21b twin — with an immutable base the committed illegal move BLOCKS and is NAMED"
@@ -542,8 +541,7 @@ printf 'exempt:\nbaseline:\n' > "$d/scripts/caller_zero_baseline.txt"
 git -C "$d" add scripts .github >/dev/null 2>&1
 git -C "$d" -c user.email=lane@example.invalid -c user.name=lane \
     -c core.hooksPath=/nonexistent-fixture-hooks commit -q --no-verify -m legal >/dev/null 2>&1
-rc="$(FH_RATCHET_BASE_REF=HEAD~1 FH_RATCHET_REQUIRE_BASE=1 rcof "$d")"
-o="$(FH_RATCHET_BASE_REF=HEAD~1 FH_RATCHET_REQUIRE_BASE=1 run "$d")"
+o="$(FH_RATCHET_BASE_REF=HEAD~1 FH_RATCHET_REQUIRE_BASE=1 run "$d")"; rc=$?
 if [ "$rc" = "0" ] && printf '%s' "$o" | grep -q 'shrink-only ENFORCED'; then
   ok "L21c twin — a legal commit with a real base passes, and the run says ENFORCED for real"
 else
@@ -556,7 +554,7 @@ rm -rf "$d"
 # stay non-blocking: an over-blocking local gate trains `--no-verify` and disarms its neighbours.
 # But it must NOT be able to print the word a CI log would be quoted from.
 d="$(gitfix2)"
-rc="$(rcof "$d")"; o="$(run "$d")"
+o="$(run "$d")"; rc=$?
 if [ "$rc" = "0" ] && printf '%s' "$o" | grep -q 'shrink-only WORKTREE_ONLY' \
    && ! printf '%s' "$o" | grep -q 'ENFORCED'; then
   ok "L22 degrade — locally a self-comparison passes but is LABELLED, never called ENFORCED"
@@ -578,7 +576,7 @@ for _form in '$HOME/projects/repo/scripts/daily.sh' \
   printf '#!/usr/bin/env bash\necho hi\n' > "$d/scripts/daily.sh"
   printf '#!/usr/bin/env bash\nbash scripts/alpha.sh\n' > "$d/.github/workflows/ci.yml"
   printf '%s\n' '<plist>' "<string>$_form</string>" '</plist>' > "$d/scripts/x.plist"
-  rc="$(rcof "$d")"; o="$(run "$d")"
+  o="$(run "$d")"; rc=$?
   if [ "$rc" = "1" ] && printf '%s' "$o" | grep -q '· scripts/daily.sh' \
      && printf '%s' "$o" | grep -q 'PLACEHOLDER path'; then
     ok "L23 unexpanded plist path — '$_form' does NOT wire, and the run SAYS why"
@@ -686,8 +684,7 @@ fi
 # under the OLD code this pair printed "shrink-only ENFORCED" and exited 0 over the illegal move.
 # The control runs first so the checker is proven live on this very fixture before the arm's
 # non-verdict is read as anything.
-ctl_rc="$(FH_RATCHET_BASE_REF="$A" FH_RATCHET_REQUIRE_BASE=1 rcof "$d")"
-ctl_o="$(FH_RATCHET_BASE_REF="$A" FH_RATCHET_REQUIRE_BASE=1 run "$d")"
+ctl_o="$(FH_RATCHET_BASE_REF="$A" FH_RATCHET_REQUIRE_BASE=1 run "$d")"; ctl_rc=$?
 if [ "$ctl_rc" = "1" ] && printf '%s' "$ctl_o" | grep -q 'scripts/newdebt.sh'; then
   ok "L24c CONTROL — with the true base the checker catches the illegal move on this fixture"
 else

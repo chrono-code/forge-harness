@@ -745,9 +745,9 @@ fi
 cat "$PARSE_FILE"
 
 # B4: Write governance log — structured header only (clean YAML, no raw markdown)
-FINDINGS_A_LOG=$(grep -m 1 "^FH_FINDINGS_A:" "$PARSE_FILE" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]' || echo "0")
-FINDINGS_B_LOG=$(grep -m 1 "^FH_FINDINGS_B:" "$PARSE_FILE" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]' || echo "0")
-FINDINGS_N_LOG=$(grep -m 1 "^FH_FINDINGS_COUNT:" "$PARSE_FILE" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]' || echo "0")
+FINDINGS_A_LOG=$(grep -m 1 "^FH_FINDINGS_A:" "$PARSE_FILE" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]' || echo "0")  # portability-noqa: already ends in `|| echo "0"` (P1's own prescribed remedy) — the assignment cannot die under set -e
+FINDINGS_B_LOG=$(grep -m 1 "^FH_FINDINGS_B:" "$PARSE_FILE" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]' || echo "0")  # portability-noqa: same as FINDINGS_A_LOG above
+FINDINGS_N_LOG=$(grep -m 1 "^FH_FINDINGS_COUNT:" "$PARSE_FILE" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]' || echo "0")  # portability-noqa: same as FINDINGS_A_LOG above
 {
   printf -- "- timestamp: %s\n" "$TIMESTAMP"
   printf "  caller: %s\n" "$FH_CALLER"
