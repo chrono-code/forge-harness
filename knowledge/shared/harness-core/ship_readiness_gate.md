@@ -148,6 +148,16 @@ remain (a deleted Release does not delete its tag — verified).
 Pre-release 를 벗는다). 적용 실물: `📦 v2.15.1`(Latest) · `🧭 identity-v0.6.0/0.5.0/0.4.0` · 옛 이름의 `🧭 v0.3.0`.
 `gh release create … --latest`(패키지) / `--prerelease`(정체성) 로 만든다.
 
+🟢 **2026-09-04 — 통일 (운영자 결정, 축자: 「아이덴티티1.0이후부터는 npm버전과 함께 통일해서 올리면서 보여주는게좋을지도모르겠다.
+npm쪽도 영어기본에 한국어요약본으로 0.6포멧으로 앞으로써줌되겠다」 → 「오키그렇게가자」).** `identity-v1.0.0` 이 발행됐다 —
+여섯 행 전부 🟢, 위 규약대로 **처음으로 Pre-release 를 벗고 Latest** 를 받았다(처음엔 pre-release 로 올렸다가 이 절의
+원문에 맞춰 같은 시각 정정). 이것이 정체성 트랙의 **마지막 태그**다. 이후 규칙: ⓐ 릴리스는 **한 번호** — 다음 릴리스는
+패키지 major(전부 🟢 = CLAUDE.md §④-b major ⓑ)이며 정체성 1.0 을 같이 나른다 ⓑ 🧭 접두 태그는 더 만들지 않는다, Latest 는
+그 단일 릴리스가 갖는다 ⓒ 노트 = 영어 본문 + 한국어 요약(identity-v0.6.0 형식) ⓓ 위 «두 트랙» 문단들은 **전부 초록이 아니던
+동안의 이유**로 남긴다 — 이력이지 현행 규칙이 아니다. 🟥 이 통일이 «등급을 npm 번호로 읽어도 된다»는 뜻은 아니다 — 등급은
+여전히 이 표의 셀이 정본이고, 번호는 그 셀을 «나르는» 것뿐이다. 어느 행이 🔵 로 돌아가면(⑤ 는 2주 반증 예측을 달고 있다)
+번호는 안 내려가고 셀만 바뀐다.
+
 🟥 **Read every bare `vX.Y.Z` in THIS section as the maturity track — and from v0.4.0 that means the
 tag is `identity-vX.Y.Z`.** So the all-green ship below is the tag **`identity-v1.0.0`**, not `v1.0.0`;
 a bare `v1.0.0` would now be ambiguous with the package track (already past `v2.x`, so it will never

@@ -176,10 +176,15 @@ cloned elsewhere? That path *is* your hub. Unfamiliar words →
 > compounding `tracks/` memory that makes them compound across sessions.
 >
 > 🟥 **Two version numbers, and they measure different things.** The **package version** (npm badge,
-> top of page) is what you install; the **identity-maturity release** (`identity-v0.5.0`, on the
+> top of page) is what you install; the **identity-maturity release** (`identity-v1.0.0`, on the
 > Releases page) is how far along the harness is — `0.x` by design, because it refuses to call all five
 > identities green when they are not. They are not on one scale, and a high package number is not
 > maturity: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).
+> 🟢 **2026-09-04 — the two counters merge.** `identity-v1.0.0` (every identity 🟢) is the **last**
+> identity-track tag and the first to carry the *Latest* badge. From here on a release is **one number for
+> both** — the next is the package major that carries identity 1.0 — and release notes are written in
+> English with a Korean summary. The paragraph above stays as the reason the tracks were split while
+> not everything was green; it is history, not the current rule.
 
 ---
 
