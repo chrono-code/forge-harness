@@ -87,7 +87,7 @@ _tsv_pipe(){ LC_ALL=C awk -F'\t' 'BEGIN{OFS="|"} {for(i=1;i<=NF;i++) if($i ~ /\|
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER="$HERE/scripts/sim_isolated_run.sh"
 
-SEAL=""; QSET=""; REPS=1; MODEL="sonnet"; OUT=""; DELIVER=0
+SEAL=""; QSET=""; REPS=1; MODEL="sonnet"; OUT=""; DELIVER=0; ARMS="both"
 SELFTEST=0; RESCORE=0; MANIFEST=""; BASE_REF=""; BASE_SHA=""; PROTOCOL_FILE=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -105,6 +105,10 @@ while [ $# -gt 0 ]; do
     --base-sha) BASE_SHA="${2:-}"; shift 2 ;;   #    ref 는 움직인다 — sha 를 둘 다 준다
     --protocol) PROTOCOL_FILE="${2:-}"; shift 2 ;;  # 🟥 규약 «문구»는 파일로 받는다 — 코드에 안 박는다
     --rescore) RESCORE=1; shift ;;
+    # 🟥 CTRL 전용 사전 디스패치(2026-09-03, 회차4 개시 조건). 설계(DESIGN_2026-09-01 §3-§4)는 «positive
+    #    적격 게이트를 봉인 «전»에 CTRL 로 돌려 N 을 정한다» 인데 채점기는 늘 두 팔을 함께 돌렸다 —
+    #    ARM 을 먼저 태우면 정답지가 클론에 «보인» 채로 N 이 정해진다. 닫힌 enum: ARM|CTRL|both.
+    --arms) ARMS="${2:-}"; case "$ARMS" in ARM|CTRL|both) ;; *) echo "🟥 --arms 는 ARM|CTRL|both 만: '$ARMS'" >&2; exit 2 ;; esac; shift 2 ;;
     # 🟥 «지금 도는 qset/seal 이 «봉인된 그것»인가» 를 회차 시작 전에 대조한다.
     --manifest) MANIFEST="${2:-}"; shift 2 ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
@@ -638,6 +642,7 @@ while IFS='|' read -r qid kind question token general; do
   case "$qid" in ''|'#'*) continue ;; esac
   n=$((n+1))
   for arm in ARM CTRL; do
+    [ "$ARMS" = both ] || [ "$arm" = "$ARMS" ] || continue   # --arms 필터(위 enum)
     setup=""; [ "$arm" = ARM ] && setup="$SETUP_ARM"
     q="$question"
     # ── S5 ② «규약» — typed 채널의 «쓰는 쪽» (2026-09-01 배선) ──────────────────
