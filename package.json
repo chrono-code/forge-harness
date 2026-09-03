@@ -232,6 +232,8 @@
     "scripts/destructive_pre_gate.sh",
     "scripts/test_stale_clone_guard_lanes.sh",
     "scripts/stale_clone_guard.sh",
+    "scripts/proposal_hook.sh",
+    "scripts/test_proposal_hook_lanes.sh",
     "templates/settings.PreToolUse.snippet.json",
     "scripts/halffix_propagation_scan.sh",
     "scripts/test_halffix_lanes.sh",

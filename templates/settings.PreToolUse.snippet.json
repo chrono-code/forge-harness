@@ -61,7 +61,17 @@
     "the actor's task had a different name than the rule's title. Quote-aware state machine, not a regex:",
     "single-quoted text, quoted heredocs (<<'EOF'), and escaped backticks are CLEAN. Same advisory contract;",
     "escalate with FH_BACKTICK_BLOCK=1; opt out with `# noqa: backtick` (whole payload).",
-    "  bash scripts/test_backtick_guard_lanes.sh              # expect: all known pairs hold (count self-reported)"
+    "  bash scripts/test_backtick_guard_lanes.sh              # expect: all known pairs hold (count self-reported)",
+    "",
+    "FIFTH GUARD, Edit|Write|Bash matcher — proposal_hook.sh (added 2026-09-03, identity ⑤ r4):",
+    "advisory when a verdict/guard line in scripts/**/*.sh or templates/*.sh is about to change: puts ONE",
+    "instruction into the model context — offer the user a known-pair control + degrade_direction_scan.sh in",
+    "one line. Measured: the same rule as a CLAUDE.md table row fired 1/15 at floor tier (r3); as this hook",
+    "9/9 relay on editing reps and 0/5 on a usage-string edit (r4). Quote-aware: an edit confined to quoted",
+    "strings does not fire. Bash path (sed -i / > / tee into a .sh) covered with a weaker rule (named",
+    "residual in the script header). Evidence row in .claude/.proposal_hook_events.tsv. Relaying an",
+    "injected instruction is not initiative — see the r4 RESULT for what this does and does not claim.",
+    "  bash scripts/test_proposal_hook_lanes.sh                # expect: all known pairs hold (count self-reported)"
   ],
   "project_settings_json": {
     "hooks": {
@@ -93,6 +103,16 @@
               "type": "command",
               "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/stale_clone_guard.sh\"",
               "timeout": 20
+            }
+          ]
+        },
+        {
+          "matcher": "Edit|Write|Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/proposal_hook.sh\"",
+              "timeout": 5
             }
           ]
         }
