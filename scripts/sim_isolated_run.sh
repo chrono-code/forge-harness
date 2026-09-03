@@ -46,6 +46,18 @@
 #       same clone, --tools "", no --restricted   → "🐿️"                  (memory PRESENT)
 #   One variable, opposite answers. ([[feedback_instrument_cannot_discriminate_hypotheses]])
 #
+# 🟥 THE SAME FLAG ALSO KILLS `act` MODE'S WRITE PATH — measured 2026-09-03, known-pair.
+#   `--restricted` ignores settings for PERMISSIONS too, not just memory, and `-p` has no TTY to
+#   ask a human — so `act`+`--no-harness` cannot Write/Edit AT ALL, regardless of what the model
+#   decides. Confirmed with one variable (`--restricted` on/off, same prompt, same --tools): Edit
+#   succeeds without it; with it every rep says "The edit was blocked — permission to write to
+#   file.txt wasn't granted." Deterministic, not a race — this is why a real run reads 5/5.
+#   ⇒ A "did not edit" result from `act --no-harness` is NOT evidence the base model chose not to
+#   write. Use `--no-harness` as an observe-mode control (memory presence, per the pair above)
+#   only — never to ask whether a write would have happened. Workaround not built: `--restricted`
+#   still honors an explicit `--settings <file>` (per `claude --help`), so a minimal file carrying
+#   only Write/Edit approval could restore act-mode fidelity here — filed, not implemented.
+#
 # 🟢 AND THE DEFECT IS REUSABLE AS AN INSTRUMENT. `--no-harness` answers a question this repo
 #   asks constantly and usually by eye: **does this behaviour come from FH, or would the base
 #   model have done it anyway?** Run the same prompt with and without the flag; a behaviour that

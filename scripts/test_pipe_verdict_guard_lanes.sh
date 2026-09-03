@@ -45,9 +45,9 @@ expect() {
 echo "[pipe-verdict-guard] known pairs"
 echo "-- R1: PIPESTATUS under zsh (deterministic) --"
 # The exact shape emitted 6× in this project, including twice on 2026-07-31.
-expect "R1 the measured shape"            HIT   'bash x.sh | tail -5; echo "exit=${PIPESTATUS[0]}"'
-expect "R1 any index"                     HIT   'a | b; rc=${PIPESTATUS[1]}'
-expect "R1 inside a larger command"       HIT   'cd /r && npm t | tail; E=${PIPESTATUS[0]}; echo $E'
+expect "R1 the measured shape"            HIT   'bash x.sh | tail -5; echo "exit=${PIPESTATUS[0]}"'  # portability-noqa: fixture string fed to pipe_verdict_guard.sh for static analysis, never executed by this shell
+expect "R1 any index"                     HIT   'a | b; rc=${PIPESTATUS[1]}'  # portability-noqa: same as above
+expect "R1 inside a larger command"       HIT   'cd /r && npm t | tail; E=${PIPESTATUS[0]}; echo $E'  # portability-noqa: same as above
 # zsh's own spelling is correct here and must never be flagged.
 expect "R1 zsh spelling is CLEAN"         CLEAN 'a | b; rc=$pipestatus[1]'
 
@@ -83,7 +83,7 @@ echo x | grep -q y
 rc=$?'
 # B: zsh accepts `$PIPESTATUS[0]` without braces; the brace-anchored regex missed it.
 expect "B PIPESTATUS without braces"      HIT   'a | b; rc=$PIPESTATUS[0]'
-expect "B braced form still caught"       HIT   'a | b; rc=${PIPESTATUS[0]}'
+expect "B braced form still caught"       HIT   'a | b; rc=${PIPESTATUS[0]}'  # portability-noqa: fixture string fed to pipe_verdict_guard.sh for static analysis, never executed by this shell
 
 echo "-- D: statement-continuation flatten + wrapped filter (leg-C MED round, 2026-08-01) --"
 # The blanket newline→`;` rewrite broke the CONTINUATION shapes: a newline after `|`/`&&` or a
@@ -167,7 +167,7 @@ echo "-- C: delivery channel (closes N=8 — detection without delivery is decor
 # NAMED RESIDUAL (cross-family LOW, accepted): $(…) capture strips NUL bytes, so a mutant emitting
 # NUL+JSON would pass C1. The producer's hits text is static ASCII+⚠️ with no NUL source, so the
 # lane does not pay for a byte-exact harness; revisit only if the producer ever emits dynamic bytes.
-HIT_CMD='bash x.sh | tail -5; echo "exit=${PIPESTATUS[0]}"'
+HIT_CMD='bash x.sh | tail -5; echo "exit=${PIPESTATUS[0]}"'  # portability-noqa: fixture string fed to the guard for static analysis, never executed by this shell
 payload() { python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1"; }
 
 # All C lanes measure ONE invocation: stdout, stderr, and exit code from the same run (a pair of

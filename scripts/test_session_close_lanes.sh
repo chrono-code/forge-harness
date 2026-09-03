@@ -138,9 +138,7 @@ PREMISE_FAILED=0
 # Human-readable on both platforms: GNU prints a date for %y, BSD's %Fm prints a raw epoch, so the
 # BSD branch asks for a formatted date instead — the whole point of this line is eyeballing.
 _mtime_h() {
-  stat -c %y "$1" 2>/dev/null \
-    || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$1" 2>/dev/null \
-    || echo "?"
+  stat -c %y "$1" 2>/dev/null || stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$1" 2>/dev/null || echo "?"
 }
 
 _assert_newer() {  # $1=expected-newer  $2=reference  $3=lane label — returns 1 if premise fails
@@ -298,7 +296,7 @@ _carry_fixture() {  # $1=오늘카드 본문  $2=fh_completed 본문(빈 문자�
   printf '%s\n' "$card_body" > "$T/tracks/_meta/reference_next_session_starter.md"
   [ -n "$done_body" ] && printf '%s\n' "$done_body" > "$T/tracks/_meta/fh_completed_${TODAY}.md"
   # companion store: 어제 날짜로 커밋된 «이전 카드» 미러 하나
-  FUT=$(date -v+2d '+%m-%d' 2>/dev/null || date -d '+2 days' '+%m-%d')
+  FUT=$(date -d '+2 days' '+%m-%d' 2>/dev/null || date -v+2d '+%m-%d')
   ( cd "$S" && git init -q . && git config user.email a@l && git config user.name a \
     && mkdir -p tracks-meta \
     && printf '기한 %s 미팅 안건 [B]\n' "$FUT" > tracks-meta/reference_next_session_starter.md \
@@ -307,7 +305,7 @@ _carry_fixture() {  # $1=오늘카드 본문  $2=fh_completed 본문(빈 문자�
        git commit -qm prior ) >/dev/null 2>&1
   printf '%s|%s' "$T" "$S"
 }
-_carry_future() { date -v+2d '+%m-%d' 2>/dev/null || date -d '+2 days' '+%m-%d'; }
+_carry_future() { date -d '+2 days' '+%m-%d' 2>/dev/null || date -v+2d '+%m-%d'; }
 
 _carry_lane() {  # $1=name $2=pattern $3=expect $4="REPO|STORE" $5=extra-env(옵션)
   local name="$1" pat="$2" expect="$3" pair="$4" env5="${5:-}" T S out hit

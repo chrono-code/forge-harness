@@ -36,7 +36,9 @@ trap 'rm -rf "$TMP"' EXIT
 
 pass=0; fail=0; skipped=0
 ok()  { printf '  ✅ %s\n' "$1"; pass=$((pass+1)); }
-bad() { printf '  ❌ %s\n' "$1"; fail=$((fail+1)); }
+# $2 (optional) = the actual stdout/stderr/rc this case caught — printed so a red lane in CI is
+# diagnosable without re-running it by hand. Truncated/flattened like the node-check lanes' bad().
+bad() { printf '  ❌ %s\n' "$1"; [ -n "${2:-}" ] && printf '     got: %s\n' "$(printf '%s' "$2" | tr '\n' '|' | cut -c1-220)"; fail=$((fail+1)); }
 # A skip is COUNTED and reported. An uncounted skip is how "could not run" becomes indistinguishable
 # from "ran and passed" in the summary line — measured on this very suite in review round 2, where a
 # broken git produced "7 passed, 0 failed" and exit 0 while the real-worktree claim went untested.
@@ -70,23 +72,30 @@ make_tree() { # make_tree <dir> <git_shape> <cover_target:yes|no> [omit_manifest
 }
 
 run_tree() { bash "$1/scripts/package_coverage_check.sh" 2>&1; }
-rc_tree()  { bash "$1/scripts/package_coverage_check.sh" >/dev/null 2>&1; echo $?; }
+# 🟥 no more rc_tree(): it used to re-run the subject a SECOND time just to get $? (`out=$(run_tree
+# ...); rc=$(rc_tree ...)` — two executions of the same script, so a nondeterministic subject could
+# report an (out, rc) pair that never co-occurred in either real run). Every call site below now
+# does `out=$(run_tree ...); rc=$?` — one execution, $? read off THAT command substitution.
 
 # Assert a POSITIVE outcome, never merely the absence of the SKIP line. Cross-family review caught
 # the first draft here: it checked only that `SKIP  package-coverage` was missing, so a checker that
 # exited 1 on every worktree — the opposite defect, equally broken — would have passed the lane that
 # exists to prove the worktree path works. "Did not say the wrong thing" is not "did the right
 # thing"; a lane phrased as a negative can only ever fail one way.
+# Both functions below stash their single execution's output/rc in _LAST_OUT/_LAST_RC (not `local`,
+# deliberately — the caller reads them straight off the one run instead of re-invoking the subject a
+# second time just to build a diagnostic string, which would be the same two-executions-for-one-
+# verdict shape the L3–L7 dual-execution fix below removes).
 ran_clean() { # ran_clean <dir> -> 0 iff the check actually ran AND reported a clean scan
-  local d="$1" o rc
-  o=$(bash "$d/scripts/package_coverage_check.sh" 2>&1); rc=$?
-  [ "$rc" -eq 0 ] && printf '%s' "$o" | grep -q 'PASS  package-coverage' \
-    && ! printf '%s' "$o" | grep -q 'SKIP  package-coverage'
+  local d="$1"
+  _LAST_OUT=$(bash "$d/scripts/package_coverage_check.sh" 2>&1); _LAST_RC=$?
+  [ "$_LAST_RC" -eq 0 ] && printf '%s' "$_LAST_OUT" | grep -q 'PASS  package-coverage' \
+    && ! printf '%s' "$_LAST_OUT" | grep -q 'SKIP  package-coverage'
 }
 caught_defect() { # caught_defect <dir> -> 0 iff the check FOUND the planted omission
-  local d="$1" o rc
-  o=$(bash "$d/scripts/package_coverage_check.sh" 2>&1); rc=$?
-  [ "$rc" -eq 1 ] && printf '%s' "$o" | grep -q 'scripts/helper.sh'
+  local d="$1"
+  _LAST_OUT=$(bash "$d/scripts/package_coverage_check.sh" 2>&1); _LAST_RC=$?
+  [ "$_LAST_RC" -eq 1 ] && printf '%s' "$_LAST_OUT" | grep -q 'scripts/helper.sh'
 }
 # A CLEAN LANE ALONE PROVES NOTHING ABOUT THE WORKTREE PATH. Cross-family review round 2 demonstrated
 # this by EXECUTION: it replaced the subject with a mutant that printed `PASS  package-coverage`
@@ -99,11 +108,11 @@ wt_pair() { # wt_pair <label> <dir> <git_shape>
   local label="$1" d="$2" shape="$3"
   make_tree "$d" "$shape" yes
   if ! ran_clean "$d"; then
-    bad "$label — clean leg: did not run to a PASS ($(run_tree "$d" | head -1))"; return
+    bad "$label — clean leg: did not run to a PASS (rc=$_LAST_RC)" "$_LAST_OUT"; return
   fi
   make_tree "$d" "$shape" no        # identical tree, files[] no longer covers the referenced path
   if ! caught_defect "$d"; then
-    bad "$label — DEFECT leg: planted omission not caught, so the clean PASS proved nothing"; return
+    bad "$label — DEFECT leg: planted omission not caught, so the clean PASS proved nothing (rc=$_LAST_RC)" "$_LAST_OUT"; return
   fi
   ok "$label"
 }
@@ -171,15 +180,20 @@ else
     esac
   }
   mkdir -p "$TMP/emptytpl"
-  if git "${GIT_ISO[@]}" -C "$TMP/realrepo" init -q --template="$TMP/emptytpl" . >/dev/null 2>&1 \
+  # The whole fixture-build chain runs as ONE group so its combined stdout+stderr lands in one
+  # variable instead of /dev/null — a failed build used to report only "could not be built", with
+  # no way to tell which of the four steps broke or why.
+  _l1b_ok=1
+  _l1b_out="$( { git "${GIT_ISO[@]}" -C "$TMP/realrepo" init -q --template="$TMP/emptytpl" . \
      && _gitdir_ok \
-     && git "${GIT_ISO[@]}" -C "$TMP/realrepo" commit -q --allow-empty -m init >/dev/null 2>&1 \
-     && git "${GIT_ISO[@]}" -C "$TMP/realrepo" worktree add -q --detach "$TMP/realwt" >/dev/null 2>&1 \
-     && [ -f "$TMP/realwt/.git" ]; then
+     && git "${GIT_ISO[@]}" -C "$TMP/realrepo" commit -q --allow-empty -m init \
+     && git "${GIT_ISO[@]}" -C "$TMP/realrepo" worktree add -q --detach "$TMP/realwt" \
+     && [ -f "$TMP/realwt/.git" ]; } 2>&1 )" || _l1b_ok=0
+  if [ "$_l1b_ok" -eq 1 ]; then
     wt_pair "L1-b real \`git worktree add\` (.git is a genuine gitdir pointer): scans for real" \
             "$TMP/realwt" none          # the REAL .git file is already in place; do not overwrite it
   else
-    bad "L1-b git IS installed but the real-worktree fixture could not be built — the claim was testable and was not tested"
+    bad "L1-b git IS installed but the real-worktree fixture could not be built — the claim was testable and was not tested" "$_l1b_out"
   fi
 fi
 
@@ -190,11 +204,11 @@ wt_pair "L2 ordinary checkout (.git is a DIR): scans for real — both legs" "$T
 # The widening from -d to -e must not cost the legitimate skip. An installed npm package has no
 # .git of either kind; making it fail there would fire on every consumer running `npm test`.
 make_tree "$TMP/l3" none yes
-out=$(run_tree "$TMP/l3"); rc=$(rc_tree "$TMP/l3")
+out=$(run_tree "$TMP/l3"); rc=$?
 if printf '%s' "$out" | grep -q 'SKIP  package-coverage' && [ "$rc" -eq 0 ]; then
   ok "L3 package mode (no .git): still skips, exit 0"
 else
-  bad "L3 package mode (no .git): expected SKIP+0, got rc=$rc / $(printf '%s' "$out" | head -1)"
+  bad "L3 package mode (no .git): expected SKIP+0, got rc=$rc" "$out"
 fi
 
 # ── L4 · a checkout with no manifest is UNMEASURED, not clean ────────────────────────
@@ -203,42 +217,42 @@ fi
 # file list cannot be read, which is "cannot measure", not "nothing to measure". An anchor that
 # pins the wrong direction is worse than no anchor — it makes the hole look deliberate.
 make_tree "$TMP/l4" dir yes omit
-out=$(run_tree "$TMP/l4"); rc=$(rc_tree "$TMP/l4")
+out=$(run_tree "$TMP/l4"); rc=$?
 if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'UNMEASURED, not clean'; then
   ok "L4 .git present but no package.json: FAILS as unmeasured, not a clean skip"
 else
-  bad "L4 no package.json: expected exit 1 (unmeasured), got rc=$rc / $(printf '%s' "$out" | head -1)"
+  bad "L4 no package.json: expected exit 1 (unmeasured), got rc=$rc" "$out"
 fi
 
 # ── L5/L6 · KNOWN PAIR ───────────────────────────────────────────────────────────────
 # Same tree twice; the ONLY difference is whether files[] covers the referenced path.
 # L5 known-POSITIVE: referenced, exists, not shipped -> must FAIL.
 make_tree "$TMP/l5" dir no
-out=$(run_tree "$TMP/l5"); rc=$(rc_tree "$TMP/l5")
+out=$(run_tree "$TMP/l5"); rc=$?
 if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'scripts/helper.sh'; then
   ok "L5 known-positive (referenced ∧ exists ∧ ¬shipped): FAIL, names the path"
 else
-  bad "L5 known-positive: expected exit 1 naming scripts/helper.sh, got rc=$rc"
+  bad "L5 known-positive: expected exit 1 naming scripts/helper.sh, got rc=$rc" "$out"
 fi
 
 # L6 known-NEGATIVE: identical, but the path is in files[] -> must PASS.
 make_tree "$TMP/l6" dir yes
-out=$(run_tree "$TMP/l6"); rc=$(rc_tree "$TMP/l6")
+out=$(run_tree "$TMP/l6"); rc=$?
 if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q 'PASS  package-coverage'; then
   ok "L6 known-negative (same tree, path shipped): PASS"
 else
-  bad "L6 known-negative: expected exit 0 PASS, got rc=$rc"
+  bad "L6 known-negative: expected exit 0 PASS, got rc=$rc" "$out"
 fi
 
 # ── L7 · the impossible-zero guard is not reachable by an empty files[] ──────────────
 # A manifest with no shipped docs must report the extractor as broken, not print a pass.
 mkdir -p "$TMP/l7/scripts"; cp "$SUBJECT" "$TMP/l7/scripts/"; mkdir -p "$TMP/l7/.git"
 printf '{"files":[]}\n' > "$TMP/l7/package.json"
-out=$(run_tree "$TMP/l7"); rc=$(rc_tree "$TMP/l7")
+out=$(run_tree "$TMP/l7"); rc=$?
 if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -q 'the check broke, it did not pass'; then
   ok "L7 zero shipped docs: reported as broken extractor, not as a pass"
 else
-  bad "L7 zero shipped docs: expected exit 1 'check broke', got rc=$rc"
+  bad "L7 zero shipped docs: expected exit 1 'check broke', got rc=$rc" "$out"
 fi
 
 echo

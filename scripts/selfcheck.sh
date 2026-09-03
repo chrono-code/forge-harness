@@ -1070,6 +1070,29 @@ else
   esac
 fi
 
+# prepublish_scope_note — an embedded --self-test subject lane_runner_check.sh flagged as having
+# no dispatcher anywhere (2026-09-03): its own 7-lane known-pair (does validate.yml still call
+# selfcheck.sh — known-positive/negative, missing-workflow, commented-out call, real call beside a
+# stale commented one, the real `run: |` block-scalar shape, and echo-mention-is-not-a-call) lives
+# behind `--self-test`, and nothing runs it. It IS invoked at publish time (package.json
+# `prepublishOnly`) — but that is `check()`, the gate's default argument-less mode, running for
+# real; it never exercises the gate's OWN calibration. Not in the `for _subj in ...` loop above:
+# its terminal line is `── N pass / M fail`, never 캘리브레이션, same reason capability_registry_check
+# and capability_effect_probe were pulled out of that loop. Direct dispatch instead, same shape as
+# capability_effect_probe.sh above — whole-line terminal verdict with a non-zero PASS count, so an
+# emptied suite cannot certify itself. Ships via package.json files[], so absence is FAIL, not SKIP.
+if [ ! -f scripts/prepublish_scope_note.sh ]; then
+  echo "FAIL  prepublish_scope_note.sh: missing — it ships via package.json files[], so absence is deletion, not package mode"
+  fail=1
+elif _out=$(bash scripts/prepublish_scope_note.sh --self-test < /dev/null 2>&1) \
+     && printf '%s\n' "$_out" | grep -qE '^  ── [1-9][0-9]* pass / 0 fail$'; then
+  echo "PASS  prepublish_scope_note.sh --self-test ($(printf '%s\n' "$_out" | grep -oE '[0-9]+ pass / [0-9]+ fail' | tail -1))"
+else
+  echo "FAIL  prepublish_scope_note.sh: --self-test failed or produced no terminal verdict line"
+  _show_failure "$_out"
+  fail=1
+fi
+
 # memory-link-check — the memory store is a GRAPH (memory_intent_recall.md: nodes=files,
 # edges=[[links]], recall walks one hop). Measured 2026-07-28: 50 of 872 edges pointed at a note
 # that existed under a different separator and 22 at nothing — a dead edge returns nothing and is

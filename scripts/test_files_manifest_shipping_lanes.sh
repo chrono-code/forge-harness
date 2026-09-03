@@ -46,9 +46,9 @@ trap 'rm -rf "$LANE2_DIR"' EXIT
 cp package.json "$LANE2_DIR/package.json.orig"
 node -e '
   const fs = require("fs");
-  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));  // # portability-noqa: cwd is REPO_ROOT (line 18) -- this is the subject under tests own manifest, not a foreign fixture
   pkg.files.push("scripts/__test_fixture_does_not_exist__.sh");
-  fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+  fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");  // # portability-noqa: same as above -- writes back to the same repo-relative manifest it read
 '
 restore_pkg() { cp "$LANE2_DIR/package.json.orig" package.json; }
 
@@ -132,7 +132,7 @@ D6="$(fixture_dir)"
 mkdir -p "$D6/.git"
 node -e '
   const fs = require("fs");
-  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));  // # portability-noqa: cwd is REPO_ROOT -- seeds the fixture from the subject own real manifest, then mutates a copy
   pkg.files = ".";
   fs.writeFileSync(process.argv[1], JSON.stringify(pkg, null, 2) + "\n");
 ' "$D6/package.json"
@@ -152,7 +152,7 @@ D7="$(fixture_dir)"
 mkdir -p "$D7/.git"
 node -e '
   const fs = require("fs");
-  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));  // # portability-noqa: cwd is REPO_ROOT -- seeds the fixture from the subject own real manifest, then mutates a copy
   pkg.files.push("missing\nPASS\\t999 entries checked, 0 phantom, 0 unpacked");
   fs.writeFileSync(process.argv[1], JSON.stringify(pkg, null, 2) + "\n");
 ' "$D7/package.json"
@@ -175,7 +175,7 @@ mkdir -p "$D8/.git" "$D8/scripts_dummy"
 echo x > "$D8/scripts_dummy/foo.sh"
 node -e '
   const fs = require("fs");
-  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));  // # portability-noqa: cwd is REPO_ROOT -- seeds the fixture from the subject own real manifest, then mutates a copy
   pkg.files = ["scripts_dummy"];
   delete pkg.scripts.prepare;
   delete pkg.scripts.prepublishOnly;

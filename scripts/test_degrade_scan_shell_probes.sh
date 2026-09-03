@@ -81,7 +81,7 @@ EOF
 cat > "$TMP/non_detections.sh" <<'EOF'
 #!/usr/bin/env bash
 # (a) integer sanitization — the PRESCRIBED remedy for the pipefail-fallback class, not the defect.
-count=$(grep -c pattern file)
+count=$(grep -c pattern file)  # portability-noqa: fixture text written by a quoted heredoc, never executed — statically grepped by degrade_direction_scan.sh only
 if [ "${count:-0}" -gt 0 ]; then echo "found"; fi
 # (b) SCOPE guards — "this run does not apply here" is not a claim that a check passed.
 [ -d "$HOME/projects" ] || exit 0
@@ -165,11 +165,11 @@ N=$(find /nope . -maxdepth 1 2>/dev/null | grep -c . || echo 0)
 M=$(git log --oneline 2>/dev/null | wc -l || echo 0)
 # WIDENED 2026-08-04. Every line below was INVISIBLE to the narrowed rule, and each was verified to
 # actually produce "0\n0" before being pinned here (line count measured, not assumed):
-P=$(cat /etc/hosts | grep -c . | tr -d ' ' || echo 0)   # transparent filter after the counter
-Q=$(grep -c "^nosuchline$" /etc/hosts 2>/dev/null | tr -d ' ' || echo 0)  # the PR #251 shape
-R=$(grep -Ec "^nosuchline$" /etc/hosts || echo 0)       # combined flag cluster -Ec
-S=$(grep --count "^nosuchline$" /etc/hosts || echo 0)   # long option
-T=$(grep -Fcx "nosuchline" /etc/hosts || echo 0)        # -Fcx
+P=$(cat /etc/hosts | grep -c . | tr -d ' ' || echo 0)   # transparent filter after the counter  # portability-noqa: fixture text, never executed
+Q=$(grep -c "^nosuchline$" /etc/hosts 2>/dev/null | tr -d ' ' || echo 0)  # the PR #251 shape  # portability-noqa: fixture text, never executed
+R=$(grep -Ec "^nosuchline$" /etc/hosts || echo 0)       # combined flag cluster -Ec  # portability-noqa: fixture text, never executed
+S=$(grep --count "^nosuchline$" /etc/hosts || echo 0)   # long option  # portability-noqa: fixture text, never executed
+T=$(grep -Fcx "nosuchline" /etc/hosts || echo 0)        # -Fcx  # portability-noqa: fixture text, never executed
 U=$(false | grep -c . | cat || echo 0)                  # trailing stage that always emits
 V=$(false | grep -c . | grep -v nosuch || echo 0)       # trailing grep whose pattern misses the "0"
 EOF
@@ -688,7 +688,7 @@ fi
 # flips to a hit — proves the exclusion is load-bearing for this specific fixture, not just
 # present somewhere in the file.
 _scan_reverted="$TMP/scan_reverted.sh"
-_excl_line=$(grep -n "grep -vE 'in \[A-Z_\]" "$SCAN" | head -1 | cut -d: -f1)
+_excl_line=$(grep -n "grep -vE 'in \[A-Z_\]" "$SCAN" | head -1 | cut -d: -f1)  # portability-noqa: this file has no `set -e` (top line 22 is `set -uo pipefail` only) and the next line already guards empty via -z
 if [ -z "$_excl_line" ]; then
   bad "C2-REVERT could not locate the exclusion line by its known text — fixture cannot run"
 else

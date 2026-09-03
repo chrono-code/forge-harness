@@ -103,7 +103,7 @@ check carveout  "README.md"                  "npm-shipped surface — first-scre
 check carveout  "README.ko.md"               "language variants route the same way"
 check carveout  "README.zh-CN.md"            "🟥 5-char locale forms too — cross-family caught [a-z]{2} missing these"
 check uncovered ".claude/registry/README.md" "🟥 STILL UNCOVERED — in files[] but not root; named, not closed"
-check uncovered "package.json"               "files[] / version changes are unclassified"
+check uncovered "package.json"               "files[] / version changes are unclassified"  # portability-noqa: "package.json" is a string literal fed to classify()'s regex test, never opened from disk — a ported repo without this exact file still exercises the same classifier logic
 check uncovered ".github/workflows/validate.yml" "🟥 CI definition — changing what CI runs is unclassified"
 check uncovered "scripts/memory_link_check.py"   "🟥 .py is not .sh — shipped python is unclassified"
 

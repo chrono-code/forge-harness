@@ -592,7 +592,7 @@ resolve_mem_dir() {   # the first-loop half of sync-to-be.sh's resolution — it
   local root="$1" projects="$HOME/.claude/projects" tail d
   [ -d "$projects" ] || return 0
   tail="$(basename "$(dirname "$root")")-$(basename "$root")"
-  for d in "$projects"/*"$tail"/; do [ -d "${d}memory" ] && { printf '%s' "${d}memory"; return 0; }; done
+  for d in "$projects"/*"$tail"/; do [ -d "${d}memory" ] && { printf '%s' "${d}memory"; return 0; }; done  # portability-noqa: an unmatched glob leaves $d as the literal pattern; [ -d "${d}memory" ] on that bogus path is always false, so the loop no-ops safely — same protective effect as [ -e ] || continue, different shape
   return 0
 }
 MEM="$(resolve_mem_dir "$FH")"

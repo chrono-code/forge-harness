@@ -118,7 +118,7 @@ for pair in \
   "CATALOG.md|CHANGELOG.md|PATHSPEC covers CATALOG" \
   ".github/workflows/validate.yml|.github/dependabot.yml|PATHSPEC covers workflow 정의 (yml 만)" \
   "scripts/index_sync.py|scripts/notes.txt|PATHSPEC covers scripts/*.py" \
-  "package.json|package-lock.json|PATHSPEC covers package.json 이되 «리터럴» — lock 파일까지 삼키지 않는다"
+  "package.json|package-lock.json|PATHSPEC covers package.json 이되 «리터럴» — lock 파일까지 삼키지 않는다"  # portability-noqa: string literal fed to spec_matches()'s glob-case test, never read from disk — same reason as test_heavy_classifier_lanes.sh:106
 do
   IFS='|' read -r pos neg label <<< "$pair"
   ok=1

@@ -53,7 +53,7 @@ EXPECT=3   # the_bible + pmh-dev + qasp ; _meta and _audit excluded
 
 # PREMISE — if the worktree can already see the fixtures, every verdict below is meaningless.
 NAIVE_WT=0
-for d in "$TMP/wt"/tracks/*/; do [ -d "$d" ] || continue; case "$(basename "$d")" in _*) continue;; esac; NAIVE_WT=$((NAIVE_WT+1)); done
+for d in "$TMP/wt"/tracks/*/; do [ -d "$d" ] || continue; case "$(basename "$d")" in _*) continue;; esac; NAIVE_WT=$((NAIVE_WT+1)); done  # portability-noqa: the [ -d "$d" ] || continue guard is on this SAME line (right after 'do'), not the next 1-2 lines the P8 scanner checks
 [ "$NAIVE_WT" -lt "$EXPECT" ] \
   && ok "premise: a naive cwd count from the worktree sees $NAIVE_WT of $EXPECT — the blindness is real here" \
   || ng "premise BROKEN: worktree already sees $NAIVE_WT — fixture does not reproduce the defect"

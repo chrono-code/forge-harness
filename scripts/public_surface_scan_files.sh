@@ -135,7 +135,7 @@ fi
 # Wrong-set guard (challenger M6): a future npm --json shape change could yield a NON-empty but PARTIAL
 # file list (forEach iterates a renamed/nested structure without throwing) → files silently unscanned.
 # npm always ships package.json in the tarball; its absence means the parse got a wrong set → fail-closed.
-if ! printf '%s\n' "$FILES" | grep -qx "package.json"; then
+if ! printf '%s\n' "$FILES" | grep -qx "package.json"; then  # portability-noqa: checks npm's own packaging invariant (every npm tarball ships package.json), not a repo-specific fixture read from disk — true for any ported npm package
   echo "  ❌ published file set looks wrong — 'package.json' (always shipped) is absent from the parse."
   [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] && { echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1"; exit 0; }
   echo "     Fail-closed (possible npm --json shape change). Verify npm pack output or PUBLIC_SURFACE_OK=1."
