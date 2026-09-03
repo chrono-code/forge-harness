@@ -65,7 +65,7 @@ elif tn=="Bash":
 print(fp, flag)
 ' 2>/dev/null) || exit 0
 [ -n "${FP:-}" ] || exit 0
-case "$FP" in *scripts/*.sh|*templates/*.sh|scripts/*.sh|templates/*.sh) ;; *) exit 0 ;; esac
+case "$FP" in *scripts/*.sh|*templates/*.sh|scripts/*.sh|templates/*.sh|*/.git-hooks/*|.git-hooks/*) ;; *) exit 0 ;; esac   # .git-hooks/* has no .sh suffix — the gate files themselves were outside the filter (arm C wt2 2026-09-03: pre-commit edit, no FIRE)
 [ "${FLAG:-0}" = 1 ] || exit 0
 _D="${CLAUDE_PROJECT_DIR:-.}/.claude"; mkdir -p "$_D" 2>/dev/null
 printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" "FIRE" "$FP" >> "$_D/.proposal_hook_events.tsv" 2>/dev/null

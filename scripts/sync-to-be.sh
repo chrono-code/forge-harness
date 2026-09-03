@@ -386,11 +386,18 @@ stamp_banner() {   # $1 = dst dir, $2 = src dir (for mtime restore)
 # (a real change becomes invisible inside the noise). Fix: strip before the compare, re-stamp
 # after. Content then matches on both sides and rsync moves only genuine changes.
 strip_banner() {   # $1 = dst dir
-  local dst="$1" f
+  local dst="$1" f skipped=0
   [ -d "$dst" ] || return 0
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    [ -f "$f" ] || continue   # vanished since the find snapshot — see stamp_banner's note above
+    # Same TOCTOU as stamp_banner's note above, and until this fix it was handled asymmetrically:
+    # stamp_banner counts+logs this exact case ("A silent skip hides a real failure ... must be
+    # visible rather than absorbed"), strip_banner silently `continue`d with no counter at all —
+    # reproduced 2026-09-03 (a file present in the find snapshot but removed before the -f test
+    # left zero trace). A file that stays un-stripped keeps its banner, so it never content-matches
+    # its source and the "265 files reported synced with nothing changed" churn this function exists
+    # to prevent returns for exactly that file, silently.
+    [ -f "$f" ] || { skipped=$((skipped + 1)); continue; }
     head -1 "$f" 2>/dev/null | grep -q 'MIRROR COPY' || continue
     # mtime must survive the strip: rsync's quick-check is size+mtime, so a strip that bumps
     # mtime to NOW makes every file look changed and the churn returns by another door.
@@ -398,8 +405,10 @@ strip_banner() {   # $1 = dst dir
       mv "$f.tmp$$" "$f"
     else
       rm -f "$f.tmp$$"
+      skipped=$((skipped + 1))
     fi
   done < <(find "$dst" -type f -name '*.md' ! -path '*/logs/*' 2>/dev/null)
+  [ "$skipped" -eq 0 ] || log "strip: $skipped file(s) not stripped in $dst (vanished mid-run or write failed)"
   return 0   # same status-leak shape as stamp_banner above — best-effort, never the script's verdict
 }
 

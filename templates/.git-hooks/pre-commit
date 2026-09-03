@@ -2658,14 +2658,25 @@ if [ -n "$MD_STAGED" ]; then
   echo "[Pointers] Detail-pointer resolution (staged markdown)..."
   PTR_FAIL=0; PTR_CHECKED=0
   for f in $MD_STAGED; do
-    [ -f "$REPO_ROOT/$f" ] || continue
-    fdir="$(cd "$REPO_ROOT/$(dirname "$f")" && pwd)"
-    blocks="$(awk '
+    # Read the STAGED blob, not the working-tree file. diff-filter=ACMR already guarantees $f
+    # exists in the index, but a file can be staged and then deleted or further-edited on disk
+    # before commit — `git commit` commits the INDEX, so `[ -f "$REPO_ROOT/$f" ] || continue`
+    # here silently dropped the check on a committed broken pointer (deleted-on-disk case) and,
+    # for a further-edited case, would have checked the wrong bytes entirely. Reproduced 2026-09-03:
+    # stage a .md with a broken `**Detail**: See §X` pointer, `rm` it from disk (index untouched),
+    # commit — PTR_CHECKED stayed 0 and the broken pointer landed silently.
+    _md_blob="$(git -C "$REPO_ROOT" show ":$f" 2>/dev/null)" || {
+      echo "  ❌ $f: staged (diff-filter=ACMR) but unreadable from the index — cannot verify its Detail pointers"
+      PTR_FAIL=1; continue
+    }
+    fdir="$(cd "$REPO_ROOT/$(dirname "$f")" 2>/dev/null && pwd)"
+    [ -n "$fdir" ] || fdir="$REPO_ROOT/$(dirname "$f")"
+    blocks="$(printf '%s\n' "$_md_blob" | awk '
       inblk && /^>/ { blk=blk" "$0; next }
       inblk { print blk; inblk=0; blk="" }
       /\*\*Detail\*\*: See/ { blk=$0; inblk=1; next }
       END { if(inblk) print blk }
-    ' "$REPO_ROOT/$f")"
+    ')"
     [ -z "$blocks" ] && continue
     while IFS= read -r block; do
       [ -z "$block" ] && continue
