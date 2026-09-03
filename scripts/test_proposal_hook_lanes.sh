@@ -18,6 +18,8 @@ exp "Bash sed -i no token anywhere (a3)"         CLEAN '{"tool_name":"Bash","too
 exp "Bash redirect into scripts/*.sh w/ token" HIT  '{"tool_name":"Bash","tool_input":{"command":"printf \"%s\\n\" x >> scripts/x.sh; grep -q y scripts/x.sh || exit 3"}}'
 exp "Bash redirect into docs (no)"            CLEAN '{"tool_name":"Bash","tool_input":{"command":"echo \"exit 1\" >> docs/a.md || exit 1"}}'
 exp "Bash ls only (no target)"                CLEAN '{"tool_name":"Bash","tool_input":{"command":"ls scripts/ && [ -d scripts ] || exit 1"}}'
+exp "G1 Edit templates/.git-hooks/pre-commit (no .sh)" HIT '{"tool_name":"Edit","tool_input":{"file_path":"/x/templates/.git-hooks/pre-commit","old_string":"  [ -f x ] || continue","new_string":"  [ -f x ] || { echo missing; PTR_FAIL=1; continue; }"}}'
+exp "G1-ctrl Edit .git-hooks docs-ish no token"        CLEAN '{"tool_name":"Edit","tool_input":{"file_path":"/x/templates/.git-hooks/pre-commit","old_string":"# note a","new_string":"# note b"}}'
 exp "noqa exempts"                            CLEAN '{"tool_name":"Edit","tool_input":{"file_path":"/x/scripts/a.sh","old_string":"a","new_string":"exit 1  # noqa: proposal-hook"}}'
 exp "unparseable payload silent"              CLEAN 'not json'
 msg(){ printf '%s' "$2" | bash "$HDIR/proposal_hook.sh" 2>/dev/null; }

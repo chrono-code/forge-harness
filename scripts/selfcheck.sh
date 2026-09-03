@@ -187,10 +187,22 @@ else
   fail=1
 fi
 
-# Bash surface: npm-shipped scripts + local bin wrappers + gate-chain infra
+# Bash surface: npm-shipped scripts + local bin wrappers + gate-chain infra.
+# `bin/fh-gate` · `bin/fh-run` · `bin/fh-goal` are named EXPLICITLY here (not a glob) and, unlike
+# most of this list, are not covered by files_manifest_shipping_check.sh either (only their
+# `.js` counterparts are declared in package.json files[]) — so a plain `[ -f "$f" ] || continue`
+# made their disappearance invisible to BOTH checks at once. Reproduced 2026-09-03: deleting
+# bin/fh-gate from a fixture tree left fail=0, no FAIL line, nothing. `scripts/*.sh` staying a
+# silent skip on a genuinely-empty glob is correct (that arm still has no non-glob name); the
+# named gate-chain-infra paths must not degrade the same way.
 for f in scripts/*.sh bin/fh-gate bin/fh-run bin/fh-goal \
          templates/regression_guard.sh templates/temper_check.sh templates/predelete_check.sh templates/.git-hooks/pre-commit; do
-  [ -f "$f" ] || continue
+  if [ ! -f "$f" ]; then
+    case "$f" in
+      *'*'*) continue ;;   # unmatched glob (nullglob off) — not a real path, legitimate skip
+      *) echo "FAIL  bash -n coverage: gate-chain infra file missing: $f"; fail=1; continue ;;
+    esac
+  fi
   check "bash -n $f" bash -n "$f"
 done
 
@@ -615,6 +627,7 @@ for _pair in \
   ".claude/soul_tenets.txt|scripts/test_marker_soul_tenet_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_precommit_staged_drift_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_address_lanes.sh" \
+  "templates/.git-hooks/pre-commit|scripts/test_precommit_pointer_index_lanes.sh" \
   "scripts/residency_closure_scan.py|scripts/test_residency_closure_lanes.sh" \
   "scripts/reviewer_capability_corpus.tsv|scripts/test_reviewer_capability_conformance.sh" \
   "scripts/field_canon_preload.sh|scripts/test_field_canon_lanes.sh" \
