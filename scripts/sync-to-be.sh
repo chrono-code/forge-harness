@@ -205,7 +205,14 @@ DIRTY=0   # cp-fallback mode can't count cheaply → mark work done, let git-dif
 # 합집합이 내려와 "2번 닫음"으로 잘못 세고, session_close_check.sh 가 불필요한 재작업을
 # 지시한다 — 흔한 케이스가 흔하게 오탐한다는 뜻. 이 파일은 크로스머신 소비자가 아예 없으므로
 # (기계고유 카운터), .fh_node_state 처럼 통째로 sync 대상에서 뺀다 — 머신 스코프조차 불필요.
-SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/' '.fh_node_state' '.close_stamps_*')
+# `manifests/` · `_index/` (2026-09-03, found by the Air node): these are the RE-HOME targets — this
+# script writes its own edit_manifest.yaml to tracks-meta/manifests/<MID>.yaml (:52x) and MEMORY.md
+# to memory/_index/<MID>.md. The return path never pulls a peer's copies of them (sync-from-be.sh
+# `! -path '*/manifests/*' ! -path '*/_index/*'`), but the forward path had no matching exclude —
+# so a hub that somehow holds tracks/_meta/manifests/<peer>.yaml pushed it path-for-path onto the
+# peer's LIVE re-homed file and tripped the destination-newer abort on the other node. Symmetric
+# now: a directory that exists only as a re-home target is never mirrored as ordinary content.
+SYNC_EXCLUDES=('.gitkeep' '*.marker' 'logs/' '.fh_node_state' '.close_stamps_*' 'manifests/' '_index/')
 
 NEWER_HITS=""
 
@@ -253,7 +260,7 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
     # array-expanded safely here, so they are duplicated — the one place this file tolerates it.
     # Changing SYNC_EXCLUDES without changing this line reopens the false-abort/false-pass gap;
     # scripts/sync_guard_check.sh asserts the two stay equivalent.
-  done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -name '.fh_node_state' ! -name '.close_stamps_*' ! -path '*/logs/*' 2>/dev/null)
+  done < <(find "$src" -type f ! -name '.gitkeep' ! -name '*.marker' ! -name '.fh_node_state' ! -name '.close_stamps_*' ! -path '*/logs/*' ! -path '*/manifests/*' ! -path '*/_index/*' 2>/dev/null)
 }
 
 # ── Shared abort message for BOTH destination-newer sites ─────────────────────
@@ -429,7 +436,7 @@ sync_dir() {
   else
     # rsync absent (default Windows git-bash): tar-pipe mirror with the same excludes,
     # no --delete (append-only). Source is canonical, so overwriting be's copy is correct.
-    if ( cd "$src" && tar cf - --exclude='.gitkeep' --exclude='*.marker' --exclude='.fh_node_state' --exclude='.close_stamps_*' --exclude='logs' . ) \
+    if ( cd "$src" && tar cf - --exclude='.gitkeep' --exclude='*.marker' --exclude='.fh_node_state' --exclude='.close_stamps_*' --exclude='logs' --exclude='manifests' --exclude='_index' . ) \
          | ( cd "$dst" && tar xf - ); then
       DIRTY=1; log "mirrored (cp mode) → $dst"; stamp_banner "$dst" "$src"
     else

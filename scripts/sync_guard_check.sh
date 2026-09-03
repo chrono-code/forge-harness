@@ -57,6 +57,9 @@ else
       # silently fails — measured on this anchor's own first run, where `*.marker` was reported
       # missing while sitting in the file. Literal matching is the only honest comparison here.
       logs/) grep -qF -- "! -path '*/logs/*'" "$SYNC" || missing="$missing $e" ;;
+      # directory excludes (2026-09-03): re-home targets, same -path form as logs/.
+      manifests/) grep -qF -- "! -path '*/manifests/*'" "$SYNC" || missing="$missing $e" ;;
+      _index/)    grep -qF -- "! -path '*/_index/*'"    "$SYNC" || missing="$missing $e" ;;
       *)     grep -qF -- "! -name '$e'" "$SYNC"       || missing="$missing $e" ;;
     esac
   done

@@ -87,6 +87,20 @@ MID=lanea run >/dev/null 2>&1
 [ -f "$BEX/tracks-meta/normal2.md" ]; chk $? "CONTROL: an ordinary file synced (run actually executed)"
 [ ! -f "$BEX/tracks-meta/.close_stamps_2026-08-14" ]; chk $? "close-stamp file never landed in the companion store at all"
 
+echo "── L4b manifests/ · _index/ are re-home TARGETS, never mirrored as ordinary content (2026-09-03, Air node) ──"
+# The return path never pulls a peer's tracks-meta/manifests/<MID>.yaml, but the forward path had no
+# matching exclude: a hub holding tracks/_meta/manifests/<peer>.yaml pushed it path-for-path onto the
+# peer's LIVE re-homed manifest and tripped the destination-newer abort on the other machine.
+new_env l4b
+mkdir -p "$HUB/tracks/_meta/manifests"
+printf 'peer: stale-copy\n' > "$HUB/tracks/_meta/manifests/peerx.yaml"
+printf -- '- date: 2026-09-03\n  change: own\n' > "$HUB/tracks/_meta/edit_manifest.yaml"
+printf 'ordinary\n' > "$HUB/tracks/_meta/normal4b.md"
+MID=lanea run >/dev/null 2>&1
+[ -f "$BEX/tracks-meta/normal4b.md" ]; chk $? "CONTROL: an ordinary file synced (run actually executed)"
+[ -f "$BEX/tracks-meta/manifests/lanea.yaml" ]; chk $? "CONTROL: own manifest still RE-HOMED to manifests/\$MID.yaml (the exclude did not kill the re-home)"
+[ ! -f "$BEX/tracks-meta/manifests/peerx.yaml" ]; chk $? "a peer manifest copy under the hub's manifests/ never landed in the store (forward exclude)"
+
 echo "── L5 destination-newer abort CITES the return path and drops the false single-cause claim (2026-08-20) ──"
 # The old message asserted one cause ("it was edited in the MIRROR") and offered only
 # SYNC_OVERWRITE_OK=1 — measured 0/4 correct on the air node, where all four hits were a PEER NODE's
