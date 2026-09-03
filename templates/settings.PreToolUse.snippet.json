@@ -50,7 +50,18 @@
     "built on a 46-PR-behind clone and manufactured a duplicate of an upstream lane. found→extend",
     "applies at repo level; this is its mechanical layer. Same advisory contract; fail-open on",
     "every uncertainty (non-repo, no upstream, fetch failure).",
-    "  bash scripts/test_stale_clone_guard_lanes.sh           # expect: all known pairs hold (count self-reported)"
+    "  bash scripts/test_stale_clone_guard_lanes.sh           # expect: all known pairs hold (count self-reported)",
+    "",
+    "FOURTH GUARD, Bash matcher — backtick_guard.sh (added 2026-09-03, weekly_audit_2026-09-02 HIGH #1):",
+    "advisory when a Bash call carries a backtick inside a shell DOUBLE-QUOTING context — an unquoted",
+    "heredoc body (<<EOF) or a \"double-quoted string\". There a backtick is command substitution: the text",
+    "between the backticks is REPLACED by the command's output — empty when it names no command, so the",
+    "text is silently DELETED and the record commits with a hole (every record hook checks presence, not",
+    "completeness). Measured 7x 2026-08-10..09-02 with a resident memory rule that failed each time because",
+    "the actor's task had a different name than the rule's title. Quote-aware state machine, not a regex:",
+    "single-quoted text, quoted heredocs (<<'EOF'), and escaped backticks are CLEAN. Same advisory contract;",
+    "escalate with FH_BACKTICK_BLOCK=1; opt out with `# noqa: backtick` (whole payload).",
+    "  bash scripts/test_backtick_guard_lanes.sh              # expect: all known pairs hold (count self-reported)"
   ],
   "project_settings_json": {
     "hooks": {
@@ -66,6 +77,11 @@
             {
               "type": "command",
               "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/destructive_pre_gate.sh\"",
+              "timeout": 5
+            },
+            {
+              "type": "command",
+              "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/backtick_guard.sh\"",
               "timeout": 5
             }
           ]

@@ -1544,6 +1544,17 @@ else
   fail=1
 fi
 
+if [ ! -f scripts/backtick_guard.sh ]; then
+  _absent_subject_verdict "test_backtick_guard_lanes.sh" "scripts/backtick_guard.sh" || fail=1
+elif [ -f scripts/test_backtick_guard_lanes.sh ]; then
+  if ! bash scripts/test_backtick_guard_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_backtick_guard_lanes.sh: backtick_guard.sh present but its anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/halffix_propagation_scan.sh ]; then
   _absent_subject_verdict "test_halffix_lanes.sh" "scripts/halffix_propagation_scan.sh" || fail=1
 elif [ -f scripts/test_halffix_lanes.sh ]; then
