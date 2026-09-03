@@ -85,6 +85,7 @@ outputs/
 # prior-art hook runtime sentinels — per-session state written by the hook itself.
 # Never a commit target; without this they dirty `git status` every session.
 .claude/.prior_art_events.tsv
+.claude/.proposal_hook_events.tsv
 .claude/.prior_art_prompted_*
 
 # python bytecode (preprep 등 스킬 안의 .py 실행 산물)
