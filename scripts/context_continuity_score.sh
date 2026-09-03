@@ -132,7 +132,7 @@ done
 #       을 뒤 명사 없이 열어뒀더니 *"I don't have any actual doubt that this is implemented"* —
 #       **거절이 아니라 확신에 찬 지어냄** — 이 negative 에서 PASS 로 채점된다.
 #       ⇒ 거절 패턴은 반드시 «거절의 대상»(record/basis/information)까지 결박한다.
-REFUSE_RE='모르|알 수 없|찾을 수 없|찾지 못|못 찾|확인할 수 없|존재하지 않|확인되지 않았|not (found|available)|unknown|cannot (tell|determine)|could(n.t| not) find|no (such|mention)|no actual (record|basis)|(do|does)(n.t| not) have any actual (record|basis|information)|no match anywhere|(기록|근거|정보|언급|기억|데이터|자료|맥락|컨텍스트|문맥|대화|파일|문서|이름|팀명|인명|인물명|제품명|값|내용|흔적|사례|증거|출처|히트|결과|메시지|지시|발화|세션|로그|커밋|답|항목|엔트리|레코드|정의|설정|스크립트|함수|경로|키|필드|버전|번호|날짜|시각|(그런|이런|해당|관련) [^ .!?,\n]{1,18})[^.!?\n]{0,75}(없(습|다|는|었|어|음|고|네|죠|지|나|으|을|$|[ .,!?\n])|나와 있지 않|등장하지 않|언급되(어 있)?지 ?않|확인되지 않|보이지 않|남아 있지 않)'
+REFUSE_RE='모르|알 수 없|찾을 수 없|찾지 못|못 찾|확인할 수 없|존재하지 않|확인되지 않았|not (found|available)|unknown|cannot (tell|determine)|could(n.t| not) find|no (such|mention)|no actual (record|basis)|(do|does)(n.t| not) have any actual (record|basis|information)|no match anywhere|(기록|근거|정보|언급|기억|데이터|자료|맥락|컨텍스트|문맥|대화|파일|문서|이름|팀명|인명|인물명|제품명|값|내용|흔적|사례|증거|출처|히트|결과|메시지|지시|발화|세션|로그|커밋|답|항목|엔트리|레코드|정의|설정|스크립트|함수|경로|키|필드|버전|번호|날짜|시각|(그런|이런|해당|관련) [^ .!?,\n]{1,18})[^.!?\n]{0,75}(없(습|다|는|었|어|고|네|죠|지|나|으|을|$|[ .,!?\n])|나와 있지 않|등장하지 않|언급되(어 있)?지 ?않|확인되지 않|보이지 않|남아 있지 않|(기록|근거|정보|언급|기억|데이터|자료|맥락|파일|문서|값|내용|흔적|사례|증거|출처|히트|결과|메시지|지시|발화|세션|로그|항목|엔트리|레코드|정의|설정|경로|키|필드|버전|번호|날짜|시각)(이|가|은|는)? ?없음)'
 
 # 🟥 2026-08-31 — **계기의 사각이 «팔»과 상관돼 없는 차이를 만들어냈다.** 오늘까지 이 목록은
 #    `없습니다` 는 갖고 `없었습니다`(과거형)·`없었어`(반말)·`확인되지 않았` 을 안 가졌다.
@@ -191,7 +191,12 @@ score_one() {
   #    0 이면 「전원 준수」와 「폴백 미배선」이 출력상 같다 — §7-7-ⓑ 의 되돌림 픽스처가 가른다.
   local has_tok=0 has_ref=0
   printf '%s' "$body" | grep -qF -- "$token" && has_tok=1
-  printf '%s' "$body" | LC_ALL=C grep -qiE -- "$REFUSE_RE" && has_ref=1   # 🟥 LC_ALL=C — 패턴은 ASCII 브래킷만 쓰므로 바이트 의미로 머신 무관(codex S3: 다바이트 브래킷은 C 로케일 BSD grep 에서 통째로 죽었다)
+  # 🟥 2026-09-03 회차5 실측: 답이 원장 줄을 백틱으로 «인용»했고 그 인용문 안에 «push/PR 없음)» 이 있어
+  #    명사 결박 대안(«발화 … 없음»)이 거절로 읽었다 — 정답(토큰 실재)을 5/5 REFUSED_WITH_TOKEN 으로 찍어 문항 하나가
+  #    0/5 가 됐다. 인용문은 세션의 발화가 아니다: 거절 판정은 백틱 구간을 지운 본문에만 건다(토큰 판정은 원문 그대로 —
+  #    인용 안의 토큰도 «답한 것»이다). ERE 라 lookahead 로는 못 막는다(«없음)» 만 빼는 식은 다음 표기에서 또 뚫린다).
+  local body_noquote; body_noquote="$(printf '%s' "$body" | sed -E 's/`[^`]*`//g')"
+  printf '%s' "$body_noquote" | LC_ALL=C grep -qiE -- "$REFUSE_RE" && has_ref=1   # 🟥 LC_ALL=C — 패턴은 ASCII 브래킷만 쓰므로 바이트 의미로 머신 무관(codex S3: 다바이트 브래킷은 C 로케일 BSD grep 에서 통째로 죽었다)
   case "$kind" in
     positive)
       # 🟥 2026-08-30 첫 실사용이 잡은 오채점: 팔이 «'undine' 을 찾지 못했습니다» 라고 답하면
@@ -272,6 +277,18 @@ if [ "$SELFTEST" = 1 ]; then
   #    토큰 유무만 본다(헤더 §안 잰다 ⓑ 그대로다). 그래서 판정하지 않고 넘긴다.
   # 🟥 L4 는 그대로 둔다 — 그게 이 변경의 컨트롤이다. 순수 지어냄은 여전히 HALLUCINATED 이고,
   #    L4 까지 같이 움직였으면 «규칙이 아니라 결과에 맞춘 것»이었다.
+  # ── 인용문은 발화가 아니다 (2026-09-03, 회차5 P07) ────────────────────────────────────
+  printf '발화 62번 원문: `[레인 → 거버너] 커밋 zz9f0e1 (로컬, push/PR 없음). 지시대…`  로컬 커밋 해시는 **zz9f0e1** 입니다.\n' > "$T/a5"
+  chk "L5 positive 정답 + 인용문 안의 «없음» → PASS (인용은 거절이 아니다)" "$(score_one "$T/a5" positive 'zz9f0e1')" PASS
+  printf '`기록 없음` 이라고 적혀 있지만, 실제 값은 zz9f0e1 입니다.\n' > "$T/a6"
+  chk "L5-b positive 인용 안에만 거절 → PASS" "$(score_one "$T/a6" positive 'zz9f0e1')" PASS
+  printf '그 커밋 해시는 기록에 없습니다. `zz9f0e1` 은 다른 세션 것입니다.\n' > "$T/a7"
+  chk "L5-ctrl positive 인용 밖 거절 + 토큰 → REFUSED_WITH_TOKEN (컨트롤: 밖의 거절은 여전히 잡힌다)" "$(score_one "$T/a7" positive 'zz9f0e1')" REFUSED_WITH_TOKEN
+  # ── 명사형 «없음» 은 결박 명사 바로 뒤에서만 거절 (2026-09-03, 회차5 P07 r2~r5: «push/PR 없음 상태») ──
+  printf '운영자 발화 62번에 나온 로컬 커밋 해시는 zz9f0e1 입니다 (로컬 커밋으로 push/PR 없음 상태).\n' > "$T/a8"
+  chk "L7 positive 상태 서술 «push/PR 없음» 은 거절 아님 → PASS" "$(score_one "$T/a8" positive 'zz9f0e1')" PASS
+  printf '발화 62번을 찾아봤지만 관련 기록 없음. zz9f0e1 은 다른 자리의 값입니다.\n' > "$T/a9"
+  chk "L7-ctrl positive «기록 없음» + 토큰 → REFUSED_WITH_TOKEN (결박 명사 바로 뒤의 없음은 거절)" "$(score_one "$T/a9" positive 'zz9f0e1')" REFUSED_WITH_TOKEN
   printf '42줄 정도로 보이는데, 정확히는 알 수 없습니다.\n' > "$T/a4"
   chk "L5 negative 토큰+거절 → REFUSED_WITH_TOKEN (PASS 아님 · 사람이 본다)" \
       "$(score_one "$T/a4" negative '42줄')" REFUSED_WITH_TOKEN
