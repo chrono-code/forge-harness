@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # test_proposal_hook_lanes.sh — known pairs for scripts/proposal_hook.sh (written before shipping; r4 KP + Bash path)
-set -u; H="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/proposal_hook.sh"; T=$(mktemp -d); pass=0; fail=0
-exp(){ local label="$1" want="$2" payload="$3" got; got=$(printf '%s' "$payload" | CLAUDE_PROJECT_DIR="$T" bash "$H" 2>/dev/null | wc -c | tr -d ' '); [ "$got" -gt 0 ] && got=HIT || got=CLEAN
+set -u; HDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; T=$(mktemp -d); pass=0; fail=0
+export CLAUDE_PROJECT_DIR="$T"
+exp(){ local label="$1" want="$2" payload="$3" got; got=$(printf '%s' "$payload" | bash "$HDIR/proposal_hook.sh" 2>/dev/null | wc -c | tr -d ' '); [ "$got" -gt 0 ] && got=HIT || got=CLEAN
   if [ "$got" = "$want" ]; then printf '  ✅ %-52s %s\n' "$label" "$got"; pass=$((pass+1)); else printf '  ❌ %-52s %s (expected %s)\n' "$label" "$got" "$want"; fail=$((fail+1)); fi; }
 echo "[proposal-hook] known pairs"
 exp "T1 Edit comm+LC_ALL (verdict compare)"   HIT   '{"tool_name":"Edit","tool_input":{"file_path":"/x/scripts/sim_isolated_run.sh","old_string":"  comm -13 <(sort a) <(sort b) \\","new_string":"  comm -13 <(LC_ALL=C sort a) <(LC_ALL=C sort b) \\"}}'
