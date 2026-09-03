@@ -69,6 +69,21 @@ case "$FP" in *scripts/*.sh|*templates/*.sh|scripts/*.sh|templates/*.sh) ;; *) e
 [ "${FLAG:-0}" = 1 ] || exit 0
 _D="${CLAUDE_PROJECT_DIR:-.}/.claude"; mkdir -p "$_D" 2>/dev/null
 printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" "FIRE" "$FP" >> "$_D/.proposal_hook_events.tsv" 2>/dev/null
-MSG='🔎 방금 고치는 줄은 판정·가드·종료코드 줄이다(scripts/*.sh · templates/*.sh). 작업을 마친 뒤 사용자에게 «한 줄로» 제안해라 — "이거 known-pair(고친 케이스 + 반대 케이스)로 컨트롤 붙이고, degrade_direction_scan.sh 로 실패가 «통과»로 접히는 방향인지 볼까?" — 가능하면 이 파일·이 케이스의 실제 이름으로. 제안이지 실행이 아니다. 사용자가 고르게 둔다.'
+# ── Fact lines (r8, 2026-09-03): the two preconditions of the proposal are DETERMINISTIC, so the hook checks
+#    them itself and carries the result as a «사실» line — agents propose, solvers verify. Measured r8: on the
+#    stimulus whose grounds sit in a neighbouring file, wording-only (r7 B) got 1/5 withdraw/amend, fact lines
+#    got 4/5 (hand-judged, n=5). Sonnet used the fact as an INPUT (one rep rejected a stale fact against a
+#    reproduced bug; one opened the scan file itself) — it did not recite it.
+#    Self-lane case: editing `scripts/test_X_lanes.sh` IS the lane — r8's discriminator missed it and emitted
+#    a proposal for a lane that already was the file. Fixed here (F2 lane).
+_ROOT="${CLAUDE_PROJECT_DIR:-.}"; _BN=$(basename "$FP" .sh); _FACT=""; _ITEMS=""
+case "$_BN" in
+  test_*_lanes) _FACT="$_FACT · 사실: 이 파일 자체가 레인(known-pair 픽스처)이다 — 새 known-pair 컨트롤은 «이 파일 안에» 추가하거나 생략" ;;
+  *) if [ -f "$_ROOT/scripts/test_${_BN}_lanes.sh" ]; then _FACT="$_FACT · 사실: 이 파일의 레인 \`scripts/test_${_BN}_lanes.sh\` 가 이미 있다(known-pair 컨트롤은 거기에 붙이거나 생략)"; else _ITEMS="$_ITEMS known-pair(고친 케이스 + 반대 케이스) 컨트롤"; fi ;;
+esac
+_SCAN=$(ls -t "$_ROOT"/scripts/.degrade_scan_last_*.txt 2>/dev/null | head -1)
+if [ -n "$_SCAN" ] && grep -q -- "$(basename "$FP")" "$_SCAN" 2>/dev/null; then _FACT="$_FACT · 사실: 오늘 degrade_direction_scan 결과 \`$(basename "$_SCAN")\` 가 이 파일을 이미 덮었다($(grep -m1 -oE 'findings: [0-9]+' "$_SCAN" 2>/dev/null || echo 'findings: ?')) — 스캐너 통과이지 손 확인이 아니다"; else _ITEMS="$_ITEMS degrade_direction_scan.sh 로 실패가 «통과»로 접히는 방향 확인"; fi
+if [ -z "$_ITEMS" ]; then MSG="🔎 방금 고치는 줄은 판정·가드·종료코드 줄이다(scripts/*.sh · templates/*.sh)${_FACT}. 둘 다 이미 있으니 새 제안은 내지 말고, 작업을 마친 뒤 그 사실을 한 줄로만 말해라(형식: «확인 | basis: <위 사실>»)."
+else MSG="🔎 방금 고치는 줄은 판정·가드·종료코드 줄이다(scripts/*.sh · templates/*.sh)${_FACT}. 없는 것만 사용자에게 한 줄로 제안해라 —${_ITEMS} — 형식은 «제안: … | basis: <네가 확인한 근거 한 구절>». 가능하면 이 파일·이 케이스의 실제 이름으로. 제안이지 실행이 아니다."; fi
 python3 -c 'import json,sys; m=sys.argv[1]; print(json.dumps({"systemMessage":m,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":m}}, ensure_ascii=False))' "$MSG" 2>/dev/null || exit 0
 exit 0
