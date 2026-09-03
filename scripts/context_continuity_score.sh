@@ -434,7 +434,14 @@ if [ "$SELFTEST" = 1 ]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────
-[ -n "$SEAL" ] && [ -f "$SEAL" ] || { echo "🟥 --seal <실재 파일> 필요" >&2; exit 2; }
+# 🟥 CTRL 전용 사전 디스패치(--arms CTRL)는 «봉인 전»에 도는 것이 설계다(DESIGN §4 ①: 적격 게이트를 봉인
+#    전에 CTRL 로 돌려 N 을 정한다) — 그때 봉인 파일은 아직 없다. SEAL 은 ARM 의 SETUP(운반체 심기)에만
+#    쓰이므로 CTRL 전용이면 요구하지 않는다. ARM 이 도는 모드(ARM|both)는 종전대로 실재 파일 필수.
+if [ "$ARMS" = CTRL ]; then
+  [ -z "$SEAL" ] || [ -f "$SEAL" ] || { echo "🟥 --seal 을 줬는데 실재하지 않는다: $SEAL" >&2; exit 2; }
+else
+  [ -n "$SEAL" ] && [ -f "$SEAL" ] || { echo "🟥 --seal <실재 파일> 필요 (--arms CTRL 만 봉인 전 실행 허용)" >&2; exit 2; }
+fi
 [ -n "$QSET" ] && [ -f "$QSET" ] || { echo "🟥 --qset <실재 파일> 필요" >&2; exit 2; }
 [ -x "$RUNNER" ] || [ -f "$RUNNER" ] || { echo "🟥 러너 없음: $RUNNER" >&2; exit 2; }
 # 🟥 파싱을 «먼저 물질화»하고 rc 를 본다 — eligcheck(55a10ce)·gatecheck 와 같은 모양. 아래 두 루프
@@ -563,7 +570,7 @@ fi
 
 OUT="${OUT:-$(mktemp -d -t cc-score)}"
 mkdir -p "$OUT"
-SEAL_ABS="$(cd "$(dirname "$SEAL")" && pwd)/$(basename "$SEAL")"
+SEAL_ABS=""; [ -n "$SEAL" ] && SEAL_ABS="$(cd "$(dirname "$SEAL")" && pwd)/$(basename "$SEAL")"
 
 echo "── context_continuity_score ─────────────────────────────────"
 echo "seal=$(basename "$SEAL")  reps=$REPS  model=$MODEL"
@@ -600,7 +607,17 @@ if [ "${RESCORE:-0}" != 1 ] && [ "${SELFTEST:-0}" != 1 ]; then
   #    폴백은 «가용성»을 사지만 «무엇이 돌았는지»를 판다.
   _GATE="$(dirname "${BASH_SOURCE[0]}")/round/gatecheck_qset.sh"
   [ -f "$_GATE" ] || { echo "🟥 $_GATE 가 없다 — 회차를 열지 않는다(스킵 아님, 폴백 없음)" >&2; exit 8; }
-  if ! bash "$_GATE" "$QSET" "$SEAL" post '' '' "$(basename "${OUT%/}")" "$(bash "$NAMELEAK" gen)" >&2; then
+  if [ "$ARMS" = CTRL ]; then
+    # 🟥 CTRL 전용 사전 디스패치 = 봉인 «전». 게이트는 phase=pre 로 돌고(심기 전이라 정상), 봉인 미지정이면
+    #    원장 축은 UNCHECKED(rc 3 = «부분 통과, 통과 아님»)가 설계된 값이다 — 이 모드에서 rc 3 을 받아들이되
+    #    그 사실을 출력에 남긴다. 오염 축(클론에 정답이 보이나)은 pre 에서도 그대로 검사돼 rc 1/2/5 는 막는다.
+    bash "$_GATE" "$QSET" "${SEAL:-}" pre '' '' "$(basename "${OUT%/}")" "$(bash "$NAMELEAK" gen)" >&2; _grc=$?
+    case "$_grc" in
+      0) ;;
+      3) echo "⚠️  개시 게이트 pre: 원장 축 UNCHECKED(봉인 미지정 — CTRL 전용 사전 디스패치라 정상). 봉인 후 post 로 다시 돈다" >&2 ;;
+      *) echo "🟥 개시 게이트(pre)가 막았다(rc=$_grc) — 디스패치 0건으로 중단한다" >&2; exit 8 ;;
+    esac
+  elif ! bash "$_GATE" "$QSET" "$SEAL" post '' '' "$(basename "${OUT%/}")" "$(bash "$NAMELEAK" gen)" >&2; then
     echo "🟥 개시 게이트가 막았다 — 디스패치 0건으로 중단한다" >&2
     exit 8
   fi
@@ -614,7 +631,10 @@ fi
 #    `--rescore`·`--self-test` 는 디스패치를 안 하므로 볼 팔이 없다.
 #    (초판은 무조건 걸어서 레인 25개를 과차단했다 — 실측. 과차단은 우회를 훈련시킨다)
 if [ "${RESCORE:-0}" != 1 ] && [ "${SELFTEST:-0}" != 1 ]; then
-  if ! bash "$NAMELEAK" "$(basename "$SEAL")" "$(basename "${OUT%/}")" "$(bash "$NAMELEAK" gen)"; then
+  # CTRL 전용(봉인 전)엔 seal 이 없다 — 누출 검사의 seal 다리는 규약 형태 이름(gen-seal)으로 채운다:
+  # 검사 대상은 «팔 시야에 드는 이름»이고, 생성 형태의 이름은 정의상 누출이 아니다.
+  _SEALNAME="${SEAL:+$(basename "$SEAL")}"; [ -n "$_SEALNAME" ] || _SEALNAME="$(bash "$NAMELEAK" gen-seal)"
+  if ! bash "$NAMELEAK" "$_SEALNAME" "$(basename "${OUT%/}")" "$(bash "$NAMELEAK" gen)"; then
     echo "🟥 out-dir 또는 seal 이름이 누출한다 — 회차를 열지 않는다 ('nameleak_check.sh gen' 을 써라)" >&2
     exit 7
   fi
