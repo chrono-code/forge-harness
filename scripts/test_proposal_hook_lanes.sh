@@ -20,5 +20,15 @@ exp "Bash redirect into docs (no)"            CLEAN '{"tool_name":"Bash","tool_i
 exp "Bash ls only (no target)"                CLEAN '{"tool_name":"Bash","tool_input":{"command":"ls scripts/ && [ -d scripts ] || exit 1"}}'
 exp "noqa exempts"                            CLEAN '{"tool_name":"Edit","tool_input":{"file_path":"/x/scripts/a.sh","old_string":"a","new_string":"exit 1  # noqa: proposal-hook"}}'
 exp "unparseable payload silent"              CLEAN 'not json'
+msg(){ printf '%s' "$2" | bash "$HDIR/proposal_hook.sh" 2>/dev/null; }
+fact(){ local label="$1" want="$2" payload="$3" got; got=$(msg x "$payload"); if printf '%s' "$got" | grep -q -- "$want"; then printf '  ✅ %-52s carries «%s»\n' "$label" "$want"; pass=$((pass+1)); else printf '  ❌ %-52s missing «%s»\n' "$label" "$want"; fail=$((fail+1)); fi; }
+mkdir -p "$T/scripts"; : > "$T/scripts/test_has_lane_lanes.sh"; printf 'scan of scripts/covered.sh\nfindings: 0\n' > "$T/scripts/.degrade_scan_last_2026-09-03.txt"
+E='{"tool_name":"Edit","tool_input":{"file_path":"/x/scripts/%s","old_string":"a","new_string":"[ -f x ] || exit 1"}}'
+fact "F1 lane exists → fact line, no known-pair item" "이미 있다" "$(printf "$E" has_lane.sh)"
+fact "F1b lane exists → scan item still proposed"     "degrade_direction_scan.sh 로" "$(printf "$E" has_lane.sh)"
+fact "F2 self-lane (test_*_lanes.sh) → fact line"     "이 파일 자체가 레인" "$(printf "$E" test_has_lane_lanes.sh)"
+fact "F3 scan covers file → fact line w/ findings"    "findings: 0" "$(printf "$E" covered.sh)"
+fact "F4 neither → both items proposed"               "known-pair(고친 케이스 + 반대 케이스) 컨트롤 degrade_direction_scan.sh" "$(printf "$E" bare.sh)"
+got=$(msg x "$(printf "$E" bare.sh)"); if printf '%s' "$got" | grep -q "사실:"; then echo "  ❌ F4-ctrl bare file must carry NO fact line"; fail=$((fail+1)); else echo "  ✅ F4-ctrl bare file carries no fact line (known-negative)"; pass=$((pass+1)); fi
 [ -f "$T/.claude/.proposal_hook_events.tsv" ] && [ "$(grep -c FIRE "$T/.claude/.proposal_hook_events.tsv")" -ge 5 ]; r=$?; [ $r = 0 ] && { echo "  ✅ evidence file carries a FIRE row per hit"; pass=$((pass+1)); } || { echo "  ❌ evidence file missing/short"; fail=$((fail+1)); }
 rm -rf "$T"; echo "[proposal-hook] $pass passed, $fail failed"; [ "$fail" -eq 0 ]
