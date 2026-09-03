@@ -79,9 +79,13 @@
 #   Bash hook that appends to `$CLAUDE_PROJECT_DIR/_hook_evidence.txt`, installed via
 #   `--setup 'cp <settings.json> .claude/settings.json'`, FIRED inside this runner's own clone
 #   (act mode, deny settings.local.json present) and in a bare `claude -p` clone, trusted or not.
-#   Why the 2026-08-30 arm saw nothing is UNKNOWN (candidates: the PriorArt hook's own trigger
-#   vocabulary never matched, its evidence path was outside the clone, the copy never landed) —
-#   none of them is "hooks do not run". Signal: tracks/_meta/fh_signal_2026-09-03_runner-hooks-do-fire.md
+#   Why the 2026-08-30 arm saw nothing — CONFIRMED the same day, one more known pair: with the
+#   real project hook set copied into a clone, an arm asked to build a new mechanism script FOUND
+#   PRIOR ART and never called Write (identity-④ behaviour), so the Write-matched PriorArt hook had
+#   nothing to fire on; an arm forced to Write a new scripts/*.sh produced `.prior_art_events.tsv`
+#   with a FIRE row inside the clone. The stimulus never reached the hook — a hook that is never
+#   triggered looks identical to a hook that cannot run, which is why a control arm whose hook is
+#   KNOWN to fire is mandatory. Signal: tracks/_meta/fh_signal_2026-09-03_runner-hooks-do-fire.md
 #   What SURVIVES from the old paragraph: before claiming a hook-dependent result, check the
 #   hook's own evidence file INSIDE the clone; absence of that file invalidates the ARM, never the
 #   hypothesis. And `--setup` writing an UNTRACKED file (.claude/settings.json is gitignored) is
