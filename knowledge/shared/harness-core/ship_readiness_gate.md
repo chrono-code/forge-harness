@@ -141,6 +141,13 @@ that prompted it was already closed by the cheaper half — a one-line header on
 bodies. ⇒ **package releases live in `CHANGELOG.md` and the registry, not here.** The `v2.x` tags
 remain (a deleted Release does not delete its tag — verified).
 
+🟥 **Releases 페이지에서 두 트랙을 «눈으로» 가르는 규약 (2026-09-03, 운영자 지적 「npm 이랑 같이 올라오는데
+어떻게 구분」)**: 태그 접두만으로는 목록에서 안 갈린다. GitHub 이 주는 시각 장치 둘을 트랙에 고정한다 —
+**제목 접두** 📦(패키지 `vX.Y.Z`) / 🧭(정체성 `identity-vX.Y.Z`) · **배지** Latest 는 **패키지 트랙만**,
+정체성 트랙은 전부 **Pre-release**(0.x = «전부 🟢 아직 아님»이라 의미도 맞다 — `identity-v1.0.0` 이 처음으로
+Pre-release 를 벗는다). 적용 실물: `📦 v2.15.1`(Latest) · `🧭 identity-v0.6.0/0.5.0/0.4.0` · 옛 이름의 `🧭 v0.3.0`.
+`gh release create … --latest`(패키지) / `--prerelease`(정체성) 로 만든다.
+
 🟥 **Read every bare `vX.Y.Z` in THIS section as the maturity track — and from v0.4.0 that means the
 tag is `identity-vX.Y.Z`.** So the all-green ship below is the tag **`identity-v1.0.0`**, not `v1.0.0`;
 a bare `v1.0.0` would now be ambiguous with the package track (already past `v2.x`, so it will never
