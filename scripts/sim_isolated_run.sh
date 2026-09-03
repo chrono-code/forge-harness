@@ -69,13 +69,23 @@
 #   FH defect (a normal session has Bash and can `ls`) — but scoring an arm without knowing it
 #   produces a confident zero from a fixture that was never observable.
 #
-# 🟥 PROJECT HOOKS DO NOT RUN IN A DISPOSABLE CLONE — so this runner cannot measure anything
-#   that depends on one. Measured 2026-08-30: an arm copied `.claude/settings.json` into its clone
-#   to make the PreToolUse PriorArt hook live; not one of the three clones grew
-#   `.claude/.prior_art_events.tsv`, while the live repo's copy carries entries from the same hour.
-#   The hook never fired, so the "hook vs no-hook" contrast was HOOK ≡ NOHOOK and either verdict
-#   would have been false. ⇒ Before claiming a hook-dependent result, check the hook's own
-#   evidence file INSIDE the clone; absence of that file invalidates the arm, not the hypothesis.
+# 🟥 PROJECT HOOKS DO RUN IN A DISPOSABLE CLONE — an earlier version of this paragraph said the
+#   opposite, and it was wrong (RETRACTED 2026-09-03). It read: "PROJECT HOOKS DO NOT RUN IN A
+#   DISPOSABLE CLONE … measured 2026-08-30: an arm copied `.claude/settings.json` into its clone to
+#   make the PreToolUse PriorArt hook live; not one of the three clones grew
+#   `.claude/.prior_art_events.tsv`". That absence was read as "hooks never fire here" with NO
+#   control arm whose hook was known to fire — and it narrowed two rounds of the identity-⑤
+#   design (the hook-layer arm was declared unmeasurable). Known pair, 2026-09-03: a PreToolUse
+#   Bash hook that appends to `$CLAUDE_PROJECT_DIR/_hook_evidence.txt`, installed via
+#   `--setup 'cp <settings.json> .claude/settings.json'`, FIRED inside this runner's own clone
+#   (act mode, deny settings.local.json present) and in a bare `claude -p` clone, trusted or not.
+#   Why the 2026-08-30 arm saw nothing is UNKNOWN (candidates: the PriorArt hook's own trigger
+#   vocabulary never matched, its evidence path was outside the clone, the copy never landed) —
+#   none of them is "hooks do not run". Signal: tracks/_meta/fh_signal_2026-09-03_runner-hooks-do-fire.md
+#   What SURVIVES from the old paragraph: before claiming a hook-dependent result, check the
+#   hook's own evidence file INSIDE the clone; absence of that file invalidates the ARM, never the
+#   hypothesis. And `--setup` writing an UNTRACKED file (.claude/settings.json is gitignored) is
+#   not contamination — the tree baseline is taken after setup, and git status never sees it.
 #
 # 🟥 CONTROL IS NOT OPTIONAL. Always run at least one arm whose correct answer is "the thing
 #   being measured should NOT fire". An instrument that fires on everything measures nothing
