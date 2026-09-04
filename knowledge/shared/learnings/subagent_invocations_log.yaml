@@ -3087,5 +3087,55 @@
   count: 1
   context: API 529 Overloaded 로 조기 종료 — 산출 없음. sonnet 재시도가 성공(별도 기록).
   outcome: rejected
-  evidence: task-notification «Agent terminated early due to an API error: 529»
+  evidence: "task-notification «Agent terminated early due to an API error: 529»"
   note: 실패 원인은 모델이 아니라 서버 과부하. 이후 디스패치는 sonnet 으로 갔다.
+- date: 2026-09-04
+  agent: claude-code-guide (default model)
+  invoker: forge-harness-28 (Fable 5.1 거버너, 저녁)
+  task: 리모트컨트롤 자동 켜짐 디폴트 off 설정 키 확인(공식 문서)
+  count: 1
+  context: 운영자 중간 요청. ~/.claude.json 의 remoteEnabled 가 안 잡던 동작.
+  outcome: accepted
+  evidence: >-
+    remoteControlAtStartup=false(user settings.json) — 문서 URL 포함 회신. 적용 완료. 116,730 tokens · 6 tool_uses.
+  note: 문서 근거를 요구해 추측 답을 막았다.
+- date: 2026-09-04
+  agent: general-purpose (default model)
+  invoker: forge-harness-28
+  task: qasp 콜드리드 잔여 3건 소 PR (git worktree, 절대경로)
+  count: 1
+  context: 병렬 자율주행 — 정본(starthere_register) 먼저 읽게 함.
+  outcome: accepted
+  evidence: >-
+    qasp-dev #244 MERGED (2파일 9+/8−, 체크 5/5). 143,955 tokens · 7 tool_uses.
+  note: 문서 린트 부재를 «없음」으로 정직 보고.
+- date: 2026-09-04
+  agent: general-purpose (default model)
+  invoker: forge-harness-28
+  task: qasp 3막 FLAKY known-positive 픽스처 + 실물 실행 테스트
+  count: 1
+  context: 발동 0/25 «기전만 확인」을 실행으로 닫기. 정본 6종 먼저.
+  outcome: accepted
+  evidence: >-
+    qasp-dev #245 MERGED — FLAKY 1(비결정)/0(결정) 실행 원문, 결함 2 수리 + 2 보고(exit code 미반영 = 운영자 판단). 268,519 tokens · 44 tool_uses.
+  note: 외부 URL 0, CI 는 사유 있는 skip.
+- date: 2026-09-04
+  agent: general-purpose (default model)
+  invoker: forge-harness-28
+  task: ⑤ 팔 C 라이브 FIRE 7행 첫 독립 채점(다음 세션 채점 규칙)
+  count: 1
+  context: 읽기 전용 + RESULT 1파일. 형식/실행 두 기준 분리 요구.
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/RESULT_2026-09-04_identity5-armC-live-count.md — 2/7 잠정 · 형식 0/7 · 계기 결함 5 · 컨트롤 불성립 · UNRESOLVED 0. 218,308 tokens · 12 tool_uses.
+  note: 계기 결함 발견이 곧 proposal_hook 수리 디스패치의 입력이 됐다.
+- date: 2026-09-04
+  agent: general-purpose (default model)
+  invoker: forge-harness-28
+  task: proposal_hook.sh 계기 결함 수리 — 워크트리 산출 보고형(패치+레인, 커밋 금지)
+  count: 1
+  context: FH 자산은 워크트리 커밋 금지 → 패치 파일로 회수, 거버너가 본 체크아웃에 적용.
+  outcome: accepted
+  evidence: >-
+    scratchpad/proposal_hook_repair.patch — 레인 옛 훅 28/37(신규 9 빨강) → 새 훅 37/37, 거버너 독립 재현. PR fix/proposal-hook-target-scanner. 188,606 tokens · 16 tool_uses.
+  note: 에이전트의 레인 Edit 이 본 체크아웃 옛 훅을 발화시킨 부수 행 1건을 스스로 보고했다.
