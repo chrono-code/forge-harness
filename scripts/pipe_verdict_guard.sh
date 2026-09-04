@@ -146,6 +146,35 @@ if ! printf '%s' "$NORM" | grep -qE 'set -o pipefail|set -[a-zA-Z]*o[a-zA-Z]* pi
   fi
 fi
 
+# ── R3 — a line that is ONLY redirections (`2>&1` alone on the line after a heredoc). ─────────
+# zsh runs a redirection-only line as `$NULLCMD` (= `cat` by default) — measured 2026-09-04 with
+# `zsh -x`: `+zsh:1> cat`. That `cat` reads STDIN until EOF. In this Bash tool, stdin is `/dev/null`
+# ONLY when the harness appends `< /dev/null`, and it does NOT append it when the top-level command
+# already carries a stdin redirect (`<` or a `<<` heredoc) — then stdin is a pipe held open for the
+# life of the command, and `cat` never returns. Measured 2026-09-04: 9 tasks in two sessions, all of
+# the shape `out=$(git commit -q -F - <<'CEOF' … CEOF ⏎ 2>&1)`: every commit landed within 4 s, no
+# push ever started, the shell sat in `$( )` with no git child, killed later (exit 144). The
+# pre-push hook never ran — it was blamed for a hang that happened before it.
+# Heredoc BODIES are stripped first: a one-word markdown blockquote line (`> 정본`) inside a commit
+# message is data, not a redirection. Deterministic on the remaining lines; zero-FP by construction
+# (a redirection-only line is never what the author meant outside a heredoc body).
+_R3_HIT=$(printf '%s\n' "$CMD" | awk '
+  BEGIN { inhd = 0; d = "" }
+  inhd { if ($0 == d || $0 ~ ("^[[:space:]]*" d "$")) { inhd = 0 }; next }
+  {
+    if (match($0, /<<-?[[:space:]]*["'"'"']?[A-Za-z_][A-Za-z_0-9]*["'"'"']?/)) {
+      d = substr($0, RSTART, RLENGTH); sub(/^<<-?[[:space:]]*/, "", d); gsub(/["'"'"']/, "", d); inhd = 1
+    }
+    # a STATEMENT at line start made only of redirections, ended by `)`, `;`, `}`, `&&`, `||` or EOL —
+    # the measured shape is `2>&1); rc=$?`, where `)` closes the `$( )` and the last statement inside
+    # it is the bare `2>&1`.
+    if ($0 ~ /^[[:space:]]*[0-9]*(>>?|<)(&[0-9]+|[[:space:]]*[^[:space:];|&<>()]+)?([[:space:]]+[0-9]*(>>?|<)(&[0-9]+|[[:space:]]*[^[:space:];|&<>()]+)?)*[[:space:]]*([;)}]|&&|\|\||$)/) { print NR ": " $0; exit }
+  }')
+if [ -n "$_R3_HIT" ]; then
+  add "R3 redirection-only line runs \`cat\` on stdin (line ${_R3_HIT})" \
+      "zsh executes a line that is only redirections as \$NULLCMD=cat, which reads stdin to EOF. This command carries a top-level \`<\`/\`<<\`, so the harness leaves stdin as an OPEN PIPE — that cat never returns and everything after it (the push) never starts. Put the redirection on the command line: \`out=\$(git commit -q -F - 2>&1 <<'"'"'CEOF'"'"'\`."
+fi
+
 [ -n "$hits" ] || exit 0
 
 if [ "${FH_PIPE_VERDICT_BLOCK:-0}" = "1" ]; then
