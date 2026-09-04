@@ -53,7 +53,16 @@ _fh_audit_check() {
   # ① weekly_harvest — 7-day threshold (when CC_HUB_DIR is set)
   if [[ -n "${CC_HUB_DIR}" && -d "${CC_HUB_DIR}/tracks/_meta" ]]; then
     local aud
-    aud=$(ls -t "${CC_HUB_DIR}/tracks/_meta"/harvest_*.md 2>/dev/null | head -1)
+    # zsh: an unmatched glob is a SHELL error raised before `ls` runs — the `2>/dev/null` belongs to
+    # ls, so `_fh_audit_check:N: no matches found: …` printed on every terminal open of a hub with no
+    # harvest files (measured 2026-09-04). 🟥 The obvious fix — appending `(N)` to the ls argument —
+    # is WRONG and was measured wrong the same day: the null glob drops the word entirely, `ls -t`
+    # then lists the CURRENT DIRECTORY, `head -1` returns an unrelated file, and the «No harvest
+    # history» warning silently disappears (not-found rendered as found). Collect into an array with
+    # `(N.om)` (null-glob · plain files · newest-first) and read element 1 — empty array ⇒ empty aud.
+    local -a _fh_harvests
+    _fh_harvests=( "${CC_HUB_DIR}/tracks/_meta"/harvest_*.md(N.om) )
+    aud="${_fh_harvests[1]:-}"
     if [[ -n "$aud" ]]; then
       local d=$(( (now - $(_fh_mtime "$aud")) / 86400 ))
       (( d >= 7 )) && warns+=("weekly_harvest ${d}d elapsed → run /harvest-loop in your CC hub cwd")
