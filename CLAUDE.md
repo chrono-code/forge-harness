@@ -147,7 +147,7 @@ unfamiliar*, not by adding machinery. The reflex fires **before** memory recall,
 always-loaded, not only in memory. (Measured 2026-07-14, one session, 3×: two identities each collapsed
 onto their single hardest sub-mechanism, and a failure from a **non-harness** run mapped onto a harness
 metric — each read a live-but-incomplete thing as zero, each caught by the operator, not self-caught.
-Detail: `[[feedback_reinvention_reflex_normalization_counterweight]]`.)
+Detail: `[[feedback_reinvention_reflex_normalization_counterweight]]`.) **External, family-level number (2026-09-04, digest `HN:49557206`, armature.tech, 5,292 valid sessions)**: Claude Code built in-house instead of adopting an existing tool in **19 %** of sessions vs **10 %** for Codex and Cursor — ≈2× its peers. The reflex this section counterweights is a measured family bias, not a local habit; the one-session 3× above is the internal instance of it.
 
 ## Mechanization Boundary — machinery at irreversible edges and channels, judgment left to evolution
 
