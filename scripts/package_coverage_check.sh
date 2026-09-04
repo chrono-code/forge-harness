@@ -360,12 +360,34 @@ if ORACLE == 'tarball':
         if r.returncode != 0:
             print(f"ORACLE_UNAVAILABLE\tnpm pack exited {r.returncode}")
             raise SystemExit(2)
-        packed = {f['path'] for f in json.loads(r.stdout)[0]['files']}
+        # Two shapes have been seen for `npm pack --dry-run --json`: the documented one carries
+        # `[0]['files'][*]['path']`; inside `npm publish`'s prepublishOnly on the CI runner
+        # (Node 22 / npm 10, 2026-09-04, v3.0.0 first OIDC publish) the same call returned JSON
+        # WITHOUT that key and this block died with a bare KeyError — fail-closed (correct) but
+        # blind (no diagnosis). Parse defensively, and when the JSON does not carry a file list
+        # fall back to the text listing (`npm notice <size> <path>` lines), which is what a human
+        # reads. The diagnostic line prints the head of stdout so the NEXT failure names its shape.
+        parsed = json.loads(r.stdout)
+        entry = parsed[0] if isinstance(parsed, list) and parsed else (parsed if isinstance(parsed, dict) else None)
+        flist = (entry or {}).get('files') if isinstance(entry, dict) else None
+        if flist and all(isinstance(f, dict) and 'path' in f for f in flist):
+            packed = {f['path'] for f in flist}
+        else:
+            t = subprocess.run(['npm', 'pack', '--dry-run'], capture_output=True, text=True, timeout=180)
+            lines = (t.stdout + '\n' + t.stderr).splitlines()
+            packed = set()
+            for ln in lines:
+                m = re.match(r'^npm notice\s+[0-9.]+[kMG]?B\s+(\S+)\s*$', ln)
+                if m:
+                    packed.add(m.group(1))
+            if not packed:
+                print(f"ORACLE_UNAVAILABLE\tnpm pack --json had no files[].path and the text listing had no file lines; json head: {r.stdout[:200]!r}")
+                raise SystemExit(2)
     except FileNotFoundError:
         print("ORACLE_UNAVAILABLE\tnpm is not on PATH — the tarball cannot be read")
         raise SystemExit(2)
     except (json.JSONDecodeError, KeyError, IndexError) as e:
-        print(f"ORACLE_UNAVAILABLE\tnpm pack --json did not parse ({type(e).__name__})")
+        print(f"ORACLE_UNAVAILABLE\tnpm pack --json did not parse ({type(e).__name__}); stdout head: {r.stdout[:200]!r}")
         raise SystemExit(2)
     except subprocess.TimeoutExpired:
         print("ORACLE_UNAVAILABLE\tnpm pack timed out")

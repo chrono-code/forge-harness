@@ -259,6 +259,18 @@ echo
 if [ "$skipped" -gt 0 ]; then
   echo "package-coverage lanes: ${pass} passed, ${fail} failed, ${skipped} UNCALIBRATED (not verified here)"
 else
-  echo "package-coverage lanes: ${pass} passed, ${fail} failed"
+  
+# ── lane 7: tarball oracle JSON without files[] → text-listing fallback (CI 2026-09-04, v3.0.0) ──
+# Known-pair: stub npm returns JSON lacking files[] but delegates the text `pack --dry-run` to the
+# real npm → PASS (7a). Stub returns the same JSON and an EMPTY text listing → ORACLE_UNAVAILABLE rc=2 (7b).
+cd "$REPO_ROOT" || exit 10; _REAL_NPM=$(command -v npm); _ST=$(mktemp -d)   # earlier lanes cd into fixtures — the subject reads .git/package.json from cwd
+printf '#!/bin/bash\nif [ "$*" = "pack --dry-run --json" ]; then echo "[{\\"id\\":\\"x\\"}]"; else exec %s "$@"; fi\n' "$_REAL_NPM" > "$_ST/npm"; chmod +x "$_ST/npm"
+o=$(PATH="$_ST:$PATH" bash "$SUBJECT" --vs-tarball 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$o" | grep -q "^PASS  package-coverage"; then echo "  ✅ lane 7a: JSON without files[] → text listing fallback PASSes"; pass=$((pass+1)); else echo "  ❌ lane 7a: fallback did not PASS (rc=$rc)"; printf "%s\n" "$o" | grep -E "UNAVAILABLE|head:" | cut -c1-220; fail=$((fail+1)); fi
+printf '#!/bin/bash\nif [ "$*" = "pack --dry-run --json" ]; then echo "[{\\"id\\":\\"x\\"}]"; elif [ "$*" = "pack --dry-run" ]; then exit 0; else exec %s "$@"; fi\n' "$_REAL_NPM" > "$_ST/npm"
+o=$(PATH="$_ST:$PATH" bash "$SUBJECT" --vs-tarball 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$o" | grep -q "UNAVAILABLE"; then echo "  ✅ lane 7b: JSON without files[] AND empty text listing → UNAVAILABLE rc=2 (fail-closed)"; pass=$((pass+1)); else echo "  ❌ lane 7b: expected rc=2 UNAVAILABLE, got rc=$rc"; fail=$((fail+1)); fi
+rm -rf "$_ST"
+echo "package-coverage lanes: ${pass} passed, ${fail} failed"
 fi
 [ "$fail" -eq 0 ] || exit 1
