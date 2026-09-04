@@ -133,6 +133,33 @@ if [ "$_skills" -eq 0 ] || [ "$_agents" -eq 0 ]; then
 fi
 echo "  (scanned: $_skills skill(s), $_agents agent(s))"
 
+# ── Whole-file YAML documents that machinery READS (not frontmatter) ─────────────────────────
+# The dispatch ledger is parsed by session_close_check ④-e / activity_log / round/gatecheck_qset and
+# by the 60/40 promotion gate. Measured 2026-09-04: PR #611 merged an entry whose unquoted scalar
+# carried `: ` (`… API error: 529»`) and the file had been UNPARSEABLE at HEAD since — while its own
+# marker cited "validate_yaml 레인" as the live control. That lane never read this file: it checks
+# SKILL/agent FRONTMATTER only. This block closes that gap for the files listed here. Known pair at
+# wiring time: the #611 HEAD ledger → ❌ (line 3090), the quoted fix → ✅.
+_LEDGERS="knowledge/shared/learnings/subagent_invocations_log.yaml"
+for f in $_LEDGERS; do
+  [ -f "$f" ] || { echo "  ❌ ledger missing: $f (not found ≠ empty)"; ERRORS=$((ERRORS + 1)); continue; }
+  if [ -z "$PARSER" ]; then
+    echo "  ⚠️  $f: UNCALIBRATED — no YAML parser, NOT verified"; UNCALIBRATED=$((UNCALIBRATED + 1)); continue
+  fi
+  out=$(python3 - "$f" <<'PY' 2>&1
+import sys, yaml
+try:
+    d = yaml.safe_load(open(sys.argv[1], encoding='utf-8'))
+except yaml.YAMLError as e:
+    print('PARSE ' + str(e).replace('\n', ' ')[:160]); sys.exit(1)
+if not isinstance(d, list) or not d:
+    print('NOTLIST-OR-EMPTY'); sys.exit(2)
+print('OK %d entries' % len(d))
+PY
+  ); rc=$?
+  if [ "$rc" -eq 0 ]; then echo "  ✅ $f: $out"; else echo "  ❌ $f: $out"; ERRORS=$((ERRORS + 1)); fi
+done
+
 echo ""
 if [ "$UNCALIBRATED" -gt 0 ]; then
   echo "  ⚠️  UNCALIBRATED — $UNCALIBRATED skill(s) unverified (no parser). Not a pass."
