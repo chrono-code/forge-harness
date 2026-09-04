@@ -59,6 +59,8 @@ core invariants never melt). The nursery also **verifies what it births**: harne
 > · ③ **각 축의 컨트롤과 그 생사**. 축을 «돌렸다»의 **최소 증거 = 컨트롤이 살아 있는 실행 출력**
 > 이다 — 안 고른 이유만 적은 것은 준수가 아니다.
 > **비용 경계**: 넷을 매번 다 돌리지 않는다. 실패 모드에 맞춰 **고른다**.
+> **옵셔널 `affected:`** — 「이 변경이 건드리는 것 + 열린 질문」 한 줄(없으면 통과, 자리표시자만
+> 있으면 차단). 상세는 `fh_4axis_gate.md §Marker axis fields`.
 > 🟥 **자평이다 · 게임 가능하다 — 둘은 안 닫혔다. 「훅이 없다」는 2026-08-17 부로 거짓이 됐고,
 > 그 정정이 경계를 더 선명하게 만든다.** 그날 `standpoint:`(PR #429)와 `thirdparty:`(PR #434)에
 > 값 검증 레인이 붙어, `crossfamily:` 와 함께 **세 필드가 훅에서 닫힌 enum + 비공허 근거로

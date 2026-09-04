@@ -100,6 +100,13 @@ wiring_lane W4-defeater validate_defeater_leg \
 defeater: 틀렸을 수도" \
   'defeater 가 공허하다'
 
+# W5 — 2026-09-04 신설 다리 (affected:). 옵셔널 필드지만, «값이 있는데 자리표시자뿐이면 차단»은
+# 실제 호출부가 있어야만 의미가 있다 — 같은 되돌림 known-pair 로 확인한다.
+wiring_lane W5-affected validate_affected_leg \
+  "$SOUL_OK
+affected: 없음" \
+  '자리표시자뿐이다'
+
 echo
 if [ $FAIL -eq 0 ]; then echo "HOOK LEG WIRING LANES: PASS"; else echo "HOOK LEG WIRING LANES: FAIL"; fi
 exit $FAIL

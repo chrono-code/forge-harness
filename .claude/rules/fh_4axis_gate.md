@@ -130,7 +130,7 @@ no runnable path exists (run-first, ask-last — sonnet_floor_doctrine.md §Auto
 
 Record sim results in the Axes 2–3 marker + sub-agent invocation log.
 
-### Marker axis fields — `axes-run:` · `controls:` · `standpoint:` · `soul:` · `soul-check:` · `defeater:` · `tenets:`
+### Marker axis fields — `axes-run:` · `controls:` · `standpoint:` · `soul:` · `soul-check:` · `defeater:` · `tenets:` · `affected:`
 
 🟥 **기호 규칙 (2026-09-04, six_axis_review 판정안 8) — ⓐ~ⓕ 는 축 전용 기호다, 열거로 재사용하지
 마라.** 산문에서 목록을 셀 때는 `①②③` 또는 `(a)(b)(c)` 를 쓴다. 오늘(2026-09-04) 같은 이틀치
@@ -170,6 +170,18 @@ Record sim results in the Axes 2–3 marker + sub-agent invocation log.
 `FH-T\d\d` ID 만 허용되고, 미등록 ID 는 차단된다(오타를 조용히 버리지 않기 위해서다).
 🟥 인용은 **이 줄에서만** 읽는다 — 다른 줄에서 ID 를 «설명»하는 것은 인용이 아니다.
 인용이 하나도 없으면 통과한다(채택은 점진적이다).
+
+**`affected:` — 선택. 「이 변경이 건드리는 것(사람·하네스·표면) + 열린 질문」 한 줄.**
+(2026-09-04, frontier absorption — Anthropic AI-Native SDLC playbook `intent.md` 의 «Affected
+users and systems» · «Open questions» 두 칸을 흡수한다. 두 필드로 쪼개지 않는다 — 별도 필드마다
+빈 칸이 하나씩 늘어나는 것은 이 절이 이미 피하는 모양이다. 한 줄 산문 안에 «열린 질문 = …»
+관례로 같이 담는다.) **없으면 통과**(soul-check:/tenets: 와 같은 패턴, 채택은 점진적이다). 있으면
+비공허성만 본다 — `defeater:` 와 달리 **「없음/TBD/-」류 자리표시자만 있는 값은 차단된다**: 모든
+변경은 반드시 무언가를 건드리므로(제로 영향은 명제상 없다) 자리표시자만 있는 값은 정직한 부재가
+아니라 안 채운 것이다. 중복 줄도 차단된다(읽는 쪽은 첫 줄만 취한다).
+```
+affected: 소비자 install 의 pre-commit 사용자(마커 형식) · 열린 질문 = 필드 강제 시점
+```
 
 
 These are enforced (the first two) or expected (the third) on the Axes 2–3 marker. Until 2026-08-17
