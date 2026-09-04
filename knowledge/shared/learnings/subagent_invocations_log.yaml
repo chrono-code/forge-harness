@@ -3237,3 +3237,43 @@
   evidence: >-
     scratchpad/live_eval.patch → #625 — 레인 20/20 · 선택 12/21 사유별 · G-GREET-01 PASS/컨트롤 무발화. 270,960 tokens · 39 tool_uses.
   note: files[] 미추가를 «운영자 결정」으로 남겼으나 package-coverage 게이트가 요구해 거버너가 추가.
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28 (Fable 5.1 거버너, 밤 3)
+  task: gitignored 계기를 읽는 게이트 전수조사(카드 ⑤) — 50 표면, 부재 분기 a/b/c 판정 + 컨트롤 2
+  count: 1
+  context: 읽기 전용, 임시 클론에서 실측. known-positive = #610 PSA 사례.
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/gitignored_instrument_gates_2026-09-04.md — fail-open 0 · warn/skip 6 · fail-closed 4 · built-but-not-wired 3(residency_closure_scan · outbound_query_guard · push_zone_check). 201,209 tokens · 34 tool_uses.
+  note: «옳게 fail-closed 인데 호출자 0」이 남은 모양 — 카드 ⑫.
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28
+  task: "preprep 버그 4 + L8 한국어 오탐 2 수리(워크트리 패치, 실물 코퍼스 전후)"
+  count: 1
+  context: 덱 세션 인계분 ⓒⓓ. 커밋 금지 → 패치.
+  outcome: accepted
+  evidence: >-
+    scratchpad/preprep_bugs.patch → #628 커밋 1/3 — L8 UNRESOLVED 9→5(손검증) · HARD 19→6 · lane_canon UNMEASURED · self-test 3. 303,096 tokens · 81 tool_uses.
+  note: 남은 오탐 5 를 «지운 척 안 함」으로 정직 보고. 드리프트 앵커 D2 빨강을 스스로 알림.
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28
+  task: "preprep 레인 R1~R5·P1·P3·--baseline 이식 + known-pair + 실물 재현(워크트리 패치)"
+  count: 1
+  context: 덱 세션 인계분 ⓐⓑ. 중간에 지시 2회 갱신(R3 실물 쌍 · P1 이름 고유/3팔).
+  outcome: accepted
+  evidence: >-
+    scratchpad/preprep_lanes.patch → #628 커밋 2/3 — 24/24 · 실물 재현 6(40p·41p·38p·112p·36p ×2). 342,923 tokens · 57 tool_uses. 거버너 수리: 회사명 토큰(HIGH)·절대경로→env.
+  note: 이진 픽스처가 patch 로 안 실려 워크트리에서 직접 복사.
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28
+  task: "preprep SKILL.md 방법론 7 · 정직한 한계 6 · 못 하는 것 표 · Done When · 체크리스트 C6(워크트리 패치)"
+  count: 1
+  context: 덱 세션 인계분 ⓔⓕ+§7. 레인 표는 손대지 말 것.
+  outcome: accepted
+  evidence: >-
+    scratchpad/preprep_docs.patch(128줄) → #628 커밋 3/3 — 새 레인을 이름(문자 코드 아님)으로 참조해 병렬 편집 충돌 회피. 194,195 tokens · 20 tool_uses.
+  note: 프론트매터 description 무변경(트리거 프로브 재실행 불필요).
