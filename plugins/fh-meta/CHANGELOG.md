@@ -1,5 +1,30 @@
 # forge-harness (fh-meta) Changelog
 
+### [3.0.0] — 2026-09-04 — 정체성 다섯 전부 🟢(identity 1.0 을 이 번호가 나른다) · 릴리스 트랙 통일 · 훅 사실 줄 · 게이트 무음 접힘 수리 · 6축 단련
+
+### 왜 major 인가
+CLAUDE.md §④-b major ⓑ — **정체성 다섯이 «전부» 🟢**(2026-09-04 ⑤ 증폭자 승격 #604, 여섯 행 Ⓑ①②③④⑤ 전부 초록, 4대 엔진도 전부 🟢).
+운영자 결정(2026-09-04): `identity-v1.0.0` 은 정체성 트랙의 마지막 태그, **이후 한 번호** — 이 3.0.0 이 identity 1.0 을 같이 나른다. 🧭 접두 태그는 더 만들지 않는다. 등급의 정본은 여전히 `ship_readiness_gate.md` 의 셀이고 번호는 나르기만 한다.
+
+### 🟥 BREAKING (gate): pre-commit [Pointers] 게이트가 워킹트리가 아니라 **인덱스**를 읽는다 (#602)
+**무엇이 이제 막히나**: `.md` 를 스테이징한 뒤 디스크에서 지우면(또는 더 고치면) 종전엔 `[ -f ] || continue` 로 Detail-pointer 검사가 통째로 빠졌다 — 깨진 `**Detail**: See §X` 포인터가 조용히 커밋됐다. 이제 `git show ":$f"` 로 스테이징된 바이트를 검사하고, 인덱스에서 못 읽으면 ❌ 로 막는다. **처방**: 스테이징한 것이 곧 커밋되는 것이다 — 디스크 파일을 믿지 마라. 레인 `scripts/test_precommit_pointer_index_lanes.sh`(일회용 클론) 가 옛 훅에선 정확히 P1 만 실패함을 보인다.
+
+### 🟥 BREAKING (gate): selfcheck 가 명시경로 게이트 인프라(bin/fh-gate·fh-run·fh-goal 등) 부재를 FAIL 로 센다 (#602)
+종전엔 glob 미매칭과 같은 `continue` 로 무음. glob 미매칭 스킵은 그대로. **처방**: 그 파일들이 없어졌으면 files[] 와 selfcheck 목록을 같이 고쳐라.
+
+### 같이 들어온 것 (행동 변경, advisory)
+- **proposal_hook**(#598 → #600 → #601 → #602): 판정·가드 줄 편집 시 «known-pair + degrade 방향» 제안을 PreToolUse 컨텍스트로. #601 부터 훅이 결정적 전제(레인 존재·레인 파일 자신·오늘 스캔 덮음)를 확인해 **«사실:» 줄**로 싣고 없는 항목만 제안 — r8 실측 근거가 옆 파일인 자극에서 복창 1/5 → 판단 4/5. Bash 팔은 raw 명령으로 토큰을 본다(sed -i 따옴표 안, 에어 노드 적발). `.git-hooks/*` 도 사정거리.
+- **backtick_guard**(#592): 셸 이중인용 문맥의 백틱을 쓰기 전에 잡는 advisory 훅.
+- **6축·3단 공정 단련**(#606, 운영자 승인): `scripts/revert_probe.sh`(ⓕ 범용 되돌림 프로브, 종료 0/1/2/10) · sim 러너 날짜 오염 필드 3(기록만) · 영혼 «성공 정의/절대 안 함» 2칸 advisory · ⓔ `shadow(N=,F=)` 사다리 · 사전등록 «몇 번째 프레이밍» 필드 · tier3 UNREACHED · ⓓ=선행자산 · 기호 전용 규칙. 새 차단 없음.
+- **레인 이중 실행 단일화**(#603): test_lane_runner·caller_ratchet·package_coverage 가 out 과 rc 를 다른 실행에서 뽑던 구조 → 단일 실행(CI 비결정 L4 의 통로) · 실패 분기 출력 덤프 · no() 미정의 7곳 · prepublish_scope_note self-test 배선 · 이식성 11파일.
+- **채점기**(#599): 인용 구간 제외 + 명사형 «없음» 결박 — 회차5 P07 0/5→5/5.
+- **회차 러너**(#596·#597·#594): `--arms CTRL` 사전 디스패치 · 봉인 전 실행 · 헤더 철회.
+- **sync**(#593·#595): exclude 대칭 · preprep 드리프트 앵커 컴패니언 자동 후보.
+- **npm Trusted Publishing**(#590): 태그 `v<version>` 푸시 → OIDC provenance 발행. 이 릴리스가 그 경로의 첫 실사용.
+- **문서**: 릴리스 트랙 통일(#605, README·등급표·CLAUDE.md ④-b) · ⑤ 세 얼굴(a 발화 · b 프로젝트 역량 · c 자연발화=등급) · 2주 반증 예측.
+
+> 이 릴리스부터 패키지와 정체성은 **한 번호**다. 종전 `🧭 identity-v0.x` 는 이력. 노트 = 영어 본문 + 한국어 요약(GitHub Release).
+
 ### [2.15.1] — 2026-09-03 — 채점기·회차 게이트 fail-closed 4자리 + REFUSE_RE 결박 + 정체성 ④ 🟢
 
 ### 🟥 BREAKING (gate): 회차 게이트가 «깨진 qset» 을 더는 통과시키지 않는다
