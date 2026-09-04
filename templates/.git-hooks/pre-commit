@@ -1360,6 +1360,82 @@ validate_defeater_leg() { # $1 = marker path
 }
 
 
+# ── ⑤ affected: — 「이 변경이 건드리는 것 + 열린 질문」 (2026-09-04, frontier absorption) ──
+# tenet: FH-T02 (기록의 속성) · FH-T07 (행위자가 읽는 자리)
+#
+# WHY: Anthropic AI-Native SDLC playbook `intent.md` 는 «Affected users and systems» ·
+# «Open questions» 두 칸을 싣는다. FH 는 두 칸으로 쪼개지 않는다 — 별도 필드마다 빈 칸이 하나씩
+# 늘어나는 것이 이 절 전체(soul-check·tenets·thirdparty)가 이미 피하는 모양이다. 한 줄 자유
+# 산문 안에 「건드리는 것」과 「열린 질문 = …」 관례를 같이 담는다.
+#
+# SCOPE — **채널 검사만**. `defeater:` 와 같은 형태(단일 줄·중복 차단·비공허)이지만 한 가지
+# 다르다: `defeater:` 는 「없음」을 정직한 선언으로 인정한다(반증 조건이 실제로 없을 수 있다).
+# `affected:` 는 다르다 — 어떤 변경이든 반드시 무언가를 건드린다(제로 영향은 명제상 없다). 그래서
+# 「없음/TBD/-」류 자리표시자만 있는 값은 정직한 부재가 아니라 **안 채운 것**이고, 차단한다.
+#
+# 옵셔널 필드다 — **없으면 통과**(soul-check:/tenets: 와 같은 패턴. 채택은 점진적이다).
+validate_affected_leg() { # $1 = marker path
+  local m="$1" n line body words
+  n=$(grep -cE '^[[:space:]]*affected:' "$m" 2>/dev/null); n=${n:-0}
+  if [ "$n" -eq 0 ]; then
+    # near-miss: 키 오타는 부재가 아니라 오타다 (defeater: 와 같은 이유 — 저자는 적었다고
+    # 믿는데 게이트는 못 읽는 것이 가장 조용한 실패다).
+    if grep -qE '^[[:space:]]*(affects:|affected[[:space:]]+:|affeted:|affcted:|effected:)' "$m" 2>/dev/null; then
+      echo "  ❌ FAIL — affected 키처럼 보이지만 정확히 'affected:' 가 아닌 줄이 있다."
+      grep -nE '^[[:space:]]*(affects:|affected[[:space:]]+:|affeted:|affcted:|effected:)' "$m" | sed 's/^/       /'
+      echo "     읽는 쪽은 정확히 'affected:' 만 읽는다."
+      return 1
+    fi
+    return 0   # 진짜 부재 — 옵셔널 필드, 채택은 점진적이다(soul-check:/tenets: 와 같은 형태)
+  fi
+  if [ "$n" -gt 1 ]; then
+    echo "  ❌ FAIL — 마커에 'affected:' 줄이 둘 이상이다."
+    grep -nE '^[[:space:]]*affected:' "$m" | sed 's/^/       /'
+    echo "     읽는 쪽은 첫 줄을 취하므로 나중에 붙인 정정이 조용히 가려진다."
+    return 1
+  fi
+  line=$(grep -m1 -E '^[[:space:]]*affected:' "$m" | sed -E 's/^[[:space:]]*affected:[[:space:]]*//')
+  body=$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+  # 양끝 구두점/공백만 벗긴다 — 클래스 파싱(`tr -d '[:punct:]'` 류)은 한글 바이트를 지우는
+  # 이식성 결함을 낸 전례가 있다(defeater 의 2026-08-30 CI 리트로). 파라미터 확장만 쓴다.
+  _av="$body"
+  while :; do
+    case "$_av" in
+      ' '*|'	'*) _av="${_av# }"; _av="${_av#	}" ;;
+      *' '|*'	') _av="${_av% }"; _av="${_av%	}" ;;
+      *'.'|*'·'|*'—'|*'-'|*']') _av="${_av%?}" ;;
+      *) break ;;
+    esac
+  done
+  case "$(printf '%s' "$_av" | tr 'A-Z' 'a-z')" in
+    없음|none|n/a|na|tbd|todo|-|해당없음|'')
+      echo "  ❌ FAIL — affected 가 자리표시자뿐이다 ('$body')."
+      echo "     이 변경이 건드리는 것(사람·하네스·표면)과 아직 열린 질문을 한 줄로 적어라."
+      echo "       affected: 소비자 install 의 pre-commit 사용자(마커 형식) · 열린 질문 = 필드 강제 시점"
+      echo "     Append to: $m"
+      return 1 ;;
+  esac
+  # 🟥 헬퍼 부재를 «잔여 없음»으로 렌더하지 않는다 — 레인 스위트가 이 함수만 추출하면 헬퍼가
+  # 안 따라오고, 정의되지 않은 명령은 거짓이 되어 fail-open 이 된다(defeater 가 이미 겪었다).
+  if ! declare -f _marker_template_residue >/dev/null 2>&1; then
+    echo "  ❌ HARNESS-ERROR — _marker_template_residue 가 정의돼 있지 않다."
+    echo "     격리 실행이면 그 헬퍼도 같이 추출해야 한다. 부재는 «통과»가 아니다."
+    return 1
+  fi
+  if _marker_template_residue "$body"; then
+    echo "  ❌ FAIL — affected 가 힌트의 자리표시자 그대로다 (기록이 아직 안 쓰였다)."
+    return 1
+  fi
+  words=$(printf '%s' "$body" | wc -w | tr -d ' '); words=${words:-0}
+  if [ "$words" -lt 3 ]; then
+    echo "  ❌ FAIL — affected 가 공허하다 ($words 낱말). 건드리는 것 · 열린 질문을 적어라."
+    return 1
+  fi
+  echo "  ✅ affected 기록됨 ($words 낱말)"
+  return 0
+}
+
+
 SOUL_PRESENT_GRACE_DATE="2026-08-21"
 validate_soul_present_leg() { # $1 = marker path
   # ── ①영혼 존재 검사 (2026-08-21) ──────────────────────────────────────────────
@@ -2057,6 +2133,7 @@ if [ "$GATE_MODE" = "full" ]; then
     #    ([[feedback_built_but_not_wired]] — 오늘만 다섯 번째 얼굴).
     validate_soul_tenet_refs "$MARKER" || _SOUL_OK=0
     validate_defeater_leg "$MARKER" || _SOUL_OK=0
+    validate_affected_leg "$MARKER" || _SOUL_OK=0
     if [ "$_DEFENSE_OK" -eq 1 ] && [ "$_SOUL_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER" && validate_first_use_leg "$MARKER"; then
       echo "  ✅ PASS (marker confirmed + floor/axes fields valid:"
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
