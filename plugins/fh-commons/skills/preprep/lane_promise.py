@@ -74,7 +74,10 @@ def scan(texts, surf_meta, max_report=8, mod=None):
         text = texts[sid][0]
         if mod is not None:
             speech = []
-            for _uid, _h, body, _r in mod.units(text):
+            # 🟥 2026-09-04 — units() 가 이제 pattern 을 받는다. 이 표면의 surfaces.yaml
+            #    unit_pattern 선언을 그대로 넘긴다(interslide_deps 신호 §3-1 과 같은 수리).
+            _pat = surf_meta.get(sid, {}).get('unit_pattern')
+            for _uid, _h, body, _r in mod.units(text, pattern=_pat):
                 _sc, sp = mod.blocks(body)
                 speech.append(sp if isinstance(sp, str) else '\n'.join(sp))
             text = '\n'.join(speech) or text

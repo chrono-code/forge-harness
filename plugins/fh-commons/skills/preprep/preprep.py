@@ -25,6 +25,24 @@ def load(path):
 def resolve(root, p):
     return os.path.normpath(os.path.join(root, os.path.expanduser(p)))
 
+# 🟥 2026-09-04 수리(신호 §3-2) — canon_terms/jargon_terms 는 이제까지 **HERE(이 스크립트
+#    위치)** 기준으로만 풀렸다. 자산군 쪽(surfaces.yaml 이 있는 root)에 실제 목록 파일을 두면
+#    못 찾았고, 실사용에서 절대경로를 넣어서야 돌았다(문서에도 없던 함정).
+#    ⇒ root 를 먼저 보고, 없을 때만 HERE(스킬 배포본에 딸린 example 계열)로 물러난다 —
+#    스킬을 설치 위치와 무관하게 그대로 돌릴 수 있어야 하므로 폴백 자체는 남긴다. 폴백을
+#    썼다는 사실은 출력에 «(skill-dir fallback)» 로 남긴다(조용히 넘기지 않는다).
+def resolve_declared(root, value):
+    """(경로, skill-dir 폴백 여부). 절대경로면 그대로. root 에 없으면 HERE 로 시도한다."""
+    if os.path.isabs(value):
+        return value, False
+    p_root = resolve(root, value)
+    if os.path.exists(p_root):
+        return p_root, False
+    p_here = resolve(HERE, value)
+    if os.path.exists(p_here):
+        return p_here, True
+    return p_root, False   # 둘 다 없다 — root 기준 경로를 대서 에러 메시지가 뭘 찾았는지 보이게 한다
+
 # 🟥 2026-08-25 신설 — 선언 경로가 판번호로 하드코딩돼 stale 해지는 클래스(G2).
 #    실측: surfaces.yaml 이 v4.6 을 가리키는 동안 실제 산출물은 v7.5 였다(12판 차이).
 #    ⚠️ **최신본으로 자동 추종하지 않는다** — 옛 판을 «일부러» 재는 경우를 뺏기 때문이다.
@@ -160,9 +178,24 @@ def hits(text, lit, speech_marker=None):  # yields (cls, line_no, line)
 
 # ── L1 canon ──────────────────────────────────────────────────────────────────
 def lane_canon(cfg, root, texts, surf_meta):
-    terms = load(resolve(HERE, cfg['canon_terms']) if not os.path.isabs(cfg['canon_terms'])
-                 else cfg['canon_terms'])
     findings, notes = [], []
+    ct_cfg = cfg.get('canon_terms')
+    if not ct_cfg:
+        return [], ['L1 canon : canon_terms 미선언 — NOT_CONFIGURED (0 아님)']
+    ct_path, ct_fb = resolve_declared(root, ct_cfg)
+    if ct_fb:
+        notes.append(f'L1 canon : canon_terms 를 root 에서 못 찾아 스킬 위치로 폴백 '
+                     f'(skill-dir fallback) — {ct_path}')
+    # 🟥 2026-09-04 수리(신호 §3-3) — 파일 부재가 여기서 `FileNotFoundError` 트레이스백으로
+    #    죽었다. 이 스킬 자신의 교리가 「부재 ↔ 0 을 가른다 · UNMEASURED 로 낸다」인데 자기
+    #    코드가 그걸 어기고 있었다([[feedback_rule_misdescribes_its_own_machine]] 과 같은 족).
+    #    ⇒ UNMEASURED 로 낮춰 잡고 **나머지 레인은 계속 돈다**(L1 하나가 죽는다고 전체가
+    #    안 죽는다 — main() 은 이 함수를 감싸지 않으므로 여기서 반드시 잡아야 한다).
+    try:
+        terms = load(ct_path)
+    except Exception as e:
+        return [], [f'L1 canon : canon_terms 부재({ct_path}) — UNMEASURED (0 아님): '
+                    f'{type(e).__name__}: {e}']
 
     # L1-a 원장 ↔ 기계 목록 커버리지 (이 하네스가 잡는 결함이 자기 자신에게도 난다)
     ledger = resolve(root, cfg['canon_ledger'])
@@ -366,12 +399,23 @@ def lane_jargon(cfg, root, texts, surf_meta):
     «선언한 것 중 풀이 없는 게 없다»이다. 0 을 «깨끗하다»로 읽지 말 것."""
     cfgp = cfg.get('jargon_terms')
     if not cfgp: return [], ['L5 jargon : 선언 파일 없음 — NOT_CONFIGURED (0 아님)']
-    spec = load(resolve(HERE, cfgp) if not os.path.isabs(cfgp) else cfgp)
+    # 🟥 2026-09-04 — canon_terms 와 같은 수리(신호 §3-2·3-3): root 우선 · HERE 폴백 ·
+    #    부재는 크래시가 아니라 UNMEASURED.
+    jt_path, jt_fb = resolve_declared(root, cfgp)
+    jt_notes = []
+    if jt_fb:
+        jt_notes.append(f'L5 jargon : jargon_terms 를 root 에서 못 찾아 스킬 위치로 폴백 '
+                        f'(skill-dir fallback) — {jt_path}')
+    try:
+        spec = load(jt_path)
+    except Exception as e:
+        return [], [f'L5 jargon : jargon_terms 부재({jt_path}) — UNMEASURED (0 아님): '
+                    f'{type(e).__name__}: {e}']
     win = int(spec.get('gloss_window', 2))
-    findings, notes = [], []
+    findings, notes = [], list(jt_notes)
     spoken = [sid for sid, m in surf_meta.items() if m.get('spoken')]
     if not spoken:
-        return [], ['L5 jargon : 낭독면 선언 0 — UNMEASURED (0 아님)']
+        return [], notes + ['L5 jargon : 낭독면 선언 0 — UNMEASURED (0 아님)']
     checked = glossed = 0
     for sid in spoken:
         if sid not in texts: continue
@@ -577,7 +621,9 @@ def lane_interslide(cfg, root):
         import importlib.util
         sp = importlib.util.spec_from_file_location('interslide_deps', mod_p)
         m = importlib.util.module_from_spec(sp); sp.loader.exec_module(m)
-        r = m.analyze(draft_p, build_p)
+        # 🟥 2026-09-04 — 원고 표면의 unit_pattern 선언을 analyze() 로 그대로 넘긴다
+        #    (신호 §3-1 수리 — units() 하드코딩을 없앤 절반이 여기다).
+        r = m.analyze(draft_p, build_p, pattern=ms.get('unit_pattern'))
     except Exception as e:
         return [], [f'L8 interslide : 계기 오류({e}) — UNMEASURED (0 아님)']
     if r.get('error'):
@@ -701,8 +747,17 @@ def main():
     #    별도 모듈 레인(L9/L10/L11)이라 둘 다 센다.
     #    [[feedback_rule_misdescribes_its_own_machine]] · [[feedback_instrument_vs_target_and_budget]]
     _lanes = sorted(n[5:] for n in globals() if n.startswith('lane_') and callable(globals()[n]))
-    _mods = sorted(m for m in ('lane_promise', 'lane_adjacent_dup', 'lane_progression')
+    _mods = sorted(m for m in ('lane_promise', 'lane_adjacent_dup', 'lane_progression',
+                                'lane_slide_relations', 'lane_geometry')
                    if os.path.exists(os.path.join(HERE, m + '.py')))
+    # 🟥 2026-09-04 신설 — `--lane R1,R2,...` 로 **새 모듈 레인(R1-R5·P1/P3)만** 골라 끈다/켠다.
+    #    L1~L11 은 아직 이 필터를 안 탄다(usage 줄의 --lane 은 그쪽엔 미배선인 채 남아 있다 —
+    #    있는 척하지 않는다). 최소 접촉 원칙: 기존 L* 배선은 안 건드린다.
+    _lane_arg = sys.argv[sys.argv.index('--lane') + 1] if '--lane' in sys.argv else None
+    _wanted = set(_lane_arg.split(',')) if _lane_arg else None
+
+    def _lane_on(*codes):
+        return _wanted is None or any(c in _wanted for c in codes)
     print(f"── 발표 준비 하네스 v0.1 ──")
     print(f"   판: {os.path.realpath(__file__)}")
     print(f"   레인 {len(_lanes)}(내장): {' · '.join(_lanes)}")
@@ -726,7 +781,11 @@ def main():
     for i, why in unreadable: print(f"   {ANSI_UNK} 기계 어댑터 없음: {i} — {why}  (UNMEASURED)")
 
     findings, notes = [], []
-    surf_meta = {s['id']: {'marker': s.get('speech_marker'), 'spoken': s.get('spoken', False)}
+    # 🟥 2026-09-04 — 'unit_pattern' 을 추가했다. L6 pacing 은 이미 이 필드를 읽고 있었는데
+    #    (surf_meta[sid].get('unit_pattern')) 여기서 채워준 적이 없어 **항상 None** 이었다 —
+    #    L10/L11 도 같은 필드로 units() 에 pattern 을 전달하므로 여기가 단일 공급처가 된다.
+    surf_meta = {s['id']: {'marker': s.get('speech_marker'), 'spoken': s.get('spoken', False),
+                           'unit_pattern': s.get('unit_pattern')}
                  for s in cfg['surfaces']}
     f1, n1 = lane_canon(cfg, root, texts, surf_meta); findings += f1; notes += n1
     try:
@@ -763,6 +822,22 @@ def main():
     f6, n6 = lane_pacing(cfg, root, texts, surf_meta); findings += f6; notes += n6
     f7, n7 = lane_regen(cfg, root); findings += f7; notes += n7
     f8, n8 = lane_interslide(cfg, root); findings += f8; notes += n8
+    if _lane_on('R1', 'R2', 'R3', 'R4', 'R5', 'R'):
+        try:
+            import lane_slide_relations
+            _fR, _nR = lane_slide_relations.scan(cfg, root)
+            notes += _nR   # advisory 고정 — findings 에 안 태운다(L8·L11 관례)
+        except Exception as _e:
+            notes.append('R1-R5 slide-relations : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)'
+                         % (type(_e).__name__, _e))
+    if _lane_on('P1', 'P3', 'P'):
+        try:
+            import lane_geometry
+            _fP, _nP = lane_geometry.scan(cfg, root)
+            notes += _nP   # advisory 고정 — findings 에 안 태운다(L8·L11 관례)
+        except Exception as _e:
+            notes.append('P1/P3 geometry : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)'
+                         % (type(_e).__name__, _e))
 
     for n in notes: print(f"   · {n}")
     use = [f for f in findings if f[1] != 'mention']
