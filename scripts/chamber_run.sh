@@ -168,12 +168,17 @@ fi
 _stamp "step-4-done"; echo "  ✓ step 4: $NPERS blind persona sections present (isolation-gate satisfied)"
 _witness_record "$WS/SIM_NOTES.md"
 
-# STEP 5 — Emission Gate. Require a VERDICT: EMIT | PARTIAL-EMIT | KILL.
+# STEP 5 — Emission Gate. Require a VERDICT: EMIT | PARTIAL-EMIT | KILL | CURATED | NOT-APPLICABLE.
+# 🟥 2026-09-04: the doctrine re-routed two outcomes on 2026-08-17 (§3-SCREEN-2026-08-17 — net-new
+#    shortfall → CURATED, judgment-shaped candidate → NOT-APPLICABLE) and this regex kept parsing the
+#    OLD vocabulary for 18 days; run #16 had to file «KILL + CURATED 재료 동봉» to get past it, and the
+#    pre-registered taxonomy known-pair (5 old runs → CURATE) could not be replayed at all. A runner that
+#    rejects the doctrine's own words is [[feedback_rule_misdescribes_its_own_machine]] in the code half.
 if [ ! -f "$WS/EMISSION_VERDICT.md" ]; then
   cat > "$WS/EMISSION_VERDICT.md" <<EOF
 # Emission Gate Verdict — $SLUG (chamber run)
 
-VERDICT: <EMIT | PARTIAL-EMIT | KILL>
+VERDICT: <EMIT | PARTIAL-EMIT | KILL | CURATED | NOT-APPLICABLE>
 
 ## Judged: does the simulation hold?  (+ mechanical anchor: overlap grep / gate verdicts / reproduced flows)
 
@@ -183,11 +188,11 @@ EOF
   echo "  ⛔ step 5 BLOCKED: decide WITH the operator (HITL), record VERDICT in $WS/EMISSION_VERDICT.md, re-run."; exit 1
 fi
 # PARTIAL-EMIT listed FIRST in every alternation so it is never mis-extracted as its EMIT substring.
-VERDICT=$(grep -ioE '^VERDICT:[[:space:]]*(PARTIAL-EMIT|EMIT|KILL)' "$WS/EMISSION_VERDICT.md" 2>/dev/null | head -1 | grep -ioE 'PARTIAL-EMIT|EMIT|KILL' | head -1 | tr 'a-z' 'A-Z')
+VERDICT=$(grep -ioE '^VERDICT:[[:space:]]*(PARTIAL-EMIT|EMIT|KILL|CURATED|NOT-APPLICABLE)' "$WS/EMISSION_VERDICT.md" 2>/dev/null | head -1 | grep -ioE 'PARTIAL-EMIT|EMIT|KILL|CURATED|NOT-APPLICABLE' | head -1 | tr 'a-z' 'A-Z')
 # a bare "## Verdict:" prose line (run #3 style) also counts if it names KILL/EMIT
-[ -z "$VERDICT" ] && VERDICT=$(grep -ioE 'VERDICT[: *]+\**(PARTIAL-EMIT|EMIT|KILL)' "$WS/EMISSION_VERDICT.md" 2>/dev/null | grep -ioE 'PARTIAL-EMIT|EMIT|KILL' | head -1 | tr 'a-z' 'A-Z')
+[ -z "$VERDICT" ] && VERDICT=$(grep -ioE 'VERDICT[: *]+\**(PARTIAL-EMIT|EMIT|KILL|CURATED|NOT-APPLICABLE)' "$WS/EMISSION_VERDICT.md" 2>/dev/null | grep -ioE 'PARTIAL-EMIT|EMIT|KILL|CURATED|NOT-APPLICABLE' | head -1 | tr 'a-z' 'A-Z')
 if [ -z "$VERDICT" ]; then
-  echo "  ⛔ step 5 BLOCKED: no VERDICT (EMIT|PARTIAL-EMIT|KILL) found in $WS/EMISSION_VERDICT.md, re-run."; exit 1
+  echo "  ⛔ step 5 BLOCKED: no VERDICT (EMIT|PARTIAL-EMIT|KILL|CURATED|NOT-APPLICABLE) found in $WS/EMISSION_VERDICT.md, re-run."; exit 1
 fi
 _stamp "step-5-done"; echo "  ✓ step 5: Emission Gate verdict = $VERDICT"
 _witness_record "$WS/EMISSION_VERDICT.md"
@@ -269,6 +274,10 @@ case "$VERDICT" in
                 echo "                 existing asset / the skeleton (no new asset). Workspace stays as evidence." ;;
   KILL) echo "TERMINUS (KILL): first-class success — a cheap run prevented a speculative/reinvention build."
         echo "                 No emit. Workspace stays as the evidence record; seen-filter will skip re-listing it." ;;
+  CURATED) echo "TERMINUS (CURATED): net-new shortfall is not a kill (§3-SCREEN-2026-08-17) — hand the maker the"
+           echo "                 prior-art list, the closest existing asset, and the delta it does not cover." ;;
+  NOT-APPLICABLE) echo "TERMINUS (NOT-APPLICABLE): judgment-shaped candidate — not this incubator's output form."
+                  echo "                 Route to doctrine (a rule/lens), not to a build. Workspace stays as evidence." ;;
 esac
 echo "chamber run '$SLUG' COMPLETE (STATUS: step-7-done, verdict $VERDICT)."
 # EMIT/PARTIAL-EMIT 인데 순서 증인이 없으면 **비영 종료**한다. KILL 은 영향 없다 —
