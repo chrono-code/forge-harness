@@ -28,6 +28,9 @@ gh pr comment "$PR_NUMBER" --body "$(cat <<'EOF'
 ### Refinement Suggestions (following simplification guard / areas for subsequent rounds outside this PR)
 {Subsequent round areas / omit if 0 items}
 
+### Nits (max 5; +N more not listed)
+{At most five style/naming/wording items; omit the section if 0. Never list what a gate already enforces.}
+
 ### Admin Override Merge Recommendation
 {User decision delegation / beta stage policy adherence}
 EOF

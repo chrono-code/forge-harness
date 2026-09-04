@@ -98,6 +98,17 @@ verdict NOT_CONFIGURED, or the
 returned, what was found — never the matched lines themselves. Same rule as the marker: the file is
 a local artifact, the capsule is what crosses the boundary.
 
+**Noise control — two rules that decide what reaches the comment (absorbed 2026-09-04 from the
+AI-Native SDLC playbook's `REVIEW.md`; FH already tiers findings M/S/R, but had no cap and no
+exclusion list, so a long PR produced a long comment that buried the one finding that mattered):**
+- **Nit cap = 5.** A nit is any finding that would not change behavior, leak data, or breach a
+  baseline rule (style · naming · wording · ordering). Report at most five nits, then one line:
+  `+N more nits (not listed)`. M-tier and S-tier findings are never capped.
+- **Do-not-report list.** Skip anything a mechanical gate already enforces on this repo (the
+  pre-commit 4-axis gate, `validate` CI, `regression_guard`, public-surface scan) and generated or
+  vendored files. Reporting what a gate already blocks is double coverage that reads as noise; if
+  a gate *should* have caught it and did not, that is an S-tier finding about the gate, not a nit.
+
 Then attach the review comment (8-matrix results + self-catch + refinement suggestions + merge
 recommendation) via `gh pr comment`.
 
