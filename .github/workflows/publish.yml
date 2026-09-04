@@ -40,6 +40,21 @@ jobs:
           git fetch -q origin main
           [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "🟥 tag is not at origin/main HEAD — refusing"; exit 1; }
           git checkout -q -B main origin/main
+      - name: operator-literal patterns → file (기밀 스캔의 «완전한 계기»)
+        # 🟥 v3.0.0 3차 시도(2026-09-04 run 33851451594): prepublishOnly 의 public_surface_scan_files.sh 가
+        #    «operator-literal override 부재(HIGH 회사·컴패니언 리터럴 미스캔)» 로 fail-closed. 그 파일은
+        #    gitignored 라 체크아웃에 없다 — 이 워크플로가 그 사실을 몰랐다(설계 공백). 시크릿은 base64
+        #    한 줄이고, 파일로 풀어 PSA_PATTERNS 로 넘긴다. 비어 있으면 여기서 죽는다(fail-closed) —
+        #    PUBLIC_SURFACE_OK 로 우회하지 않는다. 내용은 절대 echo 하지 않는다.
+        env:
+          PSA_PATTERNS_B64: ${{ secrets.PSA_PATTERNS_B64 }}
+        run: |
+          [ -n "$PSA_PATTERNS_B64" ] || { echo "🟥 PSA_PATTERNS_B64 secret is empty — the confidentiality scan would be incomplete; refusing to publish"; exit 1; }
+          umask 077; printf '%s' "$PSA_PATTERNS_B64" | base64 -d > "$RUNNER_TEMP/psa_patterns"
+          n=$(grep -cvE '^\s*(#|$)' "$RUNNER_TEMP/psa_patterns" || true)
+          [ "$n" -gt 0 ] || { echo "🟥 decoded pattern file has 0 usable rows"; exit 1; }
+          echo "PSA_PATTERNS=$RUNNER_TEMP/psa_patterns" >> "$GITHUB_ENV"
+          echo "✅ operator-literal patterns loaded ($n rows)"
       - name: publish (prepublishOnly 게이트 경유, provenance)
         run: npm publish --provenance --access public
       - name: verify on registry
