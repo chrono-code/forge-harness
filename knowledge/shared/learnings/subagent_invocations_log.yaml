@@ -3169,3 +3169,41 @@
   evidence: >-
     qasp-dev #246 MERGED — 새 잡 pass 1m6s, 6/6. 지시한 컨트롤 형태는 픽스처 폴백 때문에 죽은 컨트롤(1 passed)이었음을 로컬에서 잡아 설치처를 밖으로. 181,956 tokens · 22 tool_uses.
   note: 통과 조건을 rc≠0 이 아니라 «rc=1 ∧ 사유 문자열」로 좁혔다.
+- date: 2026-09-04
+  agent: general-purpose (default model = fable)
+  invoker: forge-harness-28 (Fable 5.1 거버너, 밤)
+  task: qasp --flaky-exit 옵트인 PR (운영자 결정 ⑦) — 1차
+  count: 1
+  context: 세션 한도 429(22:30 KST 리셋)로 시작 직후 종료. 산출 없음.
+  outcome: rejected
+  evidence: "task-notification «You've hit your session limit · resets 10:30pm (Asia/Seoul)» HTTP 429"
+  note: 실패 원인은 계정 한도. 소넷 재시도 성공(별도 기록).
+- date: 2026-09-04
+  agent: general-purpose (default model = fable)
+  invoker: forge-harness-28
+  task: 챔버 분류 known-pair 5런 재판정 — 1차
+  count: 1
+  context: 같은 429. 산출 없음.
+  outcome: rejected
+  evidence: "task-notification «session limit» HTTP 429"
+  note: 소넷 재시도 성공(별도 기록).
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28
+  task: qasp --flaky-exit 옵트인 PR (운영자 결정 ⑦) — 2차
+  count: 1
+  context: 워크트리, known-pair 4 + 실물 (ii) + CI 스텝 (c), CI 대기까지.
+  outcome: accepted
+  evidence: >-
+    qasp-dev #247 MERGED — 단위 4(0/3/0/1) · 실물 rc=3·overall PASS · CI 6/6(새 스텝 (c) 로그 원문 확인). 250,633 tokens · 86 tool_uses.
+  note: 계약(«별도 표기만」)을 안 깨고 채널만 더했다.
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28
+  task: 챔버 분류 known-pair 재판정(#620 러너 첫 실사용) — 2차
+  count: 1
+  context: 블라인드(판정 → 기대 순서 기록), 컨트롤 = KILL 유지 런, 러너 실행은 1런만(원장 오염 방지).
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/chamber_taxonomy_knownpair_RESULT_2026-09-04.md — 컨트롤 2/2 · 일치 3/5 · 불일치 2 = taxonomy 멀티사인 공백(운영자 ⑩) · 러너 CURATED 완주(런 #17). 236,101 tokens · 27 tool_uses.
+  note: 러너 실행이 witness yaml 을 부작용으로 건드려 되돌렸다고 스스로 보고(트리 clean).
