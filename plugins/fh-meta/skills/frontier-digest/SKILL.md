@@ -215,7 +215,7 @@ Present Step 4 menu options [1]–[5]. Do not skip to [5] silently — surface t
 ## Simplification Guards
 
 - Video Tier-3 probe fails (any of `yt-dlp` / `curl_cffi` / `ffmpeg` missing, or timedtext returns 429) → fall through to operator summary; never assume `yt-dlp` works
-- If 3+ arxiv queries fail, proceed with HN only (do not abort)
+- If 3+ arxiv queries fail (HTTP 429): back off once → WebFetch the date-sorted `arxiv.org/list/cs.SE/recent` listing → only then HN-only. Never substitute WebSearch (recall channel, 5/5 REPEATs measured 2026-09-04); report `arxiv FAILED (429)`, never `0 items`. Detail: `SKILL_detail.md §Execution form`
 - On curl timeout, skip that item and continue with the rest
 - If synthesis result exceeds 400 characters, retain top 3 items and truncate the rest
 - Without `--save`, do not create files (conversation output only)
