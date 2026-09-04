@@ -3080,3 +3080,12 @@
   evidence: >-
     tracks/_meta/frontier_verification_map_2026-09-04.md — 델타 5, FH 앞섬 2, 외부 부재 3(정직 표기). 170,191 tokens · 16 tool_uses.
   note: 두 조사가 합쳐져 six_axis_review 판정안(강화 4·축소 2)이 됐다.
+- date: 2026-09-03
+  agent: fh-meta:expert (default model)
+  invoker: forge-harness-27
+  task: 웹 QA 에이전트 프런티어 ↔ qasp 3막 대응표 (1차)
+  count: 1
+  context: API 529 Overloaded 로 조기 종료 — 산출 없음. sonnet 재시도가 성공(별도 기록).
+  outcome: rejected
+  evidence: task-notification «Agent terminated early due to an API error: 529»
+  note: 실패 원인은 모델이 아니라 서버 과부하. 이후 디스패치는 sonnet 으로 갔다.
