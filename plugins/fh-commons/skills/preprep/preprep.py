@@ -747,8 +747,17 @@ def main():
     #    별도 모듈 레인(L9/L10/L11)이라 둘 다 센다.
     #    [[feedback_rule_misdescribes_its_own_machine]] · [[feedback_instrument_vs_target_and_budget]]
     _lanes = sorted(n[5:] for n in globals() if n.startswith('lane_') and callable(globals()[n]))
-    _mods = sorted(m for m in ('lane_promise', 'lane_adjacent_dup', 'lane_progression')
+    _mods = sorted(m for m in ('lane_promise', 'lane_adjacent_dup', 'lane_progression',
+                                'lane_slide_relations', 'lane_geometry')
                    if os.path.exists(os.path.join(HERE, m + '.py')))
+    # 🟥 2026-09-04 신설 — `--lane R1,R2,...` 로 **새 모듈 레인(R1-R5·P1/P3)만** 골라 끈다/켠다.
+    #    L1~L11 은 아직 이 필터를 안 탄다(usage 줄의 --lane 은 그쪽엔 미배선인 채 남아 있다 —
+    #    있는 척하지 않는다). 최소 접촉 원칙: 기존 L* 배선은 안 건드린다.
+    _lane_arg = sys.argv[sys.argv.index('--lane') + 1] if '--lane' in sys.argv else None
+    _wanted = set(_lane_arg.split(',')) if _lane_arg else None
+
+    def _lane_on(*codes):
+        return _wanted is None or any(c in _wanted for c in codes)
     print(f"── 발표 준비 하네스 v0.1 ──")
     print(f"   판: {os.path.realpath(__file__)}")
     print(f"   레인 {len(_lanes)}(내장): {' · '.join(_lanes)}")
@@ -813,6 +822,22 @@ def main():
     f6, n6 = lane_pacing(cfg, root, texts, surf_meta); findings += f6; notes += n6
     f7, n7 = lane_regen(cfg, root); findings += f7; notes += n7
     f8, n8 = lane_interslide(cfg, root); findings += f8; notes += n8
+    if _lane_on('R1', 'R2', 'R3', 'R4', 'R5', 'R'):
+        try:
+            import lane_slide_relations
+            _fR, _nR = lane_slide_relations.scan(cfg, root)
+            notes += _nR   # advisory 고정 — findings 에 안 태운다(L8·L11 관례)
+        except Exception as _e:
+            notes.append('R1-R5 slide-relations : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)'
+                         % (type(_e).__name__, _e))
+    if _lane_on('P1', 'P3', 'P'):
+        try:
+            import lane_geometry
+            _fP, _nP = lane_geometry.scan(cfg, root)
+            notes += _nP   # advisory 고정 — findings 에 안 태운다(L8·L11 관례)
+        except Exception as _e:
+            notes.append('P1/P3 geometry : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)'
+                         % (type(_e).__name__, _e))
 
     for n in notes: print(f"   · {n}")
     use = [f for f in findings if f[1] != 'mention']

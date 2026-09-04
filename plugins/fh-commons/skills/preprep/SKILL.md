@@ -165,10 +165,25 @@ python3 "$SKILL/preprep.py"
 | **L10 adjacent-dup** | **인접 장이 같은 문장을 다시 읽나** — 쪼갤 때 뒤 프레임에 원본을 통째로 남기면 앞 장에서 읽은 문장을 또 읽는다. 실측 117자 중 82자(70%) | 차단 (임계는 사람이 적는다. 미기재면 측정만) |
 | **L9 progression** | **선언된 단계 중 하나가 화면에서 빠졌나** — 실사고: ①②③④ 중 ①이 화면에서 떨어져 리뷰어가 논지를 **정반대로** 읽었다. 개별 문장은 전부 옳았다 | 차단 (선언된 것만 본다) |
 | **G ooxml** | pptx 구조 9종 — 관계 참조 무결성 · 죽은 Content_Types Override · **화면 밖 도형** · 열린 도형 채움 · 선 굵기 토큰 래칫 | 차단 (`python3 ooxml/gate.py <풀린 pptx 트리>`) |
+| **R1 orphan-connective** | 선두 줄이 «그러나/그래서»로 뒤집는데 그 문장의 주어가 **직전 장 어디에도 없다** | 🟥 advisory · **실물 known-positive**(실제 백업에서 뜬 결함) |
+| **R2 enum-dropped** | 앞 장이 ①②③ 으로 센 것을, 이 장이 «이 셋 중…» 이라 부르며 **번호 없이** 재편한다 — 1:1 대응이 안 보인다 | 🟥 advisory · **실물 known-positive** |
+| **R3 lead-term-unbacked** | 선두 줄이 **강조색으로 선언한 낱말**이 그 장 다른 어디에도 없다 — 화면이 자기 부제를 못 받친다 | 🟥 advisory · **합성 뮤턴트 known-pair**(자연 발생본이 파일로 안 남아 실물 2장을 줄여 만든 픽스처로만 계량됨 — R1·R2·P1·P3 과 증거 등급이 다르다) |
+| **R4 screen-heavy** | 화면 자수가 **이 덱 자기 분포**(P90)의 상위권 — 한 장에 너무 많이 얹었다 | 🟥 advisory · **순위표**(게이트가 아니다 — 늘 자기 덱의 상위 약 10%가 뜬다, 「후보 0」이 목표가 아니다) |
+| **R5 read-load** | **직전 장 대비 새로 뜬 글자** ÷ 발화 초 — 화면은 늘었는데 말은 짧다. 무대 지시([간지]/[진행])는 발화로 안 센다 | 🟥 advisory · **순위표**(R4 와 같은 성질) |
+| **P1 build-jitter** | 같은 이름 도형이 **연속한 두 장**에서 조금 다른 자리에 있다 — 넘길 때 튄다 | 🟥 advisory · **실물 known-positive** — 🟥 대조된 도형-쌍이 0 건이면 「튐 없음」이 아니라 **UNMEASURED**(이름 중복 도형은 대조 못 해 통째로 뺀다) |
+| **P3 adjacency** | 한 도형의 **오른쪽 끝**과 다른 도형의 **왼쪽 끝**이 맞닿으려다 어긋났다 | 🟥 advisory · **실물 known-positive** · 🟥 절대 목록으로 읽지 마라(기저 오탐 76건 실측) — `surfaces.yaml` 의 `geometry.baseline`(이전 판 pptx)을 주면 **편집 전/후 델타**로 돈다. **P2(near-miss, 같은 종류 모서리만 대조)는 미채택** — 구조적으로 실제 결함(다른 종류 모서리의 인접)을 못 잡아서다 |
 
 🟥 **L8 이 advisory 인 이유**: 두 계기의 오탐을 **최저비용으로 무마하는 길이
 「그 문장을 지우는 것」**이라, 종료코드에 태우면 원고를 나쁜 방향으로 미는 압력이 된다.
 후보를 내고 판정은 사람이 한다. 오탐 다수가 정상이다.
+
+🟥 **R1~R5·P1·P3 이 전부 advisory 인 이유**: L8·L11 과 같다 — 오탐의 최저비용 무마가 원고를
+망가뜨리는 방향(문장 삭제·형식 왜곡)이라 종료코드에 태우지 않는다. `preprep.py` 배선도 findings 를
+버리고 notes 로만 낸다(L8·L11 관례). `--lane R1,R2,R3,R4,R5,P1,P3`(또는 그룹 `R`·`P`)로 이 일곱만
+골라 돌릴 수 있다 — 🟥 **L1~L11 은 아직 이 `--lane` 필터를 안 탄다**(늘 전부 돈다). 정본:
+`tracks-meta/fh_signal_2026-09-04_preprep-evolution.md` §1·§2 · 코드: `lane_slide_relations.py` ·
+`lane_geometry.py` · 픽스처: `fixtures/mk_slide_fixtures.py`(테스트 시 생성) +
+`fixtures/fixture_R3_{positive,negative}.pptx`(실물 2장) · self-test: `test_preprep_lanes_rp.py`.
 
 ## 문체는 레인이 아니다 — 레퍼런스와 스킬이 한다
 
