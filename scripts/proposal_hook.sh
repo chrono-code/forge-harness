@@ -73,7 +73,13 @@
 set -u
 RAW=$(cat 2>/dev/null || true)
 printf '%s' "$RAW" | grep -qE '#[[:space:]]*noqa:?[[:space:]]*proposal-hook' && exit 0
-PYCODE=$(cat <<'PY'
+# 🟥 bash-version trap (measured 2026-09-04): `PYCODE=$(cat <<'PY' … PY)` parses under macOS bash 3.2 but
+#    bash 5.3 (CI runner, homebrew) scans the $(...) body for a matching `)` BEFORE honoring the quoted
+#    heredoc, so the regex parens below break it — `bash -n` fails, lanes were green locally. The
+#    opposite direction of the bash-3.2 heredoc bug frontier_digest_autopilot.sh documents; neither
+#    version is safe with a heredoc inside a command substitution. A function body is parsed the same
+#    way by both, so the heredoc lives in a function and $(...) only calls it.
+_fh_ph_pycode() { cat <<'PY'
 import json,sys,re
 try: d=json.load(sys.stdin)
 except Exception: print("",""); sys.exit(0)
@@ -158,7 +164,8 @@ elif tn=="Bash":
     fp,flag=bash_targets(ti.get("command","") or "")
 print(fp, flag)
 PY
-)
+}
+PYCODE=$(_fh_ph_pycode)
 read -r FP FLAG < <(printf '%s' "$RAW" | python3 -c "$PYCODE" 2>/dev/null) || exit 0
 [ -n "${FP:-}" ] || exit 0
 case "$FP" in *scripts/*.sh|*templates/*.sh|scripts/*.sh|templates/*.sh|*/.git-hooks/*|.git-hooks/*) ;; *) exit 0 ;; esac   # .git-hooks/* has no .sh suffix — the gate files themselves were outside the filter (arm C wt2 2026-09-03: pre-commit edit, no FIRE)
