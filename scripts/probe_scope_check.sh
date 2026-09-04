@@ -49,6 +49,11 @@
 #      question arm B fumbles, and a shed procedure that cannot shed has inverted its purpose:
 #        (a) PRE-REGISTER the question set before any arm runs, and report k tried / k that flipped
 #            the verdict, in `.claude/regression/ablation_verdicts.md` §Pre-registration log;
+#            🟥 2026-09-04 (six_axis_review 판정안 3, canon: measurement-integrity-checklist.md
+#            §Measured-Loop): the pre-registration log ALSO carries how many framings/pilots were
+#            tried before this question set and why each earlier one was discarded — same field the
+#            checklist made mandatory, same reason (arXiv:2606.11217): without it, a reader cannot
+#            tell "this framing" from "the framing that happened to pass";
 #        (b) arm A's answer must be GREP-VERIFIABLE in the cut text -- right because of the section,
 #            not right by luck;
 #        (c) arm B's wrong answer must be CONSEQUENTIAL -- name the behavior it changes. "Wrong but

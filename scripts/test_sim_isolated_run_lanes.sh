@@ -261,5 +261,22 @@ if [ -x "$ROOT/scripts/round/arm_blind_probe.sh" ]; then
     || no "L24 눈가림 실패 — 팔이 정답지를 읽을 수 있다"
 else no "L24 프로브 없음 — 검사 못 함(스킵 아님)"; fi
 
+# ── L25 ⓒ 날짜 오염 통제 필드 (six_axis_review_2026-09-04 강화 #3) — 존재만 본다, 값은 안 본다.
+#    이 러너가 판정을 안 낸다는 것이 헤더의 약속이라, 레인도 «필드가 있나»만 잰다.
+OUTDIR="$WORKROOT/o25"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say \
+   bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" ) >/dev/null 2>&1
+META="$OUTDIR/a_r1.meta.tsv"
+if [ -f "$META" ]; then
+  grep -q '^corpus_head_date	' "$META" && ok "L25a corpus_head_date field recorded" \
+    || no "L25a corpus_head_date field missing"
+  grep -q '^sim_model	' "$META" && ok "L25b sim_model field recorded" \
+    || no "L25b sim_model field missing"
+  grep -q '^sim_model_cutoff	' "$META" && ok "L25c sim_model_cutoff field recorded" \
+    || no "L25c sim_model_cutoff field missing"
+else
+  no "L25 meta.tsv not written at all ($META)"
+fi
+
 echo "sim_isolated_run lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

@@ -1470,6 +1470,18 @@ validate_soul_present_leg() { # $1 = marker path
     echo "     «이 기록이 템플릿 자신인가»만 본다 — 채널 검사다."
     return 1
   fi
+  # ── ①영혼 2칸 존재 검사 (advisory only, 2026-09-04 — six_axis_review 판정안 4) ─────
+  # «성공 정의»와 «절대 안 함» 두 낱말(변형 포함)이 둘 다 있는지만 본다. Mechanization
+  # Boundary: 존재만 — 두 칸이 다 있어도 내용이 옳다는 보장은 없고, 하나가 없어도 커밋을
+  # 막지 않는다(위 non-vacuity 검사가 이미 최소 6낱말을 요구·차단한다 — 이건 그 위에 얹는
+  # 별도 관측이지 새 차단이 아니다). 「없음」 선언 분기는 위에서 이미 return 했으므로 여기
+  # 도달하지 않는다.
+  _soul_missing=""
+  printf '%s' "$body" | grep -qE '성공 ?정의' || _soul_missing="성공 정의"
+  printf '%s' "$body" | grep -qE '절대 ?안 ?함' || _soul_missing="${_soul_missing:+$_soul_missing · }절대 안 함"
+  if [ -n "$_soul_missing" ]; then
+    echo "  ⚠️  ①영혼 2칸 미달 — 빠진 낱말: $_soul_missing (advisory, 커밋은 안 막는다)"
+  fi
   echo "  ✅ ①영혼 present: $words word(s)"
   return 0
 }
