@@ -143,3 +143,15 @@
   artifact: EMISSION_VERDICT.md
   sha256: 136cb4b2f47e9531d48aa640fbf85c7954cd3de021a668971ba9f14fd5f873de
   recorded: 2026-08-20T14:55:46Z
+- run: qasp-web-record-replay
+  artifact: INTENT.md
+  sha256: af89ece4dffac2f68b6c43b0911a880e280878c27dcf436b382c02c9f2ca72d4
+  recorded: 2026-09-04T11:04:03Z
+- run: qasp-web-record-replay
+  artifact: BUDGET.md
+  sha256: cf38f4d72b30fe36a392d3dbdba87e348917f5a00bd6cd09765191ccb66194b9
+  recorded: 2026-09-04T11:04:03Z
+- run: qasp-web-record-replay
+  artifact: SIM_NOTES.md
+  sha256: 9bbc493a9e945ca3789d72dd7c3cb51595dbc4bcdba36ecc857363bf348ae1ae
+  recorded: 2026-09-04T11:04:03Z
