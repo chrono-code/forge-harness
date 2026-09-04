@@ -192,6 +192,15 @@ speculated standalone-first — the only path every successfully-portable FH ass
 ⚠️ **§3-c 의 한 문장이 이 정정으로 갱신된다**: *"clear this one and fail the first
 (**alive, but a reinvention**)"* — 그 분기는 이제 KILL 이 아니라 **CURATED 로 라우팅**된다.
 
+🟥 **멀티사인 우선순위 (운영자 결정 2026-09-04, `DECISIONS_2026-09-04_evening-four.md` ⑩)** — 한 후보에
+사유가 둘 이상 겹칠 때의 최종 라벨: **KILL > NOT-APPLICABLE > CURATED > EMIT**. CURATED 재료(선행 목록 ·
+가장 가까운 자산 · 안 덮는 델타)는 **어느 판정에든 동봉**한다. 근거: CURATED 는 «목록을 건네면 만들 수
+있다」는 뜻인데, (3) precision 실측 미달 · (4) hub-state 의존 · 구성 불가 · 판단형이면 목록을 건네도 못
+만든다 — 그 사유가 라벨을 정한다. 실측 계기: 2026-09-04 사전등록 known-pair 재판정에서 5런 중 2런
+(#10 `qa-lens-codereview` 재발명 + «재발명이 아니었어도 지어질 수 없다」 · #12 `prosody-lens` 재발명 +
+artifact-shaped 미달)이 바로 이 공백 때문에 불일치로 나왔고, 런 #16 은 이미 «KILL + CURATED 동봉」으로
+같은 형태를 밟았다. 이 줄은 **판정이지 계기가 아니다** — 러너는 여전히 VERDICT 한 값만 읽는다.
+
 **⚠️ 경계가 사라지는 것은 아니다.** 재발명이라는 *사실*은 여전히 측정하고 기록한다. 바뀐 것은
 그 사실을 **누구에게 무엇으로 주느냐**다: 게이트의 판정 근거 → 제작자의 출발점.
 
