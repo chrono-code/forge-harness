@@ -3,6 +3,13 @@
 # templates/*.sh is about to change → put ONE proposal instruction into the model's context
 # (additionalContext): «offer the user a known-pair control + degrade_direction_scan.sh in one line».
 #
+# 🟥 2026-09-04 계기 교체 — 이후 F 행은 이전 F 행과 같은 계기가 아니다. The Bash-path discriminator below
+#    was replaced after the first independent grading of the live FIRE rows
+#    (tracks/_meta/RESULT_2026-09-04_identity5-armC-live-count.md §계기 결함 1·2·3): 3 of 7 rows were not edits
+#    at all, and 6 of 8 load-bearing verdict edits that day never fired. Rows written by the old rule and rows
+#    written by this one must not be pooled into one count. Whether the open falsification window is closed,
+#    restarted, or split is the governor's / operator's decision, recorded there — not here.
+#
 # WHY A HOOK (identity ⑤, measured 2026-09-03)
 #   r3: a CLAUDE.md table row keyed on this exact file class fired 1/15 at floor tier (that 1 a
 #   recitation). r4: this hook, installed in a disposable clone, fired on 9/10 editing reps and the
@@ -19,20 +26,42 @@
 #   («proposes unasked») counts a relayed proposal is the operator's call, recorded there, not here.
 #
 # DISCRIMINATOR (mechanical, quote-aware where it can be)
-#   file class  : scripts/**/*.sh · templates/*.sh          (docs, tracks, tests-as-fixtures: no)
+#   file class  : scripts/**/*.sh · templates/*.sh · */.git-hooks/*   (docs, tracks, tests-as-fixtures: no)
 #   edit kind   : the touched text carries a verdict/guard token — exit N · return N ·
 #                 `|| continue|exit|true|return` · `&& continue|exit` · -ne/-eq/-gt/-lt · ==/!= ·
 #                 `[ -e/-f/-s/-n/-z` · comm/diff/cmp · grep -q — AND for Edit the change is not
 #                 confined to quoted strings (old/new with quotes stripped must differ). A usage
 #                 string that happens to contain `exit 2` does not fire (r4 HARD 0/5).
-#   Bash path   : an edit made through the shell (sed -i · > · >> · tee) — the r4 miss (T2 r5 edited
-#                 via Bash, hook 0). No old/new here, so the rule is weaker: target file class AND the
-#                 the RAW command text (quotes included) carries a token. Quotes are NOT stripped on
-#                 this path — in `sed -i 's/exit 1/exit 2/' x.sh` the token is inside the quotes by
-#                 construction, and stripping made the path silent on exactly the shape it exists for
-#                 (found by the Air node 2026-09-03; the original lane's known-positive only fired
-#                 because its token sat outside the quotes). Named residual now: over-fire when a
-#                 quoted token elsewhere in the command co-occurs with a script-file edit (advisory).
+#   Edit/Write  : the file is `tool_input.file_path` — the tool tells us what changes; nothing is inferred.
+#   Bash path   : the shell has no file_path, so the question «which file does this command WRITE» is answered
+#                 by a small scanner instead of a whole-command regex (the 2026-09-03 rule matched the raw
+#                 text, so a heredoc body, a PR body, or a python string that merely QUOTED `sed -i … x.sh`
+#                 counted as an edit — RESULT 2026-09-04 rows 2·3·4):
+#                   ① heredoc bodies are lifted out (`<<EOF` … `EOF`) and kept aside, keyed to the line that opened them
+#                   ② the rest is split into segments on `;` `&&` `||` newline — OUTSIDE quotes; quoted text is masked
+#                   ③ a target is an ARGUMENT POSITION only: `> path` · `>> path` · `tee [-a] path` (unquoted in the
+#                      masked text, or a quoted path directly after the operator) · the file argument of `sed -i …`
+#                   ④ a `python3 … <<HEREDOC` segment is opened: `open(P,"w"|"a")` / `Path(P).write_text` with P a
+#                      literal or a variable assigned ONCE in the body (`p="scripts/x.sh"`) names the target
+#                      (RESULT §결함 2 — 16 of 27 script edits that day were this shape and all were silent)
+#                   ⑤ the token test runs on the segment that OWNS the target (+ its heredoc body), not on the
+#                      whole command — `|| exit 1` two segments later is a check, not an edit (RESULT §결함 3, row 6).
+#                      For a python heredoc the token text is the body's STRING LITERALS only, so `if a == b:` in the
+#                      python code itself is not a verdict edit, and a comment-word replace stays silent
+#                   ⑥ a path containing `$` is dropped — `: > "$T/scripts/x.sh"` is a fixture root, not this repo
+#                 Quotes are NOT stripped from the owning segment's token text: in `sed -i 's/exit 1/exit 2/' x.sh`
+#                 the token sits inside the quotes by construction (Air 2026-09-03).
+#   WHAT THE BASH PATH STILL CANNOT SEE (named, not closed)
+#                 · a script path reached through a variable (`"$REPO_ROOT/scripts/x.sh"`, `$f`) — ⑥ drops it
+#                 · python targets built at runtime (`os.path.join`, `sys.argv[1]`, `p = base + name`)
+#                 · edits by other tools: `perl -pi`, `awk … > tmp && mv tmp x.sh`, `patch`, `git apply`, `ed`,
+#                   `cp`/`mv`/`install` onto a script, `sponge`
+#                 · an unterminated quote earlier in the command swallows every target after it
+#                 · a token inside the owning segment that is not the edit payload (`sed -i 's/a/b/' x.sh | grep -q y`
+#                   is still one segment) — narrower than before, not zero
+#                 It is PreToolUse, so «what actually changed on disk» is not available here at all; a PostToolUse
+#                 twin diffing mtimes would close the tool-shape residuals above and was NOT built in this patch
+#                 (it needs a wiring change in settings.json, outside this file).
 #
 # DEGRADE DIRECTION: advisory, exit 0 always, no permissionDecision (same contract as pipe_verdict_guard).
 #   Unparseable payload → silent. python3 absent → silent (a dead interpreter must not block edits).
@@ -44,26 +73,100 @@
 set -u
 RAW=$(cat 2>/dev/null || true)
 printf '%s' "$RAW" | grep -qE '#[[:space:]]*noqa:?[[:space:]]*proposal-hook' && exit 0
-read -r FP FLAG < <(printf '%s' "$RAW" | python3 -c '
+# 🟥 bash-version trap (measured 2026-09-04): `PYCODE=$(cat <<'PY' … PY)` parses under macOS bash 3.2 but
+#    bash 5.3 (CI runner, homebrew) scans the $(...) body for a matching `)` BEFORE honoring the quoted
+#    heredoc, so the regex parens below break it — `bash -n` fails, lanes were green locally. The
+#    opposite direction of the bash-3.2 heredoc bug frontier_digest_autopilot.sh documents; neither
+#    version is safe with a heredoc inside a command substitution. A function body is parsed the same
+#    way by both, so the heredoc lives in a function and $(...) only calls it.
+_fh_ph_pycode() { cat <<'PY'
 import json,sys,re
 try: d=json.load(sys.stdin)
 except Exception: print("",""); sys.exit(0)
 tn=d.get("tool_name",""); ti=d.get("tool_input",{}) or {}
 TOK=r"exit [0-9]|return [0-9]|\|\| *(continue|exit|true|return)|&& *(continue|exit)|-ne |-eq |-gt |-lt | == | != |\[ -[efsnz] |\bcomm |\bdiff |\bcmp |grep -q"
-def strip(x): return re.sub(r"\"[^\"]*\"|\x27[^\x27]*\x27","",x)
+CLASS=re.compile(r"(scripts/[^\s]*\.sh$|templates/[^\s]*\.sh$|(^|/)\.git-hooks/[^/]+$)")
+def strip(x): return re.sub(r"\"[^\"]*\"|'[^']*'","",x)
+def is_target(p): return bool(p) and "$" not in p and bool(CLASS.search(p))
+def tok(x): return bool(re.search(TOK,x))
+
+def lift_heredocs(cmd):
+    # replace each `<<[-]['"]DELIM['"]` with \x02k\x02 and cut its body out; bodies[k]=text
+    HD=re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+    lines=cmd.split("\n"); out=[]; bodies=[]; i=0
+    while i<len(lines):
+        ln=lines[i]; i+=1; ms=list(HD.finditer(ln))
+        for m in ms:
+            k=len(bodies); body=[]
+            while i<len(lines) and lines[i].strip()!=m.group(2): body.append(lines[i]); i+=1
+            i+=1
+            bodies.append("\n".join(body)); ln=ln.replace(m.group(0),"\x02%d\x02"%k,1)
+        out.append(ln)
+    return "\n".join(out),bodies
+
+def segments(text):
+    # split on ; && || newline outside quotes; returns [(raw, masked, quoted_list)]
+    segs=[]; raw=[]; masked=[]; quoted=[]; q=None; i=0; n=len(text)
+    def flush():
+        segs.append(("".join(raw),"".join(masked),list(quoted))); raw[:]=[]; masked[:]=[]; quoted[:]=[]
+    while i<n:
+        c=text[i]
+        if q:
+            j=i
+            while j<n:
+                if text[j]=="\\" and q=='"' and j+1<n: j+=2; continue
+                if text[j]==q: break
+                j+=1
+            body=text[i:j]; raw.append(body); masked.append("\x01%d\x01"%len(quoted)); quoted.append(body)
+            if j<n: raw.append(q); masked.append(q)
+            q=None; i=j+1; continue
+        if c in "\"'": q=c; raw.append(c); masked.append(c); i+=1; continue
+        if c=="\\" and i+1<n: raw.append(text[i:i+2]); masked.append(text[i:i+2]); i+=2; continue
+        if text.startswith("&&",i) or text.startswith("||",i): flush(); i+=2; continue
+        if c==";" or c=="\n": flush(); i+=1; continue
+        raw.append(c); masked.append(c); i+=1
+    flush(); return segs
+
+PATH_RE=r"(?:[\"']\x01(\d+)\x01[\"']|([^\s\"'|;&<>()]+))"
+RED=re.compile(r"(?:(?<![<\w])>>?|\btee\s+(?:-a\s+)?)\s*"+PATH_RE)
+PYW=re.compile(r"open\(\s*(?:['\"]([^'\"]+)['\"]|([A-Za-z_]\w*))\s*,\s*['\"][wa]|Path\(\s*(?:['\"]([^'\"]+)['\"]|([A-Za-z_]\w*))\s*\)\.write_(?:text|bytes)|\b([A-Za-z_]\w*)\.write_(?:text|bytes)\(")
+PYSTR=re.compile(r"\"\"\"(?:.|\n)*?\"\"\"|'''(?:.|\n)*?'''|\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n])*'")
+
+def bash_targets(cmd):
+    text,bodies=lift_heredocs(cmd); found=[]
+    for raw,masked,quoted in segments(text):
+        hb="\n".join(bodies[int(k)] for k in re.findall(r"\x02(\d+)\x02",masked))
+        cands=[]
+        for m in RED.finditer(masked):
+            p=quoted[int(m.group(1))] if m.group(1) else m.group(2)
+            if is_target(p): cands.append((p,raw+"\n"+hb))
+        if re.search(r"\bsed\s+(?:-\S+\s+)*-i",masked):
+            for a in masked.split():
+                if is_target(a): cands.append((a,raw+"\n"+hb)); break
+        if hb and re.search(r"\bpython[0-9.]*\b",masked):
+            assigns=dict(re.findall(r"^\s*([A-Za-z_]\w*)\s*=\s*(?:Path\(\s*)?['\"]([^'\"\n]+)['\"]\s*\)?\s*$",hb,re.M))
+            lits=" ".join(PYSTR.findall(hb))
+            for m in PYW.finditer(hb):
+                p=m.group(1) or m.group(3) or assigns.get(m.group(2) or m.group(4) or m.group(5) or "","")
+                if is_target(p): cands.append((p,lits))
+        for p,ttext in cands: found.append((p,"1" if tok(ttext) else "0"))
+    for p,f in found:
+        if f=="1": return p,f
+    return (found[0] if found else ("","0"))
+
 fp=""; flag="0"
 if tn in ("Edit","Write"):
     fp=ti.get("file_path","") or ""
     old=ti.get("old_string","") or ""; new=(ti.get("new_string","") or ti.get("content","") or "")
-    touches=bool(re.search(TOK, old+"\n"+new)); real=strip(old).strip()!=strip(new).strip()
+    touches=tok(old+"\n"+new); real=strip(old).strip()!=strip(new).strip()
     flag="1" if (touches and real) else "0"
 elif tn=="Bash":
-    cmd=(ti.get("command","") or "").replace("\n"," ")
-    m=re.search(r"(?:sed\s+-i\S*(?:\s+(?:\x27[^\x27]*\x27|\"[^\"]*\"|\S+)){1,2}\s+|>>?\s*|tee\s+(?:-a\s+)?)[\"\x27]?([^\s\"\x27|;&)<>]+\.sh)\b", cmd)
-    if m:
-        fp=m.group(1); flag="1" if re.search(TOK, cmd) else "0"   # raw cmd, NOT strip(): in a sed -i the token lives INSIDE the quoted expression by construction (Air 2026-09-03: a1 silent, known-positive only fired because its token sat outside the quotes)
+    fp,flag=bash_targets(ti.get("command","") or "")
 print(fp, flag)
-' 2>/dev/null) || exit 0
+PY
+}
+PYCODE=$(_fh_ph_pycode)
+read -r FP FLAG < <(printf '%s' "$RAW" | python3 -c "$PYCODE" 2>/dev/null) || exit 0
 [ -n "${FP:-}" ] || exit 0
 case "$FP" in *scripts/*.sh|*templates/*.sh|scripts/*.sh|templates/*.sh|*/.git-hooks/*|.git-hooks/*) ;; *) exit 0 ;; esac   # .git-hooks/* has no .sh suffix — the gate files themselves were outside the filter (arm C wt2 2026-09-03: pre-commit edit, no FIRE)
 [ "${FLAG:-0}" = 1 ] || exit 0
