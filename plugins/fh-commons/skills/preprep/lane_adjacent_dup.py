@@ -47,7 +47,10 @@ def scan(cfg, texts, surf_meta, mod):
     findings, notes = [], []
     for sid in sorted(spoken):
         text = texts[sid][0]
-        us = [u for u in mod.units(text) if not u[3]]      # 은퇴 절 제외
+        # 🟥 2026-09-04 — units() 가 pattern 을 받는다. 이 표면의 unit_pattern 선언을 넘긴다
+        #    (interslide_deps 신호 §3-1 과 같은 수리 — 두 곳이 각자 관대함을 갖지 않게 한다).
+        _pat = surf_meta.get(sid, {}).get('unit_pattern')
+        us = [u for u in mod.units(text, pattern=_pat) if not u[3]]      # 은퇴 절 제외
         if len(us) < 2:
             notes.append(f'L10 adjacent-dup : {sid} — 절 {len(us)}개, 인접 쌍 없음 (0 아님)')
             continue

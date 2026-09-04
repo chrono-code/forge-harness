@@ -22,18 +22,46 @@ usage: interslide_deps.py <draft.md> <builder.py> [--all]
 import sys, re, ast, os
 
 # 어휘는 **실물에서 뽑았다**(pre-자립화 S9 원문). 지어내지 않았다.
-SCREEN_REUSE = ('그대로', '같은 화면', '이어서', '화면 유지', '왼쪽 그대로', '오른쪽 그대로')
+# 🟥 2026-09-04 수리(신호 §4) — 바깥 자리에 있던 **맨몸 「그대로」를 뺐다**. 121장 실물 코퍼스에서
+#    「경고가 떠도 그대로 승인한다」·「제출본 그대로 머지」처럼 **평범한 부사**로 훨씬 더 자주 쓰여,
+#    L8 UNRESOLVED 9건 중 다수가 이 낱말 하나가 만들었다(손검증 → 전부 오탐). 맨몸을 빼고
+#    **화면에 결박된 표기만** 남긴다 — 「그대로」 앞에 화면을 가리키는 말이 없으면 화면 재사용이
+#    아니라 그냥 부사다. [[feedback_regex_bind_not_add.md]] 와 같은 원리(결박, 어휘 추가가 아니라).
+SCREEN_REUSE = ('같은 화면', '이어서', '화면 유지',
+                '화면 그대로', '이 화면 그대로', '왼쪽 그대로', '오른쪽 그대로')
 DIRECTION    = ('오른쪽', '왼쪽', '위에서', '아래', '옆')
 VISUAL_VERB  = ('보셨', '보신', '보시는', '보시면', '보였')
 RECALL       = ('방금', '아까', '조금 전', '앞서', '앞에서', '지금까지')
 SOFT_ONLY    = ('말씀드린', '말씀드렸', '설명드린', '그 세', '앞의')
 
-def units(src):
-    """(sid, 헤딩, 본문) 순서대로. 🚫 은퇴 표기 절은 «죽은 것»으로 표시해 같이 낸다."""
+_DEFAULT_UNIT_PATTERN = r'^### (S[0-9]+(?:-[a-z])?)\s*·'
+
+
+def units(src, pattern=None):
+    """(sid, 헤딩, 본문) 순서대로. 🚫 은퇴 표기 절은 «죽은 것»으로 표시해 같이 낸다.
+
+    🟥 2026-09-04 수리(신호 §3-1) — 초판은 절 헤딩 정규식을 **여기 하드코딩**했다. 같은
+       `surfaces.yaml unit_pattern` 을 `preprep.py manuscript_ids()` 는 이미 읽는데 이 함수는
+       안 읽어서, «절을 무엇으로 보나»에 대한 관대함이 **두 곳에서 따로 갈렸다**
+       ([[feedback_divergent_leniency_duplicate_normalizers]]). `pattern` 인자로 받는다 —
+       미지정이면 이 코퍼스의 기존 패턴으로 하위호환.
+    🟥 정규식을 다시 짓지 않는다 — `manuscript_ids()`(preprep.py)와 **같은 head/slice 기법**
+       (헤딩 위치를 전부 찾고 다음 헤딩 시작 전까지를 본문으로 슬라이스)을 쓴다. lookahead 로
+       "다음 헤딩" 을 다시 정의하면 그 자체가 세 번째 갈래가 된다.
+    `pattern`: 절 헤딩을 여는 정규식, **캡처 그룹 하나**(절 id)만 가진다
+       (예: r'^###\\s+(S[0-9]+(?:-[a-z])?)\\s*·').
+    """
+    pat = pattern or _DEFAULT_UNIT_PATTERN
     out = []
-    for m in re.finditer(r'^### (S[0-9]+(?:-[a-z])?)\s*·([^\n]*)\n(.*?)(?=^### |\Z)', src, re.M | re.S):
-        retired = any(t in m.group(2) for t in ('🚫', '제거됨', '폐기'))
-        out.append((m.group(1), m.group(2).strip(), m.group(3), retired))
+    heads = list(re.finditer(pat + r'([^\n]*)', src, re.M))
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(src)
+        head_line = m.group(2)
+        body = src[m.end():end]
+        if body.startswith('\n'):
+            body = body[1:]         # 헤딩 줄 자신의 개행 — 옛 구현은 본문에 안 담았다(동치 유지)
+        retired = any(t in head_line for t in ('🚫', '제거됨', '폐기'))
+        out.append((m.group(1), head_line.strip(), body, retired))
     return out
 
 # 🟥 런 #14 에서 이미 한 번 겪은 결함이 여기서 재현됐다: 원고의 **주석 블록**도 `>` 라서
@@ -107,7 +135,12 @@ def referents(line):
         t = re.sub(DEICTIC_PREFIX, '', m.group(1).strip(' .,·「」«»')).strip()
         # 지시어만 벗기면 남는 말이 너무 짧거나 흔하면 대상이 못 된다
         if len(t) >= 2: cands.append(t)
-    for m in re.finditer(r'[그저]\s*([가-힣A-Za-z][가-힣A-Za-z0-9 ]{1,12})', line):
+    # 🟥 2026-09-04 수리(신호 §4) — 초판은 `[그저]` 로 **「저」도 지시어**로 잡았다. 한국어
+    #    존댓말 1인칭 「저희」가 「저 + 희…」로 물려 대상어가 «희 하네스의 활용 구조입» 같은
+    #    파편이 됐다(실측: S25). 「저」는 지시어(저것 · 저 사람)와 1인칭 겸양어(저 · 저희)를
+    #    **같은 글자로 겸하는 다의어**라 이 정규식 자리에서 원리적으로 갈리지 않는다 — 지시어
+    #    쪽만 원하면 「그」만 남기고 「저」는 뺀다(놓치는 지시어보다 존댓말 오탐이 더 흔하다).
+    for m in re.finditer(r'그\s*([가-힣A-Za-z][가-힣A-Za-z0-9 ]{1,12})', line):
         cands.append(m.group(1).strip())
     return [c for c in dict.fromkeys(cands) if c not in COMMON and len(c) >= 2]
 
@@ -141,15 +174,16 @@ def wired_ids(builder):
                 return {v[0] for v in ast.literal_eval(src[start:i+1]).values() if v[0]}
     raise RuntimeError('NOTE_MAP 괄호 불균형')
 
-def analyze(draft, builder, show_all=False):
+def analyze(draft, builder, show_all=False, pattern=None):
     """계산부 — 출력하지 않는다. 레인 배선이 이걸 부른다(main 은 이걸 «찍기만» 한다).
 
     🟥 로직을 복제하지 않으려고 뺀 것이다. CLI 와 레인이 각자 계산하면
     관대함이 갈려서 한쪽만 통과하는 입력이 조용히 생긴다.
+    `pattern`: 원고 표면의 `unit_pattern` 선언(있으면) — units() 로 그대로 전달한다.
     반환: dict(error, n_units, n_retired, n_wired, edges, broken, unresolved)
     """
     try:
-        us = units(open(draft, encoding='utf-8').read())
+        us = units(open(draft, encoding='utf-8').read(), pattern=pattern)
         wired = wired_ids(builder)
     except Exception as e:
         return {'error': f'{e}', 'edges': [], 'broken': [], 'unresolved': []}
@@ -188,7 +222,62 @@ def analyze(draft, builder, show_all=False):
             'n_wired': len(wired), 'edges': edges, 'broken': broken, 'unresolved': unresolved}
 
 
+def selftest():
+    """known-pair — 신호 §3-1·§4 수리가 실제로 짝을 가르는지. 안 가르면 장식이다."""
+    ok = True
+
+    # ── L8 §4-a: 「저」를 지시어 정규식에서 뺐다 — 존댓말 「저희」오탐 재발 방지 ──────────
+    cases_ref = [
+        ('known-positive(존댓말 「저희」 — 지시 대상이면 안 된다)',
+         '저희 하네스의 활용 구조입니다 . 보시는 것처럼 세 층입니다 .', False),
+        ('known-negative(진짜 지시어 「그」 — 여전히 잡혀야 한다)',
+         '그 하네스는 이렇게 동작합니다 .', True),
+    ]
+    for name, line, want_hit in cases_ref:
+        got = referents(line)
+        hit = bool(got) == want_hit
+        ok &= hit
+        print(f'  {"PASS" if hit else "FAIL"}  referents {name}: {got}')
+
+    # ── L8 §4-b: SCREEN_REUSE 맨몸 「그대로」를 뺐다 — 화면 결박 표기만 남는다 ──────────
+    cases_scr = [
+        ('known-positive(평범한 부사 — 화면 재사용 아니다)', '경고가 떠도 그대로 승인한다', False),
+        ('known-positive(다른 문맥의 부사)', '제출본 그대로 머지', False),
+        ('known-negative(화면 결박 — 여전히 잡혀야 한다)', '왼쪽 그대로', True),
+        ('known-negative(화면 결박 변형)', '이 화면 그대로 두면 됩니다', True),
+    ]
+    for name, line, want_hit in cases_scr:
+        got = any(c in line for c in SCREEN_REUSE)
+        hit = got == want_hit
+        ok &= hit
+        print(f'  {"PASS" if hit else "FAIL"}  SCREEN_REUSE {name}: hit={got}')
+
+    # ── §3-1: units() 가 pattern 인자를 받고, 미지정 시 하위호환 ──────────────────────
+    src_default = '### S1 · 제목\n🗣\n> 본문\n\n### S2 · 둘째\n🗣\n> 본문2\n'
+    default_ids = [u[0] for u in units(src_default)]
+    ok3 = default_ids == ['S1', 'S2']
+    ok &= ok3
+    print(f'  {"PASS" if ok3 else "FAIL"}  units() 기본 패턴 하위호환: {default_ids}')
+
+    src_custom = '### U1 · 제목\n🗣\n> 본문\n\n### U2 · 둘째\n🗣\n> 본문2\n'
+    custom_ids = [u[0] for u in units(src_custom, pattern=r'^###\s+(U[0-9]+)\s*·')]
+    ok4 = custom_ids == ['U1', 'U2']
+    ok &= ok4
+    print(f'  {"PASS" if ok4 else "FAIL"}  units() 커스텀 unit_pattern 수용: {custom_ids}')
+    # 기본 패턴으로는 U1/U2 코퍼스를 못 읽어야 한다 — «항상 통과»하는 계기가 아님을 확인
+    default_on_custom = units(src_custom)
+    ok5 = default_on_custom == []
+    ok &= ok5
+    print(f'  {"PASS" if ok5 else "FAIL"}  기본 패턴은 U-접두를 못 읽는다(계기가 진짜 pattern 을 씀): '
+          f'{len(default_on_custom)}건')
+
+    print('interslide_deps SELFTEST:', 'PASS' if ok else 'FAIL — 이 계기의 출력을 쓰지 마라')
+    return 0 if ok else 1
+
+
 def main():
+    if '--self-test' in sys.argv:
+        return selftest()
     if len(sys.argv) < 3: print(__doc__); return 2
     draft, builder = sys.argv[1], sys.argv[2]
     show_all = '--all' in sys.argv
