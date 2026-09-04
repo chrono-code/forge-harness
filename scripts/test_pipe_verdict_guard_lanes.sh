@@ -226,6 +226,16 @@ else
   printf '  ❌ %-52s rc=%s out=%s\n' "C4 ascii-codec env: JSON still delivered" "$c_rc" "$c_out"; fail=$((fail+1))
 fi
 
+# ── R3 — redirection-only statement (zsh NULLCMD=cat reads an open-pipe stdin). Measured 2026-09-04:
+# nine `git commit -q -F - <<'CEOF' … CEOF ⏎ 2>&1)` tasks in two sessions hung after the commit landed.
+# Fixtures are the measured shape verbatim (P), the same shape with the redirect moved onto the
+# command line (N1 — the one-token fix), and a one-word markdown blockquote INSIDE the heredoc body
+# (N2 — data, not a redirection; must stay CLEAN or the guard fires on every quoted commit message).
+expect "R3 measured shape: bare 2>&1 line closes \$( )" HIT   $'out=$(git commit -q -F - <<\'CEOF\'\nfix: x\n\nbody\nCEOF\n2>&1); rc=$?; echo "commit rc=$rc"'
+expect "R3 bare > file line after a heredoc"           HIT   $'cat <<\'EOF\'\nhello\nEOF\n> out.txt\necho done'
+expect "R3 fixed: 2>&1 on the command line"            CLEAN $'out=$(git commit -q -F - 2>&1 <<\'CEOF\'\nfix: x\n\nbody\nCEOF\n); rc=$?; echo "commit rc=$rc"'
+expect "R3 blockquote inside heredoc body is data"     CLEAN $'out=$(git commit -q -F - 2>&1 <<\'CEOF\'\nfix: x\n\n> 정본\n> see also)\nCEOF\n); rc=$?'
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "[pipe-verdict-guard] ✅ all $pass known pairs hold"; exit 0
