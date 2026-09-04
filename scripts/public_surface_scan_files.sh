@@ -124,7 +124,16 @@ fi
 # content-generating lifecycle is ever added.
 # ── Resolve the exact npm-published file set (fail-closed if unresolved OR partial) ──
 FILES=$(npm pack --dry-run --json 2>/dev/null \
-  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{JSON.parse(s)[0].files.forEach(f=>console.log(f.path))}catch(e){process.exit(3)}})' 2>/dev/null || true)
+  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{JSON.parse(s)[0].files.forEach(f=>console.log(f.path))}catch(e){process.exit(3)}})' 2>/dev/null)
+# 2026-09-04 (v3.0.0 first OIDC publish): on the CI runner, inside `npm publish`'s prepublishOnly,
+# `npm pack --dry-run --json` returned JSON WITHOUT files[] and this resolution came back EMPTY —
+# fail-closed (correct) but the publish could not proceed at all. Same fallback as the other two
+# tarball readers (package_coverage_check.sh · files_manifest_shipping_check.sh): rebuild the set
+# from the text listing (`npm notice <size> <path>`). Still fail-closed when THAT is empty too.
+if [ -z "$FILES" ]; then
+  FILES=$(npm pack --dry-run 2>&1 | sed -nE 's/^npm notice +[0-9.]+[kMG]?B +([^ ]+) *$/\1/p')
+  [ -n "$FILES" ] && echo "  ⚠️  npm pack --json carried no files[] — file set rebuilt from the text listing ($(printf '%s\n' "$FILES" | wc -l | tr -d ' ') paths)"
+fi
 if [ -z "$FILES" ]; then
   echo "  ❌ could not resolve the npm-published file set (npm pack --dry-run failed)."
   [ "${PUBLIC_SURFACE_OK:-0}" = "1" ] && { echo "  ⚠️  proceeding by PUBLIC_SURFACE_OK=1"; exit 0; }
