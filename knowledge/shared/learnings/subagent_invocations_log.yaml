@@ -3207,3 +3207,33 @@
   evidence: >-
     tracks/_meta/chamber_taxonomy_knownpair_RESULT_2026-09-04.md — 컨트롤 2/2 · 일치 3/5 · 불일치 2 = taxonomy 멀티사인 공백(운영자 ⑩) · 러너 CURATED 완주(런 #17). 236,101 tokens · 27 tool_uses.
   note: 러너 실행이 witness yaml 을 부작용으로 건드려 되돌렸다고 스스로 보고(트리 clean).
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28 (Fable 5.1 거버너, 밤 2)
+  task: 프런티어 답습 — Anthropic AI-Native SDLC playbook + 해설 영상 ↔ FH 대응표(가져올/앞선/동등/안가져올)
+  count: 1
+  context: 읽기 전용, 블로그 추출·자막 파일 + 책장 파일 목록을 줌. Envelope-Boundary 카운터웨이트 명시.
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/frontier_absorb_2026-09-04_ai-native-sdlc.md — 16행: 가져올 5·앞선 6·동등 4·안가져올 1, Top 3 → 전부 PR(#623·#624·#625). 224,306 tokens · 17 tool_uses.
+  note: «리뷰 초점=의도/위험」 vs FH 교리 충돌을 층 차이로 갈라냈다.
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28
+  task: "4축 마커 옵셔널 affected: 필드 — 훅 레그 + 레인 + 규칙 문단(워크트리 산출 보고형)"
+  count: 1
+  context: FH 자산 워크트리 커밋 금지 → 패치. 거버너가 본 체크아웃에 적용·재현.
+  outcome: accepted
+  evidence: >-
+    scratchpad/soul_affected.patch → #624 MERGED — 레인 17 · W5 배선 live=1/dead=0 · fail-before rc=1. 게이트가 4건 잡음(evidence 토큰·스토어명·조직 토큰·residency) 은 거버너 수리. 229,589 tokens · 55 tool_uses.
+  note: 에이전트 산출에 컴패니언 스토어명·조직 토큰이 섞였다 — 기밀 스캔이 잡았다(옳게).
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-28
+  task: probe_live_eval 러너(probes.md 선택 · 격리 클론 실행 · 4값 채점 · launchd 템플릿) 패치 + 라이브 1프로브
+  count: 1
+  context: 라이브 레포 sim 금지, 전수 금지(1~2 프로브만).
+  outcome: accepted
+  evidence: >-
+    scratchpad/live_eval.patch → #625 — 레인 20/20 · 선택 12/21 사유별 · G-GREET-01 PASS/컨트롤 무발화. 270,960 tokens · 39 tool_uses.
+  note: files[] 미추가를 «운영자 결정」으로 남겼으나 package-coverage 게이트가 요구해 거버너가 추가.
