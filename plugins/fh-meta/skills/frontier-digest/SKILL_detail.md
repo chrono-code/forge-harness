@@ -21,9 +21,21 @@ load: on-demand
 > through WebFetch on the same URLs. If an environment *does* allow the curl form, it is equivalent —
 > the transport is not the contract, the endpoints and criteria are.
 >
-> **arXiv HTTP 429 is a separate item, not part of this revision**: it is a remote rate limit
-> (N=11 consecutive, transport-independent). On 429: back off once, then fall back to per-item
-> `https://arxiv.org/abs/{id}` reads; record `FAILED (429)`, never 0 items.
+> **arXiv HTTP 429 — fallback is a TRANSPORT change, never a channel change (revised 2026-09-04).**
+> The export API rate-limits this runner (N=11 consecutive by 08-10; 3 consecutive days 09-02·03·04
+> = past the `N≥3` mechanization bar). The 08-10 prescription («fall back to per-item `abs/{id}`
+> reads») was unrunnable in practice — a 429 on the *query* leaves you with no IDs to read — so runs
+> fell back to **WebSearch**, and the 09-04 run measured what that does: 5/5 papers it returned were
+> REPEATs. Search sorts by *canonicity*, the export API by *submission date* — a search fallback is
+> a **recall channel, not a discovery channel**, and swapping it in silently converts «unrun» into
+> «nothing new» (`not found ≠ 0`). Order on 429:
+> 1. back off once (≥30s), retry the same query;
+> 2. still 429 → WebFetch the **date-sorted HTML listing** `https://arxiv.org/list/cs.SE/recent`
+>    (and `https://arxiv.org/list/cs.AI/recent` if the first is empty of agent/harness items), keep
+>    items whose title/abstract match the three query phrases, cap 6 — same sort axis as the API;
+> 3. only if that also fails → HN-only, and the progress line says `arxiv FAILED (429)`, never `0 items`.
+> 🟥 WebSearch is **not** on this ladder. If a run used it anyway, the arxiv leg is reported as
+> `RECALL-ONLY (WebSearch)` and its items are excluded from the NEW/REPEAT count.
 
 ### HackerNews (Algolia API)
 

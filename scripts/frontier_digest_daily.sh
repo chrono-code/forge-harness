@@ -3,7 +3,8 @@
 # Invoked by launchd (install: see scripts/com.forge-harness.frontier-digest.plist)
 #
 # Required: claude CLI at ~/.local/bin/claude
-# Tool permissions: pre-approved in .claude/settings.json (no interactive prompts needed)
+# Tool permissions: read/fetch pre-approved in .claude/settings.json (gitignored, this node); the Skill
+#   allow rule the run depends on is passed as --allowedTools below so it does not rely on that file
 
 # Auto-detect repo root from this script's location (scripts/ → repo root) and the claude CLI.
 # 🟥 **엔진 루트와 대상 루트는 다르다** (R6, 2026-08-18 — 첫 실사용 발견). 위성은 이 스크립트를
@@ -504,7 +505,14 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
         publish_gate; _pg=$?; [ "$_pg" -eq 0 ] && landing_witness; exit "$_pg"
     fi
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attempt ${ATTEMPT}/${MAX_ATTEMPTS}" >> "$LOG_FILE"
+    # 🟥 `Skill(...)` needs an explicit allow rule in headless -p — without one the Skill tool is
+    #    `user-rejected` with no human to answer, the tool_result reads `Execute skill: <name>` with
+    #    is_error=true, and the model silently completes the run by hand-reading SKILL.md (measured
+    #    2026-09-04: 33/35 fh-meta skills denied; the 2 that passed were exactly the 2 with a
+    #    Skill(...) rule in the gitignored settings.local.json). The gitignored settings file is not
+    #    a skeleton — this flag is, so the runner carries it itself.
     "$CLAUDE_BIN" -p --permission-mode acceptEdits \
+        --allowedTools "Skill(fh-meta:frontier-digest)" \
         ${FD_MODEL:+--model "$FD_MODEL"} \
         ${PROFILE_SETTINGS_JSON:+--settings "$PROFILE_SETTINGS_JSON"} \
         "$(_build_prompt)" \
