@@ -285,6 +285,11 @@
     "scripts/test_mapped_tracks_lanes.sh",
     "!**/__pycache__",
     "!**/__pycache__/**",
-    "!**/*.pyc"
+    "!**/*.pyc",
+    "scripts/probe_live_eval.sh",
+    "scripts/probe_live_eval_lib.py",
+    "scripts/test_probe_live_eval_lanes.sh",
+    ".claude/regression/probes_live.yaml",
+    "scripts/com.forge-harness.live-eval.plist"
   ]
 }

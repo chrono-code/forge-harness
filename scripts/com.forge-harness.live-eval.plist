@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Replace every /path/to/... below with your own absolute paths before installing.
+         Follows the same template shape as scripts/com.forge-harness.daily-report.plist —
+         see that file's own comments for the general launchd-on-macOS caveats (sleep/wake
+         does not guarantee the exact minute, StandardOutPath dirs must pre-exist). -->
+    <key>Label</key>
+    <string>com.forge-harness.live-eval</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/path/to/forge-harness/scripts/probe_live_eval.sh</string>
+        <!-- 🟥 COST + API-KEY DECISION IS THE OPERATOR'S — this template ships with NO default
+             --subset/--ids limiter, i.e. installing it as-is runs the FULL selected set (12
+             probes x 2 calls = 24 live `claude -p` invocations) every night. Read
+             scripts/probe_live_eval.sh's own header (§COST) before installing, and add a
+             --subset N or --ids P1,P2 argument here if a nightly full-set run is not what you
+             want. This plist is a template, not a recommendation of scope. -->
+    </array>
+
+    <!-- 매일 02:30 (야간, 다른 cron 과 안 겹치는 시간대 — frontier-digest=09:00, daily-report=07:30
+         과 분리). 잠자는 중이면 launchd 가 깨어난 뒤 한 번 돌린다(정각 보장 아님). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>2</integer>
+        <key>Minute</key><integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/path/to/forge-harness/tracks/_meta/logs/live_eval_out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/path/to/forge-harness/tracks/_meta/logs/live_eval_err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <!-- must include wherever `claude` and `python3` resolve for this user -->
+        <string>/path/to/home/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/path/to/home</string>
+    </dict>
+</dict>
+</plist>
+
+<!--
+INSTALL (manual — no launchd_wiring_check.sh render- helper exists for this plist yet; unlike
+com.forge-harness.daily-report.plist, this one is not wired into that renderer, so every
+/path/to/... above must be hand-edited before `launchctl load`):
+
+  1. cp scripts/com.forge-harness.live-eval.plist ~/Library/LaunchAgents/com.forge-harness.live-eval.plist
+  2. Edit every /path/to/... above to this checkout's absolute path and your $HOME.
+  3. mkdir -p tracks/_meta/logs   (StandardOutPath/StandardErrorPath dirs must pre-exist)
+  4. launchctl load ~/Library/LaunchAgents/com.forge-harness.live-eval.plist
+  5. Verify: launchctl list | grep com.forge-harness.live-eval
+
+UNINSTALL:
+  launchctl unload ~/Library/LaunchAgents/com.forge-harness.live-eval.plist
+  rm ~/Library/LaunchAgents/com.forge-harness.live-eval.plist
+
+The nightly run appends its record to tracks/_meta/live_eval_<date>.md (created fresh each run —
+not append-only; a stale prior day's file is left alone, per date, exactly like
+tracks/_meta/daily_report_<date>.md and tracks/_meta/frontier_digest_<date>.md).
+-->
