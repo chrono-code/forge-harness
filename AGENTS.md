@@ -181,6 +181,12 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    the answer is true. Markers dated before 2026-09-01 are **not** retroactively affected
    (same grace pattern as `SOUL_PRESENT_GRACE_DATE`).
    `defeater: 없음` / `none` / `n/a` is **legal** — a declared absence is a value, not silence.
+   **`affected:` — OPTIONAL since 2026-09-04 (absent = pass, gradual adoption like `tenets:`).** One
+   line naming what this change touches (people · harnesses · surfaces) plus any open question
+   (`… · 열린 질문 = …`). When present, the hook (`validate_affected_leg`) blocks only a bare placeholder
+   (`없음` / `TBD` / `-` / `n/a`), a duplicate line, or a near-miss key (`affects:`, `affected :`) —
+   it never judges whether the content is true. Origin: the AI-Native SDLC playbook's intent.md
+   «Affected users and systems / Open questions» sections, absorbed as one field (PR #624).
    🟥 A near-miss key (`defeaters:`, `반증:`, `defeater :`) is **blocked even when a correct
    `defeater:` line also exists** — the author believes they wrote it and the gate cannot read it,
    which is the quietest failure. Two `defeater:` lines are also blocked (readers take the first,
