@@ -157,6 +157,22 @@ case "$_out" in
   *)             echo "❌ L9b — 원장 부재가 무음으로 넘어갔다"; FAIL=$((FAIL+1)) ;;
 esac
 
+# ── L10c/L10d 2026-08-17 교리 어휘(CURATED · NOT-APPLICABLE)를 러너가 받는다 ───────────
+# 2026-09-04 실측: 러너 정규식이 옛 어휘(EMIT|PARTIAL-EMIT|KILL)만 받아 «VERDICT: CURATED» 가
+# step 5 에서 차단됐다(런 #16 이 KILL+동봉으로 우회). 수리 전엔 이 두 레인이 빨갛다.
+for _v in CURATED NOT-APPLICABLE; do
+  _g="g10$(printf '%s' "$_v" | tr -d '-' | tr 'A-Z' 'a-z')"
+  mkdir -p "$(_ws "$_g")"; [ -f "$T/tracks/_chamber/INDEX.md" ] || printf "# Chamber Run Ledger (G4)\n\n## Runs\n\n| # | date | slug | verdict | carry | ws |\n|---|---|---|---|---|---|\n" > "$T/tracks/_chamber/INDEX.md"
+  _mk_intent "$_g"; _mk_budget "$_g"; _mk_sim3 "$_g"; _mk_verdict "$_g" "$_v"; _mk_actual "$_g"
+  rc=0; _run "$_g" >/dev/null 2>&1 || rc=$?
+  _t "L10c PASS — VERDICT: $_v 로 완주한다(교리 어휘)" 0 "$rc"
+  if grep -q "$_v" "$T/tracks/_chamber/INDEX.md" 2>/dev/null; then
+    _t "L10d PASS ★ 원장에 $_v 로 기록" 0 0
+  else
+    _t "L10d PASS ★ 원장에 $_v 로 기록" 0 1
+  fi
+done
+
 # ── L10 PARTIAL-EMIT 이 EMIT 로 오인되지 않는다 ──────────────────────────────
 # 원장을 만들어 둔다 — 위 L9b 가 "없을 때" 를 쟀으니 여기서는 "있을 때" 를 잰다.
 printf '# Chamber Run Ledger (test)\n\n## Runs\n\n| Run | Date | Candidate | Verdict | Carry | Workspace |\n|---|---|---|---|---|---|\n' \
