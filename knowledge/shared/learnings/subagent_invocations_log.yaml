@@ -3059,3 +3059,24 @@
     n=1 명기·backtracking 확인·MCP 표면), Open 3. 인용 URL 전부 회신에 실림.
   note: >-
     델타 1~3 은 비저자 첫 완주 세션 결과와 합쳐 qasp-dev 수리 임무로 간다. «없음(강점)» 4행은 재발명 차단 근거로 인용.
+- date: 2026-09-04
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-27 (Fable 5.1 거버너)
+  task: 6축 검증 전수조사 — 정본 정의·마커 코퍼스 분포(6축 169/360)·필드 분포·기계화 현황·최근 증거·비용, 읽기 전용
+  count: 1
+  context: 운영자 «6축검증기법 개선개발 가능 전수조사 + 불필요 지점 판단». 판정은 거버너.
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/six_axis_review_2026-09-04.md §실측 요약 — ⓔ 만 조건부 차단, tier3 0/184, peer-review 6/102, DEGRADED_PANEL_UNUSED 52%,
+    기호 충돌 발견. 267,725 tokens · 26 tool_uses.
+  note: 코퍼스 grep 의 «표기≠판별자» 함정을 조사 자신이 한 번 더 실증(경계일 마커 1건).
+- date: 2026-09-04
+  agent: fh-meta:expert (sonnet)
+  invoker: forge-harness-27 (Fable 5.1 거버너)
+  task: 3단 공정·6축 ↔ 2025-26 프런티어 검증 방법론 대응표(사전등록·mutation/revert·cross-model·judge 보정·샌드박스·replay·red-team·shadow/canary)
+  count: 1
+  context: 운영자 «프론티어급으로 단련». 읽기 전용, 검색 16.
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/frontier_verification_map_2026-09-04.md — 델타 5, FH 앞섬 2, 외부 부재 3(정직 표기). 170,191 tokens · 16 tool_uses.
+  note: 두 조사가 합쳐져 six_axis_review 판정안(강화 4·축소 2)이 됐다.

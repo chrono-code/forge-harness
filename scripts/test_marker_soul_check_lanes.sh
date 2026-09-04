@@ -166,6 +166,30 @@ planep P6-real-corpus-negative BLOCK "$GRACE" "$(cat "$REPO_ROOT/tracks/_meta/.a
 planep P7-real-corpus-positive PASS  "$GRACE" "$(cat "$REPO_ROOT/tracks/_meta/.axes_23_passed_fix_witness-two-commit-discipline_2026-08-17.marker" 2>/dev/null || echo '①영혼: 성공 정의 = 하나 둘 셋 넷 다섯 여섯')"
 
 echo
+echo "== ①영혼 2칸(성공정의/절대안함) advisory lanes (2026-09-04, six_axis_review 판정안 4) =="
+# advisory only — 두 케이스 다 rc=0(PASS). 판별은 rc 가 아니라 stdout 의 ⚠️ 문자열이다
+# (known-pair: 한 칸만 있는 마커는 경고가 «찍혀야» 하고, 두 칸 다 있는 마커는 «안 찍혀야» 한다).
+planep_adv() { # $1=id $2=expect(WARN|QUIET) $3=filename-date $4=body
+  local id="$1" expect="$2" d="$3" body="$4" out f
+  f="$T/.axes_23_passed_fix_x_${d}.marker"
+  printf '%s\n' "$body" > "$f"
+  out=$( bash -c 'set -uo pipefail; SOUL_PRESENT_GRACE_DATE="$3"; . "$1"; validate_soul_present_leg "$2"' \
+         _ "$T/fnp.sh" "$f" "$GRACE" 2>&1 )
+  local got=QUIET; printf '%s' "$out" | grep -q '①영혼 2칸 미달' && got=WARN
+  if [ "$got" = "$expect" ]; then printf '  ✅ %-40s %s\n' "$id" "$got"
+  else printf '  ❌ %-40s expected %s, got %s\n     %s\n' "$id" "$expect" "$got" "$(printf '%s' "$out"|head -2)"; FAIL=1; fi
+}
+# known-positive — 「성공 정의」만 있고 「절대 안 함」이 없다 → advisory 가 찍혀야 한다, 그래도 PASS(rc=0)
+planep_adv Q1-one-slot-only-warns  WARN  "$GRACE" '①영혼: 성공 정의 = 소비자 경로에서 완주해 rc=0 을 낸다
+axes-run: ⓐ=codex'
+# known-negative — 두 칸 다 있다($SOUL 픽스처) → advisory 가 안 찍혀야 한다
+planep_adv Q2-both-slots-quiet     QUIET "$GRACE" "$SOUL
+axes-run: ⓐ=codex"
+# 둘 다 rc=0(PASS) 이어야 한다 — advisory 는 커밋을 막지 않는다(형식만 다르고 planep 로도 확인)
+planep Q1b-one-slot-still-passes PASS "$GRACE" '①영혼: 성공 정의 = 소비자 경로에서 완주해 rc=0 을 낸다
+axes-run: ⓐ=codex'
+
+echo
 echo "== cross-family findings — regression lanes (codex/gpt-5.5, diff 축, 2026-08-21) =="
 # F1 self-referential FP: codex's own alignment fix flipped G8 to PASS because the
 # `soul-check:` line contains 「성공정의」 and matched as its own evidence.

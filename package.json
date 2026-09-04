@@ -234,6 +234,8 @@
     "scripts/stale_clone_guard.sh",
     "scripts/proposal_hook.sh",
     "scripts/test_proposal_hook_lanes.sh",
+    "scripts/test_revert_probe_lanes.sh",
+    "scripts/revert_probe.sh",
     "scripts/test_preprep_drift_anchor_lanes.sh",
     "scripts/test_precommit_pointer_index_lanes.sh",
     "templates/settings.PreToolUse.snippet.json",

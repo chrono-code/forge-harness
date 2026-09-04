@@ -132,6 +132,12 @@ Record sim results in the Axes 2–3 marker + sub-agent invocation log.
 
 ### Marker axis fields — `axes-run:` · `controls:` · `standpoint:` · `soul:` · `soul-check:` · `defeater:` · `tenets:`
 
+🟥 **기호 규칙 (2026-09-04, six_axis_review 판정안 8) — ⓐ~ⓕ 는 축 전용 기호다, 열거로 재사용하지
+마라.** 산문에서 목록을 셀 때는 `①②③` 또는 `(a)(b)(c)` 를 쓴다. 오늘(2026-09-04) 같은 이틀치
+로그에서 ⓐ~ⓓ 가 축이 아닌 **열거 기호**로 재사용된 사례가 실측됐다(작성자 자신의 기록 포함) —
+그 문서를 grep 감사하는 쪽이 «⑤ⓑ⓶» 식 문자를 축 참조로 오독한다. 이 줄은 새 검사를 요구하지
+않는다 — 재발 시 로그 린트로 기계화한다(`§FH Improvement Signal Recording Protocol`).
+
 > 🟥 **이 제목의 뒤 넷은 2026-08-30 에 추가됐고, 그 이유가 이 절이 이미 적어둔 결함이다.**
 > `soul:` 은 **2026-08-21 부터 커밋을 하드 차단**해왔는데 **어느 규칙 파일에도 적혀 있지 않았다**
 > 🟥 **정정 (같은 날, cross-family codex #1 지목 — 자력 적발 0)**: 이 줄의 초판은
@@ -206,6 +212,17 @@ protected the existing markers was the path construction, not the constant** —
   value in both places would be a double record. `ⓑ=→standpoint` requires a non-empty `standpoint:`
   line to exist (a pointer at nothing is not a record). Enforced on any ⓑ value *referencing*
   standpoint, arrow or not — requiring the arrow was fail-open and was measured as such.
+- **ⓔ첫실사용 accepts a `shadow(N=<세션수>, F=<발화수>)` value (2026-09-04, exposure-ladder
+  extension — canon: `fh_three_layer_canon.md §1-a-2` ⓔ subsection).** For salience-dependent
+  assets (rules · onboarding prose · a hook's own trigger phrasing), ⓔ may read as a **ladder**
+  — wire → N-session shadow observation (count only, no verdict) → promote — instead of a single
+  live-fire event. `shadow(N=3, F=2)` records "observed across 3 sessions, fired in 2" and is a
+  legitimate ⓔ value, not a degrade. 🟥 **The hook is UNCHANGED by this** —
+  `validate_first_use_leg` (above) blocks on exactly one condition: a **new instrument file**
+  added this commit with `ⓔ=` empty/`none`/no grounds on the same line. It does not parse or
+  validate the *shape* of a non-empty ⓔ value — `shadow(...)`, a free-prose sentence, and the
+  older "실물 대상 한 건" form all satisfy it identically. So this bullet is documentation only;
+  no lane changed.
 - **Multiple `axes-run:` lines block.** Only the first is read, so a second line is not *rejected*,
   it is **invisible** — anything written there bypasses the check entirely.
 - **Grace dates are deliberate**: `AXES_RUN_GRACE_DATE=2026-08-10`, `SIX_AXES_GRACE_DATE=2026-08-17`,
@@ -245,6 +262,17 @@ So: **the enum is closed and enforced; the execution grounds for `tier2`+ are AD
 still record `tier2` without naming a command and pass with a warning — that is the real remaining
 gap, and it is narrower than "validated by nothing" and wider than "grounds are required". Neither
 earlier sentence was accurate, and the accurate one required varying one variable at a time.
+
+🟥 **`tier3` is UNREACHED, not disproven (2026-09-04, six_axis_review corpus scan — n=169 markers
+carrying a six-axis `axes-run`, 184 total `standpoint:`-bearing markers scanned).** Zero markers
+in that corpus record `tier3`. This is expected by the enum's own definition, not a defect: `tier3`
+requires *a different human operator of the target harness* to have run the change — this repo has
+one operator, so `tier3` cannot be reached from inside it, structurally, until a genuinely separate
+operator of a target harness runs something and reports back. Keep the enum member — deleting it
+would foreclose the day that operator exists, which is exactly the "unreachable Done-When trains
+evasion" failure this repo already names elsewhere (`[[feedback_unreachable_done_when_trains_evasion]]`)
+run in reverse (the harm there is deleting the *counted thing*; here it would be deleting the *value*).
+Read `tier3` on any marker written today as **unreached**, not zero-evidence-against.
 🟥 **This same false claim stood in ~~three~~ ~~FIVE~~ → EIGHT passages across SIX files, and the
 count itself has now been wrong three times — corrected 2026-08-23.** The line first said three, was
 corrected to FIVE (`CLAUDE.md` twice, here, `AGENTS.md`, `field_verdict_crossfamily_gate.md`), and
@@ -303,6 +331,16 @@ say which terms you searched.**
 
 🟥 **그리고 ②는 정의상 «남의 레포 스코프»다.** 게이트 스코프가 자기 자신으로 묶여 있으면 이 축은
 **구조적으로 기록될 수 없다** — 정본 §170 의 «ⓓ 자기 스코프가 가장 나빴다» 실측과 같은 자리다.
+
+🟥 **정정(2026-09-04, six_axis_review 판정안 6 — append-only, ①②표·값·아래 예시는 안 지운다).**
+전수 실측(마커 169개)이 ②(`peer-review`)를 코퍼스 **6/102** 로 세었다. 이 정정은 그 6건을
+지우지 않고 **②의 정의상 소속을 옮긴다**: 피어 하네스 세션이 리뷰를 낸다는 것은 «패널에 다른
+계열의 멤버가 하나 더 붙는다»와 같은 모양이라, **②는 ⓐ 계열 축의 패널 분류(`crossfamily:
+panel(<families>)`) 안으로 접힌다** — `fh_three_layer_canon.md §1-a-2` 의 ⓓ 정의 절 참조.
+**ⓓ 는 이제 ①선행자산 확인만 자기 것으로 남긴다.** `peer-review` 값과 위 표는 삭제하지 않는다
+(기록·enum 멤버 보존) — 좁아지는 것은 «이 값이 어느 축 소속인가»라는 정의 문장뿐이다.
+**하류 훅 무변경**: `validate_thirdparty_leg` 은 `thirdparty:` 필드의 존재만 보고 ①/②를 구분해
+검사하지 않으므로, 이 정정은 아무 레인도 건드리지 않는다.
 
 ```
 thirdparty: peer-review(<하네스>/<페르소나> → <대상>, <무엇이 돌아왔나>)

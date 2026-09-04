@@ -1181,6 +1181,20 @@ else
   fail=1
 fi
 
+# ⓕ 되돌림 범용 프로브 (six_axis_review_2026-09-04 강화 #2) — 15+ 손짜기 되돌림 스크립트를
+# 대체하는 계기다. 자기 자신을 known-pair 로 검증한다(장식 앵커→1, 실물 앵커→0, 복원 보장) —
+# 앵커가 아니라 그 앵커를 검증하는 계기이므로 반드시 실행돼야 한다.
+if [ ! -f scripts/revert_probe.sh ]; then
+  _absent_subject_verdict "test_revert_probe_lanes.sh" "scripts/revert_probe.sh" || fail=1
+elif [ -f scripts/test_revert_probe_lanes.sh ]; then
+  if ! bash scripts/test_revert_probe_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_revert_probe_lanes.sh: revert_probe.sh present but its anchor is missing"
+  fail=1
+fi
+
 # 무효 워터마크 — 무효 회차의 «숫자 줄»이 자기 무효를 나르는가.
 # 🟥 회차 3 은 자기 게이트가 VOID 를 찍고도 그 숫자만 기록으로 넘어갔다(VOID 낱말은 0회).
 #    판정이 표 «밖»에 있었고 사람은 표를 복사하기 때문이다. 그 채널을 닫은 배선의 앵커다.

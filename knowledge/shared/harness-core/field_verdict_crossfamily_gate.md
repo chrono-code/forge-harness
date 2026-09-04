@@ -407,6 +407,16 @@ DEGRADED_NOT_RUN              did not — target was accessible, standpoint revi
 UNKNOWN                       did not look — applicability itself was never assessed
 ```
 
+🟥 **`tier3` measured UNREACHED, not disproven (2026-09-04, six_axis_review corpus scan — 184
+`standpoint:`-bearing markers, `tier3` count = 0).** By this enum's own Q3 definition `tier3`
+requires *a different human operator of the target harness* to have run the change — a
+single-operator repo cannot produce it from the inside, by construction, not by any failure of
+rigor. It stays in the enum (do not delete it on the strength of a 0-count) — the day a genuine
+peer operator of a target harness runs and reports something, `tier3` is exactly the value that
+records it, and deleting an unreached-but-legitimate value trains the evasion this repo already
+names (`[[feedback_unreachable_done_when_trains_evasion]]`) in its inverse form: instead of a
+target that punishes not-reaching-zero, a deleted value would punish *recording* the zero at all.
+
 **🟥 Execution is the load-bearing half — a static standpoint read is largely subsumed by the other
 axes (operator decision, 2026-08-16).** The reason to pay for a standpoint at all is not that
 someone re-read the diff from a different chair; it is that **the target harness was actually made

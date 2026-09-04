@@ -106,6 +106,49 @@
 # 🟥 CONTROL IS NOT OPTIONAL. Always run at least one arm whose correct answer is "the thing
 #   being measured should NOT fire". An instrument that fires on everything measures nothing
 #   ([[feedback_control_presence_is_not_discrimination]]).
+#
+# ── ⓒ 격리 그라운딩 — 날짜 오염 통제 (six_axis_review_2026-09-04 강화 #3, RECORD ONLY) ──────────
+#   WHY: LiveCodeBench (arXiv 2403.07974) and the contamination-taxonomy literature
+#   (frontier_verification_map_2026-09-04.md §ⓒ) filter benchmark items by RELEASE DATE precisely
+#   because a model can have memorized — not reasoned about — anything published before its
+#   training cutoff. This runner has the same exposure: a sim arm's "correct" answer about a
+#   doc/rule/gate can be recall of that doc's OWN CONTENT (if the doc predates the model's cutoff
+#   and the model happened to see this repo, or a near-identical one, during training) rather than
+#   evidence the harness under test actually delivers the behaviour to a cold session.
+#   THIS IS A RECORDING, NOT A GATE — per CLAUDE.md §Mechanization Boundary, "what the right value
+#   IS" stays judgment; only "was it recorded" is a channel. Below writes two fields per rep to
+#   `<out>/<arm>_r<rep>.meta.tsv` and does NOT compare them or fail a run on their basis:
+#     corpus_head_date   — the clone's HEAD commit date (ISO 8601). PROXY, named honestly: this
+#                          runner cannot resolve which files a given PROMPT actually cites, so it
+#                          records the whole corpus's most recent commit as an upper bound on
+#                          "how fresh could the cited material be", not a per-file citation date.
+#     sim_model / sim_model_cutoff — the `--model` value and a best-effort known cutoff via
+#                          `_model_known_cutoff()` below, `UNKNOWN` when not recorded there. This
+#                          table WILL go stale as new models ship — it is deliberately not treated
+#                          as authoritative; a scoring session should verify the cutoff it cites
+#                          rather than trust this file's guess (§Instrument-Calibration).
+#
+# ── ⓒ 격리 그라운딩 — 일회용 샌드박스 표준 (six_axis_review_2026-09-04 강화 #3) ─────────────────
+#   프런티어 대조표가 "ephemeral wipe-and-reseed 샌드박스(E2B/Modal/Runloop)"를 도입 후보로 든다.
+#   조직 제약상 외부 도구는 보류하고(§도입 후보 3), 이 러너가 "이미 그렇게 동작하는 부분"과
+#   "아닌 부분"을 정직하게 갈라 적는다 — 매번 재발견하지 않도록.
+#
+#   WIPE (매 rep 마다 새로 만든다 — 재사용 없음):
+#     ✅ 이미 참 — 매 rep 이 독립된 `git clone` (§위 "A disposable clone per REP") + 독립된 부모
+#        디렉터리(§L10). 오늘 실행한 실측 (`test_sim_isolated_run_lanes.sh`):
+#          ✅ L10 no clone shares a parent with another (2 clones, 0 co-parented)
+#          ✅ L10b control — 2 clones found (L10 did not pass on an empty set)
+#        (재현: `bash scripts/test_sim_isolated_run_lanes.sh` — 위 두 줄이 그대로 나온다.)
+#   RESEED (팔이 못 보면 안 되는 자산을 클론에서 지운다):
+#     ✅ 이미 참 — ARM_BLIND_PATHS 제거(§아래) + 그 자체가 known-pair 로 검정됨:
+#          ✅ L24 팔 눈가림 자산이 클론에서 제거된다 (히트 >0 → 0)
+#   기계-표면 리셋 (LaunchAgents/crontab/settings — VM 리셋과 달리 "지우고 다시 만들지" 않는다):
+#     🟥 아직 부분 — observe 모드는 도구 자체가 없어 못 건드리고(구조적 예방), act 모드는 실제
+#        변경을 만들고 나서 **탐지**만 한다(§L7). "매 rep 전 기계 상태를 초기화"는 하지 않는다 —
+#        E2B/Modal 급 VM wipe-and-reseed와의 실제 델타는 이 한 줄이다. 진짜 OS 샌드박스가 필요한
+#        이유는 헤더 상단 "WHAT THIS GIVES YOU" 절이 이미 말한다 — 여기서 되풀이하지 않는다.
+#   요약: 파일시스템 코퍼스 축(WIPE+RESEED)은 클론 단위로 이미 wipe-and-reseed다. 기계 표면 축은
+#   아니다 — 탐지기이지 리셋기가 아니다. 이 두 문장이 "샌드박스 표준"의 정직한 전부다.
 
 set -uo pipefail
 
@@ -300,6 +343,16 @@ snapshot() {
   } > "$f"
 }
 
+# ⓒ 날짜 오염 통제 — 기록 전용 헬퍼(§헤더 참조). 판정 아님, 있으면 값·없으면 UNKNOWN.
+# 🟥 이 표는 부패한다(stale) — 새 모델이 나올 때마다 손으로 갱신해야 한다. 여기 적힌 값을
+# «검증됨»으로 인용하지 마라: 이 스크립트 자신이 그렇게 적어두라고 요구한다(§Instrument-Calibration).
+_model_known_cutoff() { # $1=--model 값 → ISO 월 또는 UNKNOWN
+  case "$1" in
+    *sonnet-5*|sonnet) printf '2026-01' ;;   # 이 세션의 시스템 프롬프트가 스스로 적은 값
+    *) printf 'UNKNOWN' ;;
+  esac
+}
+
 echo "── sim_isolated_run ──────────────────────────────────────────────"
 echo "arm=$ARM mode=$MODE model=$MODEL reps=$REPS timeout=${TIMEOUT}s"
 echo "out=$OUTDIR"
@@ -343,6 +396,17 @@ for r in $(seq 1 "$REPS"); do
     echo "  ❌ r$r CLONE FAILED — see $OUTDIR/_clone_${ARM}_r${r}.err"
     continue
   fi
+
+  # ⓒ 날짜 오염 통제 — 기록만, 판정 아님(§헤더). corpus_head_date 는 "프롬프트가 인용하는
+  # 파일들"의 날짜가 아니라 그 상한(코퍼스 전체 HEAD)이다 — 러너는 프롬프트가 무엇을 인용하는지
+  # 모르므로 더 좁게 잴 수 없다. 그렇게 좁혀 적는다.
+  _corpus_date=$(git -C "$WORK" log -1 --format=%cI 2>/dev/null); [ -n "$_corpus_date" ] || _corpus_date="UNKNOWN"
+  _cutoff=$(_model_known_cutoff "$MODEL")
+  {
+    printf 'corpus_head_date\t%s\n' "$_corpus_date"
+    printf 'sim_model\t%s\n' "$MODEL"
+    printf 'sim_model_cutoff\t%s\n' "$_cutoff"
+  } > "$OUTDIR/${ARM}_r${r}.meta.tsv"
 
   # ── 🟥 팔이 읽으면 안 되는 tracked 자산을 «클론 안에서» 제거한다 (2026-09-01) ──────
   # 왜: 얼린 정답지(`scripts/fixtures/knownpair_refusal_48_*`)가 tracked 가 되면서
