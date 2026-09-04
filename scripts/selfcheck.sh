@@ -620,6 +620,9 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_tenet_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_affected_lanes.sh" \
   "scripts/sim_isolated_run.sh|scripts/test_sim_path_isolation_lanes.sh" \
+  `# ── live-eval — the live twin of the static /prompt-regression probe check (2026-09-04) ──` \
+  "scripts/probe_live_eval.sh|scripts/test_probe_live_eval_lanes.sh" \
+  "scripts/probe_live_eval_lib.py|scripts/test_probe_live_eval_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_first_use_lanes.sh" \
   "scripts/fixture_guard_lib.sh|scripts/test_fixture_guard_lanes.sh" \
   "scripts/stray_path_scan.sh|scripts/test_stray_path_lanes.sh" \

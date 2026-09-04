@@ -1,0 +1,125 @@
+# probes_live.yaml — LIVE (behavioral) subset of .claude/regression/probes.md
+#
+# WHY THIS FILE EXISTS. `/prompt-regression` (plugins/fh-meta/skills/prompt-regression/SKILL.md)
+# is a STATIC check: it reads changed source and asks "does the text still say the right thing".
+# Its own SKILL.md names the gap plainly (§Step 4, "What it therefore cannot catch"): a rule that
+# is present but has stopped FIRING, a trigger shadowed by a higher-priority route, any behavior
+# change that leaves the source text identical. This file is the "live twin" the SKILL.md points
+# at — `scripts/probe_live_eval.sh` runs each entry below through `scripts/sim_isolated_run.sh`
+# (isolated clone, floor-tier `claude -p`, observe mode) and greps the ACTUAL RESPONSE, not the
+# source. It answers "does it fire", never "was it worded correctly" — the two checks are
+# complementary, not redundant (CLAUDE.md §Anthropic SDLC evals: "settings-changed PR + eval run").
+#
+# SELECTION RULE (mechanical, applied by `probe_live_eval.sh --dry-run` against probes.md, not
+# hand-maintained here — this file is the OUTCOME of that rule, re-derive rather than trust it):
+#   1. Class in {mandatory-pass, measured} in probes.md          → excludes `judged` rows (a judged
+#      verdict needs a human/adversarial reader, not a keyword grep — scoring one by regex would be
+#      exactly the "grep-collision" class CLAUDE.md's Typed-Verdict-Channel memory entry warns about)
+#   2. Input Pattern cell is UTTERANCE-SHAPED — contains a backtick-quoted or double-quoted literal
+#      a user could actually type to Claude (excludes state/event-triggered rows like "new SKILL.md
+#      commit" or "CATALOG.md-only change" — those need a git/commit precondition this runner does
+#      not build, not a chat turn)
+#   3. NOT an `[INERT-ANCHOR]` row (probes.md's own caveat: G-GATE-08/09 are deletion anchors for an
+#      ablation, "nothing evaluates them on an ordinary session" — scoring them live would invent a
+#      live signal for a probe designed to have none)
+#   4. NOT in the hand-curated CLI-event exclude set inside `probe_live_eval.sh`
+#      (`_cli_event_exclude()`) — G-CODE-01/02/03 pass rules 1-3 (their cells ARE backtick-quoted:
+#      `npm test`, `npm publish`) but the quoted text is a SHELL COMMAND, not something a user says
+#      IN CONVERSATION to Claude; passing it as `--prompt` would test "does Claude talk about npm
+#      test" not "does npm test actually gate publish". This is the one judgment call rules 1-3
+#      cannot make mechanically, so it is named here rather than left implicit in a regex.
+#
+# Applying rules 1-4 to the 33-row probes.md (2026-09-04 snapshot) selects exactly the 12 rows below
+# — see `probe_live_eval.sh --dry-run` for the live recount and the excluded-21 reason table. If that
+# recount and this file's id list ever disagree, TRUST THE RECOUNT (probes.md may have grown a new
+# row this file has not been curated against yet) and re-author the missing entries by hand — this
+# file's `polarity`/`expect_re`/`control_input` fields are judgment, not mechanically derivable.
+#
+# SCHEMA (per probe — deliberately NOT full YAML; parsed by a small fixed-format reader in
+# `probe_live_eval.sh`'s embedded Python, see that script's `_parse_probes_live()`):
+#   id             — must exist in probes.md (dead-pointer guard, lane-tested)
+#   polarity       — present: expect_re MUST appear in the PRIMARY response, and must NOT appear in
+#                    the CONTROL response (control proves the pattern isn't a universal false-positive)
+#                  — absent:  expect_re must NOT appear in PRIMARY, and MUST appear in CONTROL
+#                    (control proves the pattern CAN fire — an absent-polarity probe whose control
+#                    also never fires is not "safely passing", it is an instrument that never worked)
+#   input          — the literal utterance sent as PRIMARY via sim_isolated_run.sh --prompt
+#   expect_re      — POSIX ERE (grep -E), matched case-sensitively against the captured .txt response
+#   control_input  — the known-negative (or known-positive, for polarity=absent) utterance
+#
+# A probe whose control does not discriminate as its polarity predicts scores UNCALIBRATED for that
+# probe, not PASS/FAIL — see probe_live_eval.sh header §Scoring. This is the known-pair discipline
+# CLAUDE.md §Measured-Loop requires, applied per-probe rather than once for the whole file.
+
+probes:
+  - id: G-GREET-01
+    polarity: present
+    input: "안녕"
+    expect_re: "🐿️"
+    control_input: "package.json 파일의 dependencies 목록만 알려줘"
+
+  - id: G-GREET-04
+    polarity: absent
+    input: "package.json 파일에 있는 dependencies 목록을 알려줘"
+    expect_re: "🐿️"
+    control_input: "안녕"
+
+  - id: G-TRIG-01
+    polarity: present
+    input: "recommend a plugin for this"
+    expect_re: "plugin-recommender"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-TRIG-02
+    polarity: present
+    input: "context is getting long"
+    expect_re: "context-doctor"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-TRIG-03
+    polarity: present
+    input: "this harness is complex"
+    expect_re: "harness-doctor"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-TRIG-04
+    polarity: present
+    input: "wrap up this week"
+    expect_re: "harvest-loop"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-TRIG-05
+    polarity: present
+    input: "I want to make this repo public"
+    expect_re: "(public-surface-audit|marketplace-gate|Pre-Publish)"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-TRIG-06
+    polarity: present
+    input: "run this whole thing autonomously as a /goal task"
+    expect_re: "goal-quench"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-TRIG-07
+    polarity: present
+    input: "정리해줘"
+    expect_re: "deep-clarify"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-CLOSE-01
+    polarity: present
+    input: "wrap up"
+    expect_re: "(session_close_check|fh_completed|close chain|카드|세션 마감)"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-SEARCH-01
+    polarity: present
+    input: "find past work on the 4-axis gate"
+    expect_re: "CATALOG"
+    control_input: "오늘 날씨 어때?"
+
+  - id: G-MAP-01
+    polarity: present
+    input: "connect a project to this hub"
+    expect_re: "(auto_project_mapping|매핑)"
+    control_input: "오늘 날씨 어때?"
