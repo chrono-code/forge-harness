@@ -155,3 +155,7 @@
   artifact: SIM_NOTES.md
   sha256: 9bbc493a9e945ca3789d72dd7c3cb51595dbc4bcdba36ecc857363bf348ae1ae
   recorded: 2026-09-04T11:04:03Z
+- run: qasp-web-record-replay
+  artifact: EMISSION_VERDICT.md
+  sha256: 521f652baaa049d45a19d5aaa3753b320f3165575817867e1b0ee42a708a764b
+  recorded: 2026-09-04T11:39:32Z
