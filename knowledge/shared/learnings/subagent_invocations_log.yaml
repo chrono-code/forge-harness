@@ -3139,3 +3139,33 @@
   evidence: >-
     scratchpad/proposal_hook_repair.patch — 레인 옛 훅 28/37(신규 9 빨강) → 새 훅 37/37, 거버너 독립 재현. PR fix/proposal-hook-target-scanner. 188,606 tokens · 16 tool_uses.
   note: 에이전트의 레인 Edit 이 본 체크아웃 옛 훅을 발화시킨 부수 행 1건을 스스로 보고했다.
+- date: 2026-09-04
+  agent: general-purpose (default model)
+  invoker: forge-harness-28 (Fable 5.1 거버너, 저녁 2)
+  task: 챔버 런 #16 qasp-web-record-replay 정식 6단계 완주(INTENT/BUDGET/블라인드 3+expert 1/verdict/ACTUAL/원장)
+  count: 1
+  context: ② 실상황 EMIT 표본 n=1 을 올리려는 런. FH 추적 자산 커밋 금지·main 유지 요구.
+  outcome: accepted
+  evidence: >-
+    tracks/_chamber/qasp-web-record-replay/ — verdict KILL(픽스처 9/9 vs 실코퍼스 assertion-less PASS 73%, feature graft). 봉인 예측 EMIT 빗나감. ACTUAL 712,509 서브에이전트 토큰(+15%, CAP 내). 증인 원장은 거버너가 #616/#619 로 올려 WITNESSED. 315,719 tokens · 50 tool_uses.
+  note: 러너가 CURATED 를 거부하는 계기-교리 불일치를 스스로 보고 → #620 수리.
+- date: 2026-09-04
+  agent: general-purpose (default model)
+  invoker: forge-harness-28
+  task: 백그라운드 git push 멈춤(exit 144 ×9) 원인 조사 — 로컬 bare 원격 known-pair + 실패 출력/reflog/ps 전수
+  count: 1
+  context: 원격 푸시 금지, 본 체크아웃 무변경 조건. 가설(pre-push 훅 stdin 대기)을 줬으나 결론은 기각.
+  outcome: accepted
+  evidence: >-
+    원인 = heredoc 뒤 홀로 선 `2>&1` → zsh NULLCMD cat 이 CC 미폐쇄 stdin 파이프 대기(push 이전, 훅 미실행 9/9). 패치 scratchpad/prepush_stdin_fix.patch → R3 가드 PR #618(52/52). 257,701 tokens · 51 tool_uses.
+  note: 거버너가 준 가설을 실측으로 뒤집었다 — 계기(내 명령 형태)가 원인.
+- date: 2026-09-04
+  agent: general-purpose (default model)
+  invoker: forge-harness-28
+  task: qasp CI 에 FLAKY 실물 Playwright 레인(blocking) + 빈 env 네거티브 컨트롤 배선
+  count: 1
+  context: qasp-dev git worktree, PR 열고 CI 결과까지 기다려 보고.
+  outcome: accepted
+  evidence: >-
+    qasp-dev #246 MERGED — 새 잡 pass 1m6s, 6/6. 지시한 컨트롤 형태는 픽스처 폴백 때문에 죽은 컨트롤(1 passed)이었음을 로컬에서 잡아 설치처를 밖으로. 181,956 tokens · 22 tool_uses.
+  note: 통과 조건을 rc≠0 이 아니라 «rc=1 ∧ 사유 문자열」로 좁혔다.
