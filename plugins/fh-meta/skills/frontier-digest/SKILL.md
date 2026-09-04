@@ -69,7 +69,7 @@ Collect from five sources (bash per source in §Collection-Bash):
 
 | Source | Method | Cap |
 |---|---|---|
-| HackerNews | Algolia API, score > 10, keyword-relevant | 15 items |
+| HackerNews | Algolia API `search_by_date` (date-sorted, never `/search`), score > 30, keyword-relevant | 15 items |
 | arxiv | export API, latest by submittedDate | 6 items |
 | TLDR AI | RSS, title + link | 5 items |
 | The Batch (deeplearning.ai) | HTML scraping, title + issue slug | 5 items |

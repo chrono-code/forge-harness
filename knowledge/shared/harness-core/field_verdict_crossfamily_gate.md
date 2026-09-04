@@ -116,6 +116,14 @@ same as the FH cross-family complement.
 
 ## 5. Field evidence — qasp verdict-binding sweep, 2026-07-03 (n=7)
 
+> **External anchor for the PREMISE only (recorded 2026-09-04, digest `HN:49557206`, armature.tech)**:
+> across 5,292 valid sessions (16,893 collected; 51 codebases · 18 sectors · 1,163 prompt variations),
+> Claude Code / Codex / Cursor chose the **same tool in 42 %** of scenarios — a 58 % disagreement rate
+> on a concrete, checkable decision. That is the first outside-FH evidence that model families
+> decorrelate rather than converge. 🟥 Scope: the dependent variable is *tool selection*, not *defect
+> detection* — it supports the assumption this gate rests on; it does **not** validate that the gate
+> catches defects. The n=7 sweep below remains the only evidence of the latter.
+
 The gap that motivated this rule: FH's cross-family decorrelation rigor had **never been
 auto-applied to field-harness code** — only to FH's own assets. A one-time sweep of 3 mapped
 harnesses (qasp / the-bible / pmh) found **9 HIGH default-toward-PASS holes**, all one signature.

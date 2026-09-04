@@ -42,11 +42,19 @@ load: on-demand
 ```bash
 for KW in "AI agent" "LLM harness" "Claude" "multi-agent" "context engineering"; do
   curl -s --max-time 8 \
-    "https://hn.algolia.com/api/v1/search?query=$(echo $KW | tr ' ' '+')&tags=story&hitsPerPage=5&numericFilters=points>10"
+    "https://hn.algolia.com/api/v1/search_by_date?query=$(echo $KW | tr ' ' '+')&tags=story&hitsPerPage=5&numericFilters=points>30"
 done
 ```
 
-Collection criteria: score > 10, keyword-relevant items only. Max 15 items.
+Collection criteria: score > 30, keyword-relevant items only. Max 15 items.
+
+> **`/search_by_date`, not `/search` (revised 2026-09-04; prescribed 2026-09-01, unapplied for 3 runs).**
+> `/search` ranks by relevance and returned items dated 2025-11→2026-06 on 2026-09-01 — a *relevant-but-stale*
+> leg, the mirror image of the 2026-07-26 arXiv *fresh-but-off-axis* failure, and the HN leg carried neither
+> refresh trigger. `/search_by_date` sorts by submission time; the points floor rises 10→30 to keep the
+> date-sorted window from filling with noise (measured 2026-09-01: `points>30` gave a clean 08-27→08-31
+> window). Same rule as the arXiv leg: a leg that silently falls back to a relevance/recall channel converts
+> «unrun» into «nothing new».
 
 ### arxiv
 
