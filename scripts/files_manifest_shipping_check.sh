@@ -129,6 +129,25 @@ if [ "$MODE" = "tarball" ]; then
     sed 's/^/      /' "$FMSC_PACK_ERR" 2>/dev/null
     exit 1
   fi
+  # 2026-09-04 (v3.0.0, first OIDC publish): inside `npm publish`'s prepublishOnly on the CI runner
+  # (Node 22 / npm 10) `npm pack --dry-run --json` returned JSON WITHOUT files[] — the impossible-zero
+  # guard below then (correctly) failed the publish, but with no way forward. Same shape as
+  # package_coverage_check.sh's oracle: when the JSON carries no files[].path, rebuild it from the
+  # text listing (`npm notice <size> <path>` lines), which is what a human reads. If THAT is empty
+  # too, leave the JSON as-is and let the impossible-zero guard fail closed as before.
+  if ! printf '%s' "$PACK_JSON" | python3 -c 'import sys,json
+d=json.load(sys.stdin); e=d[0] if isinstance(d,list) and d else d
+fl=e.get("files") if isinstance(e,dict) else None
+sys.exit(0 if fl and all(isinstance(f,dict) and "path" in f for f in fl) else 1)' 2>/dev/null; then
+    _txt=$(npm pack --dry-run 2>&1)
+    _rebuilt=$(printf '%s\n' "$_txt" | python3 -c 'import sys,re,json
+paths=[m.group(1) for ln in sys.stdin for m in [re.match(r"^npm notice\s+[0-9.]+[kMG]?B\s+(\S+)\s*$", ln)] if m]
+print(json.dumps([{"files":[{"path":p} for p in paths],"_oracle":"text-listing-fallback"}]) if paths else "")')
+    if [ -n "$_rebuilt" ]; then
+      echo "      files-manifest-shipping: npm pack --json carried no files[] — rebuilt from the text listing ($(printf '%s' "$_rebuilt" | python3 -c 'import sys,json;print(len(json.load(sys.stdin)[0]["files"]))') paths)"
+      PACK_JSON="$_rebuilt"
+    fi
+  fi
   printf '%s' "$PACK_JSON" > "$FMSC_PACK_JSON" || {
     echo "FAIL  files-manifest-shipping (--vs-tarball): could not write pack output to scratch dir"
     exit 1
