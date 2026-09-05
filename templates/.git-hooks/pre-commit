@@ -1547,6 +1547,130 @@ validate_affected_leg() { # $1 = marker path
 }
 
 
+# ── ⑥ oracle: — 「기대값을 무엇으로 정했나」 오라클 유형 (2026-09-05, ISO/IEC TR 29119-11 정렬 · crosswalk §4 M1) ──
+# tenet: FH-T02 (기록의 속성) · FH-T07 (행위자가 읽는 자리)
+#
+# WHY: TR 29119-11 의 핵심이 «테스트 오라클 문제»(기대값을 정할 수 없을 때 무엇으로 판정하나)다.
+# FH 는 known-pair · 결과 전 채점기 · «미측정 ≠ 0» 으로 그 문제를 다루지만, 마커는 «컨트롤이
+# 살아 있다» 까지만 적고 **어떤 종류의 오라클**로 판정했는지는 안 적었다 — 외부 독자가 첫 번째로
+# 묻는 칸이 비어 있었다(knowledge/shared/harness-core/iso_ai_standards_crosswalk.md §4 M1,
+# 운영자 승인 2026-09-05 «오라클 채널을 넣는 게 좋아 보인다면 마다할 이유가 없지»).
+#
+# SCOPE — **채널 검사만** (§Mechanization Boundary): 닫힌 enum(6) · 비공허 근거 · 단일 줄 · 근사키
+# 차단. 값의 진위(그 오라클이 정말 그 종류였나)는 안 본다. `none` 은 합법이되 **사유가 필수**다 —
+# «오라클 없이 판정했다» 는 기록이고, 사유 없는 none 은 «안 봤다» 와 구분이 안 된다.
+#
+# enum (형식: `oracle: <kind> — <근거>` · kind 뒤는 공백 · — · : · · · ( · . 중 하나, 또는 줄 끝)
+#   known-pair    양성·음성 컨트롤이 같은 실행에 있다 (계기 보정)
+#   metamorphic   입력 변환 → 기대 출력 변화 «관계»로 판정 (기대값 없이)
+#   back-to-back  다른 구현/계열이 같은 입력에 낸 출력을 대조 (cross-family 가 같은 diff 를 읽는 것)
+#   a-b           한 변수 ARM/CTRL 비교 (reps≥3). `A/B` 는 허용 표기
+#   human         사람이 기대값을 판정 (운영자 눈검증 · HITL)
+#   none          오라클 없음 — 사유 필수 (문서만 · 측정 없음 …)
+#
+# 근사키 규칙(한 문장, 여섯 문서면이 같은 문장을 쓴다): **키가 `oracle` 로 시작하는데 정확히 `oracle:`
+# 이 아닌 줄 전부**(`Oracle:` `oracles:` `oracle :` `oracle　:` `oracle_type:` `oracle-type:` 키만 있는
+# `oracle`) **+ 오타 `orcale:` `oralce:` `오라클:`** — 정상 `oracle:` 줄이 있어도 같이 있으면 차단한다
+# (cross-family codex #2: 정상 줄 뒤의 `Oracle: …` 정정이 조용히 가려지는 형태).
+#
+# 옵셔널 필드다 — **없으면 통과**(affected:/soul-check:/tenets: 와 같은 패턴. 채택은 점진적이다).
+# 힌트 템플릿에는 넣지 않는다 — 옵셔널 필드마다 빈 칸이 하나씩 느는 모양을 이 절이 피한다.
+# 소비처(정직하게): 오늘은 마커 grep 감사와 표준 정렬 증거뿐, 기계가 읽는 곳은 없다.
+# 명명된 잔여: 근거에 힌트 자리표시자 리터럴(`<...>`)이 있으면 차단된다(affected/defeater 와 같은 경계 —
+# 다른 표기로 적어라) · 전각 공백으로 «시작하는» 줄은 [[:space:]] 밖이라 못 본다.
+validate_oracle_leg() { # $1 = marker path
+  local m="$1" n nm line body kind k rest words
+  # near-miss — n 과 무관하게 항상 본다. `-n` 접두(N:) 뒤에서 정확한 소문자 `oracle:` 줄만 제외한다.
+  nm=$(grep -niE '^[[:space:]]*(oracle:|oracle([^:]|$)|orcale:|oralce:|오라클:)' "$m" 2>/dev/null | grep -vE '^[0-9]+:[[:space:]]*oracle:')
+  if [ -n "$nm" ]; then
+    echo "  ❌ FAIL — oracle 키처럼 보이지만 정확히 'oracle:' 가 아닌 줄이 있다."
+    printf '%s\n' "$nm" | sed 's/^/       /'
+    echo "     읽는 쪽은 정확히 'oracle:'(소문자, 콜론 바로 뒤) 만 읽는다 — 저자는 적었다고 믿는데 게이트는 못 읽는 것이 가장 조용한 실패다."
+    return 1
+  fi
+  n=$(grep -cE '^[[:space:]]*oracle:' "$m" 2>/dev/null); n=${n:-0}
+  if [ "$n" -eq 0 ]; then
+    return 0   # 진짜 부재 — 옵셔널 필드, 채택은 점진적이다
+  fi
+  if [ "$n" -gt 1 ]; then
+    echo "  ❌ FAIL — 마커에 'oracle:' 줄이 둘 이상이다."
+    grep -nE '^[[:space:]]*oracle:' "$m" | sed 's/^/       /'
+    echo "     읽는 쪽은 첫 줄을 취하므로 나중에 붙인 정정이 조용히 가려진다."
+    return 1
+  fi
+  line=$(grep -m1 -E '^[[:space:]]*oracle:' "$m" | sed -E 's/^[[:space:]]*oracle:[[:space:]]*//')
+  body=$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+  if [ -z "$body" ]; then
+    echo "  ❌ FAIL — oracle 값이 비어 있다."
+    echo "     형식: oracle: <kind> — <근거>   kind ∈ known-pair · metamorphic · back-to-back · a-b · human · none"
+    return 1
+  fi
+  # kind = 앞쪽 [A-Za-z/-] 연속 — 하이픈은 kind 안에 있다(known-pair · back-to-back · a-b).
+  # 매치가 없으면 sed 가 body 를 그대로 돌려주고 enum 검사가 잡는다.
+  kind=$(printf '%s' "$body" | sed -E 's/^([A-Za-z/-]+).*$/\1/')
+  case "$kind" in "$body") rest="" ;; *) rest="${body#"$kind"}" ;; esac
+  # kind 바로 뒤는 구분자이거나 줄 끝이어야 한다 — enum 멤버가 «접두어»로만 맞는 값(known-pair2 ·
+  # human_review)이 통과하던 구멍(cross-family codex #1·#3).
+  case "$rest" in
+    ''|' '*|'	'*|'—'*|':'*|'·'*|'('*|'.'*) ;;
+    *)
+      echo "  ❌ FAIL — oracle kind 뒤에 구분자 없이 다른 문자가 붙어 있다 ('$body')."
+      echo "     형식: oracle: <kind> — <근거>   kind 뒤는 공백 · — · : · · · ( 중 하나 (예: known-pair2 · human_review 는 enum 밖)"
+      return 1 ;;
+  esac
+  k=$(printf '%s' "$kind" | tr 'A-Z' 'a-z'); [ "$k" = "a/b" ] && k="a-b"
+  case "$k" in
+    known-pair|metamorphic|back-to-back|a-b|human|none) ;;
+    *)
+      echo "  ❌ FAIL — oracle kind '$kind' 는 enum 밖이다."
+      echo "     kind ∈ known-pair · metamorphic · back-to-back · a-b · human · none   (형식: oracle: <kind> — <근거>)"
+      return 1 ;;
+  esac
+  # 근거 = kind 뒤. 양끝 구분자·공백만 벗긴다 — 리터럴 접두/접미 제거만 쓴다(`${x#?}` 는 C 로케일에서
+  # 다바이트 구분자의 한 바이트만 깎고, 클래스 파싱은 한글 바이트를 지운 전례가 있다 — affected 참조).
+  while :; do
+    case "$rest" in
+      ' '*) rest="${rest# }" ;;   '	'*) rest="${rest#	}" ;;
+      '—'*) rest="${rest#—}" ;;   '-'*) rest="${rest#-}" ;;   ':'*) rest="${rest#:}" ;;
+      '·'*) rest="${rest#·}" ;;   '('*) rest="${rest#(}" ;;   '.'*) rest="${rest#.}" ;;
+      *' ') rest="${rest% }" ;;   *'	') rest="${rest%	}" ;;
+      *')') rest="${rest%)}" ;;   *'.') rest="${rest%.}" ;;
+      *) break ;;
+    esac
+  done
+  case "$(printf '%s' "$rest" | tr 'A-Z' 'a-z')" in
+    없음|none|n/a|na|tbd|todo|-|해당없음|'')
+      if [ "$k" = none ]; then
+        echo "  ❌ FAIL — oracle: none 은 사유가 필수다 (지금: '$body')."
+        echo "     예: oracle: none — 문서만 변경, 측정 없음"
+      else
+        echo "  ❌ FAIL — oracle 근거가 자리표시자뿐이다 ('$body')."
+        echo "     예: oracle: known-pair — 레인 PASS/BLOCK 픽스처 양쪽 + 되돌림"
+      fi
+      echo "     Append to: $m"
+      return 1 ;;
+  esac
+  # 🟥 헬퍼 부재를 «잔여 없음»으로 렌더하지 않는다 — 격리 추출이 헬퍼를 안 가져오면 정의되지 않은
+  # 명령은 거짓이 되어 fail-open 이 된다(defeater·affected 가 이미 겪었다). 레인 o31 이 이 가지를 잰다.
+  if ! declare -f _marker_template_residue >/dev/null 2>&1; then
+    echo "  ❌ HARNESS-ERROR — _marker_template_residue 가 정의돼 있지 않다."
+    echo "     격리 실행이면 그 헬퍼도 같이 추출해야 한다. 부재는 «통과»가 아니다."
+    return 1
+  fi
+  if _marker_template_residue "$rest"; then
+    echo "  ❌ FAIL — oracle 근거가 힌트의 자리표시자 그대로다 (기록이 아직 안 쓰였다)."
+    return 1
+  fi
+  words=$(printf '%s' "$rest" | wc -w | tr -d ' '); words=${words:-0}
+  if [ "$words" -lt 2 ]; then
+    echo "  ❌ FAIL — oracle 근거가 공허하다 ($words 낱말). 무엇을 무엇과 대조했는지 적어라."
+    return 1
+  fi
+  echo "  ✅ oracle 기록됨 ($k · 근거 $words 낱말)"
+  return 0
+}
+
+
 SOUL_PRESENT_GRACE_DATE="2026-08-21"
 validate_soul_present_leg() { # $1 = marker path
   # ── ①영혼 존재 검사 (2026-08-21) ──────────────────────────────────────────────
@@ -2245,6 +2369,7 @@ if [ "$GATE_MODE" = "full" ]; then
     validate_soul_tenet_refs "$MARKER" || _SOUL_OK=0
     validate_defeater_leg "$MARKER" || _SOUL_OK=0
     validate_affected_leg "$MARKER" || _SOUL_OK=0
+    validate_oracle_leg "$MARKER" || _SOUL_OK=0
     if [ "$_DEFENSE_OK" -eq 1 ] && [ "$_SOUL_OK" -eq 1 ] && validate_marker_floor "$MARKER" && validate_marker_axes_run "$MARKER" && validate_first_use_leg "$MARKER"; then
       echo "  ✅ PASS (marker confirmed + floor/axes fields valid:"
       echo "     .axes_23_passed_${BRANCH_SLUG}_${TODAY}.marker)"
