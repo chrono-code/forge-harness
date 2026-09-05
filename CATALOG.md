@@ -719,6 +719,11 @@ Hub long-term evolution path frame. Phase I (entering maturity) → Phase II (fr
 - Decision: Phase III has no completion (ongoing state) — 3+ of 6 indicators continuously rising is the maintenance condition
 - Decision: Phase regression allowed — do not force linear progression (allow partial Phase I redo if frontier following routine is missed)
 
+**File:** `knowledge/shared/harness-core/iso_ai_standards_crosswalk.md`
+ISO/IEC AI 표준(42119-2/3/7/8 · TR 29119-11 · 25059 · 42001 Annex A · 5338 · 23894 · TS 8200 · 20246) ↔ FH 게이트/마커/레인/로그 ↔ qasp 1~3막 crosswalk (2026-09-05). «모델이 도는 하네스」를 준수 구조를 보여줄 단위로 삼는 논지 · 조항→기제→증거→상태(✅🟡❌) 표 · 강화 후보 M1(오라클 유형 채널)·M2(42119-7 형 레드팀 보고 템플릿 `templates/RED_TEAM_REPORT.md`)·M3(`docs/STANDARDS_ALIGNMENT.md`) · 정직 한계(공개 샘플·TS 초안·자평). Tags: #standards #iso42119 #iso29119 #iso25059 #iso42001 #quality-gate #red-team
+- Decision: 낱말은 «정렬(alignment)」 — «준수/인증」 은 쓰지 않는다(42119 절반이 DTS/AWI, 적합성 평가는 별개 절차)
+- Decision: 강화 후보는 전부 «기록의 속성」(채널)이고 판단이 아니다 — §Mechanization Boundary 그대로
+
 ---
 
 ## Plugins

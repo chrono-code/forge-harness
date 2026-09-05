@@ -259,6 +259,11 @@ re-checks** it against the artifact (phantom-quench back-trace) before accepting
 source-grounded is **dropped, not judged**. No sidecar-only verdict (no weak-local-judge regression).
 Local 4090 = **canary tier** (evidence-of, never terminal verdict).
 
+**Report shape (2026-09-05)**: when the findings are written up (PR body · marker `crossfamily:` expansion · chamber record),
+use `templates/RED_TEAM_REPORT.md` — the five sections mirror ISO/IEC AWI TS 42119-7 (risk identification · objectives & attack
+vectors · method · findings with reproducing input · life-cycle integration). It is a name tag on what this skill already
+produces, not a new check; crosswalk: `knowledge/shared/harness-core/iso_ai_standards_crosswalk.md §2`.
+
 🟥 **What you SEND decides which axis you get — put the MARKER in the payload, not just the diff**
 (2026-08-19). Sidecars have been receiving the *diff* only. That buys a review of the **code** and
 buys nothing on the **record**: the Axes 2+3 marker is self-attested, and this repo has already

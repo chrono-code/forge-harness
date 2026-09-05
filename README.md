@@ -55,6 +55,8 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # or this
   authoring · code review · irreversible-surface gates · context continuity), and what changes by model
   tier and effort level: [`docs/USE_CASES.md`](docs/USE_CASES.md) ·
   [`docs/model_tier_expectations.md`](docs/model_tier_expectations.md).
+  How the gates line up with ISO/IEC AI-testing and AI-quality standards (42119 · 29119-11 · 25059 · 42001), as a
+  self-assessment with evidence pointers: [`docs/STANDARDS_ALIGNMENT.md`](docs/STANDARDS_ALIGNMENT.md).
 
 ### ② The whole harness — inside Claude Code
 
