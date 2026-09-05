@@ -729,6 +729,13 @@ ISO/IEC AI 표준(42119-2/3/7/8 · TR 29119-11 · 25059 · 42001 Annex A · 5338
 ## Plugins
 
 ### 2026-05-08 | fh-meta v0.5.0 | six-skills-operation, path-b-generalization, command-tower-gate, mode-c-user, beta-release
+**File:** `docs/map/FH_MAP.md`
+FH 전체 지도(2026-09-05) — 5층: ① 무엇인가(문 → 3단 공정 → 4대 엔진 → 정체성) ② 어떻게 구현(노드 = 실재 경로 37, `scripts/test_fh_map_paths_lanes.sh` 가 매번 재검) ③ 왜 믿을 만한가(각 행에 파일 경로 · 실측 레인 수 · 등급 출처, 차단 주장은 클라이언트 훅·--no-verify·CI 사각 조건 동반) ④ 범용/운영자 로컬/런타임/티어 분리선 + «모르는 부분» ⑤ 표면별 갈림. archify(MIT, 로컬 렌더러) 3장 `docs/map/fh_*.{json,html,svg,png}` · 인터랙티브 판 = GitHub Pages(gh-pages 브랜치) https://chrono-meta.github.io/forge-harness/ · 위키 «FH 전체 지도» 는 PNG 미리보기
+- Decision: 등급은 여기 없다 — `ship_readiness_gate.md` 인용만 (지도는 등급을 새로 매기지 않는다)
+- Decision: docs/map 은 npm 에 안 나간다(ACCEPTED_ABSENT 3) — 레포/Pages 표면; 렌더러는 프로젝트 로컬 설치·미커밋
+- Decision: 그림 갱신은 수동 — docs/map/*.json 변경 → 재렌더 → gh-pages 재발행(자동 배선 없음, 명명된 잔여)
+- cross-family codex R1 21건(S2 = «막는다» 무조건 단정) → 수리 → R2 CONVERGED
+
 **File:** plugins/fh-meta/.claude-plugin/plugin.json + .claude-plugin/marketplace.json
 Hub meta operations tool bundle — 6 skills operation. harvest-loop path B generalization + verify-bidirectional path B generalization + frontier-digest path B generalization + cross-ecosystem-synergy-detection + plugin-recommender + **hub-cc-pr-reviewer** command tower gate operations rule automation (new). 2 agents (hub-persona-auditor + fact-checker). Beta operation — harness core principle *"beta + public release = practical capability obligation"* followed.
 - Decision: hub-cc-pr-reviewer skill newly created — command tower gate operations rule automation + PR lifecycle 4-run accumulated + explicit decision trigger

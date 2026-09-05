@@ -3397,3 +3397,53 @@
   evidence: "11 findings: 8 fixed (OR-probe false LANDED → per-token rows + majority; UNPROBEABLE silent rc=0; isMeta/isSidechain records; masking beyond $HOME; no-control-material message; L18c exit code; L13b absent-script branch; stale ①-e comment), 3 refuted (tool_result+text mixed 0/379 live; Hangul n-gram = judgment machinery; backtick comment carrier = pre-existing idiom). Pre-fix scripts go 15 red on the new lanes; fixed 72/72"
   tokens_subagent: n/a
   notes: "dispatched with --skip-git-repo-check (payload dir is not a git repo — recorded in memory project_codex_headless)"
+
+- date: 2026-09-05
+  agent: general-purpose (opus) — conference/industry insight scan
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "frontier absorption scan of 2025–2026 conference and industry material on AI quality gates / testing / red teaming, bookshelf-first (standards crosswalk) → 15 insights with FH/qasp delta, M/S/R, channel-vs-judgment tag; answer the operator's demand question as observable conditions; name the world's terms for gate intensity gears"
+  context_card: yes
+  outcome: accepted
+  evidence: "tracks/_meta/frontier_digest_2026-09-05_conference-insights.md (230 lines, 15 insights, sources marked opened/unopened, residency CLEAN with known-positive control). Top 3: gate intensity as a dial (Meta 4-level gating, arXiv:2410.06351), task validity / rule-blind arm (extension of ablation_calibrate arm B), unattended deployment missing from the irreversible-surface classes. Demand answer: 0/4 observable conditions today (one — STANDARDS_ALIGNMENT — lands with the open docs PR)"
+  tokens_subagent: 252151
+  notes: "author bias named in the file (search aimed at «deeper gates»); unopened sources listed by name; no commits"
+
+- date: 2026-09-05
+  agent: codex exec gpt-5.5 (cross-family sidecar via scripts/sidecar_wait.sh) — round 2 on the `oracle:` marker leg
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "adversarial review of validate_oracle_leg (bash 3.2/5), its 23-lane suite, wiring lane W6 and five doc surfaces — fail-open, over-block, near-miss claim, lane blind spots, portability"
+  context_card: n/a (prompt file, payload dir = scratchpad, residency CLEAN)
+  outcome: accepted
+  evidence: "NOT-CONVERGED: 8 findings (S2: enum member accepted as a mere prefix `known-pair2`; near-miss scan skipped when an exact `oracle:` line exists, so `Oracle: …` correction beside it was silent · A4 · B2). 6 fixed in v2 (always-on near-miss scan with one rule, delimiter-after-kind check, lanes o21–o34 with diagnostic needles, helper-absent lane o31, doc sync), 1 accepted as named residual (`<...>` literal in grounds), 1 doc-list unification. Self-detected 0/8. Mutants after fix: enum · delimiter · near-miss · word-count all turn the expected lanes red"
+  tokens_subagent: 112815
+  notes: "lesson saved to memory feedback_enum_prefix_and_shadowed_nearmiss"
+
+- date: 2026-09-05
+  agent: codex exec gpt-5.5 (cross-family sidecar) — round 3 on the fixed `oracle:` leg
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "verify the round-2 fixes adversarially (new failing inputs, over-blocking introduced by the always-on near-miss scan, surviving mutants, portability)"
+  context_card: n/a (prompt file, residency CLEAN)
+  outcome: accepted
+  evidence: "CONVERGED (S0 · A3 · B3). A: line starting with U+3000 under LC_ALL=C treated as absent · embedded CR hides a correction inside an excluded exact line · `oracle*` key namespace is reserved by the broad rule — all three recorded as named residuals / intended cost in the spec and AGENTS.md (first two are marker-wide, not leg-specific). B: PASS lane for `.` delimiter · BLOCK lane for an unlisted `oracle.evidence:` key · doc example lists marked non-exhaustive"
+  tokens_subagent: 37082
+  notes: "two rounds, R2→R3 delta was the fix set; no round 4 needed"
+
+- date: 2026-09-05
+  agent: Orca worktree session `qasp-map-archify` (Claude, Fable 5.1, effort medium — repo qasp-dev, operator-requested split)
+  invoked_by: FH governor session (Fable 5.1 max) — mission file + SendMessage return address
+  task: "leader-facing QASP whole-map in five layers (PAR · modules with real paths · trust/evidence · org-context boundary · web-tool vs CLI split) rendered with archify (local renderer, no LLM calls), plus Sister Asset three-part note; branch push only, no PR"
+  context_card: yes (MISSION.md with recipient, return address, output paths, prohibitions)
+  outcome: accepted
+  evidence: "branch chrono-meta/qasp-map-archify@5ebdaae — docs/map/QASP_MAP.md + 3 archify JSON/HTML (validate 9/9, visual-check 3/3), tests/test_map_paths_exist.py (20/20 real paths), ghe_paths_lib protected-path entry, README row; pytest 3766 pass / 14 env-dependent fail (0 code changes); fh-meta:beginner blind cold-read folded in; archify outbound check = update-check URL only (disabled). Three open questions escalated to the operator (web-tool first slice · docs/map protected-path vs company audience · PyMuPDF stdout breaking p1_schedule JSON)"
+  tokens_subagent: n/a (Orca session; it reported one beginner subagent at 40451)
+  notes: "phase 2 done: TC `oracle_type` on feat/tc-oracle-type — codex R1 NOT-CONVERGED S2·A3·B2 (parser dropped near-miss keys before the gate) → R2 NOT-CONVERGED S2 (pandas NA tokens folded to missing · non-string reason stringified) → R3 CONVERGED (A1 duplicate-header mangle, B1 whitespace header) → all fixed, 74/74 lanes, merged qasp-dev #261 (6c6f008) with the private companion store manifest. Map merged as #260 (ec418a6). Orca card completed"
+
+- date: 2026-09-05
+  agent: Orca worktree session `clawd-fh-gate` (Claude, Fable 5.1, effort medium — repo clawd-on-desk fork, expedition ⓑ-only)
+  invoked_by: FH governor session (Fable 5.1 max) — mission file + SendMessage return address
+  task: "map the auto-approve mechanism, design a three-layer gate (L1 irreversible hold · L2 output gate · L3 honest notice), prototype L1 with fail-before evidence; then a maintainer-standpoint review (static codex persona + dynamic isolated integration test); no push, no PR"
+  context_card: yes (MISSION.md; expedition CARD with 과녁 line, wall-clock, token slots)
+  outcome: accepted
+  evidence: "mechanism = app HTTP PermissionRequest hook layer (src/permission-automation-policy.js:387 → src/permission.js:2246); L1 prototype feat/auto-approve-irreversible-guard 56d64f3d→99f262a1, npm test 9423/0 fail, fail-before 20/24 red → green; maintainer-persona codex review S0/A2/B2 all fixed (shell-alias tools were outside the badge allowlist → contract test 13 rows); integration test 8/8 (fake HTTP → real server.js → real permission.js, unattended + force-push → DEFER observed); Electron live run correctly REFUSED (single-instance lock bound to userData, would collide with the production app). Operator's «FH gate 가 지켜줍니다» wording rejected as over-promise; honest 7-language notice instead. Wall-clock 14:40→16:40 KST; sidecar 1"
+  tokens_subagent: n/a (Orca session; sidecar codex ×1 unreported)
+  notes: "phase 2: maintainer-persona codex review S0/A2/B2 all fixed (99f262a1) + isolated integration test 8/8; PR_DRAFT.md in contributor voice (#888 style, no internal vocabulary). Live run on a second machine (operator's MacBook Air, Claude session over Remote Control, mixed human/AI driving): 10 rows as expected, 0 false positives, known-pair controls, reps=1 — the private companion store handoff/LIVE_TEST_RESULT_2026-09-05.md; three runbook defects found there and folded back. Outward PR submission = operator decision ㉓"

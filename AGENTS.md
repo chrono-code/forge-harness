@@ -14,6 +14,11 @@
 `CLAUDE.md` governs Claude-native automation. This file is the portable entry point for Codex and
 other non-Claude runtimes, which do not auto-load `.claude/rules/*.md`.
 
+> **Whole map (any runtime, read first if you are new here)**: `docs/map/FH_MAP.md` — what FH is, how it is
+> implemented (every diagram node is a real path, re-checked by `scripts/test_fh_map_paths_lanes.sh`), why it is
+> trustworthy (gates · lanes · grade sources, with the client-hook caveat stated), and what is operator-local.
+> Interactive diagrams: https://chrono-meta.github.io/forge-harness/
+
 ## Agent Registry
 
 forge-harness ships 8 tracked agents. The user-mastery spectrum (`beginner` · `main-player` ·
