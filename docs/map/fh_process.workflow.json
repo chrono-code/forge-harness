@@ -1,0 +1,325 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "FH 는 무엇인가 — 사람이 어느 문으로 들어와, 3단 공정 · 4대 엔진 · 정체성을 거쳐 무엇을 받나",
+    "quality_profile": "showcase",
+    "output": "docs/map/fh_process.workflow.html",
+    "views": [
+      {
+        "id": "doors",
+        "label": "문 — 사람이 들어오는 자리",
+        "focus": [
+          "intent",
+          "door",
+          "cli"
+        ],
+        "note": "인사 한 마디면 문 ①~④·🔧·📖 이 뜬다. Claude Code 밖에서는 fh-gate CLI 하나만 쓴다."
+      },
+      {
+        "id": "process",
+        "label": "3단 공정 — 모든 작업이 밟는 방법론",
+        "focus": [
+          "door",
+          "soul",
+          "decorr",
+          "burn"
+        ],
+        "note": "① 성공 정의를 설계 «앞»에 심고 → ② 계열·입장을 갈라 병렬로 가속하고 → ③ 6축으로 태운다. 속도는 그 결과이고 네 번째 단이 아니다."
+      },
+      {
+        "id": "engines",
+        "label": "4대 엔진 — 출력이 나오는 코어",
+        "focus": [
+          "soul",
+          "engines",
+          "identity"
+        ],
+        "note": "출력은 엔진에서 나온다. 정체성은 방법론과 코어가 맞물려 나타나는 능력이고, 5대는 단련된 실물과 등급을 가진 안정 정체성이다."
+      },
+      {
+        "id": "out",
+        "label": "받는 것",
+        "focus": [
+          "identity",
+          "artifact",
+          "record"
+        ],
+        "note": "산출물 + 4축 마커(무엇을 돌렸나) + 세션 카드(다음 세션이 이어받는 것). 등급은 등급표 한 곳에만 있다."
+      }
+    ],
+    "viewBox": [
+      1088,
+      668
+    ]
+  },
+  "lanes": [
+    {
+      "id": "people",
+      "label": "사람"
+    },
+    {
+      "id": "process",
+      "label": "3단 공정 (방법론)"
+    },
+    {
+      "id": "core",
+      "label": "4대 엔진 (코어)"
+    },
+    {
+      "id": "surface",
+      "label": "정체성 (표면)",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "ph_in",
+      "label": "진입",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "ph_proc",
+      "label": "공정 3단",
+      "fromCol": 2,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "ph_out",
+      "label": "산출",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g_soul",
+      "label": "성공 정의는 설계 «앞»에",
+      "lane": "process",
+      "fromCol": 2,
+      "toCol": 2,
+      "variant": "security"
+    },
+    {
+      "id": "g_human",
+      "label": "비가역 결정은 사람",
+      "lane": "people",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "security"
+    }
+  ],
+  "mainPath": [
+    "intent",
+    "door",
+    "soul",
+    "decorr",
+    "burn",
+    "identity",
+    "artifact"
+  ],
+  "nodes": [
+    {
+      "id": "intent",
+      "lane": "people",
+      "col": 0,
+      "type": "external",
+      "label": "짧은 의도",
+      "sublabel": "인사 · 의도 · 커밋",
+      "width": 130
+    },
+    {
+      "id": "door",
+      "lane": "people",
+      "col": 1,
+      "type": "frontend",
+      "label": "문 ①~④ · 🔧 · 📖",
+      "sublabel": "매핑 · 새로 · 가속 · 시너지",
+      "tag": "인사가 트리거",
+      "width": 150
+    },
+    {
+      "id": "cli",
+      "lane": "core",
+      "col": 0,
+      "type": "backend",
+      "label": "fh-gate CLI · npm",
+      "sublabel": "게이트만 · 어느 런타임",
+      "tag": "Codex 백엔드 가능",
+      "width": 150
+    },
+    {
+      "id": "soul",
+      "lane": "process",
+      "col": 2,
+      "type": "security",
+      "label": "① 영혼(심지) 심기",
+      "sublabel": "성공 정의 · 절대 안 함",
+      "tag": "마커 soul: 의무",
+      "width": 150
+    },
+    {
+      "id": "decorr",
+      "lane": "process",
+      "col": 3,
+      "type": "backend",
+      "label": "② 병렬 탈상관 가속",
+      "sublabel": "계열 ⓐ · 입장 ⓑ",
+      "tag": "곱하지 말고 골라라",
+      "width": 160
+    },
+    {
+      "id": "burn",
+      "lane": "process",
+      "col": 4,
+      "type": "security",
+      "label": "③ 6축 태우기",
+      "sublabel": "여섯 축 ⓐ~ⓕ",
+      "tag": "다 돌리지 않는다 · 고른다",
+      "width": 170
+    },
+    {
+      "id": "engines",
+      "lane": "core",
+      "col": 3,
+      "type": "backend",
+      "label": "4대 엔진",
+      "sublabel": "judgment · gate · context · ground",
+      "tag": "출력은 여기서",
+      "width": 170
+    },
+    {
+      "id": "identity",
+      "lane": "surface",
+      "col": 5,
+      "type": "frontend",
+      "label": "5대 정체성 + 면모",
+      "sublabel": "①②③④⑤ + Ⓑ",
+      "tag": "등급은 등급표에만",
+      "width": 190
+    },
+    {
+      "id": "artifact",
+      "lane": "people",
+      "col": 5,
+      "type": "database",
+      "label": "산출물 + 4축 마커",
+      "sublabel": "PR · 스킬 · 마커",
+      "width": 150
+    },
+    {
+      "id": "record",
+      "lane": "core",
+      "col": 5,
+      "type": "database",
+      "label": "세션 카드 · 기록",
+      "sublabel": "tracks/** gitignored",
+      "tag": "레포 밖",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_in",
+      "from": "intent",
+      "to": "door",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_cli",
+      "from": "intent",
+      "to": "cli",
+      "label": "Claude Code 밖",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e_soul",
+      "from": "door",
+      "to": "soul",
+      "label": "작업 시작",
+      "variant": "security"
+    },
+    {
+      "id": "e_decorr",
+      "from": "soul",
+      "to": "decorr",
+      "label": "심지 확정 후"
+    },
+    {
+      "id": "e_burn",
+      "from": "decorr",
+      "to": "burn",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_eng_in",
+      "from": "soul",
+      "to": "engines",
+      "label": "심지가 엔진을 조종",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e_eng_gate",
+      "from": "cli",
+      "to": "engines",
+      "label": "ship-gate 만",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e_eng_out",
+      "from": "engines",
+      "to": "identity",
+      "label": "맞물려 나타남",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_burn_id",
+      "from": "burn",
+      "to": "identity",
+      "label": "태운 것만 등급",
+      "variant": "security"
+    },
+    {
+      "id": "e_art",
+      "from": "identity",
+      "to": "artifact",
+      "label": "받는 것"
+    },
+    {
+      "id": "e_rec",
+      "from": "artifact",
+      "to": "record",
+      "label": "마감 체인 ⑤",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "한 줄 정의",
+      "items": [
+        "FH = 의도를 기계로 벼리는 메타하네스 — 규칙(AI 가 따르는)과 코드(모델이 필요 없는)로 굳히고, 그 산출을 다른 하네스에 낳는다"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "사람이 남는 자리",
+      "items": [
+        "삭제·히스토리 재작성은 설치된 pre-push(클라이언트 훅)가 막고 사람이 override 로 푼다 · main 은 서버측 PR 전용 · 발행은 prepublishOnly + Pre-Publish 가 따로"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "판정은 기계",
+      "items": [
+        "설치된 pre-commit 에서 FH 자산 커밋은 4축 마커 없이 못 들어간다(--no-verify 우회 가능 · CI 는 마커 못 봄) · «못 쟀다» 는 0 이 아니다"
+      ]
+    }
+  ]
+}

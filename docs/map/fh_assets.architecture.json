@@ -1,0 +1,743 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "FH 는 어떻게 구현돼 있나 — 범용 코어(npm 산출물) vs 운영자 로컬 (노드 = 실재 경로)",
+    "quality_profile": "showcase",
+    "output": "docs/map/fh_assets.architecture.html",
+    "views": [
+      {
+        "id": "entry",
+        "label": "진입점 — 사람과 런타임이 읽는 것",
+        "focus": [
+          "claudemd",
+          "agentsmd",
+          "guide",
+          "skills_meta",
+          "skills_commons",
+          "id3"
+        ],
+        "note": "CLAUDE.md 는 Claude Code 가, AGENTS.md 는 Codex 등 다른 런타임이 읽는다. 스킬 41 · 에이전트 8 은 플러그인 두 개로 나간다."
+      },
+      {
+        "id": "identities",
+        "label": "5대 정체성 — 각자의 «자기 실물»",
+        "focus": [
+          "id1",
+          "id2",
+          "id3",
+          "id4",
+          "id5"
+        ],
+        "note": "정체성은 엔진의 다른 이름이 아니다 — 각각 엔진과 별개인 자산을 갖고 6축을 거쳐 등급표 행을 얻었다. 등급은 여기 없다(ship_readiness_gate.md)."
+      },
+      {
+        "id": "engines",
+        "label": "4대 엔진 — 출력이 나오는 기계",
+        "focus": [
+          "soul",
+          "precommit",
+          "prepush",
+          "context",
+          "grounding"
+        ],
+        "note": "judgment-circuit(tenet 등록부+4 차단 다리) · ship-gate(훅 둘) · context-continuity(압축 프로브·마감 체크) · external-grounding(선행 조사 훅·novelty 차단)."
+      },
+      {
+        "id": "instruments",
+        "label": "계기 — 초록의 뜻을 고정",
+        "focus": [
+          "selfcheck",
+          "sim",
+          "liveeval",
+          "revert",
+          "canon"
+        ],
+        "note": "레인 스위트 102 · 격리 sim(ARM/CTRL) · 야간 live-eval 12 프로브 · 되돌림 프로브 · 정본 44 문서."
+      },
+      {
+        "id": "boundary",
+        "label": "운영자 로컬 경계",
+        "focus": [
+          "localbind",
+          "sessionload",
+          "consent",
+          "launchd",
+          "sync"
+        ],
+        "note": "위 상자는 클론에 없거나 gitignored 다 — 소비자가 갈아 끼우는 자리. 이름은 «private companion store» 로만 부른다."
+      }
+    ],
+    "viewBox": [
+      1310,
+      660
+    ]
+  },
+  "components": [
+    {
+      "id": "localbind",
+      "type": "database",
+      "label": "로컬 바인딩 CLAUDE.local.md",
+      "sublabel": "templates/local_fh_context.md",
+      "pos": [
+        30,
+        40
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "gitignored · 티어·register 핀"
+    },
+    {
+      "id": "sessionload",
+      "type": "backend",
+      "label": "세션 기록 tracks/** 로더",
+      "sublabel": "scripts/fh_session_load.sh",
+      "pos": [
+        270,
+        40
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "카드 · 마커 · 원장"
+    },
+    {
+      "id": "consent",
+      "type": "security",
+      "label": "동의 lease 검사",
+      "sublabel": "scripts/consent_registry_check.sh",
+      "pos": [
+        510,
+        40
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "expires 필수 · 365일 상한"
+    },
+    {
+      "id": "launchd",
+      "type": "external",
+      "label": "무인 잡 plist 템플릿 (등록은 로컬)",
+      "sublabel": "scripts/com.forge-harness.live-eval.plist",
+      "pos": [
+        750,
+        40
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "live-eval · digest · daily"
+    },
+    {
+      "id": "sync",
+      "type": "external",
+      "label": "private companion store 동기화",
+      "sublabel": "scripts/sync-from-be.sh",
+      "pos": [
+        1010,
+        40
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "선택 · 없어도 코어는 돈다"
+    },
+    {
+      "id": "claudemd",
+      "type": "frontend",
+      "label": "CLAUDE.md (Claude Code 진입점)",
+      "sublabel": "CLAUDE.md",
+      "pos": [
+        30,
+        170
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "상주 규칙 · 문 · 게이트 절"
+    },
+    {
+      "id": "agentsmd",
+      "type": "frontend",
+      "label": "AGENTS.md (다른 런타임 진입점)",
+      "sublabel": "AGENTS.md",
+      "pos": [
+        270,
+        170
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "Codex · 이식 규칙"
+    },
+    {
+      "id": "guide",
+      "type": "frontend",
+      "label": "사용 가이드 (📖 문)",
+      "sublabel": "docs/USER_GUIDE.md",
+      "pos": [
+        510,
+        170
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "첫 세션 완주"
+    },
+    {
+      "id": "skills_meta",
+      "type": "backend",
+      "label": "fh-meta 스킬 35 · 에이전트 7",
+      "sublabel": "plugins/fh-meta/skills",
+      "pos": [
+        750,
+        170
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "plugins/fh-meta/agents"
+    },
+    {
+      "id": "skills_commons",
+      "type": "backend",
+      "label": "fh-commons 스킬 6 · 에이전트 1",
+      "sublabel": "plugins/fh-commons/skills",
+      "pos": [
+        1010,
+        170
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "plugins/fh-commons/agents"
+    },
+    {
+      "id": "id1",
+      "type": "backend",
+      "label": "① 클러스터 — 어댑터 · 매핑",
+      "sublabel": "scripts/adapters",
+      "pos": [
+        30,
+        300
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "knowledge/shared/rules/auto_project_mapping.md"
+    },
+    {
+      "id": "id2",
+      "type": "backend",
+      "label": "② 인큐베이터 — 챔버 러너",
+      "sublabel": "scripts/chamber_run.sh",
+      "pos": [
+        270,
+        300
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "scripts/chamber_candidate_collect.sh"
+    },
+    {
+      "id": "id3",
+      "type": "security",
+      "label": "③ 게이트 — 4축 규칙 + CLI",
+      "sublabel": ".claude/rules/fh_4axis_gate.md",
+      "pos": [
+        510,
+        300
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "scripts/fh-gate.sh"
+    },
+    {
+      "id": "id4",
+      "type": "backend",
+      "label": "④ 답습 — 선행 조사 · novelty 차단",
+      "sublabel": "scripts/prior_art_prompt.sh",
+      "pos": [
+        750,
+        300
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "scripts/novelty_claim_check.sh"
+    },
+    {
+      "id": "id5",
+      "type": "backend",
+      "label": "⑤ 증폭자 — 의도 → 산출",
+      "sublabel": "plugins/fh-meta/skills/goal-quench/SKILL.md",
+      "pos": [
+        1010,
+        300
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "plugins/fh-meta/skills/deep-clarify/SKILL.md"
+    },
+    {
+      "id": "soul",
+      "type": "security",
+      "label": "judgment-circuit tenet 등록부",
+      "sublabel": ".claude/soul_tenets.txt",
+      "pos": [
+        30,
+        430
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "scripts/judgment_circuit_lint.sh"
+    },
+    {
+      "id": "precommit",
+      "type": "security",
+      "label": "ship-gate · pre-commit",
+      "sublabel": "templates/.git-hooks/pre-commit",
+      "pos": [
+        270,
+        430
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "validate_*_leg 12 · PSA 스캔"
+    },
+    {
+      "id": "prepush",
+      "type": "security",
+      "label": "ship-gate · pre-push",
+      "sublabel": "templates/.git-hooks/pre-push",
+      "pos": [
+        510,
+        430
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "파괴 연산 · main 직접 · 마감"
+    },
+    {
+      "id": "context",
+      "type": "backend",
+      "label": "context-continuity",
+      "sublabel": "scripts/session_close_check.sh",
+      "pos": [
+        750,
+        430
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "scripts/compaction_probe.sh"
+    },
+    {
+      "id": "grounding",
+      "type": "backend",
+      "label": "external-grounding 사다리",
+      "sublabel": "scripts/frontier_digest_autopilot.sh",
+      "pos": [
+        1010,
+        430
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "deep_research_capability_ladder.md"
+    },
+    {
+      "id": "selfcheck",
+      "type": "security",
+      "label": "selfcheck — 레인 스위트 102",
+      "sublabel": "scripts/selfcheck.sh",
+      "pos": [
+        30,
+        560
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "scripts/lane_runner_check.sh"
+    },
+    {
+      "id": "sim",
+      "type": "backend",
+      "label": "격리 sim (ARM / CTRL)",
+      "sublabel": "scripts/sim_isolated_run.sh",
+      "pos": [
+        270,
+        560
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": "일회용 클론 · 플로어 티어"
+    },
+    {
+      "id": "liveeval",
+      "type": "backend",
+      "label": "야간 live-eval · 12 프로브",
+      "sublabel": "scripts/probe_live_eval.sh",
+      "pos": [
+        510,
+        560
+      ],
+      "size": [
+        210,
+        56
+      ],
+      "tag": ".claude/regression/probes_live.yaml"
+    },
+    {
+      "id": "revert",
+      "type": "security",
+      "label": "되돌림 프로브 (ⓕ)",
+      "sublabel": "scripts/revert_probe.sh",
+      "pos": [
+        750,
+        560
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "지우면 그 레인만 빨개지나"
+    },
+    {
+      "id": "canon",
+      "type": "database",
+      "label": "정본 44 문서 · 등급표",
+      "sublabel": "knowledge/shared/harness-core",
+      "pos": [
+        1010,
+        560
+      ],
+      "size": [
+        230,
+        56
+      ],
+      "tag": "knowledge/shared/harness-core/ship_readiness_gate.md"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "운영자 로컬 — 클론에 없거나 gitignored (CLAUDE.local.md · tracks/** · private companion store · launchd 등록 상태)",
+      "wraps": [
+        "localbind",
+        "sessionload",
+        "consent",
+        "launchd",
+        "sync"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "범용 코어 — npm 산출물(package.json files[] 259 항목) + templates/ · 소비자 클론에 그대로 있다",
+      "wraps": [
+        "claudemd",
+        "agentsmd",
+        "guide",
+        "skills_meta",
+        "skills_commons",
+        "id1",
+        "id2",
+        "id3",
+        "id4",
+        "id5",
+        "soul",
+        "precommit",
+        "prepush",
+        "context",
+        "grounding",
+        "selfcheck",
+        "sim",
+        "liveeval",
+        "revert",
+        "canon"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c_local_claude",
+      "from": "localbind",
+      "to": "claudemd",
+      "label": "register · 티어 핀",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_session_agents",
+      "from": "sessionload",
+      "to": "agentsmd",
+      "label": "카드 · 마커",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_consent_guide",
+      "from": "consent",
+      "to": "guide",
+      "label": "디스패치 lease",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_launchd_skills",
+      "from": "launchd",
+      "to": "skills_meta",
+      "label": "frontier-digest 매일",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_claude_id3",
+      "from": "claudemd",
+      "to": "id1",
+      "label": "문 ①",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_guide_id3",
+      "from": "guide",
+      "to": "id3",
+      "label": "4축 게이트 절",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_skills_id5",
+      "from": "skills_commons",
+      "to": "id5",
+      "label": "예산 게이트(token-budget-gate)",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_skills_id4",
+      "from": "skills_meta",
+      "to": "id4",
+      "label": "/frontier-digest",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_id1_soul",
+      "from": "id1",
+      "to": "soul",
+      "label": "strictest-wins",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_id2_pre",
+      "from": "id2",
+      "to": "precommit",
+      "label": "EMIT 도 마커",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_id3_push",
+      "from": "id3",
+      "to": "prepush",
+      "label": "물리 차단",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_id4_ctx",
+      "from": "id4",
+      "to": "context",
+      "label": "책장 먼저",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_id5_ground",
+      "from": "id5",
+      "to": "grounding",
+      "label": "갭 → 사다리",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_soul_pre",
+      "from": "soul",
+      "to": "precommit",
+      "label": "soul: 4 차단 다리",
+      "variant": "security",
+      "labelDy": -26
+    },
+    {
+      "id": "c_pre_push",
+      "from": "precommit",
+      "to": "prepush",
+      "label": "커밋 → 푸시",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "c_push_ctx",
+      "from": "prepush",
+      "to": "context",
+      "label": "close check 호출",
+      "variant": "security",
+      "labelDy": -26
+    },
+    {
+      "id": "c_pre_self",
+      "from": "precommit",
+      "to": "selfcheck",
+      "label": "레인이 훅을 잰다",
+      "labelDy": -13,
+      "variant": "dashed"
+    },
+    {
+      "id": "c_ctx_live",
+      "from": "context",
+      "to": "liveeval",
+      "label": "드리프트 감시",
+      "variant": "dashed",
+      "labelDy": -13
+    },
+    {
+      "id": "c_ground_canon",
+      "from": "grounding",
+      "to": "canon",
+      "label": "정본 직독",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelDy": 24
+    },
+    {
+      "id": "c_sim_live",
+      "from": "sim",
+      "to": "liveeval",
+      "label": "격리 러너를 같이 쓴다(:83)",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "c_self_sim",
+      "from": "selfcheck",
+      "to": "sim",
+      "label": "레인이 sim 을 잰다",
+      "labelDy": 46
+    },
+    {
+      "id": "c_live_revert",
+      "from": "liveeval",
+      "to": "revert",
+      "label": "ⓔ → ⓕ",
+      "variant": "dashed",
+      "labelDy": 46
+    },
+    {
+      "id": "c_revert_canon",
+      "from": "revert",
+      "to": "canon",
+      "label": "등급표 근거",
+      "variant": "security",
+      "labelDy": -26
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "범용 코어 (20 노드)",
+      "items": [
+        "전부 이 워크트리에 실재하는 경로다 — scripts/test_fh_map_paths_lanes.sh 가 매번 test -e 로 다시 센다",
+        "스킬 41 · 에이전트 8 · 레인 스위트 102 · 훅 2 · 정본 44 는 2026-09-05 ls · lane_runner_check 실측"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "운영자 로컬 (5 노드)",
+      "items": [
+        "CLAUDE.local.md · tracks/** · private companion store · launchd 는 클론에 없다 — 없으면 무엇이 빠지나는 FH_MAP.md ④",
+        "티어 핀은 register(반말/존댓말)를 정하지 언어를 정하지 않는다 — 실측으로 잡힌 결함이 그 절에 적혀 있다"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "정직 표기",
+      "items": [
+        "훅은 클라이언트측이라 --no-verify 로 우회된다 — 서버측 floor 는 main 의 required check validate 하나뿐(Axis 1 은 필수 아님)",
+        "정체성 등급은 이 그림에 없다 — 사본이 둘이면 하나가 낡는다. 정본 = ship_readiness_gate.md"
+      ]
+    }
+  ]
+}

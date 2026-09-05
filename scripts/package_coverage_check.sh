@@ -60,6 +60,12 @@ ACCEPTED_ABSENT=(
   #    🟥 소비자가 «필요로 하지 않는다»가 아니라 «이 레포의 연구·감사 계기다»가 이유다.
   #    출하하면 소비자 트리에 안 도는 스크립트가 늘고, 그게 orphan 스캔의 소음이 된다.
   "scripts/stray_path_scan.sh"          # 이 레포 경로 위생 스캐너 — 소비자 트리 구조가 다르다
+  # 🟥 2026-09-05 — docs/map 은 레포·Pages 표면이다(렌더 산출물 ~4 MB + «노드 = 실재 경로» 계약이
+  #    .github/·tests/ 등 출하하지 않는 경로를 가리킨다). npm 에는 README 의 포인터만 나간다 —
+  #    지도를 출하하면 그 레인이 소비자 트리에서 «부재」로 빨개지고, 그건 결함이 아니라 표면 차이다.
+  "docs/map/FH_MAP.md"                  # 리더용 지도 산문 — 레포/Pages 에서 읽는다
+  "docs/map/fh_assets.architecture.json" # 지도 소스(노드 = 레포 경로 계약) — 이 레포 계기의 입력
+  "scripts/test_fh_map_paths_lanes.sh"  # 그 계약의 레인 — 이 레포에서만 돈다
   "scripts/test_stray_path_lanes.sh"    # 위 레인
   "scripts/test_fixture_guard_lanes.sh" # 픽스처 가드 레인 — 가드 자체(fixture_guard_lib)는 출하한다
   "scripts/test_marker_first_use_lanes.sh"  # 4축 마커 first-use 레인 — 이 레포 마커 규약 전용

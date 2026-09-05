@@ -93,3 +93,7 @@ outputs/
 # python bytecode (preprep 등 스킬 안의 .py 실행 산물)
 __pycache__/
 *.pyc
+
+# archify renderer — installed project-locally to regenerate docs/map/*, never committed (2026-09-05)
+.claude/skills/archify/
+skills-lock.json
