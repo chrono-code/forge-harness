@@ -49,6 +49,12 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # or this
   something is "off". The GIF above is that verdict on a real diff.
 - The verdict is a **typed value**, not text you grep: `PASS · PENDING · BLOCKED · ESCALATE`.
 - Runs anywhere a shell runs — CI, a pre-commit hook, a different coding agent. Claude Code optional.
+- **It reviews your own code, not just an agent's.** Point it at a diff and it names the weakness — a verdict
+  that quietly degrades toward PASS, a reference that does not exist, a secret, a claim with no grounds —
+  so you fix it and re-run *before* merge. Where each FH engine applies (harness building · skill/agent
+  authoring · code review · irreversible-surface gates · context continuity), and what changes by model
+  tier and effort level: [`docs/USE_CASES.md`](docs/USE_CASES.md) ·
+  [`docs/model_tier_expectations.md`](docs/model_tier_expectations.md).
 
 ### ② The whole harness — inside Claude Code
 
