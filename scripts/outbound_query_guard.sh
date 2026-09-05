@@ -32,6 +32,15 @@ FH="$(cd "$(dirname "$0")/.." && pwd)"
 LIB="${PSA_LIB_FILE:-$FH/scripts/psa_scan_lib.sh}"
 DEFAULTS="${PSA_DEFAULTS_FILE:-$FH/.claude/rules/.public-surface-patterns.defaults}"
 OVERRIDE="${PSA_OVERRIDE_FILE:-$FH/.claude/rules/.public-surface-patterns}"
+# 🟥 주입점 하나 더 — **같은 논거의 네 번째 적용**이다(위 세 개가 «레인이 레포를 안 건드리게»
+# 있는 것과 동일). 실측 2026-09-05: 이 로그 경로가 박혀 있어서 L4 는 ⓐ 매 selfcheck 마다 실제
+# 레포의 tracks/_meta 에 행을 쌓았고 ⓑ tracks/ 가 없는 트리(= npm 설치본)에서는 append 가
+# 조용히 실패해 **`+1` 단언이 그대로 빨개졌다**. 즉 이 가드를 출하하려면 이 줄이 먼저다.
+# 기본값은 안 바뀐다.
+# ⚠️ 우회 채널로 읽지 마라: OUTBOUND_QUERY_OK 자체가 이미 env 로 켜는 것이라, 로그 경로를
+#    옮기는 것이 «없던 우회»를 만들지는 않는다. 다만 «강행은 기록된다»는 성질이 env 하나에
+#    더 의존하게 된 것은 사실이고, 그건 잔여로 이름 붙인다.
+OVERRIDE_LOG="${OUTBOUND_QUERY_LOG:-$FH/tracks/_meta/.outbound_query_override_log}"
 
 Q="${1:-}"; [ -n "$Q" ] || Q="$(cat)"
 if [ -z "${Q// /}" ]; then echo "  ⏭  빈 질의 — 스캔할 것이 없다" >&2; exit 0; fi
@@ -106,7 +115,7 @@ if [ "$RC" -ne 0 ] || [ -n "$OUT" ]; then
   # 초판의 `&& [ "$RC" -le 1 ]` 는 그래서 중복이었고, 중복은 앵커가 안 붙는다 — 지운다.
   if [ "${OUTBOUND_QUERY_OK:-0}" = "1" ]; then
     printf '%s\tOUTBOUND_QUERY_OK\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${Q:0:60}" \
-      >> "$FH/tracks/_meta/.outbound_query_override_log" 2>/dev/null || true
+      >> "$OVERRIDE_LOG" 2>/dev/null || true
     echo "⚠️  OUTBOUND — 히트가 있었으나 OUTBOUND_QUERY_OK=1 로 강행됨 (로그 기록됨)" >&2
     echo "$OUT" >&2
     exit 0

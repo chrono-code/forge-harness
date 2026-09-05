@@ -71,7 +71,61 @@
     "strings does not fire. Bash path (sed -i / > / tee into a .sh) covered with a weaker rule (named",
     "residual in the script header). Evidence row in .claude/.proposal_hook_events.tsv. Relaying an",
     "injected instruction is not initiative — see the r4 RESULT for what this does and does not claim.",
-    "  bash scripts/test_proposal_hook_lanes.sh                # expect: all known pairs hold (count self-reported)"
+    "  bash scripts/test_proposal_hook_lanes.sh                # expect: all known pairs hold (count self-reported)",
+    "",
+    "SIXTH GUARD, WebSearch|WebFetch matcher — outbound_query_hook.sh (added 2026-09-05):",
+    "the FIRST hook here that can emit permissionDecision:\"deny\", so read its degrade direction before",
+    "wiring it. WHAT IT GUARDS: a WebSearch/WebFetch query is an OUTBOUND, IRREVERSIBLE act — if the",
+    "string names an internal asset, the query IS the leak (CLAUDE.md §Field-Harness Diagnostic: internal",
+    "names never reach a log, a comment or a paste). scripts/outbound_query_guard.sh has owned that lint",
+    "since 2026-08-21 with ZERO callers, and its own header says so; this is its wiring. A repo scanner",
+    "cannot see an interactively-composed query, so the guard belongs on the call — same reasoning as",
+    "pipe_verdict_guard's.",
+    "",
+    "TWO LAYERS, AND ONLY ONE OF THEM DENIES. The CLI guard fail-closes when the operator's gitignored",
+    "override layer is absent. Correct for a CLI you type; wrong for a hook, because in a consumer",
+    "install that layer is absent BY CONSTRUCTION — importing that contract would deny every consumer's",
+    "WebSearch, and the bypass it would train is turning hooks off, disarming the destructive-op and",
+    "confidentiality guards riding the same channel. So:",
+    "    override-layer hit   -> deny      (the operator's own internal literals)",
+    "    defaults-layer hit   -> advisory  (universal shapes; FP-prone, and all a consumer has)",
+    "    no override present  -> advisory + a once-per-session UNCALIBRATED notice (a defaults-only scan",
+    "                           cannot say \"no internal tokens\", only \"no universal shapes\")",
+    "    instrument incomplete-> deny      (NOT SCANNED is not clean; irreversible surface fails CLOSED)",
+    "    not an FH checkout   -> silent    (mechanical test: is the tracked defaults file here?)",
+    "    hook command absent  -> the tool RUNS. A PreToolUse command that cannot be found is a non-blocking",
+    "                           error, so on a consumer install where scripts/outbound_query_hook.sh is not at",
+    "                           $CLAUDE_PROJECT_DIR/scripts/ the deny you think you wired is fail-OPEN (cross-family",
+    "                           review, 2026-09-05). Same contract as the five guards above, but this one denies,",
+    "                           so VERIFY after wiring:  echo '{}' | bash \"$CLAUDE_PROJECT_DIR/scripts/outbound_query_hook.sh\"; echo rc=$?",
+    "                           rc=0 and no output = resolved and silent on an empty payload; 'No such file' = not wired.",
+    "The layer is decided by comparing hit COUNTS across two scans (full set, then defaults-only). A",
+    "boolean would collapse \"both layers hit\" into \"defaults hit\" and silently downgrade a real deny.",
+    "",
+    "🟥 THE OUTPUT NEVER CARRIES THE TOKEN VALUE — only the count and the severity label. A leak guard",
+    "that echoes the token into its own deny reason or log is the leak channel. Lane H10 asserts the",
+    "fixture token appears on no output surface (stdout, stderr, event log).",
+    "",
+    "Opt out on one call by putting `# noqa: outbound` in the query. That channel is gameable, which is",
+    "exactly why it writes a log row — an invisible bypass is worse than a recorded one. Evidence rows in",
+    ".claude/.outbound_hook_events.tsv: ts, tool, verdict(deny|advisory|clean|noqa|na), layer, and the",
+    "tool_input KEY NAMES (schema, never content) — the official hooks reference does not document",
+    "WebSearch/WebFetch tool_input keys, so the hook scans every string value rather than hardcoding a",
+    "key name that would fail SILENTLY OPEN, and logs the observed shape so it becomes measured.",
+    "",
+    "🟥 ADD THESE TWO TO YOUR .gitignore WHEN YOU WIRE THIS — the hook writes them on every matched",
+    "call and they are not tracked content:",
+    "    .claude/.outbound_hook_events.tsv",
+    "    .claude/.outbound_hook_uncalibrated_notice",
+    "Missed on the first build; a clean-clone run flagged both as tree contamination, which is also",
+    "what a consumer's `git status` would have shown after their first WebSearch.",
+    "",
+    "Verify after wiring (known pair, both directions):",
+    "  bash scripts/test_outbound_query_hook_lanes.sh       # expect: all known pairs hold (count self-reported)",
+    "  printf '%s' '{\"tool_name\":\"WebSearch\",\"tool_input\":{\"query\":\"bash printf portability\"}}' \\",
+    "    | bash scripts/outbound_query_hook.sh              # expect: NO output (a clean query is silent)",
+    "  bash scripts/test_outbound_query_lanes.sh            # the CLI twin, for outbound paths this hook",
+    "                                                       # does NOT cover (curl / external CLIs via Bash)"
   ],
   "project_settings_json": {
     "hooks": {
@@ -112,6 +166,16 @@
             {
               "type": "command",
               "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/proposal_hook.sh\"",
+              "timeout": 5
+            }
+          ]
+        },
+        {
+          "matcher": "WebSearch|WebFetch",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/outbound_query_hook.sh\"",
               "timeout": 5
             }
           ]
