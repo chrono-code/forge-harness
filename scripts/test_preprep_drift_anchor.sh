@@ -33,7 +33,7 @@ sk(){ echo "  ⏭  $1 — SKIPPED (**통과 아님**)"; SKIP=$((SKIP+1)); }
 
 # D1 — 단일 소스
 missing=""
-for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py lane_promise.py SKILL.md README.md surfaces.example.yaml; do
+for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py lane_promise.py lane_diagram.py diagram_from_json.py SKILL.md README.md surfaces.example.yaml; do
   [ -f "$SRC/$f" ] || missing="$missing $f"
 done
 if [ -n "$missing" ]; then ng "D1 단일 소스 결손:$missing"
@@ -41,10 +41,10 @@ elif ! command -v python3 >/dev/null 2>&1; then
   sk "D1 구문 검사 — python3 부재라 «돌 수 있나»를 못 쟀다(UNMEASURED)"
 else
   synerr=""
-  for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py lane_promise.py; do
+  for f in preprep.py interslide_deps.py lane_progression.py lane_adjacent_dup.py lane_promise.py lane_diagram.py diagram_from_json.py; do
     python3 -c "import ast,sys;ast.parse(open(sys.argv[1],encoding='utf-8').read())" "$SRC/$f" 2>/dev/null || synerr="$synerr $f"
   done
-  [ -z "$synerr" ] && ok "D1 단일 소스 8파일 실재 + python 5파일 구문 통과" \
+  [ -z "$synerr" ] && ok "D1 단일 소스 10파일 실재 + python 7파일 구문 통과" \
                    || ng "D1 구문 실패:$synerr"
 fi
 

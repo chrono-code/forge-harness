@@ -9,6 +9,7 @@
   L2 unit-ref   — 표면 쌍의 단위 참조 정합 (대상의 «은퇴 선언 어휘»를 존중 — 안 하면 20% FP)
   L3 inventory  — 선언된 표면이 실물로 있나 (부재 = UNMEASURED, **0 이 아니다**)
   L4 getput     — 왕복 no-op 컨트롤. **v0.1 미배선 → NOT_WIRED 로 말한다**(거짓 초록 금지)
+  L12 diagram   — 타입 JSON 도해가 «지금 JSON» 에서 validate 를 거쳐 구워졌나 (lane_diagram.py · 2026-09-05)
 
 exit 0 = 전 레인 통과 · 1 = 발견 있음 · 2 = 계기 오류/미측정으로 판정 불가 (PASS 아님)
 
@@ -89,6 +90,31 @@ def read_text(path, kind):
         src = open(path, encoding='utf-8', errors='replace').read()
         lits = re.findall(r'"([^"\n]{2,})"|\'([^\'\n]{2,})\'', src)
         return '\n'.join(a or b for a, b in lits)
+    if kind == 'diagram_source':
+        # 🟥 2026-09-05 신설 — 타입 있는 도해 JSON(archify 스키마). figure_source 와 같은 이유로
+        #   «그림은 못 읽지만 그림을 그리는 소스는 읽는다». 노드 label/sublabel/tag · 간선 label ·
+        #   레인/구간/그룹 label · 카드 문장만 뽑는다(id·type 같은 기계 낱말은 L1/L5 에 안 태운다).
+        #   굽기 정합(지금 JSON 의 그림인가 · validate · 해상도)은 L12(lane_diagram.py) 몫이다.
+        import json as _json
+        d = _json.load(open(path, encoding='utf-8'))
+        out = []
+        for key in ('lanes', 'phases', 'groups', 'nodes', 'edges', 'participants', 'messages', 'states', 'transitions', 'components', 'relationships', 'stages', 'flows'):
+            for it in d.get(key) or []:
+                if isinstance(it, dict):
+                    for f in ('label', 'sublabel', 'tag', 'note'):
+                        if it.get(f): out.append(str(it[f]))
+        for c in d.get('cards') or []:
+            if isinstance(c, dict):
+                if c.get('title'): out.append(str(c['title']))
+                out += [str(x) for x in (c.get('items') or [])]
+        m = d.get('meta') or {}
+        for f in ('title', 'subtitle'):
+            if m.get(f): out.append(str(m[f]))
+        for v in m.get('views') or []:
+            if isinstance(v, dict):
+                for f in ('label', 'note'):
+                    if v.get(f): out.append(str(v[f]))
+        return '\n'.join(out)
     if kind == 'keynote':
         raise RuntimeError('keynote: 사람만 읽는 면 — 기계 어댑터 없음')
     raise RuntimeError(f'unknown kind: {kind}')
@@ -748,7 +774,7 @@ def main():
     #    [[feedback_rule_misdescribes_its_own_machine]] · [[feedback_instrument_vs_target_and_budget]]
     _lanes = sorted(n[5:] for n in globals() if n.startswith('lane_') and callable(globals()[n]))
     _mods = sorted(m for m in ('lane_promise', 'lane_adjacent_dup', 'lane_progression',
-                                'lane_slide_relations', 'lane_geometry')
+                                'lane_slide_relations', 'lane_geometry', 'lane_diagram')
                    if os.path.exists(os.path.join(HERE, m + '.py')))
     # 🟥 2026-09-04 신설 — `--lane R1,R2,...` 로 **새 모듈 레인(R1-R5·P1/P3)만** 골라 끈다/켠다.
     #    L1~L11 은 아직 이 필터를 안 탄다(usage 줄의 --lane 은 그쪽엔 미배선인 채 남아 있다 —
@@ -830,6 +856,15 @@ def main():
         except Exception as _e:
             notes.append('R1-R5 slide-relations : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)'
                          % (type(_e).__name__, _e))
+    # L12 diagram — 타입 JSON 도해가 «지금 JSON» 에서 validate 를 거쳐 구워졌나(2026-09-05 신설).
+    #   차단: 선언된 diagram_source 표면에 한해 지문·validate·해상도·viewBox 폭·여백을 본다.
+    #   영수증 없는 PNG(손그림)는 UNMEASURED 노트로만 — 0 이 아니다.
+    try:
+        import lane_diagram
+        _f12, _n12 = lane_diagram.scan(cfg, root)
+        findings += _f12; notes += _n12
+    except Exception as _e:
+        notes.append('L12 diagram : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)' % (type(_e).__name__, _e))
     if _lane_on('P1', 'P3', 'P'):
         try:
             import lane_geometry

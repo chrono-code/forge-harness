@@ -44,6 +44,15 @@ surfaces:
     path: "../scripts/gen_fig_s13b.py"
     kind: figure_source
     canonical_for: [도해 문구]
+  # 🟥 2026-09-05 신설 — 타입 있는 도해 JSON(archify 스키마)을 표면으로 세운다. figure_source 처럼
+  #   그림 «소스»의 문자열이 L1/L5 에 잡히고, 추가로 L12 가 옆의 굽기 영수증(*.receipt.json,
+  #   diagram_from_json.py 가 쓴다)으로 «지금 JSON 의 그림인가 · validate 통과 · 해상도 · viewBox 폭»을 본다.
+  #   render 를 안 적으면 UNMEASURED(0 아님). 손으로 넣은 PNG(영수증 없음)도 UNMEASURED.
+  - id: fig_s44
+    path: "figures/s44_methods_make_gate.workflow.json"
+    kind: diagram_source
+    render: "figures/s44_methods_make_gate.png"
+    canonical_for: [도해 문구]
   - id: wiring
     path: "../scripts/ifkakao_build_deck.py"
     kind: note_map
@@ -138,6 +147,15 @@ progressions:
       - anchor: "그래도 남는"
       - anchor: "더 늘려도"
       - anchor: "입장을 바꾸면"
+
+# ── L12 diagram — 타입 JSON 도해의 굽기 정합 (2026-09-05) ─────────────────────────
+# 값의 근거: 장표 26.67in = 1920pt → 2× = 3840px. viewBox 폭은 archify 글자 배율을 정한다
+# (pt = unit × 1728/폭: 720 이면 라벨 29pt·부제 19pt, 덱 최소 18pt 충족 / 845 면 부제 16pt 미달).
+# 🟥 덱이 다르면 min_px 는 그 덱 폭의 2× 로, max_viewbox_w 는 그 덱 최소 글자로 다시 정한다.
+diagram:
+  min_px: 3840
+  max_viewbox_w: 720
+  min_pad: 0.02
 
 # ── L10 adjacent-dup — 인접 장이 같은 문장을 다시 읽나 ────────────────────────
 # 🟥 구조는 범용이고 **임계는 발표마다 다르다** — 그래서 갈라 놓는다.
