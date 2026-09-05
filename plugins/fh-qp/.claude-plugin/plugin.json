@@ -1,0 +1,22 @@
+{
+  "name": "fh-qp",
+  "version": "3.0.0",
+  "engines": {
+    "claudeCode": ">=1.0.0"
+  },
+  "description": "QP (Quality Platform) — 4 skills (qp · qp-plan · qp-run · qp-regress). Plan→Automation→Regression loop for web and desktop apps with zero domain constants. Calls a registered qasp typed capability when one is present (strictest-wins); otherwise drives the target through the session's Playwright MCP (web) or computer-use MCP (desktop). Mobile deferred.",
+  "author": {
+    "name": "chrono-meta",
+    "email": "chrono-meta@users.noreply.github.com"
+  },
+  "keywords": [
+    "qa",
+    "quality-platform",
+    "test-planning",
+    "e2e",
+    "regression",
+    "surface-reach",
+    "mtm",
+    "domain-agnostic"
+  ]
+}

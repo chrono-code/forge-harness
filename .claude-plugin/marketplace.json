@@ -20,6 +20,12 @@
       "version": "3.0.0",
       "description": "Project-agnostic utility skills — 5 skills (convergence-loop · deliberation · mcp-circuit-breaker · token-budget-gate · ko-tech-writer) + 1 agent (quench-challenger). Domain-independent utilities transplantable into any project.",
       "source": "./plugins/fh-commons"
+    },
+    {
+      "name": "fh-qp",
+      "version": "3.0.0",
+      "description": "QP (Quality Platform) — the generic edition of a field QA harness's Prepare→Automation→Regression loop as an FH plugin: 4 skills (qp router · qp-plan · qp-run · qp-regress) + qp_tools.sh (target-class · adapter-probe · mask · surface-reach · mtm-check · run-verbs, typed exit codes) + a zero-domain-constant profile slot + 29 known-pair lanes. Drives web targets through the session's Playwright MCP and desktop targets through computer-use MCP (mobile deferred); calls a registered qasp typed capability when one exists (strictest-wins) — none is registered today, so the MCP fallback is the first edition. Verdict contract: a MACHINE closure requires a recorded assertion; a failed first step is attributed BLOCKED, not FAIL; surface_reach counts every TC in the denominator. Born as chamber run #18 (EMIT, 2026-09-05).",
+      "source": "./plugins/fh-qp"
     }
   ]
 }

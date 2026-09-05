@@ -1,0 +1,3 @@
+#mtm: UNAVAILABLE
+TC-1	PASS	AS_PLANNED	MACHINE	verify	text-visible:x	INVENTORY
+TC-2	PASS	AS_PLANNED	MACHINE	verify	text-visible:y	INVENTORY

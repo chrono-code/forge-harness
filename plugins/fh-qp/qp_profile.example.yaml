@@ -1,0 +1,29 @@
+# qp_profile.example.yaml — the ONLY place a target-specific constant may live.
+# Copy to a gitignored path (e.g. tracks/_meta/qp_profile.yaml) and pass it with --profile.
+# The plugin itself ships ZERO domain constants; without a profile, only public targets run.
+#
+# Every value below is a placeholder. Nothing in this file names a real organisation.
+profile_name: example
+targets:
+  web:
+    - id: example-web
+      base_url: https://app.example.com        # non-public hosts (10.x, *.internal, *.lan, bare names) REQUIRE this file
+      route_prefix: ""                          # e.g. "#/" for hash routers
+      entry_route: /
+  desktop:
+    - id: example-desktop
+      app_name: Example App                     # window title / bundle name as the OS shows it
+credentials:
+  # Never put secrets here. Reference an env var; qp-run reads it at type-time and masks it in evidence.
+  example-web:
+    username_env: QP_EXAMPLE_USER
+    password_env: QP_EXAMPLE_PASS
+tc_vocabulary:
+  # Optional overrides for the step-verb keywords qp-run recognises (defaults are English + Korean).
+  click: []
+  input: []
+  navigate: []
+  verify: []
+masking:
+  # Extra evidence-masking regexes (appended to the built-in email/token/password set).
+  extra_patterns: []

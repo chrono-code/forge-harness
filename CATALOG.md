@@ -565,6 +565,11 @@ Pattern: downstream skill returns structured verdict (PASS/CONDITIONAL_PASS/FAIL
 Formal definition of meta harness engineering + FH positioning vs. academic convergence (arXiv 2605.18747 "Code as Agent Harness", arXiv 2604.14228 98.4% finding). Maps FH 6-axis to 3-layer taxonomy; distinguishes human-in-loop (FH) vs automation-first vs automation-maximalist approaches.
 - Decision: FH differentiator = human judgment gate on all PRs, not automation maximization
 
+### QP (Quality Platform) — plugins/fh-qp (chamber run #18 EMIT, 2026-09-05)
+**File:** plugins/fh-qp/README.md · skills/{qp,qp-plan,qp-run,qp-regress}/SKILL.md · scripts/qp_tools.sh · scripts/test_fh_qp_lanes.sh
+**Tags:** #qa #mtm #playwright-mcp #computer-use #surface-reach #verdict-contract #plugin
+**Summary:** Generic edition of a field QA harness's Prepare→Automation→Regression loop with zero domain constants; MCP fallback first (Playwright web · computer-use desktop, mobile deferred), typed capability call when a qasp capability is registered (none today). Verdict contract: MACHINE closure needs an assertion · first-step failure → BLOCKED · surface_reach over the full TC denominator (content-hash screen-id). 29 known-pair lanes; first real use on the FH landing page.
+
 ### 2026-05-29 | fh-commons | token-budget-gate, token-estimation, cost-guard, multi-agent
 **File:** plugins/fh-commons/skills/token-budget-gate/SKILL.md
 New skill: pre-task token cost estimation with Green/Yellow/Orange/Red gate verdict. Post-task calibration loop improves future estimates. Auto-proposed before agent-composer, sim-conductor, steel-quench, harvest-loop.
