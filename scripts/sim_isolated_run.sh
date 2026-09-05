@@ -328,6 +328,7 @@ while [ $# -gt 0 ]; do
     --base-sha) BASE_SHA="${2:-}"; shift 2 ;;
     --setup)   SETUP="${2:-}"; shift 2 ;;  # shell run INSIDE each clone before the sim. See below.
     --extra-tools) EXTRA="${2:-}"; shift 2 ;;  # append tools to the mode's set. See TOOL VISIBILITY.
+    --mcp-config) MCPCFG="${2:-}"; shift 2 ;;  # the ONLY MCP servers an arm may see (see MCP ISOLATION). Default: none.
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -588,8 +589,16 @@ for r in $(seq 1 "$REPS"); do
   #    부르며 정직하게 거부하면서도, 거부문 안에서 정답을 말한다. 채점기는 그걸 토큰으로 센다.
   #    이것이 회차 1~3 과 probe1~4 를 전부 무효로 만든 근인이고, 경로 deny·코퍼스 마스킹은
   #    **원리적으로 못 막는다**(도구 읽기가 아니라 프롬프트 조립이다).
+  # 🟥 MCP ISOLATION (measured 2026-09-05, QP chamber floor sim): a headless arm launched by this
+  #    runner saw the OPERATOR'S user-scope MCP servers (a cloud drive, a wiki, a browser bridge)
+  #    in its tool list — the clone isolates files and settings, not `~/.claude.json` MCP scope.
+  #    A blind arm with a write-capable MCP is a residency hole, not a sim. `--strict-mcp-config`
+  #    = "only the servers given by --mcp-config" (CLI --help), and with no --mcp-config that is
+  #    NONE. An arm that legitimately needs a server (e.g. Playwright for a web target) gets it
+  #    explicitly via --mcp-config <file inside the clone>; nothing is inherited.
+  MCPARGS=(--strict-mcp-config); [ -n "${MCPCFG:-}" ] && MCPARGS+=(--mcp-config "$MCPCFG")   # bash 3.2 + set -u: expanded with the ${a[@]+"${a[@]}"} idiom below
   ( cd "$WORK" && fh_timeout "$TIMEOUT" claude -p "$PROMPT" \
-        --model "$MODEL" "${TOOLS[@]}" \
+        --model "$MODEL" "${TOOLS[@]}" ${MCPARGS[@]+"${MCPARGS[@]}"} \
         < /dev/null 2>"$OUTDIR/${ARM}_r${r}.stderr.txt" ) > "$OUTDIR/${ARM}_r${r}.txt"
   rc=$?
   bytes=$(wc -c < "$OUTDIR/${ARM}_r${r}.txt" | tr -d ' ')
