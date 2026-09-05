@@ -1448,6 +1448,7 @@ Card update is NOT a sub-step of harvest-loop — even if harvest-loop is skippe
 **Card update obligation** (independent obligation — regardless of harvest-loop completion): Update `reference_next_session_starter.md`.  
 ① **Agent View pre-read** (see above) → ② Step 0-b cross-check generates removal list → ③ Remove completed items → ④ Add new priorities → ⑤ Fix stale paths/versions → ⑥ Overwrite → ⑦ Output "BEFORE N items → AFTER M items" diff.  
 "Delta update" not "snapshot" — completed items remaining in next session card is a bug.
+🟥 **그리고 그 역방향도 버그다 — «안 닫힌 것이 사라지는 것».** 재작성은 줄이는 일이 아니라 «완료를 덜어내는」 일이다: 카드에서 빠진 항목은 ⓐ `fh_completed_{date}.md` 에 완료로 적혔거나 ⓑ 카드에 «왜 뺐는지」가 적혀 있어야 하고, 둘 다 아니면 유실이다. 이 방향은 오래 **한쪽만** 적혀 있었다(완료가 남는 것만 버그로) — 그래서 2026-08-24 에 미완 4건이 통째로 사라졌고, 그 세션은 «BEFORE 172 → AFTER 101» 이라는 diff 를 출력하고도 «줄었다」만 말했다. 기계 앵커는 `session_close_check.sh` ⑤-C(이전 카드의 **미래 날짜**가 카드나 오늘 완료 로그에 살아 있나) — 🟥 **날짜 토큰만 보므로 날짜 없는 미완은 구조적으로 못 잡는다**(앵커지 floor 아님). 외부 근거: 파일시스템 기억 연구(arXiv 2607.26637)가 «구조만 바꿔라」라고 지시한 재구성 에이전트는 응축하며 기록을 버렸고 한 벤치마크 정확도가 **77.6% → 41.2%** 로 반토막 났으며, *"keep every fact"* 한 줄을 더하자 내용이 대체로 고정됐다. 같은 규율을 카드·메모리·상주 문서를 **줄이는 모든 패스**(마감 ⑤ · `/memory-hygiene` · `/salience-splitter`)에 적용한다 — «줄여라」만 있는 지시는 조용히 사실을 지운다. ⚠️ 그 연구는 반대 방향도 함께 보고한다(작은 코퍼스에서는 응축이 56.2% → 68.8% 로 **도움**) — 그래서 이 규칙은 «줄이지 마라」가 아니라 «빠진 것은 완료이거나 명시된 것이어야 한다」다.
 
 **Thread-continuation block (operator, 2026-08-16)**: *"특정 주제에 집중해서 진행한 세션이라면
 앞으로도 마감할 때 그 갈래로 이어갈 수 있게 알아서 정리해줘."* When a session ran predominantly on
