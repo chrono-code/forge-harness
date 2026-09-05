@@ -4881,8 +4881,8 @@
         <text data-detail="fine" x="100" y="175" class="t-frontend" font-size="7" text-anchor="middle">게이트 대상</text>
         </g>
 
-        <g id="node-marker" data-node-id="marker" data-node-label="4축 마커" tabindex="0" role="button" aria-label="Focus 4축 마커, soul · axes · family, 01 / 변경" aria-pressed="false" data-node-kind="database" data-node-sublabel="soul · axes · family" data-node-tag="tracks/** gitignored" data-node-context="01 / 변경">
-          <title>4축 마커 · soul · axes · family · 01 / 변경 · tracks/** gitignored</title>
+        <g id="node-marker" data-node-id="marker" data-node-label="4축 마커" tabindex="0" role="button" aria-label="Focus 4축 마커, soul · axes · oracle, 01 / 변경" aria-pressed="false" data-node-kind="database" data-node-sublabel="soul · axes · oracle" data-node-tag="tracks/** gitignored" data-node-context="01 / 변경">
+          <title>4축 마커 · soul · axes · oracle · 01 / 변경 · tracks/** gitignored</title>
           <rect x="40" y="356" width="120" height="58" rx="6" class="c-mask"/>
           <rect x="40" y="356" width="120" height="58" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(46 362) scale(0.6875)">
@@ -4890,7 +4890,7 @@
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="100" y="377" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">4축 마커</text>
-          <text data-detail="context" x="100" y="393" class="t-muted" font-size="7" text-anchor="middle">soul · axes · family</text>
+          <text data-detail="context" x="100" y="393" class="t-muted" font-size="7" text-anchor="middle">soul · axes · oracle</text>
         <text data-detail="fine" x="100" y="403" class="t-database" font-size="7" text-anchor="middle">tracks/** gitignored</text>
         </g>
 
@@ -5008,17 +5008,17 @@
         <text data-detail="fine" x="960" y="175" class="t-external" font-size="7" text-anchor="middle">감사만 · 쓰기 없음</text>
         </g>
 
-        <g id="node-ci" data-node-id="ci" data-node-label="사람 PR 리뷰 · 머지" tabindex="0" role="button" aria-label="Focus 사람 PR 리뷰 · 머지, HITL · main PR 전용, 05 / 감시 · 등급" aria-pressed="false" data-node-kind="security" data-node-sublabel="HITL · main PR 전용" data-node-tag="서버측 floor" data-node-context="05 / 감시 · 등급">
-          <title>사람 PR 리뷰 · 머지 · HITL · main PR 전용 · 05 / 감시 · 등급 · 서버측 floor</title>
+        <g id="node-ci" data-node-id="ci" data-node-label="사람 리뷰 · 머지" tabindex="0" role="button" aria-label="Focus 사람 리뷰 · 머지, HITL · main PR 전용, 05 / 감시 · 등급" aria-pressed="false" data-node-kind="security" data-node-sublabel="HITL · main PR 전용" data-node-tag="판단은 사람 몫" data-node-context="05 / 감시 · 등급">
+          <title>사람 리뷰 · 머지 · HITL · main PR 전용 · 05 / 감시 · 등급 · 판단은 사람 몫</title>
           <rect x="900" y="242" width="120" height="58" rx="6" class="c-mask"/>
           <rect x="900" y="242" width="120" height="58" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(906 248) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="960" y="263" class="t-primary" font-size="9.8" font-weight="600" text-anchor="middle">사람 PR 리뷰 · 머지</text>
+          <text data-node-label="" data-detail-anchor="" x="960" y="263" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">사람 리뷰 · 머지</text>
           <text data-detail="context" x="960" y="279" class="t-muted" font-size="7" text-anchor="middle">HITL · main PR 전용</text>
-        <text data-detail="fine" x="960" y="289" class="t-security" font-size="7" text-anchor="middle">서버측 floor</text>
+        <text data-detail="fine" x="960" y="289" class="t-security" font-size="7" text-anchor="middle">판단은 사람 몫</text>
         </g>
 
         <g id="node-grades" data-node-id="grades" data-node-label="등급표 (정본 한 곳)" tabindex="0" role="button" aria-label="Focus 등급표 (정본 한 곳), ship_readiness_gate, 05 / 감시 · 등급" aria-pressed="false" data-node-kind="database" data-node-sublabel="ship_readiness_gate" data-node-tag="🟢 = 실발화 n≥1" data-node-context="05 / 감시 · 등급">
@@ -5034,17 +5034,17 @@
         <text data-detail="fine" x="960" y="403" class="t-database" font-size="7" text-anchor="middle">🟢 = 실발화 n≥1</text>
         </g>
 
-        <g id="node-standards" data-node-id="standards" data-node-label="표준 정렬 자기평가" tabindex="0" role="button" aria-label="Focus 표준 정렬 자기평가, ISO/IEC 42119, 05 / 감시 · 등급" aria-pressed="false" data-node-kind="database" data-node-sublabel="ISO/IEC 42119" data-node-tag="정렬 ≠ 준수" data-node-context="05 / 감시 · 등급">
-          <title>표준 정렬 자기평가 · ISO/IEC 42119 · 05 / 감시 · 등급 · 정렬 ≠ 준수</title>
+        <g id="node-standards" data-node-id="standards" data-node-label="표준 정렬 (자기평가)" tabindex="0" role="button" aria-label="Focus 표준 정렬 (자기평가), ISO/IEC 42119 · 42001, 05 / 감시 · 등급" aria-pressed="false" data-node-kind="database" data-node-sublabel="ISO/IEC 42119 · 42001" data-node-tag="정렬 ≠ 인증" data-node-context="05 / 감시 · 등급">
+          <title>표준 정렬 (자기평가) · ISO/IEC 42119 · 42001 · 05 / 감시 · 등급 · 정렬 ≠ 인증</title>
           <rect x="900" y="470" width="120" height="58" rx="6" class="c-mask"/>
           <rect x="900" y="470" width="120" height="58" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(906 476) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="960" y="491" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">표준 정렬 자기평가</text>
-          <text data-detail="context" x="960" y="507" class="t-muted" font-size="7" text-anchor="middle">ISO/IEC 42119</text>
-        <text data-detail="fine" x="960" y="517" class="t-database" font-size="7" text-anchor="middle">정렬 ≠ 준수</text>
+          <text data-node-label="" data-detail-anchor="" x="960" y="491" class="t-primary" font-size="9.3" font-weight="600" text-anchor="middle">표준 정렬 (자기평가)</text>
+          <text data-detail="context" x="960" y="507" class="t-muted" font-size="7" text-anchor="middle">ISO/IEC 42119 · 42001</text>
+        <text data-detail="fine" x="960" y="517" class="t-database" font-size="7" text-anchor="middle">정렬 ≠ 인증</text>
         </g>
 
         <!-- Flow labels -->
