@@ -210,7 +210,10 @@ PROMPT="$(cat "$PROMPT_FILE")"
 rm -f "$PROMPT_FILE"
 
 _log "Stage 2 starting (timeout ${ATTEMPT_TIMEOUT_SECS}s)"
-"$CLAUDE_BIN" -p --permission-mode bypassPermissions "$PROMPT" >> "$LOG_FILE" 2>&1 &
+# 프롬프트는 `-p` 바로 뒤(positional-first) — Stage 1 러너와 같은 계약(2026-09-05, variadic 플래그 뒤
+# positional 은 먹힌다). FD_MODEL 은 Stage 1 과 같은 변수로 핀한다: /model 로 저장한 기본 모델이
+# `claude -p` 무인 런에도 적용되므로, 무인 잡의 모델은 plist 가 명시한다(운영자 결정 2026-09-05).
+"$CLAUDE_BIN" -p "$PROMPT" --permission-mode bypassPermissions ${FD_MODEL:+--model "$FD_MODEL"} >> "$LOG_FILE" 2>&1 &
 CLAUDE_PID=$!
 DEADLINE=$((SECONDS + ATTEMPT_TIMEOUT_SECS))
 while kill -0 "$CLAUDE_PID" 2>/dev/null && [ "$SECONDS" -lt "$DEADLINE" ]; do

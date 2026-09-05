@@ -511,11 +511,17 @@ for ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do
     #    2026-09-04: 33/35 fh-meta skills denied; the 2 that passed were exactly the 2 with a
     #    Skill(...) rule in the gitignored settings.local.json). The gitignored settings file is not
     #    a skeleton — this flag is, so the runner carries it itself.
-    "$CLAUDE_BIN" -p --permission-mode acceptEdits \
+    # 🟥 프롬프트는 항상 `-p` 바로 뒤(첫 positional)에 둔다 — 2026-09-05, 첫 무인 런 3회 전부
+    #    이 순서로 죽은 뒤 실측. `--allowedTools`(그리고 `--disallowedTools`·`--add-dir`)는
+    #    variadic 이라 다음 `-` 플래그를 만날 때까지 뒤 토큰을 전부 자기 값으로 삼킨다 —
+    #    FD_MODEL·PROFILE_SETTINGS_JSON 이 둘 다 빈 launchd 기본 조건에서 프롬프트가
+    #    allowedTools 목록으로 먹혀 `Input must be provided … as a prompt argument` 로 죽었다.
+    #    (09-04 손 테스트는 우연히 `--model` 이 사이에 있어 안 죽었다 — 순서의존은 자기고발 안 함.)
+    "$CLAUDE_BIN" -p "$(_build_prompt)" \
+        --permission-mode acceptEdits \
         --allowedTools "Skill(fh-meta:frontier-digest)" \
         ${FD_MODEL:+--model "$FD_MODEL"} \
         ${PROFILE_SETTINGS_JSON:+--settings "$PROFILE_SETTINGS_JSON"} \
-        "$(_build_prompt)" \
         >> "$LOG_FILE" 2>&1 &
     CLAUDE_PID=$!
     DEADLINE=$((SECONDS + ATTEMPT_TIMEOUT_SECS))

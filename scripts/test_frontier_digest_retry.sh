@@ -99,5 +99,48 @@ fi
 pkill -P "$RPID" 2>/dev/null || true   # 고아 정리 (B-2)
 rm -rf "$T"
 
+# ⑤ positional-first 계약 (2026-09-05, launchd 무인 런 3회 전멸의 회귀 앵커): claude 에게 넘기는
+#    argv 에서 `-p` 바로 다음 원소가 프롬프트여야 한다. `--allowedTools`(variadic) 가 다음 `-`
+#    플래그를 만날 때까지 뒤 토큰을 전부 삼키므로, FD_MODEL·PROFILE_SETTINGS_JSON 이 둘 다 빈
+#    (=launchd 기본) 조건에서 프롬프트가 그 뒤에 오면 allowedTools 값으로 먹힌다. 로그 grep 으로는
+#    "차단됐다"만 보이고 "옳게 차단됐다"는 안 보이므로, 여기는 로그가 아니라 argv 자체를 연다 —
+#    스텁이 실제로 받은 argv 를 NUL 구분으로 물질화하고, 이 레인이 그것을 기계로 확인한다.
+T=$(mk_sandbox)
+cat > "$T/bin/claude-stub" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\0' "$@" > "$FD_FH_DIR/.argv_capture"
+exit 1
+STUB
+chmod +x "$T/bin/claude-stub"
+env FD_FH_DIR="$T/fh" FD_PROFILE=.satellite-profile.md FD_CLAUDE_BIN="$T/bin/claude-stub" \
+    FD_ATTEMPT_TIMEOUT_SECS=3 FD_POLL_SECS=1 FD_RETRY_SLEEP_SECS=1 FD_MAX_ATTEMPTS=1 \
+    bash "$RUNNER" >/dev/null 2>&1
+ARGV_FILE="$T/fh/.argv_capture"
+FOUND_P=0
+NEXT_IS_PROMPT=""
+if [ -f "$ARGV_FILE" ]; then
+  while IFS= read -r -d '' tok; do
+    if [ "$FOUND_P" = 1 ]; then
+      NEXT_IS_PROMPT="$tok"
+      FOUND_P=2
+    elif [ "$FOUND_P" = 0 ] && [ "$tok" = "-p" ]; then
+      FOUND_P=1
+    fi
+  done < "$ARGV_FILE"
+fi
+case "$NEXT_IS_PROMPT" in
+  *"Run /frontier-digest"*)
+    echo "✅ ⑤ positional-first: argv[-p 다음]이 프롬프트다" ;;
+  *)
+    echo "❌ ⑤ positional-first: argv[-p 다음]이 프롬프트가 아니다 — variadic 플래그가 삼켰을 가능성"
+    if [ -f "$ARGV_FILE" ]; then
+      echo "     | -p 다음 원소(앞 80자): $(printf '%s' "$NEXT_IS_PROMPT" | head -c 80)"
+    else
+      echo "     | argv capture 파일 자체가 없다 — 스텁이 안 불렸다"
+    fi
+    FAILED=1 ;;
+esac
+rm -rf "$T"
+
 echo "── retry/watchdog harness: $([ "$FAILED" -eq 0 ] && echo "PASS — 로직 건전, 잔여 델타는 환경(라이브 계측이 판별)" || echo "FAIL — 스크립트 로직 결함") ──"
 exit "$FAILED"
