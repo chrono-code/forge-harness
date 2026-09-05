@@ -1592,6 +1592,20 @@ else
   fail=1
 fi
 
+# outbound-query PreToolUse 훅 — 위 CLI 가드의 **배선**(WebSearch|WebFetch). 레인이 두 층 판정
+# (override→deny · defaults→advisory), 미측정 4가지→deny, N/A 무음, 그리고 🟥 «출력에 토큰 값이
+# 없다»(H10)를 각각 짝으로 잡는다. 마지막 것이 이 훅의 존재 이유를 지키는 레인이다.
+if [ ! -f scripts/outbound_query_hook.sh ]; then
+  _absent_subject_verdict "test_outbound_query_hook_lanes.sh" "scripts/outbound_query_hook.sh" || fail=1
+elif [ -f scripts/test_outbound_query_hook_lanes.sh ]; then
+  if ! bash scripts/test_outbound_query_hook_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  test_outbound_query_hook_lanes.sh: outbound_query_hook.sh present but its anchor is missing"
+  fail=1
+fi
+
 if [ ! -f scripts/pipe_verdict_guard.sh ]; then
   _absent_subject_verdict "test_pipe_verdict_guard_lanes.sh" "scripts/pipe_verdict_guard.sh" || fail=1
 elif [ -f scripts/test_pipe_verdict_guard_lanes.sh ]; then

@@ -31,10 +31,13 @@ echo "── L3 🟥 계기 불완전 = 미측정. 통과가 아니라 차단이
 chk "L3 defaults 부재 → BLOCK(3), CLEAN 아님" "$(run "$T/nope" "$T/override" 'harmless query')" 3
 
 echo "── L4 override 채널 — 존중되고, 로그가 남는다 ──"
-LOG="$FH/tracks/_meta/.outbound_query_override_log"
+# 🟥 로그도 주입점으로 뺀다(2026-09-05). 박힌 경로였을 때 이 레인은 ⓐ 매 selfcheck 마다 실제
+# tracks/_meta 에 행을 쌓았고 ⓑ tracks/ 가 없는 트리(npm 설치본)에서 **`+1` 이 0 이 되어
+# 빨개졌다** — 실측으로 확인했고, 그게 이 가드가 출하 목록 밖에 있던 실제 이유였다.
+LOG="$T/override_log"
 before=$( [ -f "$LOG" ] && wc -l < "$LOG" || echo 0 )
 rc=$(PSA_DEFAULTS_FILE="$T/defaults" PSA_OVERRIDE_FILE="$T/override" OUTBOUND_QUERY_OK=1 \
-     bash "$G" 'ZZFIXTURETOKEN 강행' >/dev/null 2>&1; echo $?)
+     OUTBOUND_QUERY_LOG="$LOG" bash "$G" 'ZZFIXTURETOKEN 강행' >/dev/null 2>&1; echo $?)
 after=$( [ -f "$LOG" ] && wc -l < "$LOG" || echo 0 )
 chk "L4 override → 통과(0)" "$rc" 0
 chk "L4 override → 로그 +1 (보이지 않는 우회로 금지)" "$((after-before))" 1

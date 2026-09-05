@@ -39,12 +39,21 @@ cd "$REPO_ROOT" || exit 1
 #   scripts/sync_to_be_lanes.sh             — forward-path lane suite for sync-to-be.sh, itself
 #       ACCEPTED_ABSENT above; added 2026-08-14, pmh-dev#69.
 ACCEPTED_ABSENT=(
-  # 🟥 나가는 질의 위생 린트와 그 레인 — **일부러 출하하지 않는다.**
-  # 이 가드는 운영자 내부 패턴층(`.claude/rules/.public-surface-patterns`, gitignored)이 없으면
-  # fail-closed 로 막는다. 그 층은 소비자에게 안 나가므로, 출하하면 **신선한 설치는 100% 차단**된다
-  # — CLAUDE.md 가 «모든 새 install 을 막는 게이트는 엄격한 게이트가 아니라 우회 훈련기» 라 못박은
-  # 그 형태다. 소비자용으로 열려면 override 부재 시의 degrade 를 따로 설계해야 하고, 안 했다.
-  # `selfcheck.sh` 는 대상 부재 시 `_absent_subject_verdict` 로 빠지므로 패키지 모드에서 옳게 degrade 한다.
+  # 🟥 2026-09-05 — outbound 가드와 그 레인은 **이 목록에서 나갔다(= 이제 출하한다).**
+  # 종전 사유는 «override 층이 없으면 fail-closed 라 신선 설치를 100% 차단한다» 였는데,
+  # 그 문장은 **두 가지를 뭉쳤다**: 가드가 fail-closed 인 것은 맞지만 **신선 설치에서 그 가드를
+  # 부르는 것이 아무것도 없었다**(호출부 0개 — 그게 이 파일의 존재 이유였다). selfcheck 가
+  # 도는 것은 가드가 아니라 **레인**이고, 레인은 픽스처 주입점으로만 돈다.
+  # 실제로 막고 있던 것은 다른 것이었고, 실측으로 잡았다: 레인 L4 가 로그 경로를 박아 둬서
+  # `tracks/` 가 없는 트리(= npm 설치본)에서 «+1» 단언이 0 이 되어 **빨개졌다.** 그 한 줄을
+  # 주입점으로 바꾸자(OUTBOUND_QUERY_LOG) 소비자 형태 트리에서 11/11 초록이다.
+  # 이제 출하하는 이유: `scripts/outbound_query_hook.sh`(PreToolUse WebSearch|WebFetch)가
+  # 소비자에게 나가는데, 그 훅은 **WebSearch/WebFetch 만** 덮는다. Bash 로 나가는 질의
+  # (curl·외부 CLI)는 사람이 손으로 이 CLI 를 부르는 것 말고 커버가 없다 — 훅만 내보내고
+  # 가드를 빼면 소비자에게 «반쪽만» 준다.
+  # ⚠️ 정직한 성질 하나: override 층이 없는 소비자가 이 CLI 를 직접 부르면 exit 3(미측정)이다.
+  #    쓰려면 `.claude/rules/.public-surface-patterns` 를 만들어야 한다. 훅 쪽은 그 상태에서
+  #    advisory + UNCALIBRATED 로 degrade 하므로 **소비자 세션이 막히지는 않는다.**
   # 🟥 2026-09-01 — 아래 여섯은 «출하 문서가 이름을 대지만 selfcheck 가 실행하지 않는» 것들이다.
   #    판별은 실측이다: `bash <경로>` 형태의 호출을 selfcheck 에서 센 결과 watermark 만 3회이고
   #    나머지는 0회다 — 그래서 watermark 는 files[] 로 갔고 이 여섯은 여기 남는다.
@@ -66,9 +75,9 @@ ACCEPTED_ABSENT=(
   "scripts/round/gatecheck_qset.sh"          # 같은 이유 — 회차 개시 게이트, 소비자 표면 아님 (2026-09-02 짝표 등재로 참조가 생겼다)
   "scripts/test_round_instruments_lanes.sh"
   "scripts/fixtures/isolation_assembly_BROKEN_2026-08-30_ccrun7.json"  # 역사 산출물(등급표가 증거로 인용)
-  "scripts/outbound_query_guard.sh"
-  "scripts/test_outbound_query_lanes.sh"
-  # 🟥 영혼(judgment-circuit) 3종 — **일부러 출하하지 않는다.** 위 outbound 가드와 같은 이유다.
+  # 🟥 영혼(judgment-circuit) 3종 — **일부러 출하하지 않는다.**
+  # (종전 «위 outbound 가드와 같은 이유»라는 포인터는 2026-09-05 에 끊겼다 — outbound 는 출하로
+  #  갔다. 여기 사유는 그것과 무관하게 아래 자기 근거로 선다.)
   # 이 셋은 `.claude/soul_tenets.txt`(=**이 레포의** 심지 원칙 등록부)를 전제로 하는데, 그 파일은
   # 소비자에게 안 나간다 — 소비자의 tenet 은 소비자가 쓰는 것이지 우리가 주는 것이 아니다
   # (`.claude/regression/probes.md` 가 이미 같은 논리로 미출하다).
@@ -85,7 +94,10 @@ ACCEPTED_ABSENT=(
   "scripts/soul_trace.sh"
   # 🟥 sim 경로격리 레인 — 출하 안 한다. `sim_isolated_run.sh` 는 이 레포의 측정 도구이고
   #    이 레인은 «그 러너가 클론에 무엇을 써넣는가»를 본다. 소비자에게 그 러너가 없으면
-  #    레인이 HARNESS-ERROR 로 죽고, 그건 신선 설치를 막는 형태가 된다(위 outbound 와 동일 논리).
+  #    레인이 HARNESS-ERROR 로 죽고, 그건 신선 설치를 막는 형태가 된다.
+  #    ⚠️ 종전에 여기 «위 outbound 와 동일 논리» 라는 포인터가 있었는데 2026-09-05 에 끊었다 —
+  #    outbound 는 출하로 갔고, 그 블록의 종전 사유는 실측으로 물러졌다. 이 블록의 사유는
+  #    그것과 무관하게 **자기 자신으로 선다**: 여기서는 대상(러너)이 소비자 트리에 정말 없다.
   "scripts/test_sim_path_isolation_lanes.sh"
   ".claude/registry/LOCAL_SKILL_REGISTRY.md"
   ".claude/regression/probes.md"
@@ -221,8 +233,11 @@ ACCEPTED_ABSENT=(
   # 소비자 트리에서 이 검사기를 돌리면 워크플로에서만 디스패치되는 스크립트들이 전부 caller 0 으로
   # 떨어지고, 그것들은 소비자의 `caller_zero_baseline.txt` 에 선언돼 있지 않으므로 **UNDECLARED →
   # exit 1**. 즉 출하하면 **모든 신선한 설치에서 100% 적색**이다 — CLAUDE.md 가 「모든 새 install 을
-  # 막는 게이트는 엄격한 게이트가 아니라 우회 훈련기」라고 못박은 그 형태이고, 바로 위
-  # outbound_query_guard 블록과 **같은 사유**다.
+  # 막는 게이트는 엄격한 게이트가 아니라 우회 훈련기」라고 못박은 그 형태다.
+  # ⚠️ 종전에 여기 «바로 위 outbound_query_guard 블록과 같은 사유» 라고 적혀 있었다. 2026-09-05
+  # 에 끊는다 — outbound 는 출하로 갔고, 그쪽 사유는 «가드를 부르는 것이 없었다»는 사실 확인으로
+  # 물러졌다. **이 블록의 사유는 그대로 유효하다**: 여기는 검사기가 실제로 소비자 트리에서
+  # 돌면서 100% 적색을 낸다(위 outbound 는 애초에 아무도 안 불렀다). 같은 결론, 다른 기전.
   # 앵커도 같이 안 나간다. 주체 부재라는 짝 규칙 말고 **자기 자신의 사유가 하나 더 있다**: 마지막
   # 레인(L27)이 `.github/workflows/caller-zero-ratchet.yml` 을 읽어 워크플로가 리졸버를 인라인으로
   # 되돌리지 않았는지 본다. 그 파일이 없는 트리에서 그 레인은 **부재를 결함으로 읽어 적색**이 된다.
