@@ -5,7 +5,8 @@
 # that survives the copy, which is the whole reason the script exists.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
-ROOT="$(pwd -P)"; SUT="$ROOT/scripts/worktree_reclaim.sh"
+ROOT="$(pwd -P)"
+SUT="$ROOT/scripts/worktree_reclaim.sh"   # own line: new_code_anchor_check resolves the variable per line
 PASS=0; FAIL=0
 ok() { echo "  ✅ $1"; PASS=$((PASS+1)); }
 ng() { echo "  ❌ $1"; FAIL=$((FAIL+1)); }
