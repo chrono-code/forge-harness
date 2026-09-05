@@ -378,5 +378,24 @@ else
   esac
 fi
 
+# ── L27 MCP isolation (2026-09-05) — the QP chamber floor sim saw the operator's user-scope MCP servers ─
+#    in a headless arm's tool list. The runner must pass --strict-mcp-config ALWAYS (no --mcp-config ⇒
+#    no servers), and pass through --mcp-config only when the caller names a file. Both directions.
+OUTDIR="$WORKROOT/o27"; LOG="$WORKROOT/argv27.log"; : > "$LOG"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say FH_STUB_ARGV_LOG="$LOG" \
+   bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" ) >/dev/null 2>&1
+grep -q -- "--strict-mcp-config" "$LOG" \
+  && ok "L27a default passes --strict-mcp-config (user-scope MCP cannot reach a blind arm)" \
+  || no "L27a default did NOT pass --strict-mcp-config — operator MCP servers leak into headless arms"
+grep -q -- "--mcp-config" "$LOG" \
+  && no "L27b default passed --mcp-config without a file (would point at nothing)" \
+  || ok "L27b default passes no --mcp-config (strict + none = no servers)"
+OUTDIR="$WORKROOT/o27c"; LOG2="$WORKROOT/argv27c.log"; : > "$LOG2"; printf '{"mcpServers":{}}\n' > "$WORKROOT/mcp27.json"
+( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=say FH_STUB_ARGV_LOG="$LOG2" \
+   bash "$SUT" --arm a --reps 1 --prompt p --mcp-config "$WORKROOT/mcp27.json" --out "$OUTDIR" ) >/dev/null 2>&1
+grep -q -- "--mcp-config $WORKROOT/mcp27.json" "$LOG2" && grep -q -- "--strict-mcp-config" "$LOG2" \
+  && ok "L27c --mcp-config <file> reaches the CLI together with --strict-mcp-config (explicit allow, still strict)" \
+  || no "L27c --mcp-config not plumbed (or strict dropped when a file is given)"
+
 echo "sim_isolated_run lanes: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1
