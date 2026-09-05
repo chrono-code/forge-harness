@@ -40,8 +40,16 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <!-- must include wherever `claude` and `python3` resolve for this user -->
-        <string>/path/to/home/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <!-- must include wherever `claude` and `python3` resolve for this user.
+             /opt/homebrew/bin included so Homebrew's `gtimeout` (Apple Silicon prefix; Intel's
+             /usr/local/bin is already below) resolves — stock macOS ships no `timeout(1)` at
+             all, and scripts/probe_live_eval.sh's runner (sim_isolated_run.sh) falls back to a
+             bash-native watchdog if NEITHER resolves, so this is an optimization, not a hard
+             requirement: the run still enforces its timeout without this entry, just via the
+             slower fallback path. See sim_isolated_run.sh's own §timeout(1) RESOLUTION header
+             (measured 2026-09-05: the first unpatched run here died 12/12 FAILED-TO-RUN because
+             this PATH had neither `timeout` nor `gtimeout` AND the fallback did not exist yet). -->
+        <string>/path/to/home/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
         <string>/path/to/home</string>
     </dict>

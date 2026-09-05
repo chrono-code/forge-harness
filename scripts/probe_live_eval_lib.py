@@ -220,6 +220,46 @@ def _read_text(path):
         return None
 
 
+def _read_first_line(path):
+    """First non-empty line of `path`, or None if the file is absent/empty entirely. Diagnostic
+    use only (the `reason` column below) — never feeds score_probe's verdict."""
+    text = _read_text(path)
+    if not text:
+        return None
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            return line
+    return None
+
+
+def _failure_reason(base, arm):
+    """Best-effort one-line reason a FAILED-TO-RUN arm produced nothing to score: the arm's own
+    stderr first line (usually the actual shell error, e.g. "timeout: command not found") when
+    there is one; otherwise an rc/bytes fallback — rc parsed from the runner's own console log
+    (sim_isolated_run.sh prints "(rc=<n>, ...)" there) and bytes from the actual output file's
+    size (0 for a file that was never written). Purely a diagnostic label for the report/console —
+    never used by score_probe, which stays unchanged."""
+    stderr_line = _read_first_line(os.path.join(base, '%s_r1.stderr.txt' % arm))
+    if stderr_line:
+        return stderr_line
+    out_path = os.path.join(base, '%s_r1.txt' % arm)
+    try:
+        nbytes = os.path.getsize(out_path) if os.path.isfile(out_path) else 0
+    except OSError:
+        nbytes = 0
+    log_text = _read_text(os.path.join(base, '_runner_%s.log' % arm)) or ''
+    m = re.search(r'\(rc=(-?\d+)', log_text)
+    rc_s = m.group(1) if m else '?'
+    return 'rc=%s bytes=%d' % (rc_s, nbytes)
+
+
+def _md_escape(s):
+    """Keep a diagnostic string from breaking a markdown table row — reason text comes from
+    arbitrary stderr/log content, which can contain a literal '|' or a newline."""
+    return (s or '').replace('|', '\\|').replace('\n', ' ').replace('\r', ' ')
+
+
 def score_probe(primary_text, control_text, polarity, expect_re):
     """Three-valued-plus-one verdict for one probe. `primary_text`/`control_text` are None when
     the corresponding output file was missing or empty — that is FAILED-TO-RUN, never a silent
@@ -259,8 +299,18 @@ def score_run(live_rows, run_root, ids_in_order, threshold, model):
         primary_text = _read_text(os.path.join(base, 'primary_r1.txt'))
         control_text = _read_text(os.path.join(base, 'control_r1.txt'))
         verdict, phit, chit = score_probe(primary_text, control_text, spec['polarity'], spec['expect_re'])
-        rows.append({'id': pid, 'verdict': verdict, 'primary_hit': phit, 'control_hit': chit,
-                      'polarity': spec['polarity']})
+        row = {'id': pid, 'verdict': verdict, 'primary_hit': phit, 'control_hit': chit,
+               'polarity': spec['polarity'], 'reason': ''}
+        if verdict == FAILED_TO_RUN:
+            # Diagnostic only — score_probe already decided the verdict above from exactly the
+            # same primary_text/control_text; this never changes it, only explains it.
+            reasons = []
+            if primary_text is None or primary_text == '':
+                reasons.append('primary: %s' % _failure_reason(base, 'primary'))
+            if control_text is None or control_text == '':
+                reasons.append('control: %s' % _failure_reason(base, 'control'))
+            row['reason'] = '; '.join(reasons)
+        rows.append(row)
 
     failed_to_run = [r for r in rows if r['verdict'] == FAILED_TO_RUN]
     uncalibrated = [r for r in rows if r['verdict'] == UNCALIBRATED]
@@ -316,11 +366,12 @@ def render_report_md(select_result, score_result, run_date):
     if score_result is not None:
         lines.append("## Run — model=%s threshold=%.2f" % (score_result['model'], score_result['threshold']))
         lines.append("")
-        lines.append("| Probe | Verdict | primary_hit | control_hit | polarity |")
-        lines.append("|---|---|---|---|---|")
+        lines.append("| Probe | Verdict | primary_hit | control_hit | polarity | Reason |")
+        lines.append("|---|---|---|---|---|---|")
         for r in score_result['rows']:
-            lines.append("| %s | %s | %s | %s | %s |" % (
-                r['id'], r['verdict'], r.get('primary_hit'), r.get('control_hit'), r.get('polarity', '')))
+            lines.append("| %s | %s | %s | %s | %s | %s |" % (
+                r['id'], r['verdict'], r.get('primary_hit'), r.get('control_hit'), r.get('polarity', ''),
+                _md_escape(r.get('reason', ''))))
         lines.append("")
         pr = score_result['pass_rate']
         pr_s = ("%.2f" % pr) if pr is not None else "n/a"
@@ -404,8 +455,12 @@ def _cmd_score(args):
 
     print("── probe_live_eval score ──────────────────────────────────────────")
     for r in score_result['rows']:
-        print("  %-14s %-14s primary_hit=%-5s control_hit=%-5s polarity=%s"
-              % (r['id'], r['verdict'], r.get('primary_hit'), r.get('control_hit'), r.get('polarity', '')))
+        line = ("  %-14s %-14s primary_hit=%-5s control_hit=%-5s polarity=%s"
+                % (r['id'], r['verdict'], r.get('primary_hit'), r.get('control_hit'), r.get('polarity', '')))
+        reason = r.get('reason', '')
+        if reason:
+            line += " reason=%s" % reason
+        print(line)
     print("")
     pr = score_result['pass_rate']
     pr_s = ("%.2f" % pr) if pr is not None else "n/a"
