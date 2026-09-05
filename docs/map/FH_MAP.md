@@ -46,7 +46,7 @@
 3. 어떤 작업이든 **3단 공정**을 밟는다. ① **영혼(심지)** — 무엇이 성공이고 무엇은 절대 안 하는지를 설계 *앞에* 적는다(마커 `soul:` 줄이 의무). ② **병렬 탈상관 가속** — 사각 위험에 맞춰 계열(ⓐ)·입장(ⓑ)을 갈라 병렬로 돌린다. ③ **6축 태우기** — 실패 모드에 맞는 축만 골라 태운다(`knowledge/shared/harness-core/fh_three_layer_canon.md`).
 4. 출력은 **4대 엔진**에서 나온다 — `judgment-circuit` · `ship-gate` · `context-continuity` · `external-grounding`(`ship_readiness_gate.md` §The four engines).
 5. 사람은 그것을 **정체성**으로 만난다. **5대**는 각자 실물(②층 표 = 경로)과 등급(정본 `ship_readiness_gate.md`, ③층에서 인용)을 가진 안정 정체성이고, 그 외는 결합에 따라 나타났다 사라지는 면모다. Ⓑ 프로젝트 부스터는 여섯 번째가 아니라 다른 층(다른 하네스의 자체 개발을 FH 기계가 가속하는 것).
-6. 받는 것은 **산출물 + 4축 마커 + 세션 카드**다. 카드는 `tracks/**`(gitignored)에 남아 다음 세션이 이어받는다.
+6. 받는 것은 문에 따라 다르다 — **필드 하네스**(문 ②③: `.claude/` 스캐폴드 · 게이트 훅 · 세션 규칙 · `tracks/{project}` 트랙 — 하네스화 §6 또는 챔버 EMIT) · **PR/스킬/판정**(🔧 · `fh-gate` exit code) · **4축 마커**(FH 자산 변경마다) + **세션 카드**(`tracks/**`, gitignored — 다음 세션이 이어받는다). 그림에는 «받는 것 — 문별» 뷰(문마다 손에 쥐는 실물 한 줄, 정본 `docs/USE_CASES.md` · `docs/USER_GUIDE.md` · `auto_project_mapping.md §6`)와 «사람이 서는 자리» 뷰(승인 · 취향 · 비가역 결정 · 디스패치 리스 동의 — 기계는 그 앞까지 닫고 판단은 남긴다)가 있고, ③ 6축 노드에는 범례 카드(축 · 리뷰어가 받는 것 · 무엇이 틀린 경우 — 정본 `fh_three_layer_canon.md §1-a-2`)가 붙어 있다. 2026-09-05 운영자 질문 두 건(«6축이 어떻게 구성되나» · «하네스를 만드는 결과물은 어디인가»)이 이 개정의 출처다.
 7. 🟥 **6축은 네 번째 층이 아니다** — 3단 공정 ③단의 내용물이다. 그리고 이 저장소 안에서 «4» 는 셋이다(4축 게이트 · 4대 엔진 · 옛 4축 검증) — 인용 전 어느 4인지 확인한다.
 
 **시작하기 — 첫 명령 (세 갈래)**
@@ -60,7 +60,7 @@
 요구 환경: git · Node ≥18 · bash(훅) · Claude Code(슬래시 커맨드·문). 무인 잡(launchd)은 **macOS 전용 선택 사항**이다.
 🟥 **훅은 자동으로 켜지지 않는다** — `git config core.hooksPath templates/.git-hooks` 가 설정돼야 pre-commit/pre-push 가 돈다(`/install-wizard` 가 한다, 멱등). 미설정 클론에서는 이 문서의 «막힌다» 문장이 **전부 보장 없음**이다.
 
-정본: `CLAUDE.md` §Identity · `README.md` §How it is built · `knowledge/shared/harness-core/fh_three_layer_canon.md`(🟥 2026-09-05 개정 진행 중 — 이 문서는 개정 방향 «3단 공정 = 모든 작업의 방법론 · 엔진 = 출력의 코어 · 정체성 = 맞물려 나타나는 능력, 5대 = 단련된 실물+등급» 을 따른다).
+정본: `CLAUDE.md` §Identity · `README.md` §How it is built · `knowledge/shared/harness-core/fh_three_layer_canon.md`(2026-09-05 개정 반영 — PR #643 머지: «3단 공정 = 모든 작업의 방법론 · 엔진 = 출력의 코어 · 정체성 = 맞물려 나타나는 능력, 5대 = 단련된 실물+등급»).
 
 ---
 
@@ -136,7 +136,7 @@
 | **국제표준 정렬** | «믿을 만하다» 를 우리 어휘로만 말하는 것 | `docs/STANDARDS_ALIGNMENT.md` · `knowledge/shared/harness-core/iso_ai_standards_crosswalk.md` · `templates/RED_TEAM_REPORT.md` | 요약표 **25 행** = 단독 ✅ 11 · 단독 🟡 12 · 혼합(✅와 ❌/🟡 병기) 2 · crosswalk 72 행. 🟡 **«준수» 가 아니라 «정렬» 자기평가**이고 42119 절반은 아직 draft 다 — 그 페이지가 스스로 적는다 |
 | **모델 등급 무관 층** | 강한 모델만 지킬 수 있는 규율 | `knowledge/shared/harness-core/sonnet_floor_doctrine.md` · `docs/model_tier_expectations.md` | base op 100% Sonnet 은 **규율(목표)**이지 측정치가 아니다. 실측 하나: 2026-09-05 낮 **수동 로컬 live-eval 런**(sonnet, 12 프로브) 분포 **PASS 8 · FAIL 4**(문턱 미집행) — 같은 날 02:30 launchd 예약 런은 0 프로브 실행(③ 표 live-eval 행). 등급이 바꾸는 것은 판단 층(결합 폭)이고 훅·레인·마커는 모델이 아니라 파일이 한다 |
 
-③번 그림은 이 표를 **흐름**으로 그린 것이다: 변경 → 커밋 게이트 → 푸시 게이트 → 계기 → 감시·등급.
+③번 그림은 이 표를 **흐름**으로 그린 것이다: 변경 → 커밋 게이트 → 푸시 게이트 → 계기 → 감시·등급. 2026-09-05 부터 «증거의 출처» 뷰가 붙어 있다 — 마커 필드 → 같은 질문을 다루는 표준 행(`docs/STANDARDS_ALIGNMENT.md` 요약표 5행: 42119-2 위험 기반 · TR 29119-11 오라클 · 42001 A.6.2.4 · 20246 리뷰 · 25059 투명성) → 그 **형식**을 닫는 기계 → 사람 몫. 닫힌 것은 형식이지 진위가 아니고, 정렬은 자기평가이지 인증이 아니다(카드 두 장이 그 문장을 그대로 싣는다).
 
 **정직 표기 — 이 표가 못 닫는 것**: ⓐ 훅은 클라이언트측이라 `--no-verify` 로 우회된다(서버측 floor 는 PR 전용 main + `validate` 하나) ⓑ 마커·매니페스트는 gitignored `tracks/**` 라 **CI 가 구조적으로 못 본다** ⓒ 등급·마커·표준 정렬은 전부 **자기 채점**이다 — 닫는 방향은 다른 계열이 그 기록을 읽는 것이고, 그 근거(병렬 두 세션 상호 정정 7건 · 판단 축 자력 적발 0)는 `CLAUDE.md` §자기 대조에 있다.
 

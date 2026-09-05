@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "FH 는 무엇인가 — 사람이 어느 문으로 들어와, 3단 공정 · 4대 엔진 · 정체성을 거쳐 무엇을 받나",
+    "title": "FH 는 무엇인가 — 사람이 어느 문으로 들어와, 3단 공정 · 4대 엔진 · 정체성을 거쳐 손에 무엇을 쥐나",
     "quality_profile": "showcase",
     "output": "docs/map/fh_process.workflow.html",
     "views": [
@@ -25,7 +25,30 @@
           "decorr",
           "burn"
         ],
-        "note": "① 성공 정의를 설계 «앞»에 심고 → ② 계열·입장을 갈라 병렬로 가속하고 → ③ 6축으로 태운다. 속도는 그 결과이고 네 번째 단이 아니다."
+        "note": "① 성공 정의를 설계 앞에 심고 → ② 계열·입장을 갈라 병렬로 가속하고 → ③ 6축으로 태운다. 6축 범례는 아래 카드에."
+      },
+      {
+        "id": "outcomes",
+        "label": "받는 것 — 문별 실물",
+        "focus": [
+          "door",
+          "identity",
+          "art_harness",
+          "art_pr",
+          "art_marker"
+        ],
+        "note": "문 ②③ 은 필드 하네스(스캐폴드+게이트 훅+세션 규칙+트랙)를, 🔧 은 PR·스킬을, 모든 FH 자산 변경은 4축 마커를 남긴다. 문별 한 줄은 카드."
+      },
+      {
+        "id": "human",
+        "label": "사람이 서는 자리 — HITL",
+        "focus": [
+          "hitl",
+          "burn",
+          "art_harness",
+          "record"
+        ],
+        "note": "승인 · 취향(taste) · 비가역 결정 · 디스패치 리스 동의는 사람이 한다. 기계는 그 앞까지 닫고, 판단은 남긴다."
       },
       {
         "id": "engines",
@@ -35,22 +58,8 @@
           "engines",
           "identity"
         ],
-        "note": "출력은 엔진에서 나온다. 정체성은 방법론과 코어가 맞물려 나타나는 능력이고, 5대는 단련된 실물과 등급을 가진 안정 정체성이다."
-      },
-      {
-        "id": "out",
-        "label": "받는 것",
-        "focus": [
-          "identity",
-          "artifact",
-          "record"
-        ],
-        "note": "산출물 + 4축 마커(무엇을 돌렸나) + 세션 카드(다음 세션이 이어받는 것). 등급은 등급표 한 곳에만 있다."
+        "note": "출력은 엔진에서 나온다. 정체성은 방법론과 코어가 맞물려 나타나는 능력이고, 5대는 실물과 등급을 가진 안정 정체성이다."
       }
-    ],
-    "viewBox": [
-      1088,
-      668
     ]
   },
   "lanes": [
@@ -68,7 +77,7 @@
     },
     {
       "id": "surface",
-      "label": "정체성 (표면)",
+      "label": "정체성 · 산출물",
       "variant": "exception"
     }
   ],
@@ -88,7 +97,7 @@
     },
     {
       "id": "ph_out",
-      "label": "산출",
+      "label": "손에 쥐는 것",
       "fromCol": 5,
       "toCol": 5,
       "variant": "dashed"
@@ -97,7 +106,7 @@
   "groups": [
     {
       "id": "g_soul",
-      "label": "성공 정의는 설계 «앞»에",
+      "label": "성공 정의는 설계 앞에",
       "lane": "process",
       "fromCol": 2,
       "toCol": 2,
@@ -105,9 +114,9 @@
     },
     {
       "id": "g_human",
-      "label": "비가역 결정은 사람",
+      "label": "승인 · 취향 · 비가역 결정은 사람",
       "lane": "people",
-      "fromCol": 5,
+      "fromCol": 4,
       "toCol": 5,
       "variant": "security"
     }
@@ -119,7 +128,7 @@
     "decorr",
     "burn",
     "identity",
-    "artifact"
+    "art_harness"
   ],
   "nodes": [
     {
@@ -177,8 +186,18 @@
       "col": 4,
       "type": "security",
       "label": "③ 6축 태우기",
-      "sublabel": "여섯 축 ⓐ~ⓕ",
-      "tag": "다 돌리지 않는다 · 고른다",
+      "sublabel": "여섯 축 ⓐ~ⓕ · 범례 카드",
+      "tag": "범례는 카드 · 다 돌리지 않는다",
+      "width": 170
+    },
+    {
+      "id": "hitl",
+      "lane": "people",
+      "col": 3,
+      "type": "frontend",
+      "label": "사람 — 승인 · 취향",
+      "sublabel": "비가역 결정 · override · 리스",
+      "tag": "HITL",
       "width": 170
     },
     {
@@ -189,35 +208,56 @@
       "label": "4대 엔진",
       "sublabel": "judgment · gate · context · ground",
       "tag": "출력은 여기서",
-      "width": 170
+      "width": 160
     },
     {
       "id": "identity",
       "lane": "surface",
-      "col": 5,
+      "col": 4,
       "type": "frontend",
       "label": "5대 정체성 + 면모",
       "sublabel": "①②③④⑤ + Ⓑ",
       "tag": "등급은 등급표에만",
-      "width": 190
+      "width": 160
     },
     {
-      "id": "artifact",
+      "id": "art_harness",
+      "lane": "surface",
+      "col": 5,
+      "type": "database",
+      "label": "필드 하네스",
+      "sublabel": ".claude/ 스캐폴드 · 훅 · 규칙 · 트랙",
+      "tag": "문 ②③ 하네스화 · 챔버 EMIT",
+      "width": 170
+    },
+    {
+      "id": "art_pr",
       "lane": "people",
       "col": 5,
       "type": "database",
-      "label": "산출물 + 4축 마커",
-      "sublabel": "PR · 스킬 · 마커",
-      "width": 150
+      "label": "PR · 스킬 · 판정",
+      "sublabel": "PR · SKILL.md · exit code",
+      "tag": "🔧 · fh-gate · 사람이 머지",
+      "width": 160
+    },
+    {
+      "id": "art_marker",
+      "lane": "core",
+      "col": 5,
+      "type": "database",
+      "label": "4축 마커",
+      "sublabel": "돌린 축 · 컨트롤 · 성공 정의",
+      "tag": "FH 자산 변경마다",
+      "width": 160
     },
     {
       "id": "record",
-      "lane": "core",
+      "lane": "process",
       "col": 5,
       "type": "database",
       "label": "세션 카드 · 기록",
       "sublabel": "tracks/** gitignored",
-      "tag": "레포 밖",
+      "tag": "다음 세션이 이어받음",
       "width": 150
     }
   ],
@@ -286,39 +326,73 @@
       "variant": "security"
     },
     {
-      "id": "e_art",
-      "from": "identity",
-      "to": "artifact",
-      "label": "받는 것"
+      "id": "e_hitl_burn",
+      "from": "hitl",
+      "to": "burn",
+      "label": "승인 · 취향 첨삭",
+      "variant": "security",
+      "role": "branch"
     },
     {
-      "id": "e_rec",
-      "from": "artifact",
+      "id": "e_id_harness",
+      "from": "identity",
+      "to": "art_harness",
+      "label": "①②③ · 하네스화 §6 · 챔버 EMIT",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e_burn_marker",
+      "from": "burn",
+      "to": "art_marker",
+      "label": "축·컨트롤 기록",
+      "variant": "security"
+    },
+    {
+      "id": "e_marker_record",
+      "from": "art_marker",
       "to": "record",
       "label": "마감 체인 ⑤",
-      "variant": "dashed"
+      "variant": "dashed",
+      "role": "return"
+    },
+    {
+      "id": "e_hitl_pr",
+      "from": "hitl",
+      "to": "art_pr",
+      "label": "취향 첨삭 뒤 머지",
+      "variant": "security"
     }
   ],
   "cards": [
     {
-      "dot": "emerald",
-      "title": "한 줄 정의",
+      "dot": "violet",
+      "title": "③ 6축 범례 — 축은 «무엇을 받았나»로 갈린다 (fh_three_layer_canon §1-a-2)",
       "items": [
-        "FH = 의도를 기계로 벼리는 메타하네스 — 규칙(AI 가 따르는)과 코드(모델이 필요 없는)로 굳히고, 그 산출을 다른 하네스에 낳는다"
+        "ⓐ 계열: diff + 저자 프레이밍 → 구현이 틀린 경우 (다른 모델 계열 리뷰)",
+        "ⓑ 입장: diff + 대상 하네스의 정본 → 인용한 규약이 정말 그렇게 말하나",
+        "ⓒ 격리 그라운딩: 저자 문장 + 트리 → 주장이 틀린 경우 · 선언과 델타 불일치",
+        "ⓓ 3자 대면: 문제 + 남의 코드베이스 → 이미 풀린 문제인가",
+        "ⓔ 첫 실사용: 실물 한 건 → 재는 방식이 틀린 경우",
+        "ⓕ 되돌림: 배선을 지운 트리 → 앵커가 장식인 경우(지워도 초록)",
+        "다 돌리지 않고 실패 모드에 맞춰 고른다 · 커밋 게이트 «4축»과 이름만 겹친다"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "받는 것 — 문별 (USE_CASES · USER_GUIDE · auto_project_mapping §6)",
+      "items": [
+        "① 매핑: tracks/{project}/ + 허브 링크 CLAUDE.md → 남의 스킬을 이 세션에서 부른다",
+        "② 새로: 챔버 판정(EMIT·CURATED·NOT-APPLICABLE·KILL) + EMIT 시 스캐폴드",
+        "③ 가속/진단: M/S/R 목록(자동 수리 없음) + Full-Harness 설치 5항",
+        "④ 시너지: 스킬·플러그인 시너지 페어 표 → 각 프로젝트로",
+        "🔧 · fh-gate: 머지 가능한 PR + 4축 마커 · diff 판정 exit code(0/2/10)"
       ]
     },
     {
       "dot": "rose",
       "title": "사람이 남는 자리",
       "items": [
-        "삭제·히스토리 재작성은 설치된 pre-push(클라이언트 훅)가 막고 사람이 override 로 푼다 · main 은 서버측 PR 전용 · 발행은 prepublishOnly + Pre-Publish 가 따로"
-      ]
-    },
-    {
-      "dot": "cyan",
-      "title": "판정은 기계",
-      "items": [
-        "설치된 pre-commit 에서 FH 자산 커밋은 4축 마커 없이 못 들어간다(--no-verify 우회 가능 · CI 는 마커 못 봄) · «못 쟀다» 는 0 이 아니다"
+        "삭제·히스토리 재작성은 설치된 pre-push 가 막고 사람이 override 로 푼다 · 발행은 Pre-Publish 가 따로 · 남는 것은 취향 리뷰"
       ]
     }
   ]
