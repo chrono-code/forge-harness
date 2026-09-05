@@ -167,3 +167,15 @@
   artifact: BUDGET.md
   sha256: f38fb41102e0d0c340ab1e269e0ab2f76581d607b5d56724549504479a5b0103
   recorded: 2026-09-05T10:35:04Z
+- run: fh-qa-generic
+  artifact: INTENT.md
+  sha256: f5d11450f926caf601206b393d17b23e555cec23c302e13f8aa83073fa4adee2
+  recorded: 2026-09-05T11:06:35Z
+- run: fh-qa-generic
+  artifact: BUDGET.md
+  sha256: fa5d412a37d77e88d1a064fc77eeaaf6e1516e0fb8721d9b86b15e09a24131b1
+  recorded: 2026-09-05T11:06:36Z
+- run: fh-qa-generic
+  artifact: SIM_NOTES.md
+  sha256: ea417c681e8f1be3b59fddaa86ca4356ab6ae36816ee15c996a51af212f84e2a
+  recorded: 2026-09-05T11:06:36Z
