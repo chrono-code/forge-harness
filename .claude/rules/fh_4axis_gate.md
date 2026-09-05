@@ -138,7 +138,7 @@ no runnable path exists (run-first, ask-last — sonnet_floor_doctrine.md §Auto
 
 Record sim results in the Axes 2–3 marker + sub-agent invocation log.
 
-### Marker axis fields — `axes-run:` · `controls:` · `standpoint:` · `soul:` · `soul-check:` · `defeater:` · `tenets:` · `affected:`
+### Marker axis fields — `axes-run:` · `controls:` · `standpoint:` · `soul:` · `soul-check:` · `defeater:` · `tenets:` · `affected:` · `oracle:`
 
 🟥 **기호 규칙 (2026-09-04, six_axis_review 판정안 8) — ⓐ~ⓕ 는 축 전용 기호다, 열거로 재사용하지
 마라.** 산문에서 목록을 셀 때는 `①②③` 또는 `(a)(b)(c)` 를 쓴다. 오늘(2026-09-04) 같은 이틀치
@@ -189,6 +189,35 @@ users and systems» · «Open questions» 두 칸을 흡수한다. 두 필드로
 아니라 안 채운 것이다. 중복 줄도 차단된다(읽는 쪽은 첫 줄만 취한다).
 ```
 affected: 소비자 install 의 pre-commit 사용자(마커 형식) · 열린 질문 = 필드 강제 시점
+```
+
+**`oracle:` — 선택. 「기대값을 무엇으로 정했나」 — 오라클 유형, 닫힌 enum 6 (2026-09-05,
+ISO/IEC TR 29119-11 정렬 — `iso_ai_standards_crosswalk.md §4 M1`, 운영자 승인).** 형식
+`oracle: <kind> — <근거>`. kind ∈ `known-pair`(양성·음성 컨트롤이 같은 실행에) · `metamorphic`(입력
+변환→기대 출력 변화 «관계»로 판정) · `back-to-back`(다른 구현/계열이 같은 입력에 낸 출력 대조 —
+cross-family 가 같은 diff 를 읽는 것) · `a-b`(한 변수 ARM/CTRL, reps≥3; `A/B` 허용) · `human`(사람이
+기대값 판정) · `none`(오라클 없음 — **사유 필수**). **없으면 통과**(채택은 점진적이다). 있으면
+훅(`validate_oracle_leg`)은 **형식만** 본다 — enum 밖 · kind 뒤에 구분자 없이 붙은 문자(`known-pair2` ·
+`human_review` 는 멤버가 아니다) · 근거 공허(2 낱말 미만·자리표시자) · 사유 없는 `none` · 중복 줄 ·
+근사키 차단. 근사키 규칙은 한 문장이다: **키가 `oracle` 로 시작하는데 정확히 `oracle:` 이 아닌 줄
+전부**(예 — 열거가 아니다: `Oracle:` `oracles:` `oracle :` `oracle　:` `oracle_type:` `oracle-type:`
+`oracle.evidence:` 키만 있는 `oracle`) **+ 오타 `orcale:` `oralce:` `오라클:`** — 정상 `oracle:` 줄이 같이
+있어도 차단한다(정정이 조용히 가려지는 형태). 🟥 **따라서 `oracle*` 키 이름 공간은 이 필드가 예약한다** —
+앞으로 `oracle-evidence:` 같은 별도 필드는 만들 수 없다(cross-family codex R3 가 이 대가를 지목했고, 의도로
+받아들인다: 변형 목록을 손으로 늘리는 것이 v1 손목록의 구조적 desync 이기 때문이다).
+명명된 잔여(둘 다 마커 전 레그 공통, 이 필드 고유가 아니다): ⓐ 근거에 힌트 자리표시자 리터럴 `<...>` 이 있으면
+차단된다(affected/defeater 와 같은 경계) ⓑ 전각 공백(U+3000)으로 **시작하는** 줄과 줄 안의 CR(`\r`)은 `[[:space:]]`·
+줄 단위 grep 밖이라 못 본다 — 마커 파일 단위의 제어문자 거부는 별건 후보. 🟥 그 오라클이 정말 그 종류였는지는
+안 본다 — 닫힌 것은 형식이지 진위가 아니다(§자기 대조와 같은 경계). `controls:` 가 «컨트롤이 살아
+있다» 를 적는 자리라면 이 필드는 «무엇이 컨트롤이었나 — 어떤 종류의 오라클» 을 적는 자리다: 외부
+독자(29119-11)가 첫 번째로 묻는 칸이었는데 비어 있었다. **소비처(정직하게)**: 오늘은 마커 grep 감사와
+표준 정렬 증거뿐, 기계가 읽는 곳은 없다 — 반쪽 외부화를 이름으로 남긴다. 힌트 템플릿에는 넣지
+않는다(옵셔널 필드마다 빈 칸이 느는 모양). 레인 `scripts/test_marker_oracle_lanes.sh`(o1~o36 + 실물
+R1 — o21~o31 은 cross-family codex 가 연 구멍) · 배선 `scripts/test_hook_leg_wiring_lanes.sh` W6(호출부
+되돌림 known-pair).
+```
+oracle: known-pair — 레인 o1~o36 PASS/BLOCK 픽스처 양쪽 + W6 되돌림(호출부 제거 → 판정 문구 소멸)
+oracle: none — 문서만 변경, 측정 없음
 ```
 
 

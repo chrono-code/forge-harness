@@ -107,6 +107,13 @@ wiring_lane W5-affected validate_affected_leg \
 affected: 없음" \
   '자리표시자뿐이다'
 
+# W6 — 2026-09-05 신설 다리 (oracle:, TR 29119-11 오라클 유형). 옵셔널이지만 «값이 있는데 근거가
+# 자리표시자뿐이면 차단» 은 호출부가 있어야만 의미가 있다 — 같은 되돌림 known-pair 로 확인한다.
+wiring_lane W6-oracle validate_oracle_leg \
+  "$SOUL_OK
+oracle: known-pair — TBD" \
+  'oracle 근거가 자리표시자뿐이다'
+
 echo
 if [ $FAIL -eq 0 ]; then echo "HOOK LEG WIRING LANES: PASS"; else echo "HOOK LEG WIRING LANES: FAIL"; fi
 exit $FAIL

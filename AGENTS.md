@@ -187,6 +187,22 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    (`없음` / `TBD` / `-` / `n/a`), a duplicate line, or a near-miss key (`affects:`, `affected :`) —
    it never judges whether the content is true. Origin: the AI-Native SDLC playbook's intent.md
    «Affected users and systems / Open questions» sections, absorbed as one field (PR #624).
+   **`oracle:` — OPTIONAL since 2026-09-05 (absent = pass).** One line `oracle: <kind> — <grounds>`,
+   kind ∈ closed enum `known-pair` · `metamorphic` · `back-to-back` · `a-b` (`A/B` accepted) · `human` ·
+   `none` — the test-oracle type of ISO/IEC TR 29119-11, i.e. *what the expected result was decided
+   against*. When present, the hook (`validate_oracle_leg`) checks **form only**: enum membership
+   (the kind must be followed by a delimiter or end of line — `known-pair2` / `human_review` are not
+   members), non-vacuous grounds (≥2 words, no placeholder — and `none` MUST carry its reason), a
+   single line, and near-miss keys by one rule: **any line whose key starts with `oracle` but is not
+   exactly `oracle:`** (examples, not an enumeration: `Oracle:` `oracles:` `oracle :` `oracle　:`
+   `oracle_type:` — a qasp-side author will reach for that one — `oracle-type:` `oracle.evidence:`,
+   bare `oracle`) plus the typos `orcale:` `oralce:` `오라클:`, blocked even when a correct `oracle:`
+   line is also present. Consequence: the `oracle*` key namespace is reserved by this field — no
+   separate `oracle-…:` field can be added later. It never judges whether that oracle was actually
+   used. Named residuals (marker-wide, not specific to this leg): grounds containing the hint's
+   literal `<...>` are blocked (same boundary as `affected:`/`defeater:`); a line that STARTS with
+   U+3000 or carries an embedded CR is outside `[[:space:]]`/line-wise grep and is not seen. Fixtures:
+   `scripts/test_marker_oracle_lanes.sh` · wiring `scripts/test_hook_leg_wiring_lanes.sh` W6.
    🟥 A near-miss key (`defeaters:`, `반증:`, `defeater :`) is **blocked even when a correct
    `defeater:` line also exists** — the author believes they wrote it and the gate cannot read it,
    which is the quietest failure. Two `defeater:` lines are also blocked (readers take the first,
