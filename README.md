@@ -255,10 +255,13 @@ itself.
 ## How it is built — three · four · five · six
 
 **Three-stage process · four engines · five identities · six-axis verification.** The identities above
-are the surface; **four engines** (`judgment-circuit` · `ship-gate` · `context-continuity` ·
-`external-grounding`) are the capability under them; the **three-stage process** — ① plant the judgment
-circuit *before* design → ② parallel decorrelation in the middle → ③ burn it down on six axes — is the
-order those engines get forged in, with speed as the arrow at the end, not a fourth box. ⚠️ **The six
+are what appears where the process and the engines interlock — the five are the forged, graded, stable
+ones; other identities surface and recede with how you steer and how far you push (operator's formulation,
+2026-09-05); **four engines** (`judgment-circuit` · `ship-gate` · `context-continuity` ·
+`external-grounding`) are the core every FH-specific output comes from; the **three-stage process** —
+① plant the judgment circuit *before* design → ② parallel decorrelation in the middle → ③ burn it down on
+six axes — is the order every piece of FH work runs in, forging an engine included, with speed as the arrow
+at the end, not a fourth box. ⚠️ **The six
 axes are not a fourth layer**; they are *what stage ③ consists of*. Full canon, and why this is
 deliberately *not* a clean stack:
 [`fh_three_layer_canon.md`](knowledge/shared/harness-core/fh_three_layer_canon.md) — the same three in
