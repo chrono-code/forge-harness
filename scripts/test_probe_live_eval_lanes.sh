@@ -324,6 +324,36 @@ _lane FF5 fail-fast "live nightly record untouched by the suite (hash before == 
 [ -s "$T/failfast_report_ok.md" ] && ff_rep=yes || ff_rep=no
 _lane FF6 fail-fast "--report-out receives the report instead of the live path" "yes" "$ff_rep"
 
+# 🟥 FF7/FF7b — the seam must bypass the CLI preflight, and ONLY the seam. Measured 2026-09-05 on
+# CI (ubuntu, no `claude` on PATH): probe_live_eval.sh checked `command -v claude` BEFORE the
+# runner seam, so the stub was never called — FF2/FF3/FF4/FF6 red, FF1 green by coincidence (both
+# paths exit 2). A developer machine with `claude` installed cannot see that, so this lane HIDES
+# `claude` (a shadow PATH of symlinks to every other executable) and re-runs the healthy stub.
+# FF7b is the control: on the REAL runner path with no `claude`, the script must still refuse.
+SHADOW_NOCLAUDE="$T/shadow_noclaude"; mkdir -p "$SHADOW_NOCLAUDE"
+IFS=':' read -r -a _ff_dirs <<< "$PATH"
+for _d in "${_ff_dirs[@]}"; do
+  [ -d "$_d" ] || continue
+  for _f in "$_d"/*; do
+    [ -x "$_f" ] && [ ! -d "$_f" ] || continue
+    _b="${_f##*/}"; [ "$_b" = claude ] && continue
+    [ -e "$SHADOW_NOCLAUDE/$_b" ] || ln -s "$_f" "$SHADOW_NOCLAUDE/$_b"
+  done
+done
+if PATH="$SHADOW_NOCLAUDE" command -v claude >/dev/null 2>&1; then
+  _lane FF7-FIXTURE fail-fast "shadow PATH hides claude (fixture potency — cannot run FF7 on this machine)" "hidden" "still-visible"
+else
+  COUNTER3="$T/failfast_counter_noclaude.txt"; : > "$COUNTER3"
+  ( cd "$REPO_ROOT" && PATH="$SHADOW_NOCLAUDE" FH_SIM_RUNNER_BIN="$STUBROOT/fake_sim_ok.sh" FH_FAKESIM_COUNTER="$COUNTER3" \
+      bash "$RUNNER" --subset 2 --model sonnet --out "$T/failfast_run_noclaude" --report-out "$T/failfast_report_noclaude.md" ) >/dev/null 2>&1
+  ff7_calls=$(wc -l < "$COUNTER3" | tr -d ' ')
+  _lane FF7 fail-fast "claude absent from PATH + stub runner: stub still called for all 4 (the seam bypasses the CLI preflight)" "4" "$ff7_calls"
+  ff7b_out="$(cd "$REPO_ROOT" && PATH="$SHADOW_NOCLAUDE" bash "$RUNNER" --subset 2 --model sonnet --out "$T/failfast_run_noclaude_real" --report-out "$T/failfast_report_noclaude_real.md" 2>&1)"
+  ff7b_rc=$?
+  case "$ff7b_out" in *"claude CLI not on PATH"*) ff7b_msg=yes ;; *) ff7b_msg=no ;; esac
+  _lane FF7b fail-fast "control — the REAL runner path with claude absent still exits 2 and names claude" "2/yes" "$ff7b_rc/$ff7b_msg"
+fi
+
 echo ""
 echo "── summary ──────────────────────────────────────────────────────"
 echo "lanes: $N   failed: $([ "$FAIL" -eq 0 ] && echo 0 || echo '>=1')"

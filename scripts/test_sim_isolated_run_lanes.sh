@@ -287,21 +287,35 @@ fi
 #    templates prior to this patch) has neither `timeout` nor `gtimeout` on it — both live under
 #    Homebrew's prefix. The first real launchd live-eval run (2026-09-05 02:30) hit exactly this:
 #    every rep of every arm died at `timeout: command not found` and the run scored 12/12
-#    FAILED-TO-RUN with no clue why. This lane strips whichever CURRENT PATH dir(s) actually hold
-#    `timeout`/`gtimeout` — computed, not hardcoded to /opt/homebrew/bin, so the same lane works on
-#    Intel or a Linux box — and proves two things a prose comment cannot: the bash-native fallback
+#    FAILED-TO-RUN with no clue why. This lane shadows whichever CURRENT PATH dir(s) actually hold
+#    `timeout`/`gtimeout` (symlinks to everything else in them) — computed, not hardcoded to
+#    /opt/homebrew/bin, so the same lane works on Intel, Homebrew or a Linux /usr/bin — and proves
+#    two things a prose comment cannot: the bash-native fallback
 #    actually answers (not just "doesn't crash"), and it actually enforces the deadline rather than
 #    silently never firing.
-_strip_timeout_dirs() {  # prints $PATH with every dir holding an executable timeout/gtimeout removed
-  local IFS=':' d out=""
+_shadow_timeout_dirs() {  # prints $PATH with every dir holding timeout/gtimeout replaced by a symlink shadow of it MINUS those two
+  # 🟥 Measured 2026-09-05 on CI (ubuntu): `timeout` lives in /usr/bin next to bash and git, so
+  # DROPPING that directory (the previous form of this fixture) also dropped bash/git, and the
+  # potency check below scored the lane red on every Linux box while macOS (Homebrew prefix,
+  # separate dir) stayed green. A shadow directory keeps every other name resolvable and removes
+  # only the two — the same fixture on both layouts.
+  local IFS=':' d out="" shadow n=0 f b
   for d in $PATH; do
-    [ -x "$d/timeout" ] && continue
-    [ -x "$d/gtimeout" ] && continue
+    if [ -x "$d/timeout" ] || [ -x "$d/gtimeout" ]; then
+      n=$((n+1)); shadow="$WORKROOT/notimeout_shadow_$n"; rm -rf "$shadow"; mkdir -p "$shadow"
+      for f in "$d"/*; do
+        [ -x "$f" ] && [ ! -d "$f" ] || continue
+        b="${f##*/}"
+        case "$b" in timeout|gtimeout) continue ;; esac
+        ln -s "$f" "$shadow/$b"
+      done
+      d="$shadow"
+    fi
     out="${out:+$out:}$d"
   done
   printf '%s' "$out"
 }
-NOTIMEOUT_PATH="$(_strip_timeout_dirs)"
+NOTIMEOUT_PATH="$(_shadow_timeout_dirs)"
 
 echo ""
 echo "── L26 timeout(1) resolution ───────────────────────────────────────"

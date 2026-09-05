@@ -143,7 +143,14 @@ if [ "$SELECTED_COUNT" -eq 0 ]; then
   exit 2
 fi
 
-command -v claude >/dev/null 2>&1 || { echo "FAIL: claude CLI not on PATH — cannot run live" >&2; rm -rf "$WORKDIR"; exit 2; }
+# `claude` presence is the REAL runner's preflight, so it is checked only on that path. Under
+# FH_SIM_RUNNER_BIN the stub owns its own preflight — measured 2026-09-05 on CI (ubuntu, no
+# `claude` installed): this line fired BEFORE the stub was ever called, so FF2/FF3/FF4/FF6 went
+# red while FF1 passed by coincidence (both paths exit 2). Lane FF7 pins the seam; FF7b pins
+# that the real path still refuses to run without `claude`.
+if [ -z "${FH_SIM_RUNNER_BIN:-}" ]; then
+  command -v claude >/dev/null 2>&1 || { echo "FAIL: claude CLI not on PATH — cannot run live" >&2; rm -rf "$WORKDIR"; exit 2; }
+fi
 
 RUN_DATE="$(date +%Y-%m-%d)"
 OUTDIR="${OUTDIR:-$WORKDIR/run}"
