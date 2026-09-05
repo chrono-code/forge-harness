@@ -301,6 +301,9 @@
     "scripts/probe_live_eval_lib.py",
     "scripts/test_probe_live_eval_lanes.sh",
     ".claude/regression/probes_live.yaml",
-    "scripts/com.forge-harness.live-eval.plist"
+    "scripts/com.forge-harness.live-eval.plist",
+    "scripts/utterance_intake.sh",
+    "scripts/transcript_utterances.py",
+    "scripts/test_utterance_intake_lanes.sh"
   ]
 }

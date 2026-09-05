@@ -269,6 +269,73 @@ fi
 
 fi
 
+# ── ①-f UTTERANCE LANDING (advisory) ─────────────────────────────────────────
+# WHY. 마감 체크는 **형식**만 본다 — 카드가 로그보다 새로운가, 필수 아티팩트가 있는가.
+# **운영자 발화가 기록에 착지했는지는 아무도 안 봤다.** `utterance_landing_check.sh` 가 그걸
+# 재려고 2026-08-08 에 지어졌는데 probes.tsv 를 **손으로** 짜야 해서 호출부가 0 개였다
+# (2026-09-05 실측: 이 파일에서 그 스크립트를 부르는 줄이 하나도 없었다). 그 사이의 빠진 칸이
+# `utterance_intake.sh` 다 — 전사본에서 발화를 뽑아 프로브를 자동 생성한다.
+# 근거: 같은 날 운영자의 교리·설계급 발화 6 건이 착지한 경로가 전부 **거버너의 손**이었다.
+#
+# 🟥 라벨이 `①-e` 가 아닌 이유: 그건 아래 stray-path 블록이 **이미 쓰고 있다.** 한 라벨을 두
+#    검사가 나눠 쓰면 「어느 ①-e 가 울렸나」를 아무도 못 가른다 — 이 배선을 준비한 진단은
+#    «①-e 는 비어 있다» 고 적었고, 그건 거짓이었다(레인 L13 이 «배선 전인데 초록» 으로 잡았다).
+#
+# 🟥 **advisory 다 — 막지 않는다.** 프로브는 키 낱말이라 기록이 같은 뜻을 다른 낱말로 적으면
+#    과차단이 난다(안전한 방향이지만 소음이다). 노출 사다리(shadow) 로 몇 세션 관찰한 뒤
+#    close push 차단으로 승격할지는 **운영자 결정**이고, 그때까지 FAIL 을 세우지 않는다.
+_UI_SUT="$FH/scripts/utterance_intake.sh"
+if [ -f "$_UI_SUT" ]; then
+  # 세션 id 의 정본은 `branch_claim.sh` 다 — **새 판정기를 짓지 않는다**(재발명 금지).
+  # `show` 의 `세션ID` 줄이 그 값이고, 값이 `pid-` 로 시작하면 런타임이 id 를 안 준 것이라
+  # 전사본을 특정할 수 없다. 그때는 «다른 세션 것을 대신 읽는» 대신 UNMEASURED 로 남긴다 —
+  # 남의 전사본으로 낸 착지 판정은 틀린 답이지 근사값이 아니다.
+  _UI_SID=""
+  if [ -f "$FH/scripts/branch_claim.sh" ]; then
+    _UI_SID=$(LC_ALL=C bash "$FH/scripts/branch_claim.sh" show 2>/dev/null \
+              | LC_ALL=C sed -n 's/^세션ID[[:space:]][[:space:]]*//p' | head -1)
+  fi
+  case "$_UI_SID" in pid-*|'') _UI_SID="" ;; esac
+  # 전사본 slug = 프로젝트 절대경로에서 `/` `.` `_` 를 `-` 로 (실측 2026-09-05, ~/.claude/projects 대조)
+  _UI_SLUG=$(printf '%s' "$FH" | tr '/._' '---')
+  _UI_TRDIR="${FH_TRANSCRIPT_DIR:-$HOME/.claude/projects/$_UI_SLUG}"
+  _UI_TR="$_UI_TRDIR/$_UI_SID.jsonl"
+  if [ -z "$_UI_SID" ]; then
+    echo "ℹ️  ①-f UNMEASURED — 세션 id 미상(런타임이 CLAUDE_CODE_SESSION_ID 를 안 줬다)"
+    echo "     전사본을 특정할 수 없다. «발화가 다 적혔다» 가 아니라 «못 쟀다» 다."
+  elif [ ! -f "$_UI_TR" ]; then
+    echo "ℹ️  ①-f UNMEASURED — 전사본 부재: $_UI_TR"
+    echo "     부재를 0 으로 접지 마라 — 발화가 없었다는 뜻이 아니다."
+  else
+    # 기록 대상: 오늘자 산출 + 상시 카드/UAP. 배열로 모은다(zsh word-split 함정 회피).
+    _UI_RECS=()
+    for _p in "$FH/tracks/_meta/fh_completed_$TODAY.md" \
+              "$FH/tracks/_meta/user_adaptation_profile.md" \
+              "$FH/tracks/_meta/reference_next_session_starter.md"; do
+      [ -f "$_p" ] && _UI_RECS+=("$_p")
+    done
+    for _p in "$FH"/tracks/_meta/fh_signal_"$TODAY"_*.md "$FH"/tracks/*/*_"$TODAY".md; do
+      [ -f "$_p" ] && _UI_RECS+=("$_p")
+    done
+    if [ "${#_UI_RECS[@]}" -eq 0 ]; then
+      echo "⚠️  ①-f 오늘자 기록 파일이 하나도 없다 — 발화 착지를 잴 대상이 없다(UNMEASURED)"
+      echo "     ④/⑤ 가 아직 안 돌았다는 뜻일 수 있다. 마감 순서를 확인해라."
+    else
+      _UI_OUT=$(bash "$_UI_SUT" "$_UI_TR" "${_UI_RECS[@]}" 2>&1); _UI_RC=$?
+      case "$_UI_RC" in
+        0) echo "✅ ①-f 발화 착지 — 프로브 전건 착지 (${#_UI_RECS[@]} 파일 대조)"
+           echo "     ⚠️ 발화별 최장 토큰 ⌈n/2⌉ 일치 기준(키 2 개 이하는 OR) — «제대로 적혔다» 의 증명이 아니다." ;;
+        1) echo "⚠️  ①-f 미착지 발화가 있다 — advisory, 막지 않는다. 아래를 **확인**해라(기록 강제 아님):"
+           printf '%s\n' "$_UI_OUT" | sed 's/^/     /' ;;
+        *) echo "⚠️  ①-f 발화 착지 검사 UNMEASURED/계기이상 (rc=$_UI_RC) — 0 으로 읽지 마라"
+           printf '%s\n' "$_UI_OUT" | sed 's/^/     /' ;;
+      esac
+    fi
+  fi
+else
+  echo "⚠️  ①-f utterance_intake.sh 없음 — skipped, not passed (UNMEASURED)"
+fi
+
 # ② FH assets changed today → harvest-loop owed
 # NOTE: no `grep -q` here — under `set -o pipefail`, -q's early exit SIGPIPEs git log (141),
 # masking a real match as pipeline failure so the warning NEVER fired on true positives

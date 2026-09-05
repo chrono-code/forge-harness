@@ -70,41 +70,15 @@ do_seal() {
 
     echo "## 운영자 발화 (이 세션)"
     if [ -f "$transcript" ]; then
-      python3 - "$transcript" <<'PY' 2>/dev/null || echo "- (전사본 파싱 실패 — 원본: $transcript)"
-import json,sys
-n=0
-skipped_tool=skipped_meta=skipped_other=0
-for line in open(sys.argv[1], errors='replace'):
-    try: d=json.loads(line)
-    except Exception: continue
-    if d.get('type')!='user': continue
-    m=d.get('message') or {}
-    c=m.get('content')
-    # ⚠️ 초판은 "실발화=str · 툴결과=list" 로 갈랐다. **틀렸다** — 이미지/파일을 첨부한 실발화는
-    # list 다(high 리뷰 실측: 전사본 25개에서 그런 발화 18건이 구조적으로 안 보였다). 더 나쁜 건
-    # self-test 픽스처가 같은 가정을 인코딩해서 **초록이 그 결함을 보증**했다는 것이다.
-    # 이제 list 는 text 블록을 꺼내 쓰고, tool_result 만 제외한다.
-    if isinstance(c,str):
-        t=c
-    elif isinstance(c,list):
-        if any(isinstance(b,dict) and b.get('type')=='tool_result' for b in c):
-            skipped_tool+=1; continue
-        parts=[b.get('text','') for b in c if isinstance(b,dict) and b.get('type')=='text']
-        if not parts:
-            skipped_other+=1; continue          # 이미지-only 등 — 셈에서 지우지 않고 센다
-        t=' '.join(parts)
-    else:
-        skipped_other+=1; continue
-    t=' '.join(t.split())
-    if not t: skipped_other+=1; continue
-    if t.startswith('<') or t.startswith('/'):   # 슬래시 커맨드·메타 봉투 제외
-        skipped_meta+=1; continue
-    n+=1
-    print(f"{n}. {t[:200]}")
-# **제외분을 반드시 인쇄한다.** 합계만 찍으면 그 원장이 완전한 것처럼 읽힌다 — `not found ≠ 0`.
-print(f"\n합계: {n}건" if n else "- (발화 0건)")
-print(f"제외: tool_result {skipped_tool} · 메타/커맨드 {skipped_meta} · 텍스트없음 {skipped_other}")
-PY
+      # 🟥 추출 로직은 `scripts/transcript_utterances.py` 가 **단일 소스**다 (2026-09-05).
+      #    인라인 heredoc 이었을 때 두 번째 소비처(`utterance_intake.sh` — 발화 착지 검사)를
+      #    붙이려면 사본이 생겼고, 전처리 두 벌은 «한쪽만 통과하는 입력이 다른 쪽에서 무음
+      #    드롭» 이다(`[[feedback_divergent_leniency_duplicate_normalizers]]`).
+      #    출력은 **바이트 동일**해야 한다 — `scripts/test_utterance_intake_lanes.sh` L10 이
+      #    골든으로 고정하고, L12/L12b 가 되돌림으로 «정말 이 파일을 통해 도는가» 를 잰다.
+      #    추출기가 없거나 죽으면 비영 종료 → 아래 폴백 문구가 그대로 뜬다(무음 아님).
+      python3 "$REPO_ROOT/scripts/transcript_utterances.py" "$transcript" --format seal 2>/dev/null \
+        || echo "- (전사본 파싱 실패 — 원본: $transcript)"
     else
       echo "- 🟥 전사본 경로 없음: $transcript"
     fi

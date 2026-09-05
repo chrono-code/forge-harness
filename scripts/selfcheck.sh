@@ -659,7 +659,12 @@ for _pair in \
   "scripts/round/target_pin.sh|scripts/test_round_instruments_lanes.sh" \
   "scripts/round/instrument_manifest.sh|scripts/test_round_instruments_lanes.sh" \
   "scripts/round/eligcheck_qset.sh|scripts/test_round_instruments_lanes.sh" \
-  "scripts/round/gatecheck_qset.sh|scripts/test_round_instruments_lanes.sh"
+  "scripts/round/gatecheck_qset.sh|scripts/test_round_instruments_lanes.sh" \
+  `# ── 발화 착지(2026-09-05). 네 주체가 한 스위트로 묶인다 — 주체별로 행을 둔다 ──` \
+  "scripts/utterance_intake.sh|scripts/test_utterance_intake_lanes.sh" \
+  "scripts/transcript_utterances.py|scripts/test_utterance_intake_lanes.sh" \
+  "scripts/compaction_probe.sh|scripts/test_utterance_intake_lanes.sh" \
+  "scripts/session_close_check.sh|scripts/test_utterance_intake_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then
