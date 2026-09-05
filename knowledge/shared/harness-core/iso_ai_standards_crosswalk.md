@@ -86,7 +86,7 @@ qasp 는 «AI 로 QA 를 하는 시스템」이라 **두 방향**이 걸린다: 
 | 29119-4 설계 기법 | 동등분할·경계값·상태전이·조합 등 | P7 의 좌표(surface coordinates)는 상태전이 테스트의 **재료**(상태·이벤트·전이·기대 행동 모델까지는 아님) · MECE 는 동등분할의 **재료**(입력 도메인 동등류 표까지는 아님) | 🟡 기법이라 부르려면 `technique:` 증거(분할표·상태 모델)가 필요하다 |
 | 20246 정적 리뷰 | 인스펙션·워크스루 | **1.5막 정적 리뷰 7 렌즈**(spec_drift 포함, 한국어 기획서) | ✅ |
 | 29119-2 테스트 실행·사고 보고 **활동** | 실행·결과 기록·사고 | **2막 runner/interpreter**(verb navigate·click·input·verify) · **MTM**(기획의도/기획과 다름/코드가 다름 3갈래) · triage 3분기 · defect_lifecycle · evidence.json | ✅ 활동 / 🟡 사고 «프로세스」(접수·분류·종결 기준)는 운영 조직의 도구 쪽 |
-| 29119-11 오라클 문제 | 기대값 부재의 처리 | MTM 3갈래 = **3-way pseudo-oracle**(기획 · 코드 · 실행을 대조) · Self-Check Gate 33 · `__RUNTIME__` 자리표시자 | ✅ / TC 에 `oracle_type` 없음 → §4 M1 |
+| 29119-11 오라클 문제 | 기대값 부재의 처리 | MTM 3갈래 = **3-way pseudo-oracle**(기획 · 코드 · 실행을 대조) · Self-Check Gate 33 · `__RUNTIME__` 자리표시자 | ✅ · ✅ TC `oracle_type`(닫힌 enum 5: spec · mtm-3way · human · runtime-placeholder · none — 단일 소스 `src/core/oracle_type.py`, 파서 투영 전 검사 + 실행 전 게이트 `ORACLE_TYPE_INVALID`; qasp-dev #261 → 6c6f008, 2026-09-05, codex 3라운드 CONVERGED) — §4 M1 의 qasp 쪽도 구현됨 |
 | 29119-2 완료·회귀 **활동** | 완료 보고·회귀 | **3막 회귀** · `surface_reach` 도달 지표(«완주 51/51 이 로그인 51번」 사고에서 신설) · new_code_anchor · caller_zero baseline | ✅ 활동 / 🟡 완료 «기준」 문서 없음 |
 | 29119-3 문서 | 계획·명세·보고 템플릿 | evidence.json · report · tc_update_suggestion · act2_runner_design §6-b | 🟡 템플릿 명칭 미부착 |
 | 42001 A.7 / 5259 데이터 | 데이터 품질·출처·비밀 | **evidence 평문 입력값 마스킹**(interpreted.value · action_attempted · tc_update_suggestion) · 필드명 기준 secret 판정 · XML 스냅샷 평문은 잔여(#253) | 🟡 |

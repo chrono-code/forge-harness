@@ -6,6 +6,7 @@
   <a href="https://github.com/walkinglabs/awesome-harness-engineering#coding-agent-harnesses"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Harness Engineering"></a>
   <a href="https://github.com/VoltAgent/awesome-agent-skills#community-skills"><img src="https://img.shields.io/badge/listed_in-awesome--agent--skills-0ea5e9.svg" alt="Listed in awesome-agent-skills"></a>
   <a href="https://github.com/anthropics/claude-code"><img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code compatible — official Claude Code repository"></a>
+  <a href="https://chrono-meta.github.io/forge-harness/"><img src="https://img.shields.io/badge/whole_map-interactive-6366f1.svg" alt="FH whole map — interactive diagrams on GitHub Pages"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
   <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e.svg" alt="MIT License"></a>
@@ -261,7 +262,9 @@ ones; other identities surface and recede with how you steer and how far you pus
 `external-grounding`) are the core every FH-specific output comes from; the **three-stage process** —
 ① plant the judgment circuit *before* design → ② parallel decorrelation in the middle → ③ burn it down on
 six axes — is the order every piece of FH work runs in, forging an engine included, with speed as the arrow
-at the end, not a fourth box. **The whole map** — what FH is, how it is implemented (every node a real path), why it is trustworthy (gates · lanes · grades with file paths), and what is operator-local vs generic — is one page: [`docs/map/FH_MAP.md`](docs/map/FH_MAP.md), with three interactive diagrams beside it. ⚠️ **The six
+at the end, not a fourth box. **The whole map** — what FH is, how it is implemented (every node a real path), why it is trustworthy (gates · lanes · grades with file paths), and what is operator-local vs generic — is one page: [`docs/map/FH_MAP.md`](docs/map/FH_MAP.md), with three interactive diagrams beside it — live at **[chrono-meta.github.io/forge-harness](https://chrono-meta.github.io/forge-harness/)**.
+
+[![FH whole map — flow: doors → three-stage process → four engines → identities (click for the interactive version)](docs/map/fh_process.workflow.png)](https://chrono-meta.github.io/forge-harness/map/fh_process.workflow.html) ⚠️ **The six
 axes are not a fourth layer**; they are *what stage ③ consists of*. Full canon, and why this is
 deliberately *not* a clean stack:
 [`fh_three_layer_canon.md`](knowledge/shared/harness-core/fh_three_layer_canon.md) — the same three in
