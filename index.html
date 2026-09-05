@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>forge-harness — FH 전체 지도</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif; max-width: 860px; margin: 3rem auto; padding: 0 1.25rem; line-height: 1.55; }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  .sub { opacity: .75; margin-top: 0; }
+  ul.maps { list-style: none; padding: 0; }
+  ul.maps li { margin: 1rem 0; padding: 1rem 1.1rem; border: 1px solid rgba(128,128,128,.35); border-radius: 10px; }
+  ul.maps a { font-weight: 600; font-size: 1.05rem; }
+  .q { display: block; opacity: .8; margin-top: .25rem; }
+  footer { margin-top: 2.5rem; font-size: .9rem; opacity: .75; }
+  code { font-size: .9em; }
+</style>
+</head>
+<body>
+<h1>forge-harness — FH 전체 지도 · Whole map</h1>
+<p class="sub">FH 가 무엇인지 · 어떻게 구현돼 있는지(노드 = 실재 경로) · 왜 믿을 만한지(게이트 · 레인 · 등급의 출처) · 어디가 운영자 로컬인지.
+정본 산문은 저장소의 <a href="https://github.com/chrono-meta/forge-harness/blob/main/docs/map/FH_MAP.md"><code>docs/map/FH_MAP.md</code></a> 이고, 아래 세 장은 그 그림이다(자기완결 HTML — 검색·범례·확대 가능).</p>
+<ul class="maps">
+  <li><a href="map/fh_process.workflow.html">① 흐름 — 문 → 3단 공정 → 4대 엔진 → 정체성</a><span class="q">사람이 어디로 들어와 무엇을 받나 · Where a person enters and what comes back</span></li>
+  <li><a href="map/fh_assets.architecture.html">② 모듈 — 범용 코어 vs 운영자 로컬, 노드 = 실재 경로</a><span class="q">어떤 파일이 그 일을 하나 · Which real files do the work; the generic/operator-local boundary</span></li>
+  <li><a href="map/fh_trust.dataflow.html">③ 증거 — 변경 → 커밋 게이트 → 푸시 게이트 → 계기 → 감시·등급</a><span class="q">증거가 어디서 생겨 어디로 가나 · Where evidence is produced and where it flows</span></li>
+</ul>
+<footer>
+  <p>Rendered from typed JSON with <a href="https://github.com/tt-a1i/archify">archify</a> (MIT, local renderer). Counts, grades and paths in the diagrams are quoted from the repository on the date stamped in each diagram — the canonical grade table lives in <code>knowledge/shared/harness-core/ship_readiness_gate.md</code>, and this page never carries grades of its own.</p>
+  <p><a href="https://github.com/chrono-meta/forge-harness">Repository</a> · <a href="https://github.com/chrono-meta/forge-harness/blob/main/README.md">README</a> · <a href="https://github.com/chrono-meta/forge-harness/blob/main/docs/USER_GUIDE.md">User guide</a></p>
+</footer>
+</body>
+</html>
