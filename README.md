@@ -44,6 +44,23 @@ npx --package @chrono-meta/fh-gate fh-gate          # nothing to install
 brew tap chrono-meta/forge-harness && brew install forge-harness   # or this
 ```
 
+**In GitHub Actions** — the same gate as a step, with the verdict kept typed:
+
+```yaml
+- uses: chrono-meta/forge-harness@v3.1.0
+  with:
+    files: ${{ steps.changed.outputs.files }}
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+The step exposes `verdict` (PASS · PENDING · BLOCKED · ESCALATE · HARNESS_ERROR · ARG_ERROR · DRY_RUN · UNKNOWN)
+and `reviewed`. **`reviewed: false` is not a pass** — a backend that never answered, a dry run, or an exit
+code this wrapper does not know all land there, and all of them fail the step by default. That default is
+the point: a check that did not run must never read green. Change it with `fail-on:` if you want a softer
+policy, and know what you are trading.
+
+
 **What you get**
 
 - A change is judged **before** it merges, and the verdict names what the change **lost** — not that

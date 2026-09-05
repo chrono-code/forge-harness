@@ -626,6 +626,8 @@ for _pair in \
   `# ── fh-qp (QP) — chamber run #18 EMIT 2026-09-05: qp_tools.sh known-pair + residency lanes ──` \
   "plugins/fh-qp/scripts/qp_tools.sh|scripts/test_fh_qp_lanes.sh" \
   "plugins/fh-commons/skills/preprep/diagram_from_json.py|scripts/test_preprep_diagram_lanes.sh" \
+  `# ── action.yml — the GitHub Action wrapper: its exit-code mapping is where a typed verdict could become a boolean ──` \
+  "action.yml|scripts/test_action_yml_lanes.sh" \
   "scripts/sim_isolated_run.sh|scripts/test_sim_path_isolation_lanes.sh" \
   `# ── live-eval — the live twin of the static /prompt-regression probe check (2026-09-04) ──` \
   "scripts/probe_live_eval.sh|scripts/test_probe_live_eval_lanes.sh" \
