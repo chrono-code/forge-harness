@@ -98,6 +98,65 @@ _lane P7 score-pair "primary file missing -> FAILED-TO-RUN" "FAILED-TO-RUN False
 r="$(_score '' 'the weather is nice' present '🐿️')"
 _lane P8 score-pair "primary file empty -> FAILED-TO-RUN" "FAILED-TO-RUN False False" "$r"
 
+# ── reason-pair: FAILED-TO-RUN rows carry a `reason` explaining WHY (2026-09-05) ────────────────
+# WHY: the 2026-09-05 launchd incident scored 12/12 FAILED-TO-RUN with no clue why in the report
+# itself — a human had to go dig through stderr files by hand. score_run() now attaches a `reason`
+# to any FAILED-TO-RUN row: the failing arm's own stderr first line when there is one, else an
+# rc/bytes fallback parsed from the runner's console log. This never touches score_probe() itself
+# (unchanged, still tested above) — reason is a diagnostic label on top of the same verdict.
+# $1=run_root $2=id -> "VERDICT<TAB>REASON"
+_reason_row() {
+  python3 -c "
+import sys
+sys.path.insert(0, '$REPO_ROOT/scripts')
+from probe_live_eval_lib import score_run
+live = [{'id': sys.argv[2], 'polarity': 'present', 'expect_re': '🐿️'}]
+res = score_run(live, sys.argv[1], [sys.argv[2]], 0.8, 'sonnet')
+row = res['rows'][0]
+sys.stdout.write('%s\t%s' % (row['verdict'], row.get('reason', '')))
+" "$1" "$2"
+}
+
+echo ""
+echo "── reason-pair ──────────────────────────────────────────────────"
+
+# R-F1: primary's own stderr has a real line (the launchd incident's actual error text) -> reason
+# quotes it verbatim, prefixed by which arm it came from.
+RROOT1="$T/reason_f1"; mkdir -p "$RROOT1/X1"
+printf 'scripts/sim_isolated_run.sh: line 517: timeout: command not found\n' > "$RROOT1/X1/primary_r1.stderr.txt"
+printf 'unused control text' > "$RROOT1/X1/control_r1.txt"
+out="$(_reason_row "$RROOT1" X1)"
+_lane RF1 reason-pair "primary stderr line -> reason quotes it, prefixed 'primary:'" \
+  "FAILED-TO-RUN	primary: scripts/sim_isolated_run.sh: line 517: timeout: command not found" "$out"
+
+# R-F2: stderr file absent/empty -> falls back to rc/bytes, rc parsed from the runner's own
+# console log text (the shape sim_isolated_run.sh itself prints: "(rc=<n>, ...)").
+RROOT2="$T/reason_f2"; mkdir -p "$RROOT2/X2"
+printf '  UNMEASURED (rc=127, 0 bytes) - timeout or crash, NOT a negative result\n' > "$RROOT2/X2/_runner_primary.log"
+printf 'unused' > "$RROOT2/X2/control_r1.txt"
+out="$(_reason_row "$RROOT2" X2)"
+_lane RF2 reason-pair "no stderr line -> rc/bytes fallback parsed from the runner log" \
+  "FAILED-TO-RUN	primary: rc=127 bytes=0" "$out"
+
+# R-F3: the CONTROL side is the one missing (primary present) -> reason is prefixed 'control:',
+# not 'primary:' — proves the label is attributed to the arm that actually failed.
+RROOT3="$T/reason_f3"; mkdir -p "$RROOT3/X3"
+printf '🐿️ Welcome to FH' > "$RROOT3/X3/primary_r1.txt"
+printf 'boom: control side stderr text\n' > "$RROOT3/X3/control_r1.stderr.txt"
+out="$(_reason_row "$RROOT3" X3)"
+_lane RF3 reason-pair "control-side failure -> reason prefixed 'control:', not 'primary:'" \
+  "FAILED-TO-RUN	control: boom: control side stderr text" "$out"
+
+# R-F4 known-negative: a normal PASS row must carry an EMPTY reason — otherwise RF1-RF3 could be
+# passing because `reason` is always non-empty garbage, not because it discriminates on verdict
+# ([[feedback_control_presence_is_not_discrimination]]).
+RROOT4="$T/reason_f4"; mkdir -p "$RROOT4/X4"
+printf '🐿️ Welcome to FH' > "$RROOT4/X4/primary_r1.txt"
+printf 'the weather is nice' > "$RROOT4/X4/control_r1.txt"
+out="$(_reason_row "$RROOT4" X4)"
+_lane RF4 reason-pair "control — a PASS row carries no reason (field is FAILED-TO-RUN-only)" \
+  "PASS	" "$out"
+
 # ── select-guard: mechanical rule reproduces the real 12/21 split ──────────────────────────────
 echo ""
 echo "── select-guard ──────────────────────────────────────────────────"
@@ -182,6 +241,88 @@ case "$dry_stdout" in
   *) r3=no ;;
 esac
 _lane R3 dry-run "--dry-run stdout shows the real 12-probe selection" "yes" "$r3"
+
+# ── fail-fast: probe_live_eval.sh aborts on the FIRST rc=2 runner call, not after burning the
+# rest of the selected set (2026-09-05, the launchd incident this exists for) ────────────────────
+# WHY: sim_isolated_run.sh's own usage guards exit 2 before ever calling `claude` (bad flags, no
+# `claude` on PATH, or — the actual incident — a launchd PATH with no `timeout(1)` resolvable
+# before that runner grew its own bash-fallback). That condition is identical for every remaining
+# probe in the run, so continuing just burns the rest of the clones on an environment already
+# known broken. These lanes stub OUT sim_isolated_run.sh entirely via FH_SIM_RUNNER_BIN (added to
+# probe_live_eval.sh for exactly this) so the fail-fast branch can be tested without a live
+# `claude` call at all.
+echo ""
+echo "── fail-fast ────────────────────────────────────────────────────"
+
+STUBROOT="$T/failfast_stub"; mkdir -p "$STUBROOT"
+
+# Broken stand-in: exactly what sim_isolated_run.sh's own preflight guards do — print one line to
+# stderr and exit 2, never touching a network or spawning `claude`. Records its own invocation
+# count so the lane can prove the caller stopped after the FIRST call.
+cat > "$STUBROOT/fake_sim_broken.sh" <<'FAKESIM'
+#!/usr/bin/env bash
+: "${FH_FAKESIM_COUNTER:?FH_FAKESIM_COUNTER must be set by the caller}"
+echo "$$" >> "$FH_FAKESIM_COUNTER"
+echo "FAIL: claude CLI not on PATH" >&2
+exit 2
+FAKESIM
+chmod +x "$STUBROOT/fake_sim_broken.sh"
+
+# Healthy stand-in (known-negative control): same argv shape, writes a plausible output file and
+# exits 0 for EVERY call — proves FF1/FF2 discriminate on rc=2 specifically, not on "stopped after
+# one call" regardless of what the runner returns.
+cat > "$STUBROOT/fake_sim_ok.sh" <<'FAKESIMOK'
+#!/usr/bin/env bash
+: "${FH_FAKESIM_COUNTER:?FH_FAKESIM_COUNTER must be set by the caller}"
+echo "$$" >> "$FH_FAKESIM_COUNTER"
+arm=""; out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --arm) arm="$2"; shift 2 ;;
+    --out) out="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+mkdir -p "$out"
+echo "stub ok output" > "$out/${arm}_r1.txt"
+echo "RESULT: CLEAN"
+exit 0
+FAKESIMOK
+chmod +x "$STUBROOT/fake_sim_ok.sh"
+
+# 🟥 FF5 guard — the live nightly record must be untouched by this suite. Measured 2026-09-05 10:18:
+# FF4 completed the REAL script with a stub runner and, with no --report-out, replaced that night's
+# tracks/_meta/live_eval_<date>.md with stub values. A lane that writes into the live artifact path
+# is the fleet class in miniature ([[feedback_sim_with_write_tools_is_a_fleet]]).
+LIVE_REPORT="$REPO_ROOT/tracks/_meta/live_eval_$(date +%Y-%m-%d).md"
+_live_hash() { if [ -f "$LIVE_REPORT" ]; then shasum "$LIVE_REPORT" | cut -c1-40; else echo ABSENT; fi; }
+live_before="$(_live_hash)"
+COUNTER1="$T/failfast_counter_broken.txt"; : > "$COUNTER1"
+ff_out="$(cd "$REPO_ROOT" && FH_SIM_RUNNER_BIN="$STUBROOT/fake_sim_broken.sh" FH_FAKESIM_COUNTER="$COUNTER1" \
+    bash "$RUNNER" --subset 2 --model sonnet --out "$T/failfast_run_broken" --report-out "$T/failfast_report_broken.md" 2>&1)"
+ff_rc=$?
+_lane FF1 fail-fast "aborts with rc=2 on the runner's own preflight failure" "2" "$ff_rc"
+ff_calls=$(wc -l < "$COUNTER1" | tr -d ' ')
+_lane FF2 fail-fast "stops after exactly 1 runner call (does not burn the 2nd probe's 3 remaining calls)" "1" "$ff_calls"
+case "$ff_out" in
+  *"Aborting the whole run"*) ff_msg=yes ;;
+  *) ff_msg=no ;;
+esac
+_lane FF3 fail-fast "abort message names what happened (not a silent stop)" "yes" "$ff_msg"
+
+# Known-negative control: the SAME --subset 2 (2 probes x primary+control = 4 calls) against a
+# HEALTHY runner must run to completion, not stop early — otherwise FF1/FF2 could be passing
+# because the loop always stops after one call for any reason at all
+# ([[feedback_control_presence_is_not_discrimination]]).
+COUNTER2="$T/failfast_counter_ok.txt"; : > "$COUNTER2"
+( cd "$REPO_ROOT" && FH_SIM_RUNNER_BIN="$STUBROOT/fake_sim_ok.sh" FH_FAKESIM_COUNTER="$COUNTER2" \
+    bash "$RUNNER" --subset 2 --model sonnet --out "$T/failfast_run_ok" --report-out "$T/failfast_report_ok.md" ) >/dev/null 2>&1
+ff2_calls=$(wc -l < "$COUNTER2" | tr -d ' ')
+_lane FF4 fail-fast "control — a healthy runner (rc=0) is called for all 4 (2 probes x 2 arms), not stopped early" "4" "$ff2_calls"
+live_after="$(_live_hash)"
+_lane FF5 fail-fast "live nightly record untouched by the suite (hash before == after, or both ABSENT)" "$live_before" "$live_after"
+[ -s "$T/failfast_report_ok.md" ] && ff_rep=yes || ff_rep=no
+_lane FF6 fail-fast "--report-out receives the report instead of the live path" "yes" "$ff_rep"
 
 echo ""
 echo "── summary ──────────────────────────────────────────────────────"

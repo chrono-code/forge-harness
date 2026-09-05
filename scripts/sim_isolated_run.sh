@@ -149,6 +149,23 @@
 #        이유는 헤더 상단 "WHAT THIS GIVES YOU" 절이 이미 말한다 — 여기서 되풀이하지 않는다.
 #   요약: 파일시스템 코퍼스 축(WIPE+RESEED)은 클론 단위로 이미 wipe-and-reseed다. 기계 표면 축은
 #   아니다 — 탐지기이지 리셋기가 아니다. 이 두 문장이 "샌드박스 표준"의 정직한 전부다.
+#
+# ── timeout(1) RESOLUTION — macOS ships none, and launchd's PATH cannot see Homebrew's
+#   (2026-09-05, measured) ──────────────────────────────────────────────────────────────────────
+#   WHY: stock macOS ships no `timeout(1)`. Homebrew coreutils installs `gtimeout` (plain
+#   `timeout` only if the user un-prefixes GNU coreutils onto PATH) under a prefix an interactive
+#   login shell sees but a launchd job's PATH does NOT — this repo's own plist templates ship
+#   `$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin`, no Homebrew prefix at all. The first launchd
+#   live-eval run (2026-09-05 02:30) hit exactly this: every one of 12 probes × 2 arms died at
+#   `timeout: command not found` before `claude` ever ran, and the report showed 12/12
+#   FAILED-TO-RUN with no clue why — a "did this fire" question this repo cares about a great
+#   deal (§Skeleton-Not-Muscle) answered wrong for a reason that had nothing to do with the
+#   harness under test. FH ships this script via npm (package.json `files[]`), so a stock-macOS
+#   consumer with no Homebrew coreutils hits the identical wall running it by hand — this is not
+#   a launchd-only defect. Resolution below: GNU `timeout` → `gtimeout` → a bash-native watchdog
+#   fallback, so a run never silently trades "no timeout enforcement" for "works on my machine".
+#   The resolved kind is printed in the run header as `timeout_tool=` so a run names its own
+#   control rather than leaving it to be inferred from a failure days later.
 
 set -uo pipefail
 
@@ -320,6 +337,62 @@ case "$MODE" in observe|act) ;; *) echo "FAIL: --mode must be observe|act" >&2; 
 
 command -v claude >/dev/null 2>&1 || { echo "FAIL: claude CLI not on PATH" >&2; exit 2; }
 
+# ── timeout(1) resolution — see §timeout(1) RESOLUTION in the header above for WHY. ──────────────
+# GNU `timeout` → Homebrew's `gtimeout` → a bash-native watchdog. Never silently proceeds with NO
+# enforcement at all — that would trade "wrong binary name" for "no timeout, ever", which is worse.
+TIMEOUT_KIND=""; TIMEOUT_BIN=""
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_KIND="gnu"; TIMEOUT_BIN="$(command -v timeout)"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_KIND="gtimeout"; TIMEOUT_BIN="$(command -v gtimeout)"
+else
+  TIMEOUT_KIND="bash-fallback"; TIMEOUT_BIN=""
+fi
+
+# fh_run_with_timeout SECONDS CMD... — used only when neither `timeout` nor `gtimeout` resolved.
+# Backgrounds CMD, TERMs it if SECONDS elapses, grants 5s to exit cleanly, then KILLs. The verdict
+# "did this actually time out" is a FLAG FILE the watchdog writes when it intervenes — not CMD's
+# own exit code — because a child that catches SIGTERM and exits 0 anyway must still be reported
+# as timed out (matching GNU timeout's rc=124 convention), not read as if it had answered normally.
+fh_run_with_timeout() {
+  local _secs="$1"; shift
+  local _flag; _flag="$(mktemp "${TMPDIR:-/tmp}/fh_to_XXXXXX")"; rm -f "$_flag"
+  "$@" &
+  local _cpid=$!
+  ( sleep "$_secs" 2>/dev/null
+    if kill -0 "$_cpid" 2>/dev/null; then
+      : > "$_flag"
+      kill -TERM "$_cpid" 2>/dev/null
+      sleep 5
+      kill -0 "$_cpid" 2>/dev/null && kill -KILL "$_cpid" 2>/dev/null
+    fi
+  ) &
+  local _watchdog=$!
+  local _rc=0
+  wait "$_cpid" 2>/dev/null; _rc=$?
+  # The watchdog subshell owns a `sleep`; killing the subshell alone leaves that sleep as an
+  # orphan for up to SECONDS (test_frontier_digest_retry.sh challenger B-2 measured exactly this
+  # class). Kill the subshell's children first, then the subshell.
+  pkill -P "$_watchdog" 2>/dev/null; kill "$_watchdog" 2>/dev/null; wait "$_watchdog" 2>/dev/null
+  if [ -f "$_flag" ]; then
+    rm -f "$_flag"
+    return 124
+  fi
+  rm -f "$_flag" 2>/dev/null
+  return "$_rc"
+}
+
+# fh_timeout SECONDS CMD... — drop-in for `timeout SECONDS CMD...` using whichever kind resolved
+# above. The call site never branches on TIMEOUT_KIND itself.
+fh_timeout() {
+  local _secs="$1"; shift
+  case "$TIMEOUT_KIND" in
+    gnu)      command timeout "$_secs" "$@" ;;
+    gtimeout) command gtimeout "$_secs" "$@" ;;
+    *)        fh_run_with_timeout "$_secs" "$@" ;;
+  esac
+}
+
 OUTDIR="${OUTDIR:-$(mktemp -d "${TMPDIR:-/tmp}/fh-sim-XXXXXX")}"
 mkdir -p "$OUTDIR"
 
@@ -355,6 +428,7 @@ _model_known_cutoff() { # $1=--model 값 → ISO 월 또는 UNKNOWN
 
 echo "── sim_isolated_run ──────────────────────────────────────────────"
 echo "arm=$ARM mode=$MODE model=$MODEL reps=$REPS timeout=${TIMEOUT}s"
+echo "timeout_tool=${TIMEOUT_KIND}${TIMEOUT_BIN:+:$TIMEOUT_BIN}"
 echo "out=$OUTDIR"
 
 snapshot "$OUTDIR/_machine_before.txt"
@@ -514,7 +588,7 @@ for r in $(seq 1 "$REPS"); do
   #    부르며 정직하게 거부하면서도, 거부문 안에서 정답을 말한다. 채점기는 그걸 토큰으로 센다.
   #    이것이 회차 1~3 과 probe1~4 를 전부 무효로 만든 근인이고, 경로 deny·코퍼스 마스킹은
   #    **원리적으로 못 막는다**(도구 읽기가 아니라 프롬프트 조립이다).
-  ( cd "$WORK" && timeout "$TIMEOUT" claude -p "$PROMPT" \
+  ( cd "$WORK" && fh_timeout "$TIMEOUT" claude -p "$PROMPT" \
         --model "$MODEL" "${TOOLS[@]}" \
         < /dev/null 2>"$OUTDIR/${ARM}_r${r}.stderr.txt" ) > "$OUTDIR/${ARM}_r${r}.txt"
   rc=$?

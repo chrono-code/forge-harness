@@ -51,12 +51,18 @@
 # alongside a proven-blind probe is not trustworthy just because the other rows look fine.
 #
 # EXIT CODES: 0 = PASS (pass_rate >= threshold, no UNCALIBRATED). 1 = FAIL (pass_rate < threshold).
-# 2 = UNCALIBRATED or NO-PROBES-RAN (no verdict rendered — fix the instrument before trusting it).
+# 2 = UNCALIBRATED, NO-PROBES-RAN, or a RUNNER PREFLIGHT FAILURE (sim_isolated_run.sh's own usage
+# guards exit 2 before ever calling `claude` — e.g. no `claude` on PATH, or — measured 2026-09-05 —
+# a launchd PATH with no `timeout(1)` on it). This script fails fast on the FIRST such rc=2 rather
+# than burning the remaining clones against an environment already known broken: no verdict
+# rendered either way — fix the instrument before trusting it. See sim_isolated_run.sh's own
+# §timeout(1) RESOLUTION header for why that preflight can fail even when `claude` itself is fine.
 #
 # USAGE
 #   bash scripts/probe_live_eval.sh --dry-run
 #   bash scripts/probe_live_eval.sh --ids G-GREET-01,G-TRIG-02 --model sonnet
 #   bash scripts/probe_live_eval.sh --subset 3
+#   bash scripts/probe_live_eval.sh --subset 3 --report-out /tmp/spot.md   # spot-check: keep the nightly record untouched
 #   bash scripts/probe_live_eval.sh                      # full selected set — nightly cron shape
 #
 # PORTABILITY: bash 3.2 (macOS) + bash 5.x (Linux CI). No associative arrays, no `${var,,}`,
@@ -70,7 +76,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROBES_MD="$REPO_ROOT/.claude/regression/probes.md"
 PROBES_LIVE="$REPO_ROOT/.claude/regression/probes_live.yaml"
 LIB="$REPO_ROOT/scripts/probe_live_eval_lib.py"
-SIM_RUNNER="$REPO_ROOT/scripts/sim_isolated_run.sh"
+# FH_SIM_RUNNER_BIN — same override name test_sim_isolated_run_lanes.sh already uses for the same
+# purpose (point at an alternate runner build). Here it also lets test_probe_live_eval_lanes.sh
+# swap in a stub runner (rc=2, no `claude` call, no network) to test the fail-fast behavior below
+# without spawning a live session. No-op when unset — default behavior is unchanged.
+SIM_RUNNER="${FH_SIM_RUNNER_BIN:-$REPO_ROOT/scripts/sim_isolated_run.sh}"
 
 # ── file-header constant — the "문턱" the design brief calls for. Change here, not per-invocation. ──
 THRESHOLD="0.8"
@@ -80,6 +90,7 @@ DRYRUN=0
 SUBSET=""
 IDS=""
 OUTDIR=""
+REPORT_OUT=""   # --report-out: where the markdown report lands (default: tracks/_meta/live_eval_<date>.md)
 while [ $# -gt 0 ]; do
   case "$1" in
     --subset)   SUBSET="${2:-}"; shift 2 ;;
@@ -87,6 +98,7 @@ while [ $# -gt 0 ]; do
     --model)    MODEL="${2:-sonnet}"; shift 2 ;;
     --dry-run)  DRYRUN=1; shift ;;
     --out)      OUTDIR="${2:-}"; shift 2 ;;
+    --report-out) REPORT_OUT="${2:-}"; shift 2 ;;   # lanes/spot-checks MUST pass this — never the live path
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -152,17 +164,44 @@ while IFS= read -r id; do
   bash "$SIM_RUNNER" --arm primary --reps 1 --prompt "$input_text" \
        --mode observe --model "$MODEL" --out "$probe_out" \
        > "$probe_out/_runner_primary.log" 2>&1
+  runner_rc=$?
   tail -n 6 "$probe_out/_runner_primary.log"
+  # 🟥 fail-fast (2026-09-05) — rc=2 from the runner means its OWN usage/preflight guard tripped
+  # before `claude` was ever invoked (missing --arm/--prompt, bogus --mode, no `claude` on PATH,
+  # or — the incident this exists for — a launchd PATH with no `timeout(1)` resolvable). That
+  # condition is identical for every remaining probe in this run, so continuing would just burn
+  # the rest of the clones (up to 2*(N-1) more `claude -p` calls) to the same FAILED-TO-RUN wall.
+  # Abort loudly instead of quietly producing a 12/12 FAILED-TO-RUN report with no clue why.
+  if [ "$runner_rc" -eq 2 ]; then
+    echo "" >&2
+    echo "❌ $id primary runner call exited 2 (preflight failure, before \`claude\` ran)." >&2
+    echo "   Aborting the whole run rather than burning the remaining clones." >&2
+    echo "   Runner log:   $probe_out/_runner_primary.log" >&2
+    echo "   Partial run artifacts kept at: $OUTDIR" >&2
+    exit 2
+  fi
 
   echo "▶ $id — control"
   bash "$SIM_RUNNER" --arm control --reps 1 --prompt "$control_text" \
        --mode observe --model "$MODEL" --out "$probe_out" \
        > "$probe_out/_runner_control.log" 2>&1
+  runner_rc=$?
   tail -n 6 "$probe_out/_runner_control.log"
+  if [ "$runner_rc" -eq 2 ]; then
+    echo "" >&2
+    echo "❌ $id control runner call exited 2 (preflight failure, before \`claude\` ran)." >&2
+    echo "   Aborting the whole run rather than burning the remaining clones." >&2
+    echo "   Runner log:   $probe_out/_runner_control.log" >&2
+    echo "   Partial run artifacts kept at: $OUTDIR" >&2
+    exit 2
+  fi
 done < "$SPEC_DIR/selected_ids.txt"
 
 echo ""
-REPORT_PATH="$REPO_ROOT/tracks/_meta/live_eval_${RUN_DATE}.md"
+# 🟥 The live report path is the nightly RECORD. A lane or spot-check that reaches this line with the
+# default overwrote a real night's distribution once (2026-09-05 10:18: test_probe_live_eval_lanes.sh FF4
+# ran the real script with a stub runner and replaced the 02:30 report). Lanes pass --report-out.
+REPORT_PATH="${REPORT_OUT:-$REPO_ROOT/tracks/_meta/live_eval_${RUN_DATE}.md}"
 python3 "$LIB" score \
   --probes-live "$PROBES_LIVE" \
   --select-json "$SELECT_JSON" \

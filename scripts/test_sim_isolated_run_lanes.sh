@@ -56,6 +56,10 @@ case "${FH_STUB_MODE:-say}" in
   # 🟥 stdin 을 그대로 받아 적는다 — 실물 `claude -p` 가 하는 짓을 재현한다.
   #    진짜 CLI 는 stdin 이 TTY 가 아니면 그것을 «읽어 프롬프트 뒤에 붙인다».
   stdin)    echo "stub answer"; cat >> "${FH_STUB_STDIN_LOG:-/dev/null}" ;;
+  # L26 (2026-09-05) — a command that runs long past any sane --timeout, default SIGTERM
+  # disposition (no trap): dies as soon as the watchdog signals it, so a lane can tell "the
+  # deadline was enforced" from "we just waited for it to finish on its own".
+  hang)     sleep 30 ;;
 esac
 exit 0
 STUB
@@ -276,6 +280,88 @@ if [ -f "$META" ]; then
     || no "L25c sim_model_cutoff field missing"
 else
   no "L25 meta.tsv not written at all ($META)"
+fi
+
+# ── L26 timeout(1) resolution (2026-09-05) — the launchd-PATH incident this exists for ──────────
+#    WHY: launchd's PATH ($HOME/.local/bin:/usr/local/bin:/usr/bin:/bin, per this repo's own plist
+#    templates prior to this patch) has neither `timeout` nor `gtimeout` on it — both live under
+#    Homebrew's prefix. The first real launchd live-eval run (2026-09-05 02:30) hit exactly this:
+#    every rep of every arm died at `timeout: command not found` and the run scored 12/12
+#    FAILED-TO-RUN with no clue why. This lane strips whichever CURRENT PATH dir(s) actually hold
+#    `timeout`/`gtimeout` — computed, not hardcoded to /opt/homebrew/bin, so the same lane works on
+#    Intel or a Linux box — and proves two things a prose comment cannot: the bash-native fallback
+#    actually answers (not just "doesn't crash"), and it actually enforces the deadline rather than
+#    silently never firing.
+_strip_timeout_dirs() {  # prints $PATH with every dir holding an executable timeout/gtimeout removed
+  local IFS=':' d out=""
+  for d in $PATH; do
+    [ -x "$d/timeout" ] && continue
+    [ -x "$d/gtimeout" ] && continue
+    out="${out:+$out:}$d"
+  done
+  printf '%s' "$out"
+}
+NOTIMEOUT_PATH="$(_strip_timeout_dirs)"
+
+echo ""
+echo "── L26 timeout(1) resolution ───────────────────────────────────────"
+
+# Fixture-potency check FIRST — a stripped PATH that still resolves timeout/gtimeout proves
+# nothing ([[feedback_fixture_must_use_the_breaking_spelling]]), and a strip that ALSO removed
+# bash/git would confound every assertion below with an unrelated clone failure. Both are named
+# distinctly rather than let a downstream lane fail for the wrong reason. Per this file's own
+# convention (see L24's "검사 못 함(스킵 아님)"), an unusable fixture on this machine is scored
+# as a failure, not silently skipped — it is loud precisely because CI does not gate this file
+# (verified: no .github/workflows/*.yml references it), so a quiet skip would never be noticed.
+if PATH="$NOTIMEOUT_PATH" command -v timeout >/dev/null 2>&1 || PATH="$NOTIMEOUT_PATH" command -v gtimeout >/dev/null 2>&1; then
+  no "L26-FIXTURE stripped PATH still resolves timeout/gtimeout — cannot run L26 on this machine"
+elif ! PATH="$NOTIMEOUT_PATH" command -v bash >/dev/null 2>&1 || ! PATH="$NOTIMEOUT_PATH" command -v git >/dev/null 2>&1; then
+  no "L26-FIXTURE stripping timeout/gtimeout also removed bash or git — cannot run L26 on this machine"
+else
+  ok "L26-FIXTURE stripped PATH lacks timeout+gtimeout; bash/git still resolve"
+
+  # L26a — no timeout/gtimeout at all: the runner must still answer (via the bash fallback) and
+  # must NAME which control it used in its own header, rather than leaving that to be inferred.
+  OUTDIR="$WORKROOT/o26a"
+  OUT=$( cd "$SRC" && PATH="$STUBBIN:$NOTIMEOUT_PATH" HOME="$FAKEHOME" FH_STUB_MODE=say \
+     bash "$SUT" --arm a --reps 1 --prompt p --out "$OUTDIR" 2>&1 )
+  if printf '%s' "$OUT" | grep -q "timeout_tool=bash-fallback" && printf '%s' "$OUT" | grep -q "captured"; then
+    ok "L26a no timeout/gtimeout on PATH -> bash-fallback answers and names itself in the header"
+  else
+    no "L26a bash-fallback did not fire/name itself: $(printf '%s' "$OUT" | grep -E 'timeout_tool|captured|UNMEASURED|EMPTY' | head -3 | tr '\n' ';')"
+  fi
+
+  # L26b — the fallback must actually ENFORCE the deadline, not just silently never fire. A stub
+  # that would otherwise run 30s under --timeout 2 must come back UNMEASURED well under 30s.
+  OUTDIR="$WORKROOT/o26b"
+  _t0=$(date +%s)
+  OUT=$( cd "$SRC" && PATH="$STUBBIN:$NOTIMEOUT_PATH" HOME="$FAKEHOME" FH_STUB_MODE=hang \
+     bash "$SUT" --arm a --reps 1 --prompt p --timeout 2 --out "$OUTDIR" 2>&1 )
+  _t1=$(date +%s); _elapsed=$(( _t1 - _t0 ))
+  if printf '%s' "$OUT" | grep -q "UNMEASURED" && [ "$_elapsed" -le 10 ]; then
+    ok "L26b bash-fallback enforces the deadline (UNMEASURED in ${_elapsed}s of a 30s hang, timeout=2s)"
+  else
+    no "L26b fallback did not enforce the timeout (elapsed=${_elapsed}s): $(printf '%s' "$OUT" | grep -E 'UNMEASURED|captured' | head -1)"
+  fi
+
+  # L26c control — SAME hang stub, DEFAULT (unstripped) PATH: real timeout/gtimeout must still be
+  # preferred over the fallback (header says gnu/gtimeout, not bash-fallback), AND must enforce
+  # the same deadline. Without this, L26a/L26b could be passing because the fallback is used
+  # unconditionally, not because resolution correctly prefers the real tool when it is present
+  # ([[feedback_control_presence_is_not_discrimination]]).
+  OUTDIR="$WORKROOT/o26c"
+  OUT=$( cd "$SRC" && PATH="$STUBBIN:$PATH" HOME="$FAKEHOME" FH_STUB_MODE=hang \
+     bash "$SUT" --arm a --reps 1 --prompt p --timeout 2 --out "$OUTDIR" 2>&1 )
+  case "$OUT" in
+    *"timeout_tool=bash-fallback"*)
+      no "L26c control — default PATH used bash-fallback instead of a real timeout/gtimeout" ;;
+    *"timeout_tool=gnu"*|*"timeout_tool=gtimeout"*)
+      printf '%s' "$OUT" | grep -q "UNMEASURED" \
+        && ok "L26c control — default PATH prefers the real timeout tool and still enforces the deadline" \
+        || no "L26c control — real timeout tool resolved but did not enforce the deadline"
+      ;;
+    *) no "L26c control — no timeout_tool= line in header at all: $(printf '%s' "$OUT" | grep timeout_tool)" ;;
+  esac
 fi
 
 echo "sim_isolated_run lanes: $pass passed, $fail failed"
