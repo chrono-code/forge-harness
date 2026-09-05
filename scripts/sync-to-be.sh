@@ -12,7 +12,33 @@
 # list refuses (non-zero exit) rather than writing anywhere.
 # Runs from a CC Stop hook (throttled) or manually.
 # Override paths via env: HUB_DIR, BE_DIR.
-# Usage: bash scripts/sync-to-be.sh [--quiet]
+# Usage: bash scripts/sync-to-be.sh [--quiet] [--init]
+#   --init   explicitly CREATE the companion store at $BE (mkdir -p + git init -q, one log line saying
+#            what was made where). Without it a destination that is not an existing git work tree is
+#            REFUSED (rc=12) — a typo in BE_DIR / FH_COMPANION_STORE must never silently clone the
+#            private half somewhere new (fh_signal_2026-09-05_sync-guard-failopen-and-alarm-fatigue ⓐ).
+# EXIT:  0 = mirrored (or nothing to do)
+#        1 = destination-newer guard tripped and the return path does NOT recover it — or any set -e
+#            mid-run failure (fail-closed: a red wall, read it)
+#        2 = destination-newer, RECOVERABLE: another node advanced and `sync-from-be.sh --dry-run`
+#            reports review 0 — nothing was written; run the return path, then re-run (ⓑ, 2026-09-05).
+#            Nothing is recovered automatically — only the tone of the message changes.
+#        4 = companion store resolves to the hub itself (refuse to commit private content into the hub)
+#       10 = $FH is not a recognized hub ("not applicable here" — the Stop hook stamps on 0 or 10)
+#       12 = destination guard: $BE is not the ROOT of an existing git work tree (missing · not a dir ·
+#            subdirectory of another repo · bare · submodule · a git too old to rule out a submodule —
+#            compared by physical path) and --init was not given, or --init could not create it
+#            atomically (fail-closed: zero trace), or the store STOPPED being the root of its own work
+#            tree mid-run, or its git identity (git dir · common dir) changed mid-run (mirrored, nothing
+#            committed — R3 B6 · R4 S1 root re-check · R5 S1 identity pin). Repo-selecting GIT_* env is
+#            unset at start so a hook's environment cannot redirect the store (R5 S2). An independent repo whose root sits inside another
+#            repo's tree is accepted on purpose (R3 A4, lane B8m). Once validated, every write goes
+#            through the PHYSICAL path (R3 S1, lane B8n) and the default destination is derived from
+#            the physical hub (R3 S2, lane B8l).
+# 🟡 Stop-hook interaction (not testable by the lanes — the hook lives in .claude/settings.local.json,
+#    outside the repo): the hook stamps its cooldown only on rc 0/10, so rc=2 is NOT stamped → the
+#    3-line notice repeats on every Stop until the return path is run. Whether the hook should also
+#    stamp on 2 is a local decision; this script only changed a 21-line wall into 3 lines for that case.
 #
 # ── WHO TURNS THIS ON, AND ITS SIBLING ────────────────────────────────────────
 # This script is one of TWO one-way mirror modes. They differ by AUDIENCE, not mechanism, and
@@ -41,9 +67,41 @@
 
 set -euo pipefail
 
+# 🟥 R5 S2 (codex, 2026-09-05): every `git` below must address the store BY PATH. Repo-selecting
+# environment (a git hook exports GIT_DIR; a caller may carry GIT_WORK_TREE / GIT_INDEX_FILE …) makes
+# `git -C "$BE" rev-parse` answer for the ENV-selected repository — a plain directory would then pass
+# the root check and `git add/commit` would land the private half in that other repo. Unset them
+# first; nothing here legitimately needs them (lane B8r).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE 2>/dev/null || true
+
+# THREAT MODEL (stated so severity can be graded against it): the operator's own machine, the
+# operator's own store. The guard defends against TYPOS, symlinks, logical/physical path splits,
+# stale copies and CONCURRENT LEGITIMATE processes (another hub's sync, a worktree operation, a git
+# hook's environment) — not against an adversary who can rewrite the store between two lines of this
+# script; such an adversary can rewrite the script itself. Cheap belts against mid-run change are
+# still taken where they cannot over-block (identity pin below), and named as belts, not floors.
+
 FH="${HUB_DIR:-${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}}"
-BE="${BE_DIR:-$FH/../fh-be}"          # companion = documented sibling of the hub (derive with $FH, not a pinned literal)
-QUIET="${1:-}"
+# Physical path of an EXISTING dir (`cd -P && pwd -P`); empty if it does not exist. Defined up here
+# because the DEFAULT destination already needs it (R3 S2); the destination guard below reuses it.
+_phys() { (cd -P "$1" 2>/dev/null && pwd -P); }
+# 🟥 R3 (codex cross-family, 2026-09-05) S2: the default companion is the sibling of the PHYSICAL hub.
+# With a symlinked HUB_DIR (`/tmp/fh-link → /real/forge-harness`) the logical form `$FH/../fh-be`
+# splits in two: the kernel resolves it to /real/fh-be for cp/mkdir/`git -C`, but bash's logical `cd`
+# takes it to /tmp/fh-be — files mirrored in one repo, `git add/commit` run in another. Deriving from
+# the physical hub keeps the whole run in one place; an explicit BE_DIR is taken as given, and is
+# pinned to its physical path once the guard has validated it (S1 below) — that pin is what closes
+# the split for every spelling; this derivation keeps the requested path sane before the guard.
+_fh_phys0="$(_phys "$FH" || true)"   # R4 A2: a nonexistent HUB_DIR must reach the hub-identity refusal (rc=10), not die here under set -e
+BE="${BE_DIR:-${_fh_phys0:-$FH}/../fh-be}"   # companion = documented sibling of the hub (derive with $FH, not a pinned literal)
+QUIET=""; INIT=0
+for _arg in "$@"; do
+  case "$_arg" in
+    --quiet) QUIET="--quiet" ;;
+    --init)  INIT=1 ;;
+    *) echo "[sync-to-be] ⚠️  unknown argument ignored: $_arg (known: --quiet --init)" >&2 ;;
+  esac
+done
 
 # Hub-identity guard (fail-closed): $FH is context-derived (CLAUDE_PROJECT_DIR), and this is the
 # WRITE/push path. Refuse to mirror if $FH is not a recognized hub — e.g. the Stop hook is
@@ -104,7 +162,125 @@ HO="hub-owner$HUB_SUFFIX"
 # `flock` would be the obvious tool but ships on neither stock macOS (this operator's platform) nor
 # BSD — `mkdir` is atomic on every POSIX filesystem and needs no external binary. Shared (unsuffixed)
 # lock path: both hubs must serialize against EACH OTHER, not just themselves.
-mkdir -p "$BE"
+#
+# ── Destination guard (fail-closed) — BEFORE the lock mkdir, before anything touches $BE ──────────
+# Measured 2026-09-05: `BE_DIR=/tmp/__nonexistent__ bash sync-to-be.sh` created that path and mirrored
+# the private half into it — 838+93+61 files, 15 MB, rc=0, no warning. A single typo in the
+# documented `export FH_COMPANION_STORE=...` line therefore cloned tracks/_meta, memory/ and
+# CLAUDE.local.md to an arbitrary directory, silently. That is the publish direction, so it fails
+# CLOSED here: the destination must ALREADY be the root of a git work tree, or the caller must
+# say `--init` — an explicit act that logs what it makes and where. "The destination does not exist"
+# never means "it may be created" (CLAUDE.md §Irreversibility: applicable-but-missing ≠ not-applicable).
+# 🟥 R2 (codex cross-family, 2026-09-05): "inside SOME git work tree" was too weak — a typo that lands
+# in an existing subdirectory of ANOTHER repository passed, and the private half went into a foreign
+# repo (the original scenario, one level deeper). So the destination must be a git work tree's
+# ROOT ITSELF, compared by PHYSICAL path (`cd -P && pwd -P` on both sides — a symlink that displays as
+# a harmless BE= can resolve inside someone else's repo). Subdirectories, bare repos and submodules
+# are refused. Both the requested and the resolved path are logged on refuse and on pass.
+# (_phys() is defined at the top of the file — the default BE derivation already needs it.)
+_be_reason=""
+_be_root_ok() {   # $1 = physical dir. Sets _be_reason on failure.
+  local p="$1" inside top sup
+  inside="$(git -C "$p" rev-parse --is-inside-work-tree 2>/dev/null || echo none)"
+  case "$inside" in
+    true) ;;
+    false) _be_reason="a BARE repository (or its .git dir) — not a work tree"; return 1 ;;
+    *)     _be_reason="not inside any git work tree"; return 1 ;;
+  esac
+  # R3 A3 (codex): a git older than 2.13 does not know --show-superproject-working-tree. `rev-parse`
+  # then ECHOES the unknown option back on stdout with rc=0 (measured on git 2.50 with a misspelled
+  # option), so "non-empty ⇒ submodule" refused with a nonsense reason ("a SUBMODULE of --show-…"),
+  # and a git that errors instead was read as "no superproject" by the old `|| true`. Both are now
+  # refused with the real reason — fail-closed: a submodule cannot be ruled out, so it is not passed.
+  if ! sup="$(git -C "$p" rev-parse --show-superproject-working-tree 2>/dev/null)"; then
+    _be_reason="a work tree whose git could not answer --show-superproject-working-tree (git < 2.13?) — cannot rule out a submodule, refusing (fail-closed)"; return 1
+  fi
+  case "$sup" in
+    "") ;;
+    --*) _be_reason="a work tree whose git echoed --show-superproject-working-tree back instead of answering it (needs git ≥ 2.13) — cannot rule out a submodule, refusing (fail-closed)"; return 1 ;;
+    *)   _be_reason="a SUBMODULE of $sup — refusing to write into a nested repo"; return 1 ;;
+  esac
+  top="$(_phys "$(git -C "$p" rev-parse --show-toplevel 2>/dev/null)")"
+  [ "$top" = "$p" ] || { _be_reason="a SUBDIRECTORY of another repository's work tree ($top), not its root — refusing to write into a foreign repo"; return 1; }
+  # R3 A4 (codex, DECLINED with grounds): an INDEPENDENT repository whose root happens to sit inside
+  # another repository's tree (`/parent-repo/companion/.git`) passes — it IS a work tree root, and only
+  # a deliberate act creates one there (--init refuses to initialize inside an existing tree). The
+  # class this guard exists for — a typo landing in a foreign SUBDIRECTORY — never carries its own
+  # .git. Walking the parents would refuse every legitimate "all my repos live under one git-managed
+  # directory" layout to close a case no typo can produce. Lane B8m pins the accepted behavior.
+  return 0
+}
+_fh_phys="$(_phys "$FH")"
+if [ -d "$BE" ]; then _be_phys="$(_phys "$BE")"
+elif [ -d "$(dirname "$BE")" ]; then _be_phys="$(_phys "$(dirname "$BE")")/$(basename "$BE")"
+else _be_phys=""; fi
+# ORDER (A2): the self-hub check runs BEFORE the destination guard, on physical paths — `$FH/subdir`
+# must exit 4 ("you pointed the store at the hub itself"), not 12, so the operator reads the right
+# remedy. The toplevel-equality check further down stays as a second belt for the git-resolved form.
+if [ -n "$_be_phys" ] && [ -n "$_fh_phys" ] && { [ "$_be_phys" = "$_fh_phys" ] || case "$_be_phys" in "$_fh_phys"/*) true ;; *) false ;; esac; }; then
+  echo "🟥 동반 저장소가 허브 자신(또는 그 하위)을 가리킨다 — 비공개 내용을 여기 커밋하지 않는다." >&2
+  echo "   BE=$BE → $_be_phys" >&2
+  echo "   FH=$FH → $_fh_phys" >&2
+  echo "   BE_DIR 을 고쳐라. (허브가 아닌 «별도» 저장소여야 한다)" >&2
+  exit 4
+fi
+if [ "$INIT" = "1" ]; then
+  if [ ! -e "$BE" ]; then
+    # A4: atomic create — parent must already exist and be writable, ONE leaf level (`mkdir`, never
+    # -p: a missing parent under `set -e` would otherwise leave a half-made chain), and a failed
+    # `git init` rolls the leaf back so a failed --init leaves zero trace.
+    _be_parent="$(dirname "$BE")"
+    if [ ! -d "$_be_parent" ] || [ ! -w "$_be_parent" ]; then
+      echo "🚫 sync-to-be REFUSED (rc=12) — --init needs an EXISTING, writable parent directory:" >&2
+      echo "   BE=$BE   parent=$_be_parent ($([ -d "$_be_parent" ] && echo 'not writable' || echo 'does not exist'))" >&2
+      echo "   Nothing was created. Create the parent yourself, then re-run with --init." >&2
+      exit 12
+    fi
+    if ! mkdir "$BE" 2>/dev/null; then
+      echo "🚫 sync-to-be REFUSED (rc=12) — --init could not create $BE (nothing created)" >&2; exit 12
+    fi
+    if ! git -C "$BE" init -q 2>/dev/null; then
+      rmdir "$BE" 2>/dev/null || true
+      echo "🚫 sync-to-be REFUSED (rc=12) — git init failed in $BE; the directory was removed again (zero trace)" >&2; exit 12
+    fi
+    _be_phys="$(_phys "$BE")"
+    echo "[sync-to-be] --init: created companion store at $BE → $_be_phys (mkdir + git init -q)" >&2
+  elif [ -d "$BE" ] && [ "$(git -C "$_be_phys" rev-parse --is-inside-work-tree 2>/dev/null || echo none)" = "none" ]; then
+    # Only a directory that is inside NO work tree may be initialized — `git init` inside another
+    # repository's tree would create a nested repo there, which is the foreign-repo write this guard
+    # exists to refuse (that case falls through to the root check below and exits 12).
+    if ! git -C "$_be_phys" init -q 2>/dev/null; then
+      echo "🚫 sync-to-be REFUSED (rc=12) — git init failed in existing directory $BE" >&2; exit 12
+    fi
+    echo "[sync-to-be] --init: initialized git repo in existing directory $BE → $_be_phys" >&2
+  fi
+fi
+if [ ! -d "$BE" ] || [ -z "$_be_phys" ] || ! _be_root_ok "$_be_phys"; then
+  echo "" >&2
+  echo "🚫 sync-to-be REFUSED (rc=12) — destination is not the ROOT of an existing git work tree:" >&2
+  echo "   BE=$BE → ${_be_phys:-<unresolvable>}" >&2
+  if [ ! -e "$BE" ]; then echo "   → the path does not exist. Nothing was created, nothing was written." >&2
+  elif [ ! -d "$BE" ]; then echo "   → the path exists but is not a directory." >&2
+  else echo "   → it is $_be_reason." >&2; fi
+  echo "   Most likely a typo in BE_DIR / FH_COMPANION_STORE — check the spelling first." >&2
+  echo "   Creating a NEW companion store is an explicit act:  bash \"$0\" --init   (parent must exist)" >&2
+  exit 12
+fi
+# 🟥 R3 S1 (codex, 2026-09-05): from here on EVERY path below goes through the physical directory the
+# guard just validated. Keeping the requested spelling (a symlink, say) would re-resolve it on each
+# write — a link retargeted between validation and the mirror would redirect the private half into
+# whatever it points at NOW (TOCTOU). The lock dir, the mirror, the second belt and the final `cd` all
+# read $BE, so pinning it once here closes every consumer at once (lane B8n injects the retarget during
+# the lock wait and asserts the mirror still lands in the validated root).
+BE_REQUESTED="$BE"; BE="$_be_phys"
+# R5 S1 (codex): the root check compares PATHS; a `.git` swapped mid-run for a gitfile that points at
+# another repository's git dir keeps the same toplevel and would pass the belt's re-check — so the
+# git IDENTITY (absolute git dir + common dir) is pinned here and must be unchanged at the belt.
+# R5 B1 (codex): both pins happen BEFORE the "destination:" line below — the lanes wait for that line as
+# their "validated" marker, so everything the belt later compares against must already be recorded.
+_be_gitdir0="$(git -C "$BE" rev-parse --absolute-git-dir 2>/dev/null || true)"
+_be_common0="$(git -C "$BE" rev-parse --git-common-dir 2>/dev/null || true)"
+[ "$QUIET" = "--quiet" ] || echo "[sync-to-be] destination: $BE_REQUESTED → $BE (git work tree root)"
 
 # DEFINED HERE, NOT AT ITS OLD SITE ~50 LINES BELOW (fixed 2026-08-16, reproduced first).
 # The lock loop below calls `log`. Bash resolves an unknown name through PATH, and macOS ships
@@ -296,6 +472,48 @@ check_dest_newer() {   # $1 = src dir, $2 = dst dir
 # One message for two sites was right; one *remedy* for two sites was not.
 _abort_dest_newer() {   # $1 = pre-formatted hit list (one "  <path>  (newer than <path>)" per line)
   local rp="$FH/scripts/sync-from-be.sh" kind="${2:-pullable}"
+  if [ "$kind" = "pullable" ] && [ -f "$rp" ]; then
+    # ⓑ (2026-09-05) — separate the RECOVERABLE case from the red wall, using the discriminator the
+    # message below already tells the operator to run by hand. Run `sync-from-be.sh --dry-run --no-git`
+    # (read-only by construction: dry-run writes nothing, --no-git fetches nothing), capture ALL of its
+    # output (nothing leaks to stderr), and parse its COUNT line
+    #   "pulled N file(s) companion → hub  (clean C · review R)".
+    # review R == 0 → every newer file is one the return path pulls cleanly: this hub is simply the
+    # stale node. Then a 3-line notice and rc=2 instead of the wall. Anything else — R > 0, no COUNT
+    # line, dry-run rc≠0, TOTAL 0 — keeps the wall (rc=1): fail-closed direction.
+    # 🟥 The return path is NEVER run for real here. The decision "which side is canonical" stays
+    # human (CLAUDE.md §Mechanization Boundary); only the OUTPUT GRADE changes.
+    local _dr_out _dr_rc=0 _dr_n="" _dr_r="" _dr_line _dr_cnt _to=""
+    # B7: the probe is bounded. Without a timeout binary the grade split is SKIPPED and the wall kept —
+    # an unmeasured discriminator is not a "recoverable" verdict ("not measured ≠ safe").
+    if command -v timeout >/dev/null 2>&1; then _to="timeout"; elif command -v gtimeout >/dev/null 2>&1; then _to="gtimeout"; fi
+    if [ -n "$_to" ]; then
+      _dr_out="$("$_to" 30 bash "$rp" --dry-run --no-git </dev/null 2>&1)" || _dr_rc=$?
+      # B5/B6: anchor on the EXACT line sync-from-be.sh prints (its `say` prefix + literal format, see
+      # `pulled $TOTAL file(s) companion → hub  (clean $N_CLEAN · review $N_REVIEW)` there), full-line
+      # match so a stderr diagnostic mentioning "review 0" cannot pose as the COUNT line, and accept it
+      # ONLY when exactly one such line exists — 0 or 2+ lines is a parse failure → wall.
+      # R3 B5 (codex, NAMED residual, not closed): a file NAME containing a newline could print a
+      # look-alike line. It cannot coexist with the real COUNT line (2 matches → wall), so the forgery
+      # needs a run where sync-from-be.sh exits 0, prints no COUNT line (TOTAL=0) and still lists that
+      # name. Closing it properly is a machine-only output mode on the return path, not a regex here.
+      _dr_line="$(printf '%s\n' "$_dr_out" | grep -E '^\[sync-from-be\] (\(dry-run\) )?pulled [0-9]+ file\(s\) companion → hub  \(clean [0-9]+ · review [0-9]+\)$' || true)"
+      _dr_cnt="$(printf '%s' "$_dr_line" | grep -c . || true)"
+      if [ "$_dr_rc" -eq 0 ] && [ "${_dr_cnt:-0}" -eq 1 ]; then
+        _dr_n="$(printf '%s\n' "$_dr_line" | sed -E 's/.*pulled ([0-9]+) file.*/\1/')"
+        _dr_r="$(printf '%s\n' "$_dr_line" | sed -E 's/.*review ([0-9]+)\)$/\1/')"
+      fi
+    else
+      echo "ℹ️  sync-to-be: no timeout/gtimeout binary — recoverable-grade probe skipped, keeping the wall (unmeasured ≠ safe)" >&2
+    fi
+    if [ "$_dr_rc" -eq 0 ] && [ -n "$_dr_n" ] && [ -n "$_dr_r" ] && [ "$_dr_r" -eq 0 ] && [ "$_dr_n" -gt 0 ]; then
+      echo "" >&2
+      echo "ℹ️  sync-to-be: another node advanced — the mirror is ahead and the return path pulls ALL of it" >&2
+      echo "   (sync-from-be.sh --dry-run: pulled $_dr_n · review 0). The conflicting path(s) were NOT written." >&2
+      echo "   → bash \"$rp\"   then re-run this script.   (rc=2 = recoverable, not an error wall)" >&2
+      exit 2
+    fi
+  fi
   echo "" >&2
   echo "🚫 SYNC ABORTED — the destination is NEWER than the source:" >&2
   printf '%s' "$1" >&2
@@ -606,14 +824,32 @@ fi
 
 cd "$BE"
 
-# Mirror-only mode: a plain (non-git) companion directory is a valid local-only
-# setup — files are already mirrored above; just skip the commit/push half.
-# Without this guard, set -e kills the script at `git add` with a noisy error
-# on every Stop-hook run (fh_signal_2026-06-10: companion-store portability).
-git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
-  log "companion store is not a git repo — mirror-only mode ($([ "$HAVE_RSYNC" -eq 1 ] && echo "$TOTAL file(s) synced" || echo "cp-mode mirror done"), no commit/push)"
-  exit 0
-}
+# Mirror-only mode: a plain (non-git) companion directory used to be a valid local-only setup.
+# Since 2026-09-05 the destination guard above refuses a non-git $BE at rc=12 (before any write), so
+# this branch is reachable only if the work tree stopped being one MID-RUN. Kept as a belt for that
+# case — set -e would otherwise kill the script at `git add` with a noisy error
+# (fh_signal_2026-06-10: companion-store portability).
+# R3 B6 (codex): this belt used to `exit 0` — a store that lost its .git after the mirror would have
+# stamped the Stop hook's cooldown as a success while nothing was committed or pushed. It is a refusal
+# now (rc=12, the destination-guard class), printed unconditionally: --quiet must not hide it.
+# 🟥 R4 S1 (codex): "inside a work tree" is NOT the right belt. A store that is an independent repo
+# INSIDE another repo's tree (accepted on purpose, R3 A4 / lane B8m) and loses its .git mid-run is
+# still "inside a work tree" — the ENCLOSING one — and `git add/commit/push` below would land the
+# private half there. So the belt re-runs the same ROOT check the guard ran (inside ∧ no superproject
+# ∧ physical toplevel == the pinned $BE), and refuses on any mismatch (lane B8o2).
+if ! _be_root_ok "$BE"; then
+  echo "🚫 sync-to-be rc=12 — the companion store STOPPED being the root of its own git work tree mid-run ($BE): it is now $_be_reason." >&2
+  echo "   the files were mirrored ($([ "$HAVE_RSYNC" -eq 1 ] && echo "$TOTAL file(s)" || echo "cp-mode")) but NOTHING was committed or pushed — committing here could land the private half in an ENCLOSING repository. Restore the repo, then re-run." >&2
+  exit 12
+fi
+_be_gitdir1="$(git -C "$BE" rev-parse --absolute-git-dir 2>/dev/null || true)"
+_be_common1="$(git -C "$BE" rev-parse --git-common-dir 2>/dev/null || true)"
+if [ -z "$_be_gitdir0" ] || [ "$_be_gitdir1" != "$_be_gitdir0" ] || [ "$_be_common1" != "$_be_common0" ]; then
+  echo "🚫 sync-to-be rc=12 — the companion store's git IDENTITY changed mid-run ($BE):" >&2
+  echo "   git dir ${_be_gitdir0:-<unresolved>} → ${_be_gitdir1:-<unresolved>} · common dir ${_be_common0:-<unresolved>} → ${_be_common1:-<unresolved>}" >&2
+  echo "   the files were mirrored but NOTHING was committed or pushed — the commit would have gone to a DIFFERENT repository. Restore the store, then re-run." >&2
+  exit 12
+fi
 
 # Push any commits ahead of upstream. Offline-safe: never aborts the script,
 # so a failed push just leaves commits queued for the next run to flush.
