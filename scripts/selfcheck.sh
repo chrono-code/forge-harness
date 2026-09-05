@@ -623,6 +623,8 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_tenet_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_affected_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_oracle_lanes.sh" \
+  `# ── fh-qp (QP) — chamber run #18 EMIT 2026-09-05: qp_tools.sh known-pair + residency lanes ──` \
+  "plugins/fh-qp/scripts/qp_tools.sh|scripts/test_fh_qp_lanes.sh" \
   "scripts/sim_isolated_run.sh|scripts/test_sim_path_isolation_lanes.sh" \
   `# ── live-eval — the live twin of the static /prompt-regression probe check (2026-09-04) ──` \
   "scripts/probe_live_eval.sh|scripts/test_probe_live_eval_lanes.sh" \

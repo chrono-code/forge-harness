@@ -64,6 +64,7 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # or this
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
+claude plugin install -s user fh-qp@forge-harness      # optional: QP (Quality Platform) — plan→run→regress a web/desktop app through the session's Playwright / computer-use MCP
 git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
 cd ~/projects/forge-harness && claude        # then type a greeting: hi · 안녕 · こんにちは · 你好
 ```

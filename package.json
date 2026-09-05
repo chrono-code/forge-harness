@@ -309,6 +309,13 @@
     "scripts/transcript_utterances.py",
     "scripts/test_utterance_intake_lanes.sh",
     "scripts/worktree_reclaim.sh",
-    "scripts/test_worktree_reclaim_lanes.sh"
+    "scripts/test_worktree_reclaim_lanes.sh",
+    "plugins/fh-qp/.claude-plugin/plugin.json",
+    "plugins/fh-qp/README.md",
+    "plugins/fh-qp/qp_profile.example.yaml",
+    "plugins/fh-qp/skills",
+    "plugins/fh-qp/scripts",
+    "plugins/fh-qp/fixtures",
+    "scripts/test_fh_qp_lanes.sh"
   ]
 }

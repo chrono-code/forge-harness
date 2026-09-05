@@ -1,0 +1,4 @@
+#mtm: UNAVAILABLE
+TC-1	PASS	AS_PLANNED	MACHINE	navigate	url==https://example.com/	INVENTORY
+TC-2	PASS	AS_PLANNED	MACHINE	click	text-visible:About	INVENTORY
+TC-3	BLOCKED	NONE	JUDGMENT	input		NONE
