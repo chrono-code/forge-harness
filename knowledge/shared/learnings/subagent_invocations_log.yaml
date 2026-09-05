@@ -3497,3 +3497,13 @@
   evidence: "CONVERGED — S0 · A0 · B1 (lane race: B8q waits for the 'destination:' line, which was printed BEFORE the identity pin, so a fast swap could be recorded as the baseline). Explicitly cleared: unset list covers repo selection (GIT_PREFIX does not redirect; CEILING/DISCOVERY vars only push toward fail-closed); common-dir comparison is same-cwd on both reads and does not reject legitimate separate-git-dir stores. B1 fixed as prescribed (pins moved before the destination line; log prints BE_REQUESTED → BE), lanes re-run + mutant m7 re-run; no R6 dispatched — the fix is the reviewer's own one-liner and the re-run is the verification. 67,325 tokens"
   tokens_subagent: 67325
   notes: "5 rounds total (R1 worktree draft → R5): S findings 1·2·1·2·0 — the count stopped falling until the threat model was stated in the header; stating it is what let the reviewer grade the mid-run-adversary class as B instead of escalating each round"
+
+- date: 2026-09-06
+  agent: Workflow `archify-contract-layer-reconstruction` (resume of wf_240055bb after the session limit) — 4 live agents (build:b-nodeps · verify:a-ajv · verify:c-table · judge) + 3 cached (seal-oracle · build:a-ajv · build:c-table); persona agents fh-meta:beginner ×2 reused from the map worktree
+  invoked_by: FH governor session (Fable 5.1 medium, overnight autonomous drive — operator «야간 자율주행 돌려줘 … qasp fh 모두 잘 부탁한다»)
+  task: "reconstruct archify's validate contract layer from the skeleton + verbatim schemas only (no source copy), three independent builds, verify each against the sealed 40-arm oracle (rc + code-set parity, copy-scan, fail-before), judge and write RECON_REPORT.md"
+  context_card: yes (workflow prompt carried the no-copy rule, sealed-oracle paths, threat model)
+  outcome: accepted
+  evidence: "parity b-nodeps 40/40 (zero deps, 1,068 LOC) · a-ajv 38/40 · c-table 38/40 (single fixture: throw-first vs collect-all reference policy) · copy-scan 0 hits on all three (planted-file control 73 hits) · fail-before 3/3 · 2/3 (fixture shadowing) · 3/3 · judge re-ran all 120 rows and reproduced the verifier numbers · reps=1 per arm. Tokens: 1,770,716 (resume) + 1,008,983 (pre-limit partial) · wall 30.6 + 21.7 min · builds preserved under expedition/recon-build/"
+  tokens_subagent: 2779699
+  notes: "first measured number for the operator's «코드 층 역공학 재구성» capability question — contract layer only; geometry/router/SVG not attempted (named). Chamber archify-recon verdict left to the operator (HITL); governor proposes CURATED (net-new = the measurement protocol, not a product)"
