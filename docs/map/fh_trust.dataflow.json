@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "FH 가 믿을 만한 이유 — 증거가 어디서 생겨 어디로 가나",
+    "quality_profile": "showcase",
+    "output": "docs/map/fh_trust.dataflow.html",
+    "viewBox": [
+      1080,
+      620
+    ],
+    "views": [
+      {
+        "id": "commit",
+        "label": "커밋 경계 — 마커 없으면 막힌다",
+        "focus": [
+          "diff",
+          "marker",
+          "precommit",
+          "psa"
+        ],
+        "note": "FH 자산 변경은 설치된 pre-commit 에서 4축 마커 없이 못 들어간다. 사설 토큰은 커밋·푸시 시 추가 줄을, 발행 시 파일셋 전수를 본다(prepublishOnly). 클라이언트 훅이라 우회는 남는다."
+      },
+      {
+        "id": "push",
+        "label": "푸시 경계 — 파괴 연산은 막힌다",
+        "focus": [
+          "psa",
+          "prepush",
+          "closecheck"
+        ],
+        "note": "원격 브랜치 삭제 · force push · main 직접 푸시는 설치된 pre-push 가 명시 override 없이 못 내보낸다. 서버측은 main PR 전용 + validate 필수 체크만이다."
+      },
+      {
+        "id": "instruments",
+        "label": "계기 — 초록이 무엇을 뜻하나",
+        "focus": [
+          "selfcheck",
+          "sim",
+          "liveeval",
+          "revert"
+        ],
+        "note": "레인 102 스위트 · 격리 sim(ARM/CTRL) · 야간 live-eval · 되돌림 프로브. FAILED-TO-RUN 은 분모에서 뺀다."
+      },
+      {
+        "id": "watch",
+        "label": "감시 · 검수 · 등급",
+        "focus": [
+          "crossfamily",
+          "ci",
+          "grades",
+          "standards"
+        ],
+        "note": "다른 계열 리뷰 → 사람 PR 검수 → 등급표(정본 한 곳) → 표준 정렬 자기평가."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "변경"
+    },
+    {
+      "label": "커밋 게이트"
+    },
+    {
+      "label": "푸시 게이트"
+    },
+    {
+      "label": "계기"
+    },
+    {
+      "label": "감시 · 등급"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "diff",
+      "type": "frontend",
+      "label": "FH 자산 diff",
+      "sublabel": "SKILL · 규칙 · 훅",
+      "stage": 0,
+      "row": 0,
+      "tag": "게이트 대상",
+      "width": 120
+    },
+    {
+      "id": "marker",
+      "type": "database",
+      "label": "4축 마커",
+      "sublabel": "soul · axes · family",
+      "stage": 0,
+      "row": 2,
+      "tag": "tracks/** gitignored",
+      "width": 120
+    },
+    {
+      "id": "precommit",
+      "type": "security",
+      "label": "pre-commit",
+      "sublabel": "validate 12 다리",
+      "stage": 1,
+      "row": 0,
+      "tag": "설치 훅 · 마커 없음 = 차단",
+      "width": 120
+    },
+    {
+      "id": "psa",
+      "type": "security",
+      "label": "사설토큰 스캔",
+      "sublabel": "커밋 줄 · 푸시 줄 · 발행셋",
+      "stage": 1,
+      "row": 1,
+      "tag": "설치 훅 · 기본+조직 패턴",
+      "width": 120
+    },
+    {
+      "id": "prepush",
+      "type": "security",
+      "label": "pre-push",
+      "sublabel": "삭제 · force · main",
+      "stage": 2,
+      "row": 0,
+      "tag": "설치 훅 · override 로그",
+      "width": 120
+    },
+    {
+      "id": "closecheck",
+      "type": "backend",
+      "label": "마감 체크",
+      "sublabel": "카드-마지막",
+      "stage": 2,
+      "row": 1,
+      "tag": "FH_SESSION_CLOSE=1",
+      "width": 120
+    },
+    {
+      "id": "selfcheck",
+      "type": "security",
+      "label": "CI · selfcheck",
+      "sublabel": "validate 잡 · 레인 102",
+      "stage": 3,
+      "row": 0,
+      "tag": "main 유일 필수 체크",
+      "width": 120
+    },
+    {
+      "id": "sim",
+      "type": "backend",
+      "label": "격리 sim",
+      "sublabel": "ARM/CTRL · reps≥3",
+      "stage": 3,
+      "row": 1,
+      "tag": "일회용 클론",
+      "width": 120
+    },
+    {
+      "id": "liveeval",
+      "type": "backend",
+      "label": "야간 live-eval",
+      "sublabel": "12 프로브 · CTRL",
+      "stage": 3,
+      "row": 2,
+      "tag": "미실행 ≠ 0",
+      "width": 120
+    },
+    {
+      "id": "revert",
+      "type": "security",
+      "label": "되돌림 프로브",
+      "sublabel": "지우면 빨개지나",
+      "stage": 3,
+      "row": 3,
+      "tag": "앵커 = 장식?",
+      "width": 120
+    },
+    {
+      "id": "crossfamily",
+      "type": "external",
+      "label": "다른 계열 리뷰",
+      "sublabel": "codex · gemini",
+      "stage": 4,
+      "row": 0,
+      "tag": "감사만 · 쓰기 없음",
+      "width": 120
+    },
+    {
+      "id": "ci",
+      "type": "security",
+      "label": "사람 PR 리뷰 · 머지",
+      "sublabel": "HITL · main PR 전용",
+      "stage": 4,
+      "row": 1,
+      "tag": "서버측 floor",
+      "width": 120
+    },
+    {
+      "id": "grades",
+      "type": "database",
+      "label": "등급표 (정본 한 곳)",
+      "sublabel": "ship_readiness_gate",
+      "stage": 4,
+      "row": 2,
+      "tag": "🟢 = 실발화 n≥1",
+      "width": 120
+    },
+    {
+      "id": "standards",
+      "type": "database",
+      "label": "표준 정렬 자기평가",
+      "sublabel": "ISO/IEC 42119",
+      "stage": 4,
+      "row": 3,
+      "tag": "정렬 ≠ 준수",
+      "width": 120
+    }
+  ],
+  "flows": [
+    {
+      "id": "f_diff_pre",
+      "from": "diff",
+      "to": "precommit",
+      "classification": "커밋",
+      "variant": "emphasis",
+      "label": "staged",
+      "route": "straight",
+      "labelDy": -22
+    },
+    {
+      "id": "f_marker_pre",
+      "from": "marker",
+      "to": "precommit",
+      "classification": "증거",
+      "variant": "security",
+      "label": "오늘자 마커",
+      "labelDy": -24
+    },
+    {
+      "id": "f_pre_psa",
+      "from": "precommit",
+      "to": "psa",
+      "classification": "같은 훅",
+      "variant": "security",
+      "label": "staged 추가 줄",
+      "labelDy": 24
+    },
+    {
+      "id": "f_psa_push",
+      "from": "psa",
+      "to": "prepush",
+      "classification": "푸시",
+      "variant": "emphasis",
+      "label": "푸시 범위 추가 줄 재검"
+    },
+    {
+      "id": "f_push_close",
+      "from": "prepush",
+      "to": "closecheck",
+      "classification": "마감",
+      "variant": "dashed",
+      "label": "매 푸시 호출",
+      "labelDy": 24
+    },
+    {
+      "id": "f_push_self",
+      "from": "prepush",
+      "to": "selfcheck",
+      "classification": "CI",
+      "variant": "emphasis",
+      "label": "푸시된 PR 브랜치",
+      "route": "straight",
+      "labelDy": -22
+    },
+    {
+      "id": "f_close_live",
+      "from": "closecheck",
+      "to": "liveeval",
+      "classification": "야간",
+      "variant": "dashed",
+      "label": "드리프트 계기"
+    },
+    {
+      "id": "f_self_sim",
+      "from": "selfcheck",
+      "to": "sim",
+      "classification": "레인",
+      "variant": "default",
+      "label": "러너 레인이 잰다",
+      "labelDy": 24
+    },
+    {
+      "id": "f_live_revert",
+      "from": "liveeval",
+      "to": "revert",
+      "classification": "ⓔ→ⓕ",
+      "variant": "dashed",
+      "label": "실사용 뒤 되돌림",
+      "labelDy": 24
+    },
+    {
+      "id": "f_self_ci",
+      "from": "selfcheck",
+      "to": "crossfamily",
+      "classification": "리뷰",
+      "variant": "security",
+      "label": "하중 변경",
+      "route": "straight",
+      "labelDy": -22
+    },
+    {
+      "id": "f_cf_ci",
+      "from": "crossfamily",
+      "to": "ci",
+      "classification": "HITL",
+      "variant": "security",
+      "label": "findings 처분",
+      "labelDy": 24
+    },
+    {
+      "id": "f_ci_grades",
+      "from": "ci",
+      "to": "grades",
+      "classification": "머지",
+      "variant": "emphasis",
+      "label": "실발화 기록",
+      "labelDy": 24
+    },
+    {
+      "id": "f_revert_grades",
+      "from": "revert",
+      "to": "grades",
+      "classification": "근거",
+      "variant": "default",
+      "label": "Leg 2 근거"
+    },
+    {
+      "id": "f_grades_std",
+      "from": "grades",
+      "to": "standards",
+      "classification": "정렬",
+      "variant": "dashed",
+      "label": "조항 ↔ 증거",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "막는 것은 파일 (설치된 훅에서)",
+      "items": [
+        "FH 자산 커밋은 4축 마커 없이 설치된 pre-commit 을 못 지난다 — 클라이언트 훅(--no-verify 우회 가능) · CI 는 마커를 못 본다 · 서버 floor = main PR 전용 + validate"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "미측정을 0 으로 읽지 않는다",
+      "items": [
+        "0 바이트 응답 = FAILED-TO-RUN, 분모 제외 — 09-05 새벽 launchd 런은 프로브 0 실행(NO-PROBES-RAN), 무인 유효성 미검증"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "정직 표기",
+      "items": [
+        "마커·매니페스트는 gitignored 라 CI 가 못 본다 · 자평은 게임 가능 · 표준 정렬은 «준수」 아닌 «정렬」 자기평가(25행 ✅11 🟡12 혼합2)"
+      ]
+    }
+  ]
+}

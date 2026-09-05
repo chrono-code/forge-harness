@@ -633,6 +633,7 @@ for _pair in \
   "scripts/session_close_check.sh|scripts/test_stray_path_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_hook_leg_wiring_lanes.sh" \
   ".claude/soul_tenets.txt|scripts/test_marker_soul_tenet_lanes.sh" \
+  "docs/map/fh_assets.architecture.json|scripts/test_fh_map_paths_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_precommit_staged_drift_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_address_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_precommit_pointer_index_lanes.sh" \
