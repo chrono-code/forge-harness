@@ -704,5 +704,38 @@ else
   echo "⚠️  ①-e stray_path_scan.sh 없음 — skipped, not passed"
 fi
 
+# ── ①-f PUSH-ZONE advisory (surface-not-block; mirrors the pre-push hook's own zone check) ────
+# WHY: templates/.git-hooks/pre-push blocks a single push whose remote sits outside the owner-
+# account list, but it only ever sees the ONE push in front of it. The 2026-07-26 miss this whole
+# axis exists for was a multi-repo ROUND — CLAUDE.local.md §REST API push 계정규칙 was applied
+# correctly to one org repo and forgotten on another in the SAME round. `scripts/push_zone_check.sh`
+# is the hand-run ENUMERATE tool for that round; wiring it here means it runs at least once per
+# close without the operator separately remembering to ask for it — same shape as the ①-b open-PR
+# sweep above. Advisory only: it lists, it never blocks (CLAUDE.md §Surface-Class Degrade Invariant,
+# reversible half — a session-close check is not the irreversible boundary; that is the pre-push
+# hook's job). Applicability is mechanical: both the script and an owner-account list must exist,
+# or this reports UNCALIBRATED rather than guessing.
+_PZ_SCRIPT="$FH/scripts/push_zone_check.sh"
+_PZ_OWNERS="${PUSH_ZONE_OWNERS:-$FH/.claude/rules/.push-zone-owners}"
+if [ -x "$_PZ_SCRIPT" ] && [ -f "$_PZ_OWNERS" ]; then
+  if _pz_out=$(bash "$_PZ_SCRIPT" 2>&1); then
+    # Counts only — the enumerator prints owner-account names and per-repo owners, and this close
+    # output lands in transcripts and session cards. The pre-push block never prints the list; this
+    # advisory must not either (codex #9, 2026-09-05). The names are one command away for the operator.
+    _pz_n=$(printf '%s\n' "$_pz_out" | grep -cE '^(✅|🔶) ' 2>/dev/null || true)
+    _pz_rest=$(printf '%s\n' "$_pz_out" | grep -cE '^🔶 ' 2>/dev/null || true)
+    echo "⚠️  ①-f push-zone: ${_pz_n:-0} repo(s) enumerated · ${_pz_rest:-0} outside the owner accounts (REST channel) — names withheld here; run: bash scripts/push_zone_check.sh"
+  else
+    # Verified 2026-09-05: push_zone_check.sh does not exit non-zero merely because `gh` is
+    # missing (its own `active="(unknown)"` fallback absorbs that) — the only documented non-zero
+    # exit is UNCALIBRATED for a missing owner list, already excluded by the `-f "$_PZ_OWNERS"`
+    # guard above. A non-zero exit reaching here is therefore an unanticipated failure; report it
+    # as UNMEASURED rather than silently treating empty/partial output as "nothing to enumerate".
+    echo "⚠️  ①-f push-zone: UNMEASURED — push_zone_check.sh exited non-zero, could not enumerate"
+  fi
+else
+  echo "⏭️  ①-f push-zone UNCALIBRATED — script or owner-account list absent"
+fi
+
 echo "── close check: $([ "$FAIL" -eq 0 ] && echo CONSISTENT || echo VIOLATIONS) ──"
 exit "$FAIL"
