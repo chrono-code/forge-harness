@@ -304,6 +304,8 @@
     "scripts/com.forge-harness.live-eval.plist",
     "scripts/utterance_intake.sh",
     "scripts/transcript_utterances.py",
-    "scripts/test_utterance_intake_lanes.sh"
+    "scripts/test_utterance_intake_lanes.sh",
+    "scripts/worktree_reclaim.sh",
+    "scripts/test_worktree_reclaim_lanes.sh"
   ]
 }

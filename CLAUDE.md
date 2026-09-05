@@ -1217,6 +1217,8 @@ routing is the author's job, not the tool's.
 > exit codes, and why an earlier draft declared the bypass *refuted* from n=1 on a non-shipped setting —
 > read only when you must determine which arm your own install is on.
 
+🟥 **And before `git worktree remove`, reclaim gitignored `tracks/**` first** — `bash scripts/worktree_reclaim.sh <worktree> --apply` (lists to a file, then copies and byte-verifies; rc=1 while anything is left only in the worktree). The Destructive-Op gate enumerates *commits* and is structurally blind to gitignored files — measured twice (2026-09-02 signal file, 2026-09-05 governance log).
+
 **Therefore: do not commit FH assets from a worktree.** Not "carry the evidence in carefully" — a
 carried marker and a fabricated one are byte-identical, so *marker provenance* is unenforceable by
 construction. Land FH-asset changes from the standard session.

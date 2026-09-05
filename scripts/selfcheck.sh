@@ -664,7 +664,9 @@ for _pair in \
   "scripts/utterance_intake.sh|scripts/test_utterance_intake_lanes.sh" \
   "scripts/transcript_utterances.py|scripts/test_utterance_intake_lanes.sh" \
   "scripts/compaction_probe.sh|scripts/test_utterance_intake_lanes.sh" \
-  "scripts/session_close_check.sh|scripts/test_utterance_intake_lanes.sh"
+  "scripts/session_close_check.sh|scripts/test_utterance_intake_lanes.sh" \
+  `# ── 워크트리 회수(2026-09-05, N=2 재발 → 스크립트). 사람이 부르는 도구지만 레인은 자동 ──` \
+  "scripts/worktree_reclaim.sh|scripts/test_worktree_reclaim_lanes.sh"
 do
   _subj="${_pair%%|*}"; _anc="${_pair##*|}"; _lbl="${_anc##*/}"
   if [ ! -f "$_subj" ]; then
