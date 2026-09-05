@@ -211,8 +211,12 @@ new_env a3
 BEX="$ENV_DIR/fresh/companion"; mkdir -p "$ENV_DIR/fresh"   # parent EXISTS — --init creates exactly one leaf level
 printf 'private\n' > "$HUB/tracks/_meta/secret_card.md"
 [ ! -e "$BEX" ]; chk $? "CONTROL: destination absent before --init"
-out="$(MID=lanea run --init 2>&1)"; rc=$?
+# CI 2026-09-05: the runner had no committer identity and the FIRST commit of the just-created store died with
+# rc=128 (mirror already done). user.useConfigOnly makes that condition deterministic on every machine, so this
+# lane asserts the script's own repo-local fallback identity, not the host's auto-detection.
+out="$(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.useConfigOnly GIT_CONFIG_VALUE_0=true MID=lanea run --init 2>&1)"; rc=$?
 [ "$rc" -eq 0 ]; chk $? "--init run completes rc=0 (got $rc)"
+[ "$(git -C "$BEX" log --oneline 2>/dev/null | grep -c .)" -ge 1 ]; chk $? "…and the new store's FIRST commit exists (no host identity: the script's repo-local fallback was used)"
 [ "$(git -C "$BEX" rev-parse --is-inside-work-tree 2>/dev/null)" = "true" ]; chk $? "destination is now a git work tree"
 [ -f "$BEX/tracks-meta/secret_card.md" ]; chk $? "and the sync actually proceeded after creation"
 printf '%s' "$out" | grep -q -- '--init: created companion store at'; chk $? "creation is LOGGED with what and where (not silent)"

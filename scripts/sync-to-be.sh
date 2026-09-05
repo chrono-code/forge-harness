@@ -224,6 +224,15 @@ if [ -n "$_be_phys" ] && [ -n "$_fh_phys" ] && { [ "$_be_phys" = "$_fh_phys" ] |
   echo "   BE_DIR 을 고쳐라. (허브가 아닌 «별도» 저장소여야 한다)" >&2
   exit 4
 fi
+# --init hardening (found by CI, 2026-09-05): a store this script just created has no committer
+# identity of its own, and on a machine where git cannot auto-detect one (GitHub runners, some
+# containers — "unable to auto-detect email address") the FIRST commit dies with rc=128 after the
+# mirror already ran. A machine-local fallback identity is set in the new repo only, only when no
+# identity resolves from any scope; an operator's global identity is never overridden.
+_init_identity() {   # $1 = physical repo path
+  git -C "$1" config --get user.email >/dev/null 2>&1 || { git -C "$1" config user.email "sync-to-be@$(hostname -s 2>/dev/null || echo local)"; echo "[sync-to-be] --init: no git identity resolved — set a repo-local fallback (user.email sync-to-be@host)" >&2; }
+  git -C "$1" config --get user.name  >/dev/null 2>&1 || git -C "$1" config user.name "sync-to-be"
+}
 if [ "$INIT" = "1" ]; then
   if [ ! -e "$BE" ]; then
     # A4: atomic create — parent must already exist and be writable, ONE leaf level (`mkdir`, never
@@ -244,6 +253,7 @@ if [ "$INIT" = "1" ]; then
       echo "🚫 sync-to-be REFUSED (rc=12) — git init failed in $BE; the directory was removed again (zero trace)" >&2; exit 12
     fi
     _be_phys="$(_phys "$BE")"
+    _init_identity "$_be_phys"
     echo "[sync-to-be] --init: created companion store at $BE → $_be_phys (mkdir + git init -q)" >&2
   elif [ -d "$BE" ] && [ "$(git -C "$_be_phys" rev-parse --is-inside-work-tree 2>/dev/null || echo none)" = "none" ]; then
     # Only a directory that is inside NO work tree may be initialized — `git init` inside another
@@ -252,6 +262,7 @@ if [ "$INIT" = "1" ]; then
     if ! git -C "$_be_phys" init -q 2>/dev/null; then
       echo "🚫 sync-to-be REFUSED (rc=12) — git init failed in existing directory $BE" >&2; exit 12
     fi
+    _init_identity "$_be_phys"
     echo "[sync-to-be] --init: initialized git repo in existing directory $BE → $_be_phys" >&2
   fi
 fi
