@@ -1335,6 +1335,9 @@ Closing phrase detected ("wrap up", "done", "good work", "end session", etc. —
        --state open` cross-repo). Classify, **surface-not-auto**: **self-mergeable** PR (own repo,
        checks green) → *propose merge now* (never auto-merge — HITL); **awaiting-external** →
        *surface for tracking only*. (Origin PR#111 + count-consistency pairing → §detail below.)
+  → ①-f 발화 착지 (advisory) — 이번 세션 전사본의 운영자 발화가 오늘자 기록에 착지했는지
+       기계로 grep 한다(`scripts/utterance_intake.sh`). **막지 않는다** — rc=1 은 «기록하라»가
+       아니라 «확인하라»다(키 낱말 프로브라 과차단 방향). ①-c~①-e 는 스크립트에만 산다.
   → ② If FH assets changed, **or `close_retro` is granted**: harvest-loop
        (후자는 Step 0-d 세션 회고 — 자산 미변경 세션에도 회고는 의미가 있다)
   → ③ Sync local/gitignored session state to your durable companion store, if you keep one
