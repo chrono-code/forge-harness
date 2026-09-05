@@ -193,6 +193,63 @@ diversity vs the orchestrator** (orchestrator = Claude/opus → recruit GPT or G
     succeeded where reading-files-itself hung) — or degrade to single-session with a recorded note.
   This is the sidecar twin of `mcp-circuit-breaker` (stop a stuck external call instead of hanging on it).
 
+## Step 4.5 — Residency screen (mandatory, immediately before ANY external-family send)
+
+**Every** payload this skill sends outward — the diff, the marker (Step 5's payload), the prompt
+text itself — crosses a family boundary the moment a codex/agy/gemini sidecar is recruited.
+"Sanitize before external-family dispatch" used to be a prose reminder with no consumer reading it
+back (`[[feedback_half_externalization_slot_without_consumer]]` shape — a slot that exists but
+nothing downstream checks). This step makes it mechanical:
+
+```bash
+python3 scripts/residency_closure_scan.py --files src/a.py docs/b.md   # every file you are about to send, as separate args (zsh: ${=var}, never an unquoted "$var")
+```
+
+`--files` (not the default closure-walk) because what matters is **what you are actually
+sending**, not this skill's own dependency graph. Read the exit code, not the words:
+
+| Exit | Meaning | What to do |
+|---|---|---|
+| 0 | CLEAN — no organizational identifier found **within the scanner's own stated limits** (see its header — this is a screening result, not a safety guarantee) | Send. Record `residency=CLEAN(files=N)` in the crossfamily grounds (Step 6). |
+| 1 | TAINTED — at least one payload file matched a residency pattern | Do not send as-is. Either strip/redact the tainted file(s) from the payload and re-scan, or route to an in-boundary panel member. If it truly cannot be cleaned, record `residency=TAINTED(N files, stripped=no)` and do NOT dispatch — the crossfamily value becomes a `DEGRADED_*` rung, never `panel(...)`. |
+| 10 | HARNESS_ERROR — the scan itself could not run (commonly: no operator-private `.claude/rules/.residency-patterns` override on this machine — the shipped `.defaults` file alone is deliberately insufficient to claim CLEAN, per the scanner's own header) | Do not send. Record `residency=NOT_SCANNED(<reason>)` — same as exit 1's outcome (no dispatch), different reason (*could not screen* vs *screened and found something*). |
+
+🟥 **On a fresh install with no operator pattern file, this WILL be exit 10 every time** — that is
+the scanner's own documented fail-closed default (`residency_closure_scan.py`'s header: "오버라이드
+파일이 없으면 exit 10 이다"), not a bug introduced here. It means: until an operator configures
+their own residency patterns, this skill cannot claim a panel dispatch was screened, so it honestly
+degrades to a `DEGRADED_*` rung with `residency=NOT_SCANNED(...)` instead of silently sending. That
+is not a new block on fresh installs — the crossfamily field already tolerates `DEGRADED_*` without
+hard-failing the commit; it is one more honest reason to be in that state, not a novel one.
+
+**Where the result lands**: `templates/.git-hooks/pre-commit`'s `validate_crossfamily_leg` now
+requires a `residency=CLEAN(...)` token inside the grounds of any `panel(...)` value (grace date
+`RESIDENCY_TOKEN_GRACE_DATE`, no retroactivity on markers dated earlier), and accepts an optional,
+format-checked `residency=(CLEAN|TAINTED|NOT_SCANNED)(...)` token on `DEGRADED_*`/`UNKNOWN`/
+`declined`. Fixtures: `scripts/test_marker_crossfamily_lanes.sh` (`r1`–`r13`). This is the SAME
+typed field Step 6 already emits into — one channel, not a second marker line.
+
+🟥 **A stripped file is invisible to the reviewer, and a reviewer's default read of invisible is
+"absent," not "redacted"** (governor dogfood, 2026-09-05, same-day live use of this Step): two
+TAINTED files were stripped from a real payload and the CLEAN remainder sent cross-family — the
+reviewer came back with a false-positive S-finding, *"runner wiring is missing,"* because the
+wiring actually lived in one of the two files that had just been stripped. Stripping fixes
+residency; it does nothing about the reviewer's next inference, and silence there reads as a hole.
+**So**: whenever a payload is sent with `stripped > 0`, the review PROMPT itself must name the
+omission explicitly — the list of what was left out, and one line per file on what it is
+responsible for (not its content, just its role) — so the reviewer can discount that surface
+instead of flagging it as missing. Record whether this was done: when the token carries
+`stripped=M` with `M > 0`, the same grounds line adds one phrase on whether the omission list
+reached the review prompt, e.g. `residency=CLEAN(files=3, stripped=2) · omission-list: given to
+reviewer`. This is evidence-of-doing, not proof — same shape as Step 5's "quote one marker line it
+checked," and it does not become a new hard-blocking hook check (channel discipline stays a
+grounds phrase here, per the same Mechanization Boundary this whole field already respects).
+
+⚠️ **Scope, same as everywhere else in this file**: CLEAN is a screening result, not a safety
+guarantee (dynamic imports, non-Python artifacts, encoding tricks, and TOCTOU are named, unclosed
+gaps in the scanner's own header). Recording `residency=CLEAN(...)` asserts the scan ran and found
+nothing **within those limits** — it does not assert the payload is safe in some absolute sense.
+
 ## Step 5 — Role split + source-grounded acceptance (S-2)
 
 CC = **governor**, terminal verdict, source-closes. Sidecars = decorrelated **challengers** feeding
@@ -238,8 +295,10 @@ floor-tier sims), which is why it is stated here instead of left to the reader t
 
 ⚠️ **Prose, not a check** — measured recurrence is 2, below this repo's own N≥3 bar
 (`[[feedback_mechanize_at_repetition_prose_before]]`). On the third occurrence, mechanize it here.
-⚠️ **Residency still governs**: a marker can name company assets. Sanitize before any external-family
-dispatch, exactly as with the diff — the marker is not exempt because it is metadata.
+⚠️ **Residency still governs**: a marker can name company assets. Run Step 4.5's screen against the
+marker file too, not just the diff — the marker is not exempt because it is metadata. (This line was
+pure prose until 2026-09-05; Step 4.5 above is what closes it — the scan itself still carries the
+named, unclosed gaps in its own header, so "screened" is not "guaranteed safe".)
 
 *Origin*: sister-asset read of `raphaelchristi/harness-evolver`'s `harness-critic` agent, whose whole
 role is auditing the **evaluator** rather than the artifact. Its detection signatures (score jumps,
@@ -289,6 +348,22 @@ rejected at commit time.
 | — | consent `declined` (branch above — chosen floor, not a degrade) | `declined` | — |
 | — | change is not load-bearing — decorrelation not required | `single-family` | — |
 | — | **panel never probed** | `UNKNOWN` | **required** |
+
+🟥 **Rungs 1–2's `panel(<families>)` additionally require a `residency=CLEAN(...)` token inside the
+same grounds string, since 2026-09-05** (Step 4.5 above; `pre-commit`'s `validate_crossfamily_leg`
+blocks a bare `panel(...)` with no such token on a marker dated on/after
+`RESIDENCY_TOKEN_GRACE_DATE`). Full grammar:
+
+```
+crossfamily: panel(codex) — residency=CLEAN(files=7) · R1..R2, 4 findings
+crossfamily: DEGRADED_SINGLE_FAMILY — residency=TAINTED(2 files, stripped=no) → not sent, probed codex/agy, 0 reachable
+crossfamily: DEGRADED_SINGLE_FAMILY — residency=NOT_SCANNED(no operator pattern file) → not sent, probed codex/agy, 0 reachable
+```
+
+The token is **optional** on `DEGRADED_*`/`UNKNOWN`/`declined` (format-checked only when present —
+those rungs never claimed anything left the boundary, so nothing to require) and **rejected as a
+contradiction** if `panel(...)` carries `residency=TAINTED(` or `residency=NOT_SCANNED(` on the same
+line — a sent payload and an unscreened/tainted one cannot both be true.
 
 **The three degrade values are the load-bearing split**: *could not* (`DEGRADED_SINGLE_FAMILY`) ·
 *did not* (`DEGRADED_PANEL_UNUSED`) · *did not look* (`UNKNOWN`). Free prose merges all three, and
@@ -388,6 +463,11 @@ at N per run (no loop).
   is NOT accepted on a load-bearing change — that block only runs there, so "decorrelation not
   required" is a contradiction, and as a no-ack pass it was a free bypass of the lane.
   *[mandatory-pass — enforced by pre-commit, fixtures `scripts/test_marker_crossfamily_lanes.sh`]*
+- Step 4.5's residency screen ran against the actual send list before any `panel(...)` claim, and
+  its result is recorded as a `residency=CLEAN|TAINTED|NOT_SCANNED(...)` token inside the same
+  `crossfamily:` grounds — required when the value is `panel(...)`, format-checked when present on
+  a degrade value. *[mandatory-pass — enforced by pre-commit since RESIDENCY_TOKEN_GRACE_DATE,
+  fixtures `scripts/test_marker_crossfamily_lanes.sh` `r1`–`r13`]*
 - Panel members are review-capable: embedding/reranker/OCR/safeguard classes are excluded **before**
   family-diversity is counted, never after. *[mandatory-pass — same fixtures, ordering anchor c4/c5]*
 - Paid recruit was per-run spend-gated (or `paid_auto` set); free local tier may auto-fire. *[mandatory-pass]*

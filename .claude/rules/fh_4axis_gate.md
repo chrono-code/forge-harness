@@ -79,6 +79,14 @@ FH asset modified → Axis 1 (templates/regression_guard.sh --pr {BRANCH})
       because a presence check catches silence but not a confident wrong answer — a sibling
       harness shipped `crossfamily: none — 도달 불가` that was later found false and then cited
       as grounds. Fixtures: `scripts/test_marker_crossfamily_lanes.sh`;
+      🟥 **since 2026-09-05 (`RESIDENCY_TOKEN_GRACE_DATE`, no retroactivity), a `panel(<families>)`
+      value additionally REQUIRES a `residency=CLEAN(...)` token inside its own grounds** — e.g.
+      `crossfamily: panel(codex) — residency=CLEAN(files=7) · R1..R2, 4 findings`. The token is
+      produced by `scripts/residency_closure_scan.py --files <payload>` (`auto-decorrelation`
+      SKILL.md §Step 4.5), is OPTIONAL and format-only-checked on `DEGRADED_*`/`UNKNOWN`/`declined`
+      (`residency=(CLEAN|TAINTED|NOT_SCANNED)(...)`), and BLOCKS a `panel(...)` line that co-carries
+      `residency=TAINTED(` or `residency=NOT_SCANNED(` — a sent payload and an unscreened/tainted
+      one cannot both be true on the same line. Same fixtures file, cases `r1`–`r13`;
       **recorded-by-convention, validated by nothing**: `axis2-rounds` (per-round yield vector) —
       steel-quench §Convergence Criteria consumes it, and a hook check for it was built and then
       REMOVED the same day for firing on 100% of markers. The convergence claim it supports is

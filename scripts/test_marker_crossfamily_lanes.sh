@@ -34,19 +34,41 @@ sed -n '/^validate_crossfamily_leg()/,/^}/p' "$HOOK" > "$T/fn.sh"
 
 # Instrument calibration: an empty extraction would let every fixture "pass" against
 # nothing. Assert the function body actually arrived before measuring anything.
-if ! grep -q 'DEGRADED_PANEL_UNUSED' "$T/fn.sh"; then
-  echo "❌ HARNESS-ERROR — validate_crossfamily_leg did not extract from $HOOK."
-  echo "   Fixtures below would measure an empty function. Aborting rather than reporting green."
+# '_res_active' is inside the residency= token block (2026-09-05) — RESIDENCY_TOKEN_GRACE_DATE
+# itself lives OUTSIDE the function (same placement as DEFEATER_GRACE_DATE next to
+# validate_defeater_leg), so it is not part of this extraction and is supplied by the harness
+# below, exactly like GRACE_RES is.
+if ! grep -q 'DEGRADED_PANEL_UNUSED' "$T/fn.sh" || ! grep -q '_res_active' "$T/fn.sh"; then
+  echo "❌ HARNESS-ERROR — validate_crossfamily_leg did not extract from $HOOK (or the residency"
+  echo "   token block is missing from it). Fixtures below would measure an empty/stale function."
   exit 1
 fi
 
-mk() { printf "$1" > "$T/$2"; }   # $1 = marker body, $2 = fixture name
-run() { bash -c "source '$T/fn.sh'; validate_crossfamily_leg '$1'" >/dev/null 2>&1; }
+GRACE_RES=$(grep -m1 '^RESIDENCY_TOKEN_GRACE_DATE=' "$HOOK" | sed -E 's/.*"(.*)"/\1/')
+[ -n "$GRACE_RES" ] || { echo "❌ HARNESS-ERROR — RESIDENCY_TOKEN_GRACE_DATE 를 못 읽었다"; exit 1; }
+# Every fixture below this point (k*/b*/x*/c*) tests crossfamily's PRE-EXISTING shape rules —
+# panel format, embedding/reranker filters, declined, degrade grounds — none of them are testing
+# the residency-token addition. So mk()/run() stamp a date BEFORE RESIDENCY_TOKEN_GRACE_DATE into
+# the marker filename (the same field validate_crossfamily_leg itself reads via `mdate`), earning
+# exemption the same way a real old marker would — not special-cased in the check function for
+# this suite's convenience. The dedicated residency-token section near the end of this file uses
+# its OWN helper with an explicit, varying date to test the grace boundary on purpose.
+PRE_RES="2026-08-01"   # < RESIDENCY_TOKEN_GRACE_DATE (2026-09-05) by construction
+# 🟥 the DATE must be the LAST underscore-segment before `.marker` — validate_crossfamily_leg's
+# own `mdate` extraction is `.*_(YYYY-MM-DD)\.marker$`, which does not match if a fixture-name
+# suffix follows the date (caught by this suite's own fail-before run: k1/k1b/k7 false-BLOCKed
+# because ".._${PRE_RES}_$2.marker" put the name AFTER the date, so mdate came back empty and
+# every pre-existing fixture was silently treated as un-exempt).
+mk() { printf "$1" > "$T/.axes_23_passed_fix_x_$2_${PRE_RES}.marker"; }   # $1=body $2=fixture name
+run() {
+  bash -c "RESIDENCY_TOKEN_GRACE_DATE='$GRACE_RES'; source '$T/fn.sh'; validate_crossfamily_leg '$T/.axes_23_passed_fix_x_$1_${PRE_RES}.marker'" \
+    >/dev/null 2>&1
+}
 
 FAIL=0; N=0
 check() { # $1=fixture $2=expected(PASS|BLOCK) $3=label
   N=$((N+1))
-  if run "$T/$1"; then got=PASS; else got=BLOCK; fi
+  if run "$1"; then got=PASS; else got=BLOCK; fi
   if [ "$got" = "$2" ]; then echo "✅ $3 → $got"; else echo "❌ $3 → $got (expected $2)"; FAIL=1; fi
 }
 
@@ -165,6 +187,68 @@ mk 'crossfamily: panel(glm-ocr) — glm family\n' c4
 check c4 BLOCK "glm-ocr — matches a valid family AND an incapable class"
 mk 'crossfamily: panel(qwen-embedding-8b) — qwen family\n' c5
 check c5 BLOCK "qwen-embedding — same overlap, other direction"
+
+# ── residency= token inside crossfamily grounds (2026-09-05) ──────────────────────────────────
+# Wires scripts/residency_closure_scan.py's own verdict into the SAME typed field this whole
+# suite already calibrates, rather than opening a second marker line. All fixtures above this
+# point are PRE-GRACE (via mk()'s PRE_RES stamp) and therefore exempt by construction — this
+# section is the only place that varies the marker-filename date on purpose, mirroring
+# test_marker_soul_tenet_lanes.sh's `dlane` / test_marker_soul_check_lanes.sh's `planep` pattern.
+# Same ordering requirement as mk()/run() above — date LAST, immediately before `.marker`.
+resfix() { printf "%s\n" "$1" > "$T/.axes_23_passed_fix_x_$3_$2.marker"; }   # $1=body $2=date $3=fname
+resrun() {   # $1=date $2=fname → rc
+  bash -c "RESIDENCY_TOKEN_GRACE_DATE='$GRACE_RES'; source '$T/fn.sh'; validate_crossfamily_leg '$T/.axes_23_passed_fix_x_$2_$1.marker'" \
+    >/dev/null 2>&1
+}
+rescheck() {   # $1=fname $2=date $3=body $4=expect(PASS|BLOCK) $5=label
+  N=$((N+1))
+  resfix "$3" "$2" "$1"
+  if resrun "$2" "$1"; then got=PASS; else got=BLOCK; fi
+  if [ "$got" = "$4" ]; then echo "✅ $5 → $got"; else echo "❌ $5 → $got (expected $4)"; FAIL=1; fi
+}
+
+echo
+echo "── residency= token in crossfamily grounds (grace = $GRACE_RES) ──"
+echo "· panel(...) REQUIRES a well-formed residency=CLEAN( token —"
+rescheck r1 "$GRACE_RES" 'crossfamily: panel(codex) — residency=CLEAN(files=7) · R1..R2, 4 findings' \
+  PASS  "r1 panel + residency=CLEAN( present — required token satisfied"
+rescheck r2 "$GRACE_RES" 'crossfamily: panel(codex) — R1..R2, 4 findings, no residency token at all' \
+  BLOCK "r2 panel POST-GRACE with NO residency token → BLOCK (the hole this closes)"
+rescheck r3 "2026-08-20" 'crossfamily: panel(codex) — R1..R2, 4 findings, no residency token at all' \
+  PASS  "r3 SAME body as r2, PRE-GRACE filename date → exempt (no retroactivity)"
+rescheck r4 "$GRACE_RES" 'crossfamily: panel(codex) — residency=TAINTED(2 files, stripped=no) · sent anyway' \
+  BLOCK "r4 panel + residency=TAINTED( co-present — contradiction (sent AND tainted)"
+rescheck r5 "$GRACE_RES" 'crossfamily: panel(codex) — residency=NOT_SCANNED(scanner absent) · sent anyway' \
+  BLOCK "r5 panel + residency=NOT_SCANNED( co-present — contradiction (sent AND unscanned)"
+rescheck r6 "$GRACE_RES" 'crossfamily: panel(codex) — residency=WEIRD(oops) · R1, 1 finding' \
+  BLOCK "r6 panel + malformed residency token (not one of CLEAN|TAINTED|NOT_SCANNED)"
+rescheck r7 "$GRACE_RES" 'crossfamily: panel(codex) — residency=CLEAN(files=3) · residency=CLEAN(files=9) · dup' \
+  BLOCK "r7 panel + TWO residency tokens on one line (first-wins trap, same as dup crossfamily:)"
+
+echo "· DEGRADED_*/UNKNOWN/declined — residency= is OPTIONAL, format-only when present —"
+rescheck r8 "$GRACE_RES" 'crossfamily: DEGRADED_SINGLE_FAMILY — residency=TAINTED(2 files, stripped=no) not sent, probed codex/agy, 0 reachable' \
+  PASS  "r8 DEGRADED + well-formed TAINTED token — optional token, present and valid"
+rescheck r9 "$GRACE_RES" 'crossfamily: DEGRADED_SINGLE_FAMILY — probed codex/agy, 0 reachable' \
+  PASS  "r9 DEGRADED with NO residency token at all — optional, absence is fine"
+rescheck r10 "$GRACE_RES" 'crossfamily: DEGRADED_SINGLE_FAMILY — residency=BOGUS(oops) probed codex, 0 reachable' \
+  BLOCK "r10 DEGRADED + malformed residency token → BLOCK even though the token itself is optional"
+rescheck r11 "$GRACE_RES" 'crossfamily: UNKNOWN — residency=NOT_SCANNED(scanner absent), panel not probed this round' \
+  PASS  "r11 UNKNOWN + well-formed NOT_SCANNED token"
+rescheck r12 "$GRACE_RES" 'crossfamily: declined — operator declined sidecars, chosen floor, per knowledge/shared/rules/operational_adaptation.md residency=CLEAN(files=2)' \
+  PASS  "r12 declined + a well-formed CLEAN token appended after the resolvable-record citation"
+rescheck r13 "$GRACE_RES" 'crossfamily: DEGRADED_PANEL_UNUSED — residency=CLEAN(files=1) · residency=TAINTED(files=1) codex+agy reachable, not recruited' \
+  BLOCK "r13 DEGRADED + TWO residency tokens — the duplicate guard applies here too, not just panel"
+# r14–r17 (cross-family codex gpt-5.5, 2026-09-05): the first draft grepped the token PREFIX
+# `residency=<KIND>(`, so a token that failed the prefix grep was treated as ABSENT — on the optional
+# path that is a fail-open (malformed reads as "no token, fine"). Presence is now counted first.
+rescheck r14 "$GRACE_RES" 'crossfamily: DEGRADED_SINGLE_FAMILY — residency=CLEAN (files=2) probed codex, 0 reachable' \
+  BLOCK "r14 DEGRADED + spaced token 'residency=CLEAN (files=2)' — malformed, must not read as absent"
+rescheck r15 "$GRACE_RES" 'crossfamily: DEGRADED_SINGLE_FAMILY — residency=CLEAN(files=1 probed codex, 0 reachable' \
+  BLOCK "r15 DEGRADED + unterminated token 'residency=CLEAN(files=1' (no close paren) → malformed"
+rescheck r16 "$GRACE_RES" 'crossfamily: panel(codex) — residency=CLEAN(files=3, stripped=2) · R1..R3, 8 findings' \
+  PASS  "r16 panel + CLEAN token whose payload contains a space and a comma (legal inside the parens)"
+rescheck r17 "$GRACE_RES" 'crossfamily: panel(codex) — residency=CLEAN(files=3, stripped=2) — stripped files were named to the reviewer' \
+  PASS  "r17 control — a second em-dash in the grounds does not break the token parse"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "✅ all $N fixtures behave"; else echo "❌ regression ($N fixtures run)"; fi
