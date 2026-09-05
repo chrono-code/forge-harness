@@ -179,3 +179,7 @@
   artifact: SIM_NOTES.md
   sha256: ea417c681e8f1be3b59fddaa86ca4356ab6ae36816ee15c996a51af212f84e2a
   recorded: 2026-09-05T11:06:36Z
+- run: archify-recon
+  artifact: SIM_NOTES.md
+  sha256: 781b3632fe3e500d73917d02815607cac1291f59d43096905d88ee3f26eb8f73
+  recorded: 2026-09-05T11:21:12Z
