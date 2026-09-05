@@ -3447,3 +3447,53 @@
   evidence: "mechanism = app HTTP PermissionRequest hook layer (src/permission-automation-policy.js:387 → src/permission.js:2246); L1 prototype feat/auto-approve-irreversible-guard 56d64f3d→99f262a1, npm test 9423/0 fail, fail-before 20/24 red → green; maintainer-persona codex review S0/A2/B2 all fixed (shell-alias tools were outside the badge allowlist → contract test 13 rows); integration test 8/8 (fake HTTP → real server.js → real permission.js, unattended + force-push → DEFER observed); Electron live run correctly REFUSED (single-instance lock bound to userData, would collide with the production app). Operator's «FH gate 가 지켜줍니다» wording rejected as over-promise; honest 7-language notice instead. Wall-clock 14:40→16:40 KST; sidecar 1"
   tokens_subagent: n/a (Orca session; sidecar codex ×1 unreported)
   notes: "phase 2: maintainer-persona codex review S0/A2/B2 all fixed (99f262a1) + isolated integration test 8/8; PR_DRAFT.md in contributor voice (#888 style, no internal vocabulary). Live run on a second machine (operator's MacBook Air, Claude session over Remote Control, mixed human/AI driving): 10 rows as expected, 0 false positives, known-pair controls, reps=1 — the private companion store handoff/LIVE_TEST_RESULT_2026-09-05.md; three runbook defects found there and folded back. Outward PR submission = operator decision ㉓"
+
+- date: 2026-09-05
+  agent: fh-meta:hub-persona-auditor (opus) — pre-publication audit of an external-facing issue draft
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "audit ISSUE_DRAFT_external-gate.md (proposal to an external Electron app repo: optional external review command, downgrade-only) as maintainer / unattended power user / first-time contributor (+ a security reader it added), 4-axis per section, 3-tier revisions; judge length; list sentences a maintainer would quote back as over-claims; how to name our tool once without turning it into a pitch"
+  context_card: yes
+  outcome: accepted
+  evidence: "SHIP_AFTER_MANDATORY — mandatory 3 (complete the exit-code table incl. 124/126/127/128+n → ask; name the tool and drop 'exactly'; say what happens to an unanswered card), strong 6 (move the bypass-mode limitation to the opening, plain vocabulary, we→I, 7 over-claims softened, sessionId for sequence state, blast radius, 0/non-zero minimum), recommended 6 — all applied; final issue posted as rullerzhou-afk/clawd-on-desk#995 (816 words)"
+  tokens_subagent: 116852
+  notes: "auditor could not read the target repo's issue list (length verdict reasoned, not calibrated) — stated up front; one reader persona (security) added by the auditor itself"
+
+- date: 2026-09-05
+  agent: codex exec (gpt-5.5, read-only) — cross-family adversarial review, round 2, of the sync-to-be destination guard
+  invoked_by: FH governor session (Fable 5.1 max) — prompt via stdin (payload > ARG_MAX), residency-scanned first
+  task: "re-attack the R2 patch (root identity · physical paths · atomic --init · COUNT anchoring · timeout): any path where a wrong destination still receives a write, any write before refusal, COUNT-line spoofing, --no-git existence, timeout portability, bash 3.2/BSD"
+  context_card: yes (R1 findings + author's disposition per finding, R2 diff, post-patch lines 1-200, sync-from-be arg parser/COUNT site)
+  outcome: accepted
+  evidence: "NOT-CONVERGED — 7 findings: S1 guard validates _be_phys once but writes through mutable $BE (symlink retarget TOCTOU) · S2 default BE derived from the LOGICAL $FH · A3 old git's --show-superproject-working-tree swallowed · A4 independent nested repo inside a foreign tree passes · B5 COUNT line spoofable by a newline-bearing file name · B6 mid-run 'not a git repo' belt exits 0 after writes · B7 lane gaps. Disposition: S1/S2/A3/B6 fixed, A4 declined with grounds (lane B8m pins it), B5 named residual, B7 → lanes B8k~B8o; mutants m1~m4 each red only on the predicted lane. 59,799 tokens, 265s"
+  tokens_subagent: 59799
+  notes: "A3's direction was wrong in detail — measured: `git rev-parse --<unknown option>` ECHOES the option with rc=0 (git 2.50), so the old code refused with a nonsense reason rather than passing; both variants now fail closed with the real reason. The finding was still right that the branch was unexamined"
+
+- date: 2026-09-05
+  agent: codex exec (gpt-5.5, read-only) — cross-family adversarial review, round 3, same subject
+  invoked_by: FH governor session (Fable 5.1 max) — stdin payload (R3-only deltas + full post-R3 script + lane helpers), username scrubbed before send (2 hits → 0)
+  task: "verify each R2 closure against the code; attack the pin's coverage, the lock-wait injection lanes for flakiness/wrong-reason passes, the git shim, the A4 decline, new set -e interactions, bash 3.2/BSD"
+  context_card: yes
+  outcome: accepted
+  evidence: "NOT-CONVERGED — S1 the mid-run belt checked only --is-inside-work-tree, so a nested independent repo (accepted by A4) that loses its .git is still 'inside' the ENCLOSING repo and git add/commit/push would land the private half there (real hole, opened by the A4 decision) · A2 `_fh_phys0=$(_phys \"$FH\")` under set -e kills the script silently (rc=1) for a nonexistent HUB_DIR before the rc=10 hub refusal · B3 lane for the nested-repo mid-run case. All three taken into R4 (belt re-runs _be_root_ok; `|| true`; lanes B8o2/B8p; mutants m5/m6). 54,009 tokens, 190s"
+  tokens_subagent: 54009
+  notes: "the S1 here is a direct consequence of declining A4 in R3 — accepting the nested-repo layout created a belt that could pass for the wrong repo; the fix keeps the decision and tightens the belt to the same ROOT check the guard uses"
+
+- date: 2026-09-05
+  agent: codex exec (gpt-5.5, read-only) — cross-family adversarial review, round 4, same subject (sync-to-be destination guard)
+  invoked_by: FH governor session (Fable 5.1 max) — stdin payload (R4-only deltas + full post-R4 script), username scrubbed
+  task: "verify the R4 closures (belt re-runs the ROOT check; set -e safe derivation; lanes B8o2/B8p); attack the belt's re-check, the lock-wait lanes, bash 3.2 `cd -P \"\"` semantics, portability"
+  context_card: yes
+  outcome: accepted
+  evidence: "NOT-CONVERGED — S1 `.git` swapped mid-run for a gitfile pointing at another repo whose toplevel is still $BE passes the path-only re-check · S2 repo-selecting GIT_* env (a git hook exports GIT_DIR) makes a plain directory pass the root check · B3 lane for the swap. Also settled two of the author's own questions with measurements: bash 3.2.57 and 5.3.15 both FAIL `cd -P \"\"` (no no-op hazard), and A2's `|| true` reaches rc=10. Taken into R5: `unset GIT_*` first line + git identity pin (absolute-git-dir · common-dir) compared at the belt + threat model in the header + lanes B8q/B8r + mutants m7/m8 (m8 measured: without the unset the run mirrors into the plain dir and exits 4 from the hub-equality belt — wrong reason, after the write). 53,241 tokens"
+  tokens_subagent: 53241
+  notes: "S2 is the realistic one (hook environments); S1 needs an actor rewriting the store mid-run — accepted as a cheap non-over-blocking belt, and the header now states the threat model so later rounds grade against it instead of escalating the adversary each round"
+
+- date: 2026-09-05
+  agent: codex exec (gpt-5.5, read-only) — cross-family adversarial review, round 5, same subject (sync-to-be destination guard)
+  invoked_by: FH governor session (Fable 5.1 max) — stdin payload (R5-only deltas + full post-R5 script), username scrubbed; prompt now carries the THREAT MODEL so severity is graded against it
+  task: "verify R5 closures (GIT_* unset; git identity pin compared at the belt; lanes B8q/B8r; mutants m7/m8); attack the unset list's completeness, --git-common-dir comparability (relative vs linked worktree vs separate-git-dir), legitimate concurrent ops that change identity mid-run, bash 3.2 quoting, B8q's symlinked-tmp comparison"
+  context_card: yes
+  outcome: accepted
+  evidence: "CONVERGED — S0 · A0 · B1 (lane race: B8q waits for the 'destination:' line, which was printed BEFORE the identity pin, so a fast swap could be recorded as the baseline). Explicitly cleared: unset list covers repo selection (GIT_PREFIX does not redirect; CEILING/DISCOVERY vars only push toward fail-closed); common-dir comparison is same-cwd on both reads and does not reject legitimate separate-git-dir stores. B1 fixed as prescribed (pins moved before the destination line; log prints BE_REQUESTED → BE), lanes re-run + mutant m7 re-run; no R6 dispatched — the fix is the reviewer's own one-liner and the re-run is the verification. 67,325 tokens"
+  tokens_subagent: 67325
+  notes: "5 rounds total (R1 worktree draft → R5): S findings 1·2·1·2·0 — the count stopped falling until the threat model was stated in the header; stating it is what let the reviewer grade the mid-run-adversary class as B instead of escalating each round"
