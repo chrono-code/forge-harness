@@ -6,7 +6,7 @@
 
 ```bash
 mkdir -p ~/preprep && cd ~/preprep
-cp <이 디렉터리>/{preprep.py,interslide_deps.py,lane_progression.py,lane_adjacent_dup.py,lane_promise.py} .
+cp <이 디렉터리>/{preprep.py,interslide_deps.py,lane_progression.py,lane_adjacent_dup.py,lane_promise.py,lane_diagram.py,diagram_from_json.py} .
 cp -r <이 디렉터리>/ooxml .          # 덱(pptx)을 다룬다면. 아니면 생략
 cp <이 디렉터리>/surfaces.example.yaml   surfaces.yaml
 cp <이 디렉터리>/canon_terms.example.yaml  canon_terms.yaml
@@ -16,6 +16,9 @@ python3 preprep.py
 ```
 
 의존: `pyyaml` · `python-pptx` 둘뿐이다(나머지는 표준 라이브러리). FH 도, 네트워크도 필요 없다.
+도해를 JSON 에서 굽는 갈래(`diagram_from_json.py`)만 **선택 의존**이 둘 더 있다 — node ≥ 18 + 로컬 설치한
+archify(`npx -y skills add tt-a1i/archify --skill archify --agent claude-code --copy --yes`, MIT) · headless Chrome.
+없으면 그 스크립트만 exit 10 으로 죽고 레인 L12 는 영수증 없음을 UNMEASURED 로 낸다 — 나머지 레인은 그대로 돈다.
 
 ## 드리프트를 막는 법
 

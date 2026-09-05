@@ -131,6 +131,16 @@ model: sonnet
               텍스트 소실 · 부연-본문 밝기 경쟁 넷 다 렌더 없이는 구조적으로 안 보였다(§방법론 ⓒ).
               🟥 **장을 뺄 때는 뒤 장의 전제인지 먼저 본다** — 지운 장이 다음 장 부제의
               접속사(「그러나」 류)가 받는 말이었던 실사고가 있다(§방법론 ⓔ)
+              🔷 **도해는 타입 있는 JSON 에서 굽는다**(2026-09-05 신설, 5단계 안의 갈래이지 6단계가
+              아니다). `python3 diagram_from_json.py <spec.json> --out <png> --css <덱 토큰.css>
+              --no-legend` — 외부 렌더러 archify(MIT, 로컬 설치·소스 복사 0)의 showcase validate 를
+              **못 통과하면 굽기를 거부**하고, 통과하면 deliver → 뷰어 크롬 없는 SVG 단독 PNG(≥3840px)
+              → 굽기 영수증. 덱 자기 규약(배경·강조색·폰트)은 archify CSS 변수 override 로 꽂는다 —
+              archify 색을 덱에 가져오는 게 아니라 **덱 규약을 렌더러에 꽂는다**(§방법론 ⓓ). 가이드 뷰
+              인터랙션은 장표에 없으므로 `--focus id,…` 빌드 프레임으로 번역한다(§B3 좌표 고정).
+              🟥 archify 는 글자 크기 토큰이 없어 **viewBox 폭이 글자 pt 를 정한다**(720 → 라벨 29pt·
+              부제 19pt / 1137 → 12pt) — 그래서 폭 상한이 굽기 거부 조건이다. 대응표·차이·취향 판정
+              항목: `tracks-meta/dispatch/2026-09-05_archify-preprep/DESIGN_TOKENS.md`(운영자 로컬)
 ─────────────────────────────────────────────────────────────────
 바닥         `python3 preprep.py` — 아래 레인. 걸리면 ⑤ 로 되돌아간다
 ```
@@ -171,6 +181,7 @@ python3 "$SKILL/preprep.py"
 | **L11 promise** | **앞에서 예고한 것이 뒤에서 상환되나** — 후보를 나열하고 «예고 N 회 vs 뒤에서 M 회»를 센다. 실사고: 「세 번」 예고에 상환 1건 | 🟥 advisory · **판정은 사람** |
 | **L10 adjacent-dup** | **인접 장이 같은 문장을 다시 읽나** — 쪼갤 때 뒤 프레임에 원본을 통째로 남기면 앞 장에서 읽은 문장을 또 읽는다. 실측 117자 중 82자(70%) | 차단 (임계는 사람이 적는다. 미기재면 측정만) |
 | **L9 progression** | **선언된 단계 중 하나가 화면에서 빠졌나** — 실사고: ①②③④ 중 ①이 화면에서 떨어져 리뷰어가 논지를 **정반대로** 읽었다. 개별 문장은 전부 옳았다 | 차단 (선언된 것만 본다) |
+| **L12 diagram** | **타입 JSON 도해가 «지금 JSON» 에서 validate 를 거쳐 구워졌나** — `kind: diagram_source` 표면의 굽기 영수증(`*.receipt.json`)으로 JSON 지문 일치 · showcase validate ok · PNG 실제 폭(IHDR 직독) ≥ 3840 · viewBox 폭 ≤ 720 · 여백. 실사고 후보 셋: JSON 고치고 PNG 안 구움 · 미검증 JSON 손렌더 · 픽셀은 충분한데 글자 12pt | 차단 (선언된 표면만 · 영수증 없는 손그림은 **UNMEASURED**, 0 아님) |
 | **G ooxml** | pptx 구조 9종 — 관계 참조 무결성 · 죽은 Content_Types Override · **화면 밖 도형** · 열린 도형 채움 · 선 굵기 토큰 래칫 | 차단 (`python3 ooxml/gate.py <풀린 pptx 트리>`) |
 | **R1 orphan-connective** | 선두 줄이 «그러나/그래서»로 뒤집는데 그 문장의 주어가 **직전 장 어디에도 없다** | 🟥 advisory · **실물 known-positive**(실제 백업에서 뜬 결함) |
 | **R2 enum-dropped** | 앞 장이 ①②③ 으로 센 것을, 이 장이 «이 셋 중…» 이라 부르며 **번호 없이** 재편한다 — 1:1 대응이 안 보인다 | 🟥 advisory · **실물 known-positive** |
