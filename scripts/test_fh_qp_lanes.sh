@@ -81,7 +81,14 @@ if [ -f "$FH/scripts/residency_closure_scan.py" ]; then
   out="$(cd "$FH" && python3 scripts/residency_closure_scan.py --files $FILES 2>&1)"; rc=$?
   case "$rc" in
     0)  PASS=$((PASS+1)); echo "  ✅ RES-closure-scan CLEAN ($(printf '%s' "$FILES" | wc -l | tr -d ' ') files)" ;;
-    10) FAIL=$((FAIL+1)); echo "  ❌ RES-closure-scan HARNESS (rc=10 — patterns file missing; NOT clean)"; echo "$out" | tail -3 ;;
+    10) if printf '%s' "$out" | grep -q '운영자 패턴 파일이 없다'; then
+          # CI and consumer clones structurally lack the operator override (gitignored). That is
+          # UNMEASURED, not a failure of the shipped files — the generic RES-zero-constant-grep lane
+          # below is the guarantee that travels; this lane measures only where the override exists.
+          echo "  ⚪ RES-closure-scan SKIPPED — operator patterns file absent (UNMEASURED, not clean; the generic grep lane still runs)"
+        else
+          FAIL=$((FAIL+1)); echo "  ❌ RES-closure-scan HARNESS (rc=10 — defaults missing or pattern compile error)"; echo "$out" | tail -3
+        fi ;;
     *)  FAIL=$((FAIL+1)); echo "  ❌ RES-closure-scan TAINTED (rc=$rc)"; echo "$out" | tail -5 ;;
   esac
 else
