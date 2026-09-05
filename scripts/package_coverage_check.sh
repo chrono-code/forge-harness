@@ -193,10 +193,28 @@ ACCEPTED_ABSENT=(
   #       경로로 적는데 **이 파일 자신이 shipped 문서**라, 「안 싣는 이유」를 설명한 행위가
   #       곧 「shipped 문서가 미출하 경로를 가리킴」이 됐다. 계기가 자기 수리를 잡은 것이고,
   #       위 블록이 예고한 형태(*전체 경로를 shipped 파일에 쓰면 팬텀이 된다*)의 **3차 재현**이다.
-  #       주체 자신도 같은 사유로 등재한다 — 신규 게이트 둘은 **이 레포 전용**이다(추가 파일을
-  #       이 레포 레인 코퍼스에 대고 판정한다). 소비자 트리엔 판정 대상이 없다.
-  "scripts/residency_closure_scan.py"
-  "scripts/test_residency_closure_lanes.sh"
+  #       (이 문단이 이어서 「주체 자신도 같은 사유로 등재한다」고 residency_closure_scan.py 를
+  #       여기 넣었었다 — 그 등재는 2026-09-05 **철회했다**. 아래 참조.)
+  # 🟥 **철회 (2026-09-05) — `residency_closure_scan.py` / `test_residency_closure_lanes.sh` 가
+  #    ACCEPTED_ABSENT 였던 이유(「이 레포 전용 감사 도구, 소비자 트리엔 판정 대상 없음」)는
+  #    운영자 승인 하에 뒤집혔다: `plugins/fh-meta/skills/auto-decorrelation/SKILL.md` §Step 4.5
+  #    가 이제 **소비자의 세션**더러 cross-family dispatch 직전마다 이 스캐너를 돌리라고 지시하고,
+  #    `templates/.git-hooks/pre-commit` 의 `validate_crossfamily_leg` 가 그 결과(`residency=
+  #    CLEAN|TAINTED|NOT_SCANNED(...)`)를 `crossfamily:` 근거 안 타입 토큰으로 검사한다
+  #    (`RESIDENCY_TOKEN_GRACE_DATE`, 소급 없음). 즉 「이 레포 자신의 커밋 이력을 감사하는 도구」
+  #    에서 「모든 소비자가 실제로 실행하는 배선의 일부」로 성격이 바뀌었다 — 안 실으면 shipped
+  #    SKILL.md 가 소비자에게 없는 스크립트를 돌리라고 지시하는 꼴이 되고, 그건 이 검사기 자신이
+  #    막으려는 바로 그 결함(«출하 문서가 미출하 경로를 가리킴»)이다.
+  #    ⚠️ **패턴층도 같이 실었다** — `.claude/rules/.residency-patterns.defaults`
+  #    (일반형 패턴만, 회사 리터럴 없음; gitignored 운영자 override `.residency-patterns` 는
+  #    여전히 미출하). 이게 없으면 스캐너는 "defaults 패턴 파일이 없다" 로 exit 10 — 스캐너
+  #    자신의 **의도된** fail-closed(운영자 override 부재)보다 더 나쁜, 설치 결함성 원인으로
+  #    신선 설치 100% 를 막는 형태였다. `.public-surface-patterns.defaults`(바로 위 줄)와 같은
+  #    2층 패턴 관례를 그대로 따른다.
+  #    남은 사실: 운영자 override 없는 신선 설치는 여전히 exit 10 이 **기본**이다 — 이건 결함이
+  #    아니라 스캐너 자신의 문서화된 설계이고(§Step 4.5 가 명시), auto-decorrelation 은 그 결과를
+  #    `residency=NOT_SCANNED(...)` 로 정직하게 적고 `DEGRADED_*` 로 내려간다 — panel(...) 을
+  #    조용히 못 쓰게 될 뿐 커밋을 막지는 않는다.
   # ── caller-zero-ratchet, 2026-08-22. 셋 다 **싣는 것이 틀렸다** — 「아직 안 실었다」가 아니다 ──
   # 이 게이트는 「production 스크립트에 디스패처가 있나」를 **이 레포의 러너 표면**에 대고 판정한다.
   # 그 표면의 하나가 `.github/workflows/**` 이고, **워크플로 디렉터리는 files[] 에 없다.** 그러므로

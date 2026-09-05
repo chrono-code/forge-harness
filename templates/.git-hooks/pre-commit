@@ -780,8 +780,32 @@ validate_defense_leg() { # $1 = marker path — fires ONLY at the floor tiers (s
   return 0
 }
 
+# ── residency= token inside crossfamily grounds (2026-09-05, operator-approved) ──────────────
+# WHY: `scripts/residency_closure_scan.py` screens a payload for organizational identifiers
+# before it leaves this family boundary — but until now "was it screened" was a claim with no
+# channel: auto-decorrelation's own Step 5 note ("Residency still governs … sanitize before any
+# external-family dispatch") was prose with nothing downstream reading it back
+# ([[feedback_half_externalization_slot_without_consumer]] shape — a slot with no consumer). This
+# wires the scan's own exit code into the SAME typed field the crossfamily lane already validates,
+# rather than opening a new marker line — one channel, not two.
+#
+# GRAMMAR (inside crossfamily's own grounds, after the em-dash):
+#   crossfamily: panel(codex) — residency=CLEAN(files=7) · R1..R2, 4 findings
+#   crossfamily: DEGRADED_SINGLE_FAMILY — residency=TAINTED(2 files, stripped=no) → not sent · …
+#   crossfamily: DEGRADED_SINGLE_FAMILY — residency=NOT_SCANNED(scanner absent) → not sent · …
+#
+# SCOPE — same Mechanization Boundary as the rest of this function: a channel check on the
+# RECORD (present when a panel claim is made, closed-enum shaped whenever it appears at all),
+# never a truth check. Whether the CLEAN verdict was ACCURATE is not this lane's question — that
+# stays with the reader (cross-family reads the marker), identical ceiling to `standpoint:`.
+#
+# 🟥 NO RETROACTIVITY. Same pattern as `DEFEATER_GRACE_DATE` below: a marker dated before this
+# constant is validated exactly as it was before this change existed. Forcing it retroactively
+# would block every in-flight branch and teach `--no-verify`, which disarms the Destructive-Op
+# gate sharing this hook.
+RESIDENCY_TOKEN_GRACE_DATE="2026-09-05"
 validate_crossfamily_leg() { # $1 = marker path
-  local m="$1" line val reason fams
+  local m="$1" line val reason fams mdate _res_active _res_tokens _res_ntok _res_wellformed _res_kind
   if [ ! -f "$m" ] || ! grep -qE '^[[:space:]]*crossfamily:[[:space:]]*[^[:space:]]' "$m"; then
     echo "  ❌ FAIL — load-bearing file staged with no 'crossfamily:' line in the Axes 2-3 marker."
     echo "     Verdict/gate/irreversible-surface code shares the author's blind spot with a"
@@ -816,6 +840,33 @@ validate_crossfamily_leg() { # $1 = marker path
   val=$(printf '%s' "$line" | sed -E 's/[[:space:]]*(—|--).*$//' | sed -E 's/[[:space:]]+$//')
   reason=$(printf '%s' "$line" | sed -E 's/^[^—-]*(—|--)[[:space:]]*//')
   [ "$reason" = "$line" ] && reason=""
+
+  # residency= token — computed once, consumed by whichever branch below needs it (REQUIRED for
+  # panel(...), format-only-if-present for declined/DEGRADED_*/UNKNOWN). See the comment above
+  # RESIDENCY_TOKEN_GRACE_DATE for the grammar and why this rides inside crossfamily's own grounds
+  # rather than opening a new marker line.
+  mdate=$(printf '%s' "$m" | sed -nE 's/.*_([0-9]{4}-[0-9]{2}-[0-9]{2})\.marker$/\1/p')
+  _res_active=1
+  # Same "can't-read-date → NOT exempt" rule as validate_defeater_leg, same reason: the hook
+  # stamps TODAY's date into every marker filename it creates, so an unparseable date is an
+  # unexpected shape, not evidence of age ([[feedback_not_found_is_not_zero_family]]).
+  if [ -n "$mdate" ] && [ "$mdate" \< "$RESIDENCY_TOKEN_GRACE_DATE" ]; then _res_active=0; fi
+  # Presence counts EVERY `residency=` occurrence (any shape); well-formedness is a SEPARATE grep for
+  # the full token `residency=<KIND>(...)` with its closing paren. The first draft grepped the prefix
+  # `residency=<KIND>(` only, so a malformed token could hide by FAILING the shape grep — cross-family
+  # (codex gpt-5.5, 2026-09-05) showed `residency=CLEAN (files=2)` (space) and `residency=CLEAN(files=1`
+  # (no close paren) passing the optional-token path as if absent. Presence-first closes that: a
+  # `residency=` that is not one well-formed token is malformed, never invisible.
+  _res_tokens=$(printf '%s' "$reason" | grep -oE 'residency=[^[:space:]]*' 2>/dev/null || true)
+  _res_ntok=0
+  [ -n "$_res_tokens" ] && _res_ntok=$(printf '%s\n' "$_res_tokens" | grep -c .)
+  _res_full=$(printf '%s' "$reason" | grep -oE 'residency=(CLEAN|TAINTED|NOT_SCANNED)\([^)]*\)' 2>/dev/null || true)
+  _res_nfull=0
+  [ -n "$_res_full" ] && _res_nfull=$(printf '%s\n' "$_res_full" | grep -c .)
+  _res_wellformed=0
+  [ "$_res_ntok" -eq 1 ] && [ "$_res_nfull" -eq 1 ] && _res_wellformed=1
+  _res_kind=""
+  [ "$_res_wellformed" -eq 1 ] && _res_kind=$(printf '%s' "$_res_full" | sed -E 's/^residency=([A-Za-z_]*)\(.*$/\1/')
 
   case "$val" in
     declined)
@@ -872,6 +923,22 @@ validate_crossfamily_leg() { # $1 = marker path
         [ "${#reason}" -ge 20 ] && echo "     (grounds were substantive but named no resolvable path)"
         return 1
       fi
+      if [ "$_res_active" -eq 1 ] && [ "$_res_ntok" -gt 0 ]; then
+        if [ "$_res_ntok" -gt 1 ]; then
+          echo "  ❌ FAIL — grounds carries MORE THAN ONE 'residency=' token."
+          printf '%s\n' "$_res_tokens" | sed 's/^/       /'
+          echo "     Same trap as two crossfamily: lines — the reader takes the first, so an"
+          echo "     appended correction is silently shadowed. Leave exactly one."
+          return 1
+        fi
+        if [ "$_res_wellformed" -ne 1 ]; then
+          echo "  ❌ FAIL — 'residency=' token present but not one of CLEAN|TAINTED|NOT_SCANNED:"
+          printf '%s\n' "$_res_tokens" | sed 's/^/       /'
+          echo "     Closed set, same reason crossfamily's own value is one — free prose here is"
+          echo "     read as measured by a later session."
+          return 1
+        fi
+      fi
       echo "  ✅ cross-family leg: declined (operator-chosen floor, first-class — not a degrade)"
       echo "     $(printf '%s' "$reason" | cut -c1-80)" ;;
     panel*)
@@ -922,6 +989,38 @@ validate_crossfamily_leg() { # $1 = marker path
         echo "     pattern here in the same commit that first uses it."
         return 1
       fi
+      if [ "$_res_active" -eq 1 ]; then
+        if [ "$_res_ntok" -gt 1 ]; then
+          echo "  ❌ FAIL — grounds carries MORE THAN ONE 'residency=' token."
+          printf '%s\n' "$_res_tokens" | sed 's/^/       /'
+          echo "     Same trap as two crossfamily: lines — the reader takes the first. Leave"
+          echo "     exactly one."
+          return 1
+        fi
+        if [ "$_res_ntok" -eq 0 ]; then
+          echo "  ❌ FAIL — panel(...) with no 'residency=CLEAN(' token in grounds."
+          echo "     A panel claim means a payload left this family boundary. Screen it first"
+          echo "     (scripts/residency_closure_scan.py --files <payload>) and record the result:"
+          echo "       crossfamily: panel($fams) — residency=CLEAN(files=7) · R1..R3, ..."
+          echo "     A TAINTED or NOT_SCANNED payload must not have been sent — if that is what"
+          echo "     actually happened, the honest crossfamily value is DEGRADED_*, not panel(...)."
+          return 1
+        fi
+        if [ "$_res_wellformed" -ne 1 ]; then
+          echo "  ❌ FAIL — 'residency=' token present but not one of CLEAN|TAINTED|NOT_SCANNED:"
+          printf '%s\n' "$_res_tokens" | sed 's/^/       /'
+          echo "     Closed set, same reason crossfamily's own value is one — free prose here is"
+          echo "     read as measured by a later session."
+          return 1
+        fi
+        if [ "$_res_kind" != "CLEAN" ]; then
+          echo "  ❌ FAIL — panel(...) (payload WAS sent) with residency=$_res_kind(...) (NOT clean"
+          echo "     / not screened) on the SAME line — a contradiction in the record."
+          echo "     A sent payload must carry residency=CLEAN(...). If it was actually TAINTED or"
+          echo "     NOT_SCANNED, it should not have shipped — the honest value is DEGRADED_*."
+          return 1
+        fi
+      fi
       echo "  ✅ cross-family leg: $val${reason:+ — $(printf '%s' "$reason" | cut -c1-60)}" ;;
     DEGRADED_SINGLE_FAMILY|DEGRADED_PANEL_UNUSED|UNKNOWN)
       # A degrade is allowed; being silent about WHICH degrade, or about its grounds, is not.
@@ -939,6 +1038,18 @@ validate_crossfamily_leg() { # $1 = marker path
         echo "     was a line that announced a state without naming its grounds:"
         echo "       crossfamily: $val — probed codex/agy/gemini, <what came back>"
         return 1
+      fi
+      if [ "$_res_active" -eq 1 ] && [ "$_res_ntok" -gt 0 ]; then
+        if [ "$_res_ntok" -gt 1 ]; then
+          echo "  ❌ FAIL — grounds carries MORE THAN ONE 'residency=' token."
+          printf '%s\n' "$_res_tokens" | sed 's/^/       /'
+          return 1
+        fi
+        if [ "$_res_wellformed" -ne 1 ]; then
+          echo "  ❌ FAIL — 'residency=' token present but not one of CLEAN|TAINTED|NOT_SCANNED:"
+          printf '%s\n' "$_res_tokens" | sed 's/^/       /'
+          return 1
+        fi
       fi
       echo "  ⚠️  cross-family leg: $val — recorded, not silent (weekly audit re-queues these)"
       echo "     $(printf '%s' "$reason" | cut -c1-80)"
