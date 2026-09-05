@@ -606,6 +606,9 @@ for _pair in \
   "scripts/destructive_pre_gate.sh|scripts/test_destructive_pre_gate_lanes.sh" \
   "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_lanes.sh" \
   "templates/.git-hooks/pre-push|scripts/test_prepush_destructive_liveness.sh" \
+  "templates/.git-hooks/pre-push|scripts/test_push_zone_lanes.sh" \
+  "scripts/push_zone_check.sh|scripts/test_push_zone_lanes.sh" \
+  "scripts/session_close_check.sh|scripts/test_push_zone_lanes.sh" \
   "scripts/session_close_check.sh|scripts/test_peer_worktree_detect_lanes.sh" \
   "scripts/env_purity_scan.sh|scripts/test_env_purity_lanes.sh" \
   "scripts/frontier_digest_daily.sh|scripts/test_frontier_digest_retry.sh" \

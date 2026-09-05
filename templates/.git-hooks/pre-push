@@ -42,6 +42,97 @@ REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -z "$REPO_ROOT" ] && { echo "  ❌ pre-push: not in a git repo — fail-closed (block)"; exit 1; }
 ZERO="0000000000000000000000000000000000000000"
 PUSH_REMOTE="${1:-origin}"   # git passes the remote NAME as $1; ranges are scoped to it (see below)
+
+# ── Push zone: a non-owner github.com remote is not a plain-push channel ─────────────────────
+# CLAUDE.local.md §REST API push 계정규칙: a push under a non-owner account goes through the REST
+# Contents API (new files only, never overwrite/delete) — plain `git push` is not that channel.
+# That rule was correctly applied to ONE org repo and missed on ANOTHER org repo in the SAME round
+# (2026-07-26) — not from ignorance, but because it was applied at the point of discovery instead
+# of enumerated across every remote in play (the half-fix / propagation-boundary class).
+# `scripts/push_zone_check.sh` closes the ENUMERATE half by hand, before a push round, and it
+# explicitly does not block. This block closes the other half mechanically: it cannot see the whole
+# round, but it CAN refuse the one push in front of it when THIS push's own remote sits outside the
+# owner list — exactly the "forgot on this one" shape of the 2026-07-26 miss.
+#
+# Degrade direction (Surface-Class Degrade Invariant): applicability is mechanical, never guessed.
+#   • no owner-account list         → UNCALIBRATED, plain push allowed (a guessed verdict could
+#     authorise the wrong channel, which is worse than no verdict at all)
+#   • remote host is not github.com → out of scope for this axis (the account rule is a github.com
+#     personal-account axis; a GHE / other host remote says so and is allowed, not silently risky)
+#   • remote URL does not parse into a known shape → UNMEASURED, allowed (a harness gap, not a
+#     policy decision — NOT the destructive-branch UNCLASSIFIABLE case below, which fails closed
+#     because a delete is irreversible; blocking every unfamiliar remote-URL shape here would just
+#     train --no-verify on this same hook's real, irreversible guards)
+#   • owner ∈ list → silent (the common, expected case)
+#   • owner ∉ list → BLOCK. Never prints the owner list itself — only the single non-matching
+#     owner already public in the URL being pushed to.
+#
+# Override (explicit, logged — same shape as DESTRUCTIVE_OP_OK / PUBLIC_SURFACE_OK):
+#   PUSH_ZONE_OK=1 git push …
+PUSH_ZONE_SRC="${PUSH_ZONE_OWNERS:-$REPO_ROOT/.claude/rules/.push-zone-owners}"
+if [ ! -f "$PUSH_ZONE_SRC" ]; then
+  echo "  ⏭️  push-zone: UNCALIBRATED — no owner-account list at $PUSH_ZONE_SRC, plain push allowed"
+else
+  # One owner per line. Inline comments (`owner # note`), CR line endings, surrounding whitespace and a
+  # trailing slash are stripped BEFORE tokenizing — cross-family (codex gpt-5.5, 2026-09-05) showed an
+  # inline-comment word being read as an ALLOWED owner (fail-open) and a CRLF list blocking its own owner.
+  _pz_owners="$(sed -e 's/#.*$//' -e 's/\r$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's#/*$##' "$PUSH_ZONE_SRC" 2>/dev/null | grep -v '^$' | tr '[:upper:]' '[:lower:]')"
+  _pz_url="${2:-}"
+  # git passes the destination's URL as $2. A bare remote NAME (no ':' and no '/') means the URL was
+  # not resolved for us (alias / insteadOf edge) — resolve it here rather than reading a name as a host
+  # and quietly landing in the "not github.com" allow branch (codex #5).
+  case "$_pz_url" in
+    *:*|*/*|"") ;;
+    *) _pz_url="$(git remote get-url --push "$_pz_url" 2>/dev/null || printf '%s' "$_pz_url")" ;;
+  esac
+  if [ -z "$_pz_url" ]; then
+    echo "  ⏭️  push-zone: UNMEASURED — remote URL not supplied to the hook (\$2 empty), plain push allowed"
+  else
+    # Normalise before parsing: lowercase, trim, drop the scheme, drop userinfo (`user@`). The HOST is then
+    # everything up to the first ':' or '/'. This accepts every github.com shape git itself accepts —
+    # `https://user@github.com/o/r`, `https://github.com:443/o/r`, `git@github.com:o/r`, `git@github.com:/o/r`,
+    # `ssh://git@github.com:22/o/r` — instead of an allowlist of three literal prefixes that read the rest as
+    # "unrecognized → allow" (codex #1–#4: four real github.com shapes were failing OPEN).
+    _pz_url_lc="$(printf '%s' "$_pz_url" | tr '[:upper:]' '[:lower:]' | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//')"
+    _pz_norm="$(printf '%s' "$_pz_url_lc" | sed -E 's#^[a-z][a-z0-9+.-]*://##; s#^[^@/]*@##')"
+    _pz_host="$(printf '%s' "$_pz_norm" | sed -E 's#[:/].*$##')"
+    if [ "$_pz_host" = "github.com" ]; then
+      _pz_path="$(printf '%s' "$_pz_norm" | sed -E 's#^github\.com(:[0-9]+)?[:/]+##')"
+      _pz_owner="${_pz_path%%/*}"
+      if [ -z "$_pz_owner" ] || [ "$_pz_path" = "$_pz_norm" ]; then
+        echo "  ⏭️  push-zone: UNMEASURED — github.com remote in an unrecognized URL shape, plain push allowed"
+      else
+        _pz_hit=0
+        for _pz_o in $_pz_owners; do
+          [ "$_pz_owner" = "$_pz_o" ] && { _pz_hit=1; break; }
+        done
+        if [ "$_pz_hit" -eq 0 ]; then
+          echo ""
+          echo "══════════════════════════════════════════════"
+          echo " ⛔ FH Push-Zone Gate — remote is outside the owner-account list"
+          echo "══════════════════════════════════════════════"
+          echo "  remote '$PUSH_REMOTE' → github.com/$_pz_owner"
+          echo "  Plain git push is not this remote's channel — CLAUDE.local.md §REST API push"
+          echo "  계정규칙 (a non-owner account pushes via the REST Contents API instead)."
+          echo "  Deliberate exception (explicit, logged):  PUSH_ZONE_OK=1 git push …"
+          echo "══════════════════════════════════════════════"
+          if [ "${PUSH_ZONE_OK:-0}" = "1" ]; then
+            echo "  ⚠️  FH Push-Zone: allowed by PUSH_ZONE_OK=1 (conscious, gated intent)"
+            mkdir -p "$REPO_ROOT/tracks/_meta" 2>/dev/null || true
+            printf '%s PUSH_ZONE_OK override — remote:%s owner:%s\n' \
+              "$(date +%Y-%m-%dT%H:%M:%S)" "$PUSH_REMOTE" "$_pz_owner" \
+              >> "$REPO_ROOT/tracks/_meta/.push_zone_override_log" 2>/dev/null || true
+          else
+            exit 1
+          fi
+        fi
+      fi
+    else
+      echo "  ⏭️  push-zone: remote host is not github.com — outside this axis's scope, plain push allowed"
+    fi
+  fi
+fi
+
 BASE="${FH_DESTRUCTIVE_BASE:-origin/main}"
 # All ancestry/reachability checks below must ignore local `git replace`/graft objects — a graft can
 # falsify merge-base/rev-list/ls-tree to make a divergent force look fast-forward or an unmerged branch

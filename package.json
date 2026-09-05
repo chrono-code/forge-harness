@@ -181,6 +181,8 @@
     "scripts/prepush_guard_check.sh",
     "templates/predelete_check.test.sh",
     "scripts/test_prepush_destructive_lanes.sh",
+    "scripts/push_zone_check.sh",
+    "scripts/test_push_zone_lanes.sh",
     "scripts/fixture_guard_lib.sh",
     "scripts/shell_name_boundary_scan.sh",
     "scripts/test_verdict_watermark_lanes.sh",

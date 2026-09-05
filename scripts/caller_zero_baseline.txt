@@ -36,7 +36,6 @@
 
 exempt:
   - scripts/activity_log.sh   # on-demand chronological assembler, invoked by an operator/session when a trail is wanted — its own header says on-demand
-  - scripts/push_zone_check.sh   # human-run enumerate tool, same class as templates/predelete_check.sh: "run it BEFORE a multi-repo push round"
   - scripts/docker_phase0_verify.sh   # one-shot Docker Track 2 proof, needs a running Docker/OrbStack daemon — auto-running it in CI would fail-closed on every consumer
   - scripts/docker_phase1_verify.sh   # same Docker Track 2 one-shot; additionally spends live codex calls, so it must stay operator-initiated
   - scripts/docker_phase1b_verify.sh   # same Docker Track 2 one-shot; needs a local Ollama endpoint that exists on one machine only
