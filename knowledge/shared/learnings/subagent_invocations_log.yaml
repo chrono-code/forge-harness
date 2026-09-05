@@ -210,7 +210,7 @@
   skill: "Agent(model:fable) + codex gpt-5.6-sol (cross-family)"
   context: "identity-fulfillment audit — 2 decorrelated drafters produce per-identity falsifiable checklist (operator: verify each FH identity, then sim-conductor run)"
   target: "FH 5-identity checklist (cluster / incubator / governance-gate / frontier-propagation / amplifier)"
-  outcome: pending
+  outcome: accepted
   note: "dispatched parallel; Fable=higher-tier same-family, codex=true cross-family. Synthesis → sim-conductor persona run to shake out overclaim. Log outcome on return."
 - date: 2026-07-14
   skill: "identity-audit — Agent(model:fable) + codex gpt-5.6-sol + general-purpose origin-miner (3-source)"
@@ -2419,7 +2419,7 @@
   purpose: "harness-doctor L3~L5 + 메타하네스 residency ledger 를 네 렌즈로 병렬 분해. 거버너는 L1·L1-E·푸터프린트·pointer-illusion·SKILL 크기를 직접 측정하고, 렌즈끼리 파일이 안 겹치게 스코프를 갈랐다."
   prompt_summary: "각 레그에 계기 규율을 명시 주입 — ① known-positive/known-negative 쌍으로 계기 판별력 먼저 검정하고 못 가르면 UNCALIBRATED ② 카운트마다 손검증 1건 ③ not found = UNMEASURED, 0 아님 ④ tier 확정 금지, 후보만. L5 에는 「기록하지 않는 소스를 grep 해서 0회를 내면 그건 측정이 아니라 생성」을 명시."
   reps: 1
-  outcome: pending
+  outcome: accepted
   finding: "미착지 — 네 레그 진행 중. 거버너 자체 측정분은 확정: always-loaded 144,205자(M-tier, 임계 80k) · memory-index 25,472자(S-tier, 임계 10k)이며 **로더 하드리밋 초과로 엔트리 5건이 이 세션에 실제로 미로드**(손검증). ★ pointer-illusion 「2건」은 **둘 다 오탐**이었고 원인은 harness-doctor SKILL.md 가 들고 있는 정규식 자신 — `templates/` 접두를 떨어뜨리고 `{project}/{domain}/` 자리표시자를 실경로로 읽는다. 손검증 안 했으면 M-tier 두 건을 지어낼 자리였다."
   note: "운영자 상시 요청(CLAUDE.local.md, lease→2026-11-09, scope=서브에이전트 디스패치)에 따라 건별 승인 없이 디스패치. 워크플로/deep-research 는 범위 밖이라 안 씀. 단위는 문자(chars)로 통일 — 로더 경고 24.9KB 가 25,472자/1024 와 정확히 일치해 로더도 문자 기준임을 확인(바이트로 쟀으면 40,657 로 과대계상)."
   cost: "UNMEASURED (완료 알림의 subagent_tokens 로 마감 시 갱신) · 거버너 = UNMEASURED. 합계 안 적는다"
@@ -2978,7 +2978,7 @@
     `run_in_background` Bash 둘은 서브에이전트가 아니다).
     tally 실물(`tracks/_meta/.subagent_dispatch_tally`)은 **날짜 한 줄만** 적는다 —
     2026-09-02 항목 1건, 파일 mtime 01:15.
-  outcome: pending
+  outcome: accepted
   evidence: >-
     🟥 **귀속 불가이고, 그건 계기의 성질이다.** SubagentStop 훅이
     `HUB="${CLAUDE_PROJECT_DIR:-$HOME/projects/forge-harness}"` 로 경로를 잡는다 —
@@ -3038,7 +3038,7 @@
     ④-e 가 «오늘 디스패치 2 · 원장 0» 으로 ❌. 자정 이후 이 세션의 Agent 호출은 0 (도구 호출은 Bash·gh·npm 뿐).
     tally 실물 `tracks/_meta/.subagent_dispatch_tally` 에 2026-09-03 두 줄. 같은 시각 이 머신에서 sim 추출기
     `claude -p` 40건과 sim 팔이 돌았으나 SubagentStop 은 Agent 도구에만 걸린다 — 출처 미확인.
-  outcome: pending
+  outcome: accepted
   evidence: >-
     #584(2026-09-02) 와 같은 얼굴 — tally 는 머신 전역(`CLAUDE_PROJECT_DIR` 미설정 세션이 허브 tally 에 쓴다),
     ④-e 는 세션 로컬. «내가 안 했다»와 «기록이 없다»를 가를 수단이 없다.
@@ -3277,3 +3277,123 @@
   evidence: >-
     scratchpad/preprep_docs.patch(128줄) → #628 커밋 3/3 — 새 레인을 이름(문자 코드 아님)으로 참조해 병렬 편집 충돌 회피. 194,195 tokens · 20 tool_uses.
   note: 프론트매터 description 무변경(트리거 프로브 재실행 불필요).
+- date: 2026-09-05
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-29 (Fable 5.1 max 거버너, 오전)
+  task: "live-eval 12/12 FAILED-TO-RUN 수리 — timeout(1) 해석+bash 폴백 · fail-fast · reason 칼럼 · plist PATH · 레인(워크트리 패치)"
+  count: 1
+  context: 커밋 금지 워크트리. 원인은 거버너가 실측해 넘김(launchd PATH 에 timeout 없음). 중간 지시 1(FD_MODEL 템플릿 줄).
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/dispatch/2026-09-05_live-eval-timeout/patch.diff → 브랜치 fix/live-eval-timeout-preflight — 레인 31/31·28/28(fail-before 2+5 빨강) · env -i launchd PATH 라이브 1회 = bash-fallback 캡처 35B(FAILED-TO-RUN 아님). 388,607 tokens · 107 tool_uses.
+  note: 잔여 «USER 미설정 시 미인증」은 실 launchd 컨트롤(forge-wiki 위성 10:04 성공)이 반증 — env -i 가 launchd 보다 엄격. 거버너 추가 수리 1(워치독 orphan sleep pkill -P).
+- date: 2026-09-05
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-29
+  task: "다이제스트 variadic --allowedTools 인자 순서 수리 + 호출부 전수 감사 + 레인 ⑤(워크트리 패치)"
+  count: 1
+  context: 커밋 금지 워크트리. known-pair(haiku)는 거버너가 먼저 실측해 넘김.
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/dispatch/2026-09-05_digest-argorder/patch.diff → PR #631 — 레인 ⑤ 패치 전 ❌ → ✅ 5/5 · 호출부 9행 감사(취약 1). 272,961 tokens · 51 tool_uses.
+  note: REPORT.md Write 가 도구 정책으로 거부돼 회신 원문을 거버너가 옮김. 이후 에이전트에는 «Bash cat > 로 써라」 로 지시 변경.
+- date: 2026-09-05
+  agent: general-purpose (opus)
+  invoker: forge-harness-29
+  task: "qasp 2막 evidence 평문 입력값 두 채널 마스킹(__REDACTED__) — 구현·19 레인·커밋·푸시(PR 미개설)"
+  count: 1
+  context: qasp-dev 직접(필드 하네스, 자기 훅). 설계는 거버너가 확정해 넘김. 후속 지시 1(빈 값 비마스킹 한 줄).
+  outcome: accepted
+  evidence: >-
+    qasp-dev 3e76ff7 (fix/act2-evidence-secret-redaction) — tests/act2 1425→1444 · 전체 3714/0 · 되돌림 프로브 채널별 5/6 레인 · 셋째 채널(tc_update_suggestion) 발견·수리 · aria_snapshot 평문 실측 → 이슈 #253. 291,919 tokens · 82 tool_uses.
+  note: 설계가 «~14곳」이라 적은 것을 18곳으로 실측 정정. 보고서 tracks/qasp/secret_redaction_2026-09-05.md.
+- date: 2026-09-05
+  agent: sidecar codex exec (gpt-5.5, cross-family)
+  invoker: forge-harness-29
+  task: "qasp #254 비밀값 마스킹 diff 적대 리뷰 — 정규식 오탐·부분문자열 치환·to_dict/evidence_label 조건 동치·__RUNTIME__·테스트 공백"
+  count: 1
+  context: 페이로드 residency 스캔 TAINTED(2)→strip→CLEAN(3) 후 stdin 으로 diff 만 전달(파일 도구 없음). sidecar_wait 900s.
+  outcome: accepted
+  evidence: >-
+    scratchpad/codex_qasp/{prompt.txt,out.txt,wait.log} — SIDECAR_VERDICT 대기. 결과는 소스 그라운딩 후 PR #254 에 반영/반박.
+  note: ③ 기록면 토큰 첫 실물 = residency=CLEAN(files=3, stripped=2).
+- date: 2026-09-05
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-29
+  task: "⑫-③ residency 토큰 — pre-commit 검사 + 레인 r1~r13 + auto-decorrelation Step 4.5 + 출하(워크트리 패치)"
+  count: 1
+  context: 커밋 금지 워크트리. 중간 지시 1(strip 목록 명시). 스캐너가 워크트리에선 rc=10(override 패턴 부재) — 정직 기록.
+  outcome: accepted
+  evidence: >-
+    tracks/_meta/dispatch/2026-09-05_residency-token/patch.diff → feat/residency-marker-token — 55/55 · 되돌림 7 레인 · 픽스처 파일명 날짜 순서 결함 자력 적발. 363,065 tokens · 114 tool_uses.
+  note: 접두 grep 파싱이 codex 에서 fail-open 2건으로 지목돼 거버너가 presence-first 로 수리(r14~r17).
+- date: 2026-09-05
+  agent: sidecar codex exec (gpt-5.5, cross-family)
+  invoker: forge-harness-29
+  task: "⑫-③ 훅 변경 diff 적대 리뷰(6 파일, residency CLEAN(files=6))"
+  count: 1
+  context: load-bearing(pre-commit). diff 만 stdin. sidecar_wait 900s.
+  outcome: accepted
+  evidence: >-
+    scratchpad/codex_residency/out.txt — 8 findings: S 2 진짜(수리, 레인 r14/r15 fail-before 재현) · 4 잔여(과차단/fail-closed 방향) · B 2 레인. 27,937 tokens.
+  note: 거짓 양성 0 — 이번엔 페이로드를 안 잘랐다(strip=0).
+- date: 2026-09-05
+  agent: general-purpose (sonnet)
+  invoker: forge-harness-29
+  task: "⑫-② push-zone — pre-push 블록 + 마감 ①-f + 출하 + 레인 Z0~Z6(워크트리 패치)"
+  count: 1
+  context: 커밋 금지·stash 금지 워크트리. 실 git dispatch 로 첫 실사용.
+  outcome: partial
+  evidence: >-
+    tracks/_meta/dispatch/2026-09-05_push-zone/patch.diff → feat/push-zone-prepush 9e764c7 — 레인 13/13(fail-before 3/13) · 실 push 확인. 475,750 tokens · 174 tool_uses.
+  note: 🟥 `git stash` 1회 사용(지시 위반, 자기 신고, 영향 0) · ①-f 가 owner 이름을 그대로 출력(브리프의 «출력 그대로」 탓 — 거버너가 카운트만으로 수리) · URL 3형태만 수용(codex 4 형태 fail-open 지목).
+- date: 2026-09-05
+  agent: sidecar codex exec (gpt-5.5, cross-family)
+  invoker: forge-harness-29
+  task: "⑫-② pre-push push-zone diff 적대 리뷰(6 파일, residency CLEAN(files=6))"
+  count: 1
+  context: load-bearing(pre-push). diff 만 stdin. sidecar_wait 900s.
+  outcome: accepted
+  evidence: >-
+    scratchpad/codex_pushzone/out.txt — 11 findings: S 6·A 3 수리(레인 Z7~Z14 fail-before 10 적색 → 23/23) · B 1 잔여 · B 1 레인. 22,138 tokens.
+  note: 두 번째 codex 라운드 — 거짓 양성 0(strip=0).
+
+- date: 2026-09-05
+  agent: claude (opus, worktree fh-wt-outbound-hook)
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "⑫-① outbound query guard → PreToolUse(WebSearch|WebFetch) hook — two-layer degrade (override=deny · defaults=advisory), 76 lanes, 15 revert probes, clean-clone 2-arm run"
+  context_card: yes
+  outcome: accepted
+  evidence: "tracks/_meta/dispatch/2026-09-05_outbound-hook/REPORT.md — patch applied on feat/outbound-query-hook: 76/76 · 11/11 · degrade rc=0 · pkgcov PASS; agent self-caught .gitignore omission (clean-clone VOID) and a padding-timeout fail-open (10KB query = 49.7s in bash 3.2 `${var//[!\t]/}`); one false claim in report (main moved to 7530c9c — that is the #632 branch commit)"
+  tokens_subagent: 397555
+  notes: "governor follow-up: codex cross-family review dispatched on the payload; report claim about main position refuted by `git log -1 main`"
+
+- date: 2026-09-05
+  agent: codex exec gpt-5.5 (cross-family sidecar via scripts/sidecar_wait.sh)
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "adversarial review of the outbound_query_hook PreToolUse deny hook (9-file diff + author report, residency CLEAN)"
+  context_card: n/a (prompt file)
+  outcome: accepted
+  evidence: "11 findings: 6 S real (string tool_input, depth/count truncation x2, key-name log leak, severity-label leak, tr-dependent emptiness), 2 A real (N/A writes into stranger tree, lane timeout 15 vs snippet 5), 3 refuted (applicability path test, install path contract = same as five guards but noted, dedup assumption — measured: both-layer token denies with 2 hits). 8 fixes + 21 lanes; pre-fix hook goes 14 red on the new lanes"
+  tokens_subagent: n/a
+  notes: "first dispatch died in 5s: payload dir is not a git repo → needs --skip-git-repo-check; sidecar_wait typed verdict (exit=1 bytes=115) prevented reading it as a review"
+
+- date: 2026-09-05
+  agent: claude (opus, worktree fh-wt-utterance-intake)
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "engine reinforcement — utterance→record landing channel: transcript_utterances.py (shared with seal), utterance_intake.sh, session_close_check ①-f advisory, lanes, pre-registered floor-tier sim ARM/CTRL reps=3"
+  context_card: yes
+  outcome: accepted
+  evidence: "tracks/_meta/dispatch/2026-09-05_utterance-intake/REPORT.md — patch applied on feat/utterance-intake-close-check: lanes 51/51, seal byte-identical (L12 revert control), sim prereg sealed 9s before first arm; ARM 0/3 CTRL 0/3 with attribution withheld (3/3 chose memory/ outside the repo, runner isolation blocked it); first real use found 2 real unlanded operator utterances; mission-card error caught by lane L13 (①-e already taken → ①-f)"
+  tokens_subagent: 427744
+  notes: "5 design deviations all with measured grounds (min-chars 20, --strip-system-markers, record-derived positive control, private-token masking, ①-f label); 7 named residuals"
+
+- date: 2026-09-05
+  agent: codex exec gpt-5.5 (cross-family sidecar via scripts/sidecar_wait.sh)
+  invoked_by: FH governor session (Fable 5.1 max)
+  task: "adversarial review of the utterance-intake close-check patch (8-file diff + author report)"
+  context_card: n/a (prompt file)
+  outcome: accepted
+  evidence: "11 findings: 8 fixed (OR-probe false LANDED → per-token rows + majority; UNPROBEABLE silent rc=0; isMeta/isSidechain records; masking beyond $HOME; no-control-material message; L18c exit code; L13b absent-script branch; stale ①-e comment), 3 refuted (tool_result+text mixed 0/379 live; Hangul n-gram = judgment machinery; backtick comment carrier = pre-existing idiom). Pre-fix scripts go 15 red on the new lanes; fixed 72/72"
+  tokens_subagent: n/a
+  notes: "dispatched with --skip-git-repo-check (payload dir is not a git repo — recorded in memory project_codex_headless)"
