@@ -183,3 +183,7 @@
   artifact: SIM_NOTES.md
   sha256: 781b3632fe3e500d73917d02815607cac1291f59d43096905d88ee3f26eb8f73
   recorded: 2026-09-05T11:21:12Z
+- run: fh-qa-generic
+  artifact: EMISSION_VERDICT.md
+  sha256: cbad21dba6de165da9792e5ef025f26978f607c97ffb73c86607943b3247ec3c
+  recorded: 2026-09-05T11:38:21Z
