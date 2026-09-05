@@ -106,6 +106,15 @@ b64_decode() {
 TMP=$(mktemp -d) || { echo "HARNESS-ERROR: mktemp failed"; exit 10; }
 trap 'rm -rf "$TMP"' EXIT
 
+# ── has_nul: binary detection ──────────────────────────────────────────────────
+# ONE implementation, called by check_path AND by --self-test. Until 2026-09-05 this was defined
+# twice, byte-identical, once inside each caller — so the self-test exercised ITS OWN copy and a
+# broken production copy stayed green (3-arm mutation: production-only break → rc=0). The file
+# already pinned the one-implementation rule for compute_lost and loss_token; this was the one
+# helper that escaped it. NOT `grep -q $'\x00'`: bash cannot hold a NUL in a string, so that
+# collapses to the EMPTY pattern and every text file is declared binary. Strip-and-compare.
+has_nul() { LC_ALL=C tr -d '\000' < "$1" | cmp -s - "$1" || return 0; return 1; }
+
 # ── compute_lost: the verdict, as multiset arithmetic ───────────────────────────
 #   $TMP/lost = R − L   (occurrences the remote has that the upload does not)
 # ONE implementation, called by check_path AND by --self-test — two copies of the same
@@ -234,7 +243,6 @@ check_path() { # $1=repo $2=base_sha $3=path
   # NOT `grep -q $'\x00'`: bash cannot hold a NUL in a string, so `$'\x00'` collapses to
   # the EMPTY pattern, grep matches every line, and every text file is declared binary —
   # a total over-block that looks like a strict check. Strip-and-compare instead.
-  has_nul() { LC_ALL=C tr -d '\000' < "$1" | cmp -s - "$1" || return 0; return 1; }
   if has_nul "$prev" || has_nul "$path"; then
     echo "  🟥 $path — UNDECIDABLE: binary content (NUL bytes); a line-wise direction"
     echo "       verdict over binary is not a measurement."
@@ -360,13 +368,17 @@ self_test() {
   # (h) NUL detection. The first draft used `grep -q $'"'"'\x00'"'"'`, which bash collapses to the
   #     EMPTY pattern — every text file matched and every push would have been declared
   #     binary/UNDECIDABLE. Both directions are pinned so that regression cannot return.
-  has_nul() { LC_ALL=C tr -d '\000' < "$1" | cmp -s - "$1" || return 0; return 1; }
   printf 'plain text\n' > "$TMP/tn"
   has_nul "$TMP/tn" && r=BINARY || r=TEXT
   t "plain text is not misread as binary" TEXT "$r"
   printf 'a\000b\n' > "$TMP/tn"
   has_nul "$TMP/tn" && r=BINARY || r=TEXT
   t "a file with NUL bytes is detected as binary" BINARY "$r"
+  # (h2) The pair above measures PRODUCTION only if there is exactly ONE definition — a second,
+  #      self-test-local copy made this suite green while the production copy was broken
+  #      (2026-09-05, 3-arm mutation). Pin the count so the shadow copy cannot return.
+  t "has_nul is defined exactly once (the self-test measures the production copy)" 1 \
+    "$(grep -c '^has_nul() {' "$0" | tr -d ' ')"
 
   # (i) 404 must be the HTTP status, not any stderr containing "not found".
   #     `gh: command not found` used to be accepted as "new file at base" → fail-open.
