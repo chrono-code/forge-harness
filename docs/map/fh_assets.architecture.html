@@ -11164,7 +11164,7 @@
       var lastWidth = 0;
       var WIDE_RATIO = 1.55;
       var MIN_DESKTOP_WIDTH = 1024;
-      var MIN_READER_WIDTH = 960;
+      var MIN_READER_WIDTH = Math.min(1440, Math.max(960, Math.round(window.innerWidth * 0.80)));
       var MAX_READER_WIDTH = 1920;
       var SAFE_BOTTOM_GAP = 12;
 

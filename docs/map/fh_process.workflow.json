@@ -32,7 +32,7 @@
         "label": "받는 것 — 문별 실물",
         "focus": [
           "door",
-          "identity",
+          "id_amp",
           "art_harness",
           "art_pr",
           "art_marker"
@@ -52,13 +52,16 @@
       },
       {
         "id": "engines",
-        "label": "4대 엔진 — 출력이 나오는 코어",
+        "label": "정체성 — 사람이 만나는 다섯",
         "focus": [
-          "soul",
           "engines",
-          "identity"
+          "id_cluster",
+          "id_incubator",
+          "id_frontier",
+          "id_amp",
+          "id_gate"
         ],
-        "note": "출력은 엔진에서 나온다. 정체성은 방법론과 코어가 맞물려 나타나는 능력이고, 5대는 실물과 등급을 가진 안정 정체성이다."
+        "note": "출력은 4대 엔진에서 나오고 사람은 그것을 정체성으로 만난다 — 클러스터·인큐베이터·게이트·답습·증폭자(+Ⓑ 부스터). 등급은 카드에."
       }
     ]
   },
@@ -119,6 +122,14 @@
       "fromCol": 4,
       "toCol": 5,
       "variant": "security"
+    },
+    {
+      "id": "g_ident",
+      "label": "다섯은 순서가 아니다 — 늘 켜져 있고 방향에 따라 나타난다",
+      "lane": "surface",
+      "fromCol": 0,
+      "toCol": 4,
+      "variant": "security"
     }
   ],
   "mainPath": [
@@ -127,7 +138,7 @@
     "soul",
     "decorr",
     "burn",
-    "identity",
+    "id_amp",
     "art_harness"
   ],
   "nodes": [
@@ -208,17 +219,57 @@
       "label": "4대 엔진",
       "sublabel": "judgment · gate · context · ground",
       "tag": "출력은 여기서",
-      "width": 160
+      "width": 185
     },
     {
-      "id": "identity",
+      "id": "id_cluster",
+      "lane": "surface",
+      "col": 0,
+      "type": "frontend",
+      "label": "① 하네스 클러스터",
+      "sublabel": "남의 하네스·스킬을 부른다",
+      "tag": "🟢",
+      "width": 150
+    },
+    {
+      "id": "id_incubator",
+      "lane": "surface",
+      "col": 1,
+      "type": "frontend",
+      "label": "② 프로젝트 인큐베이터",
+      "sublabel": "챔버가 낳거나 죽인다",
+      "tag": "🟢",
+      "width": 150
+    },
+    {
+      "id": "id_frontier",
+      "lane": "surface",
+      "col": 3,
+      "type": "frontend",
+      "label": "④ 프런티어 답습",
+      "sublabel": "책장 → 도서관 순으로",
+      "tag": "🟢",
+      "width": 150
+    },
+    {
+      "id": "id_amp",
       "lane": "surface",
       "col": 4,
       "type": "frontend",
-      "label": "5대 정체성 + 면모",
-      "sublabel": "①②③④⑤ + Ⓑ",
-      "tag": "등급은 등급표에만",
-      "width": 160
+      "label": "⑤ 증폭자",
+      "sublabel": "의도 → 근거 붙은 산출",
+      "tag": "🟢",
+      "width": 150
+    },
+    {
+      "id": "id_gate",
+      "lane": "surface",
+      "col": 2,
+      "type": "frontend",
+      "label": "③ 거버넌스 게이트",
+      "sublabel": "훅이 물리적으로 막는다",
+      "tag": "🟢",
+      "width": 150
     },
     {
       "id": "art_harness",
@@ -226,9 +277,9 @@
       "col": 5,
       "type": "database",
       "label": "필드 하네스",
-      "sublabel": ".claude/ 스캐폴드 · 훅 · 규칙 · 트랙",
+      "sublabel": ".claude/ 훅 · 규칙 · 트랙",
       "tag": "문 ②③ 하네스화 · 챔버 EMIT",
-      "width": 170
+      "width": 156
     },
     {
       "id": "art_pr",
@@ -314,14 +365,14 @@
     {
       "id": "e_eng_out",
       "from": "engines",
-      "to": "identity",
+      "to": "id_frontier",
       "label": "맞물려 나타남",
       "variant": "emphasis"
     },
     {
       "id": "e_burn_id",
       "from": "burn",
-      "to": "identity",
+      "to": "id_amp",
       "label": "태운 것만 등급",
       "variant": "security"
     },
@@ -335,9 +386,9 @@
     },
     {
       "id": "e_id_harness",
-      "from": "identity",
+      "from": "id_amp",
       "to": "art_harness",
-      "label": "①②③ · 하네스화 §6 · 챔버 EMIT",
+      "label": "EMIT · 하네스화 §6",
       "variant": "emphasis"
     },
     {
@@ -378,6 +429,17 @@
       ]
     },
     {
+      "dot": "cyan",
+      "title": "5대 정체성 + Ⓑ — 무엇이 켜지나 (정본 ship_readiness_gate.md)",
+      "items": [
+        "정체성 = 방법론과 코어가 맞물려 나타나는 능력. 엔진(넷)과 다른 층이고, 5대 밖은 방향에 따라 나타났다 사라지는 «면모»",
+        "Ⓑ 프로젝트 부스터 — 다른 하네스의 «자체 개발»을 FH 기계가 가속한다. 다섯과 층이 달라 번호 대신 Ⓑ (그림에는 없다)",
+        "여섯 행 전부 🟢 (2026-09-04). 🟢 = 실제 상황에서 발화한 기록 n≥1 — 문서가 아니라 실적",
+        "엔진 대응(①맥락 · ②맥락+심지 · ③게이트 · ④그라운딩 · ⑤심지)은 등급표가 «미검증 가설»이라 표기한 매핑이다",
+        "🟥 등급은 자기평가다 — 등급표가 스스로 그렇게 적는다. 전부 🟢 이 «반증 없음»은 아니다"
+      ]
+    },
+    {
       "dot": "emerald",
       "title": "받는 것 — 문별 (USE_CASES · USER_GUIDE · auto_project_mapping §6)",
       "items": [
@@ -385,14 +447,8 @@
         "② 새로: 챔버 판정(EMIT·CURATED·NOT-APPLICABLE·KILL) + EMIT 시 스캐폴드",
         "③ 가속/진단: M/S/R 목록(자동 수리 없음) + Full-Harness 설치 5항",
         "④ 시너지: 스킬·플러그인 시너지 페어 표 → 각 프로젝트로",
-        "🔧 · fh-gate: 머지 가능한 PR + 4축 마커 · diff 판정 exit code(0/2/10)"
-      ]
-    },
-    {
-      "dot": "rose",
-      "title": "사람이 남는 자리",
-      "items": [
-        "삭제·히스토리 재작성은 설치된 pre-push 가 막고 사람이 override 로 푼다 · 발행은 Pre-Publish 가 따로 · 남는 것은 취향 리뷰"
+        "🔧 · fh-gate: 머지 가능한 PR + 4축 마커 · diff 판정 exit code(0/2/10)",
+        "🔴 사람이 남는 자리 — 삭제·히스토리 재작성은 설치된 pre-push 가 막고 사람이 override 로 푼다 · 발행은 Pre-Publish 가 따로 · 남는 것은 취향 리뷰"
       ]
     }
   ]
