@@ -14,16 +14,16 @@
         <string>/bin/bash</string>
         <string>/path/to/forge-harness/scripts/probe_live_eval.sh</string>
         <!-- 🟥 COST + API-KEY DECISION IS THE OPERATOR'S — this template ships with NO default
-             --subset/--ids limiter, i.e. installing it as-is runs the FULL selected set (12
+             the subset / ids limiter flags limiter, i.e. installing it as-is runs the FULL selected set (12
              probes x 2 calls = 24 live `claude -p` invocations) every night. Read
              scripts/probe_live_eval.sh's own header (§COST) before installing, and add a
-             --subset N or --ids P1,P2 argument here if a nightly full-set run is not what you
+             a subset or ids argument argument here if a nightly full-set run is not what you
              want. This plist is a template, not a recommendation of scope. -->
         <!-- 🟥 reps=3 (2026-09-06). 이 인자가 없으면 reps=1 이고, 그때의 pass_rate 로는 문턱을
              정할 수 없다 — 실측: 유효 런 3 개 재채점에서 12 프로브 중 5 개가 flaky, 같은 코퍼스
              15 분 간격 두 런에서 4 개가 뒤집혔고 관측 pass_rate 는 0.50/0.67/0.67 이었다(단일 rep
              노이즈 폭 > 문턱까지의 거리). 판정은 과반, 분산은 리포트 `reps(pass/ran)` 칸에 남는다.
-             ⚠️ 비용이 3 배다: 24 → **72** 회 `claude -p`. 줄이려면 --subset/--ids 를 같이 줘라. -->
+             ⚠️ 비용이 3 배다: 24 → **72** 회 `claude -p`. 줄이려면 the subset / ids limiter flags 를 같이 줘라. -->
         <string>--reps</string>
         <string>3</string>
     </array>
