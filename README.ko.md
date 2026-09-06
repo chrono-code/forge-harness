@@ -45,7 +45,7 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # 또는 이�
 **GitHub Actions 에서** — 같은 게이트를 스텝 하나로, 판정은 타입을 유지한 채:
 
 ```yaml
-- uses: chrono-meta/forge-harness@v3.1.0
+- uses: chrono-meta/forge-harness@v3.1.1
   with:
     files: ${{ steps.changed.outputs.files }}
   env:

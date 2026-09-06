@@ -57,7 +57,7 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # 或者用�
 **在 GitHub Actions 里** —— 同一道门禁作为一个 step，判定依然是带类型的：
 
 ```yaml
-- uses: chrono-meta/forge-harness@v3.1.0
+- uses: chrono-meta/forge-harness@v3.1.1
   with:
     files: ${{ steps.changed.outputs.files }}
   env:

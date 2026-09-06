@@ -1,5 +1,38 @@
 # forge-harness (fh-meta) Changelog
 
+### [3.1.1] — 2026-09-07 — fh-gate Action 의 기본 `level` 이 게이트가 안 받는 값이었다
+
+### 🟥 무엇이 깨져 있었나
+`action.yml` 의 `level` 기본값이 **`'standard'`** 였는데, `scripts/fh-gate.sh:275` 는 `quick` 과
+`full` 만 받고 나머지는 **ARG_ERROR(11)** 로 거절한다. 그리고 `fail-on` 기본 집합에 `ARG_ERROR`
+가 들어 있다. ⇒ **`uses: chrono-meta/forge-harness@v3.1.0` 을 `level:` 없이 쓰면 스텝이 실패했고,
+에러 메시지는 사용자가 설정한 적 없는 인자를 지목했다.**
+
+발행된 3.1.0 타르볼로 실측(소스를 읽은 게 아니다):
+```
+level=standard → rc=11  ERROR: gate level must be 'quick' or 'full' (got: standard)
+level=quick    → rc=12  (DRY_RUN, 정상)
+level=full     → rc=12  (DRY_RUN, 정상)
+```
+
+### 어떻게 잡혔나
+릴리스 마커에 `standpoint: DEGRADED_NOT_RUN — 소비자 install 팔을 안 돌렸다` 라고 적어 두고,
+발행 직후 그 팔을 실제로 돌렸다. **읽어서는 안 나오고 돌려야 나오는 자리**였다.
+레인 28개가 이미 있었지만 전부 **종료코드 매핑**만 봤고 「입력 기본값이 CLI 가 받는 값인가」는
+아무도 안 봤다.
+
+### 고친 것
+- `action.yml` `level` 기본값 `'standard'` → **`'quick'`**, description 도 «다른 값은 안 받는다»로
+- **레인 D0~D2 신설** — `action.yml` 의 기본값과 `fh-gate.sh` 의 허용 집합을 **둘 다 실물에서 추출**해
+  대조한다(어느 쪽도 하드코딩 안 한다 — 그러면 같은 방식으로 또 드리프트한다).
+  D0 = 허용 집합 추출 성공(계기 생사) · D1 = 기본값이 그 안에 있나 · D2 = **컨트롤**(같은 검사가
+  `'standard'` 를 거절하는지 — 아니면 D1 이 아무것도 증명 못 한다). fail-before 실증: 기본값을
+  `standard` 로 되돌리면 **정확히 D1 만** 적색(30 passed · 1 failed), 복원하면 31/0.
+- README 4판의 사용례를 `@v3.1.1` 로
+
+⚠️ **`@v3.1.0` 태그는 그대로 둔다**(태그는 안 움직인다). 그 태그를 쓰는 워크플로는 `level: quick`
+을 명시하면 정상 동작한다.
+
 ### [3.1.0] — 2026-09-06 — QP 플러그인 · `oracle:` 마커 채널 · preprep 도해 굽기 · FH 전체 지도 발행 · fh-gate GitHub Action
 
 ### 왜 minor 인가
