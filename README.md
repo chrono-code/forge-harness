@@ -47,7 +47,7 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # or this
 **In GitHub Actions** — the same gate as a step, with the verdict kept typed:
 
 ```yaml
-- uses: chrono-meta/forge-harness@v3.1.1
+- uses: chrono-meta/forge-harness@v3.1.2
   with:
     files: ${{ steps.changed.outputs.files }}
   env:
