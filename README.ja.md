@@ -58,7 +58,7 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # あるい�
 **GitHub Actions では** — 同じゲートを1つのステップとして、判定は型のあるまま:
 
 ```yaml
-- uses: chrono-meta/forge-harness@v3.1.1
+- uses: chrono-meta/forge-harness@v3.1.2
   with:
     files: ${{ steps.changed.outputs.files }}
   env:

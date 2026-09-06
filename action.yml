@@ -12,7 +12,11 @@
 #   · an UNKNOWN exit code (a future version adding one) must land on HARNESS_ERROR, never on
 #     PASS. That is the fail-closed default below, and `scripts/test_action_yml_lanes.sh` pins it.
 name: 'fh-gate — typed AI code-review verdict'
-description: 'Run forge-harness fh-gate on a diff and get a typed verdict (PASS · PENDING · BLOCKED · ESCALATE · HARNESS_ERROR) as a step output, fail-closed by default.'
+# 🟥 UNDER 125 CHARACTERS. The GitHub Actions Marketplace listing form validates this field and
+# refuses to publish above the limit — measured 2026-09-07 on the v3.1.1 release form:
+# "Description must be less than 125 characters" at 155. Nothing in this repo checked it, so the
+# limit only surfaced at the publish step. Pinned by scripts/test_action_yml_lanes.sh (lane D6).
+description: 'Run fh-gate on a diff for a typed verdict (PASS/PENDING/BLOCKED/ESCALATE) and a `reviewed` flag: not-run is never a pass.'
 author: 'chrono-meta'
 branding:
   icon: 'shield'

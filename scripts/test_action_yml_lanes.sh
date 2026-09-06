@@ -90,6 +90,26 @@ else
   fi
 fi
 
+# D6 — the Marketplace listing form caps `description` at under 125 characters and REFUSES to
+# publish above it. Measured 2026-09-07 on the v3.1.1 release form: "Description must be less than
+# 125 characters" at 155 chars. Nothing here checked it, so the limit surfaced only at the publish
+# step — after the tag and the release already existed, which is the expensive place to learn it.
+# The cap is GitHub's, not ours, so it is a constant here by necessity; that is named, not hidden.
+_DESC="$(python3 - "$A" <<'PY' 2>/dev/null
+import sys, yaml, io
+print(yaml.safe_load(io.open(sys.argv[1], encoding="utf-8")).get("description", ""))
+PY
+)"
+_DESC_LEN=${#_DESC}
+if [ "$_DESC_LEN" -eq 0 ]; then
+  no "D6 could not read action.yml description (instrument dead — the length check below is vacuous)"
+else
+  [ "$_DESC_LEN" -lt 125 ] \
+    && ok "D6 description is $_DESC_LEN chars (< 125, the Marketplace listing cap)" \
+    || no "D6 description is $_DESC_LEN chars — the Marketplace form refuses to publish at 125 or more"
+fi
+
+
 
 [ -n "$MAP" ] || { echo "❌ HARNESS: could not extract the case block from action.yml"; exit 10; }
 printf '%s' "$MAP" | grep -q 'esac' || { echo "❌ HARNESS: extracted block has no esac (truncated)"; exit 10; }
