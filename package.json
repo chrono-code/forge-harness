@@ -297,6 +297,8 @@
     "scripts/test_preprep_adjacent_dup_lanes.sh",
     "scripts/test_preprep_promise_lanes.sh",
     "scripts/test_mapped_tracks_lanes.sh",
+    "scripts/map_postprocess.py",
+    "scripts/test_map_postprocess_lanes.sh",
     "!**/__pycache__",
     "!**/__pycache__/**",
     "!**/*.pyc",
