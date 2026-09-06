@@ -191,3 +191,7 @@
   artifact: EMISSION_VERDICT.md
   sha256: 6e103aaa8b8fd6090644262159fe195f00bf3f0bd08538abf0dbf85365b3ffae
   recorded: 2026-09-05T23:48:07Z
+- run: archify-recon
+  artifact: EMISSION_VERDICT.md
+  sha256: 74ed0d3be0dfd9ab4af95c9e3c9cf32c9b44b41525e4bc12506c0b6d3aa8580a
+  recorded: 2026-09-06T13:43:11Z

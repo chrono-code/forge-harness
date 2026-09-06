@@ -5,7 +5,8 @@
 <p align="center">
   <a href="https://github.com/walkinglabs/awesome-harness-engineering#coding-agent-harnesses"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Harness Engineering"></a>
   <a href="https://github.com/VoltAgent/awesome-agent-skills#community-skills"><img src="https://img.shields.io/badge/listed_in-awesome--agent--skills-0ea5e9.svg" alt="Listed in awesome-agent-skills"></a>
-  <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
+  <a href="https://github.com/anthropics/claude-code"><img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code compatible — official Claude Code repository"></a>
+  <a href="https://chrono-meta.github.io/forge-harness/"><img src="https://img.shields.io/badge/whole_map-interactive-6366f1.svg" alt="FH whole map — interactive diagrams on GitHub Pages"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
   <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e.svg" alt="MIT License"></a>
@@ -53,18 +54,43 @@ npx --package @chrono-meta/fh-gate fh-gate          # 无需安装
 brew tap chrono-meta/forge-harness && brew install forge-harness   # 或者用这个
 ```
 
+**在 GitHub Actions 里** —— 同一道门禁作为一个 step，判定依然是带类型的：
+
+```yaml
+- uses: chrono-meta/forge-harness@v3.1.0
+  with:
+    files: ${{ steps.changed.outputs.files }}
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+这个 step 会输出 `verdict`（PASS · PENDING · BLOCKED · ESCALATE · HARNESS_ERROR · ARG_ERROR ·
+DRY_RUN · UNKNOWN）和 `reviewed`。**`reviewed: false` 不是通过** —— 后端始终没有回答、一次 dry
+run、这层封装不认识的退出码，全都落在这里，而且默认全部让这个 step 失败。这个默认值正是重点：
+一道根本没跑过的检查，绝不能读起来是绿的。想要更宽松的策略就用 `fail-on:` 改，但要清楚你换掉的
+是什么。
+
+
 **你会拿到**
 
 - 变更在合并**之前**就有判定，而且这个判定会指名这次变更**丢了什么**，不是"好像哪里不对"。
   上面那个 GIF 就是对一个真实 diff 的这种判定。
 - 判定是**带类型的值**，不是需要你 grep 的文本：`PASS · PENDING · BLOCKED · ESCALATE`。
 - 只要有 shell 就能跑 —— CI、pre-commit 钩子、别的编码 agent。Claude Code 是可选的。
+- **它审的不只是 agent 的代码，也包括你自己的。** 把一份 diff 指给它，它会点名那处薄弱 —— 悄悄
+  往 PASS 方向降级的判定、根本不存在的引用、泄漏的密钥、没有依据的主张 —— 好让你在合并*之前*改掉
+  再跑一遍。每个 FH 引擎各自落在哪里（造框架 · 写技能/agent · 代码评审 · 不可逆面的门禁 ·
+  上下文延续），以及模型层级与投入程度会改变什么：[`docs/USE_CASES.md`](docs/USE_CASES.md) ·
+  [`docs/model_tier_expectations.md`](docs/model_tier_expectations.md)。
+  这些门禁与 ISO/IEC 的 AI 测试及 AI 质量标准（42119 · 29119-11 · 25059 · 42001）如何对齐 ——
+  以带证据指针的自评形式：[`docs/STANDARDS_ALIGNMENT.md`](docs/STANDARDS_ALIGNMENT.md)。
 
 ### ② 整套框架 —— 在 Claude Code 里
 
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
+claude plugin install -s user fh-qp@forge-harness      # 可选：QP（Quality Platform）—— 通过本会话的 Playwright / computer-use MCP，对 Web/桌面应用做 计划→执行→回归
 git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
 cd ~/projects/forge-harness && claude        # 然后打个招呼：你好 · hi · 안녕 · こんにちは
 ```
@@ -80,7 +106,7 @@ cd ~/projects/forge-harness && claude        # 然后打个招呼：你好 · hi
 
 - 你不必再自己挑该跑哪一道检查。它读出你正要做什么 —— 公开、删除、改写历史、开 PR ——
   然后叫出那一刻该用的门禁。①是一条你要记住的命令，②是替你记住的那一层。
-- **40 种技能 · 8 个 agent**，用平常话就能叫：诊断一个项目、加速一个项目、给新项目接线。
+- **41 种技能 · 8 个 agent**，用平常话就能叫：诊断一个项目、加速一个项目、给新项目接线。
 - `tracks/` 留住每次会话学到的东西，于是**第二次会话从第一次停下的地方开始**。
   复利长在这里，第一天也判断不了的同样在这里。
 - 同一件事请求三次，它就不再回答了，而是给你造一个专门回答它的框架。
@@ -178,9 +204,13 @@ sentinel，以及一处分隔符取反的解析。同样的输入，同样的盲
 > `tracks/` 记忆。
 >
 > 🟥 **有两个版本号，它们量的不是同一件事。** **包版本**（页首的 npm 徽章）是你装到的东西；
-> **身份成熟度发布**（`identity-v0.5.0`，在 Releases 页上）是这个框架走到了哪一步 —— 刻意停在
+> **身份成熟度发布**（`identity-v1.0.0`，在 Releases 页上）是这个框架走到了哪一步 —— 刻意停在
 > `0.x`，因为它拒绝在五重身份还没全绿时就声称全绿。两者不在同一把尺子上，一个高的包版本号并不
 > 等于成熟：[`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)。
+> 🟢 **2026-09-04 —— 两个计数器合并了。** `identity-v1.0.0`（每一重身份都 🟢）是身份轨道上的
+> **最后**一个标签，也是第一个带 *Latest* 徽章的标签。从此以后，一次发布就是**两者共用的一个
+> 号码** —— 下一个是承载身份 1.0 的那个包主版本 —— 发布说明用英文写，并附一份韩文摘要。上面那段
+> 保留下来，是作为"当年还没全绿时为何要把两条轨道分开"的理由；它是历史，不是当下的规则。
 
 ---
 
@@ -238,11 +268,18 @@ Gemini、本地）是为了共同演化，不是为了糊住弱点。**去相关
 
 ## 它是怎么被造出来的 —— 三 · 四 · 五 · 六
 
-**三段工序 · 四大引擎 · 五重身份 · 六轴验证。** 上面那五重身份是表面；**四大引擎**
-（`judgment-circuit` · `ship-gate` · `context-continuity` · `external-grounding`）是它们下面的
-那份能力；而 **三段工序** —— ① 在设计 *之前* 先立判断回路 → ② 中段并行去相关 → ③ 在六条轴上烧
-一遍 —— 是那些引擎被锻造出来的顺序，速度是末尾那支箭，不是第四个方框。⚠️ **六条轴不是第四层**，
-它们是 *③ 段究竟由什么构成*。完整正典，以及为什么这刻意 *不是* 一个干净的分层：
+**三段工序 · 四大引擎 · 五重身份 · 六轴验证。** 上面那五重身份，是工序与引擎彼此咬合的地方浮现
+出来的东西 —— 这五重是已经锻打过、评过级、稳定下来的那些；其余的身份则随着你往哪个方向驾驭、
+推到多远而浮现又退去（操作者的表述，2026-09-05）。**四大引擎**（`judgment-circuit` · `ship-gate` ·
+`context-continuity` · `external-grounding`）是所有带 FH 特征的产出共同的那个内核；而 **三段工序**
+—— ① 在设计 *之前* 先立判断回路 → ② 中段并行去相关 → ③ 在六条轴上烧一遍 —— 是 FH 每一件活计都要
+走的顺序，锻造一台引擎本身也不例外，速度是末尾那支箭，不是第四个方框。**整张地图** —— FH 是什么、
+它是怎么实现的（每个节点都是一条真实路径）、为什么可信（门禁 · 检查通道 · 等级，都带文件路径），
+以及哪些是操作者本地的、哪些是通用的 —— 都在一页里：[`docs/map/FH_MAP.md`](docs/map/FH_MAP.md)，
+旁边还有三张可交互的图 —— 可在 **[chrono-meta.github.io/forge-harness](https://chrono-meta.github.io/forge-harness/)** 上直接看。
+
+[![FH 整张地图 —— 从入口 → 三段工序 → 四大引擎 → 身份的流程（点击查看可交互版本）](docs/map/fh_process.workflow.png)](https://chrono-meta.github.io/forge-harness/map/fh_process.workflow.html)
+⚠️ **六条轴不是第四层**，它们是 *③ 段究竟由什么构成*。完整正典，以及为什么这刻意 *不是* 一个干净的分层：
 [`fh_three_layer_canon.md`](knowledge/shared/harness-core/fh_three_layer_canon.md) —— 同样这三段
 用铁匠的用词（锻造 · 淬火 · 回火）讲一遍，在 [`ETHOS.md`](docs/ETHOS.md#the-forge) 里。
 

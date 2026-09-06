@@ -30,6 +30,23 @@ VALID_CLASSES = ('mandatory-pass', 'measured', 'judged')
 # rather than disappearing into pattern tuning.
 CLI_EVENT_EXCLUDE = {"G-CODE-01", "G-CODE-02", "G-CODE-03"}
 
+# The second judgment call, and a different one: these rows are perfectly good CHAT utterances, but
+# the behavior they check is delegated to a surface THE ARM DOES NOT HAVE. G-TRIG-03 is the measured
+# case (2026-09-06): its probes.md rationale cites CLAUDE.md's Autonomous-Initiative table, but the
+# `harness-doctor` row was deliberately REMOVED from that table in the 2026-07-17 row diet and
+# delegated to the skill's own frontmatter `description`. The arm runs with
+# `--tools "Read,Grep,Glob"` and no Skill tool — a known-pair confirmed it ("list every Skill
+# available to you" -> NO-SKILL-TOOL, while the tool-listing control answered correctly) — so the
+# probe was scoring a route that cannot exist in its own environment. It failed 0/5 for that reason
+# and for no other.
+#
+# 🟥 EXCLUDING IT DOES NOT MEAN THE HARNESS IS FINE. "Does the row-diet delegation actually fire at
+# the floor tier?" is now UNMEASURED, not answered — that question needs a different instrument (an
+# arm that can see the skill layer), and building one re-calibrates all 12 probes, so it is not a
+# calibration-week change. Named here so the gap stays greppable instead of dissolving into a
+# permanently-red lane nobody reads.
+ARM_CAPABILITY_EXCLUDE = {"G-TRIG-03"}
+
 
 def parse_probes_md(path):
     """Return [{id, input, class, raw_class}] for every table-row probe in probes.md.
@@ -117,6 +134,8 @@ def classify(id_, input_pat, class_tok):
         return 'EXCLUDED', 'INERT-ANCHOR'
     if id_ in CLI_EVENT_EXCLUDE:
         return 'EXCLUDED', 'NOT-CHAT-UTTERANCE (shell command, not a chat turn)'
+    if id_ in ARM_CAPABILITY_EXCLUDE:
+        return 'EXCLUDED', 'NOT-LIVE-MEASURABLE (skill-description route; the arm has no Skill tool)'
     if not UTTERANCE_RE.search(input_pat):
         return 'EXCLUDED', 'NO-UTTERANCE (no quoted/backticked literal a user would type)'
     return 'SELECTABLE', None
@@ -285,10 +304,30 @@ def score_probe(primary_text, control_text, polarity, expect_re):
         return (PASS if not primary_hit else FAIL), primary_hit, control_hit
 
 
-def score_run(live_rows, run_root, ids_in_order, threshold, model):
-    """Read <run_root>/<id>/primary_r1.txt + control_r1.txt for every id, score each, and return
-    a report dict. Does not touch the network or spawn `claude` — pure filesystem + regex."""
+def score_run(live_rows, run_root, ids_in_order, threshold, model, reps=1):
+    """Read <run_root>/<id>/{primary,control}_r{1..reps}.txt for every id, score EACH rep, take the
+    majority, and return a report dict. Does not touch the network or spawn `claude` — pure
+    filesystem + regex.
+
+    WHY MAJORITY AND WHY THE DISTRIBUTION IS KEPT (2026-09-06, measured). Re-scoring three live run
+    artifacts found 5 of 12 probes FLAKY: two runs 15 minutes apart, identical `corpus_head_date`,
+    identical model and prompts, flipped 4 probes. Observed pass_rate across those runs was
+    0.50 / 0.67 / 0.67 — i.e. the single-rep noise floor is wider than the distance to the 0.80
+    threshold, so a reps=1 pass_rate cannot support a threshold decision at all. Majority over
+    reps>=3 narrows it; keeping `pass_k/ran_k` in the row keeps the variance visible instead of
+    collapsing it into a bare verdict (a verdict with no spread reads the same whether it was 3/3
+    or 2/3, and those are different facts).
+
+    Verdict composition, in this order — each branch exists to keep a distinct non-answer distinct:
+      * no rep produced BOTH texts            -> FAILED-TO-RUN (the run, not the rule, is the failure)
+      * ANY rep scored UNCALIBRATED           -> UNCALIBRATED. Deliberately NOT majority-voted: the
+                                                 pattern firing on a known-negative even once means
+                                                 discrimination is in doubt, and a majority would
+                                                 launder that into a pass.
+      * otherwise                             -> PASS iff strict majority of the reps that ran
+    """
     by_id = {p['id']: p for p in live_rows}
+    reps = max(1, int(reps or 1))
     rows = []
     for pid in ids_in_order:
         spec = by_id.get(pid)
@@ -296,15 +335,39 @@ def score_run(live_rows, run_root, ids_in_order, threshold, model):
             rows.append({'id': pid, 'verdict': 'UNKNOWN-ID', 'primary_hit': None, 'control_hit': None})
             continue
         base = os.path.join(run_root, pid)
-        primary_text = _read_text(os.path.join(base, 'primary_r1.txt'))
-        control_text = _read_text(os.path.join(base, 'control_r1.txt'))
-        verdict, phit, chit = score_probe(primary_text, control_text, spec['polarity'], spec['expect_re'])
+        per_rep = []          # [(verdict, phit, chit, primary_text, control_text)]
+        for i in range(1, reps + 1):
+            pt = _read_text(os.path.join(base, 'primary_r%d.txt' % i))
+            ct = _read_text(os.path.join(base, 'control_r%d.txt' % i))
+            v, ph, ch = score_probe(pt, ct, spec['polarity'], spec['expect_re'])
+            per_rep.append((v, ph, ch, pt, ct))
+
+        ran_reps = [r for r in per_rep if r[0] != FAILED_TO_RUN]
+        uncal = [r for r in per_rep if r[0] == UNCALIBRATED]
+        pass_reps = [r for r in per_rep if r[0] == PASS]
+
+        if not ran_reps:
+            verdict = FAILED_TO_RUN
+        elif uncal:
+            verdict = UNCALIBRATED
+        else:
+            verdict = PASS if (len(pass_reps) * 2 > len(ran_reps)) else FAIL
+
+        # primary_hit/control_hit stay single-valued for backward compatibility with the existing
+        # report columns and lanes: they report rep 1, and `reps` carries the spread.
+        phit, chit = per_rep[0][1], per_rep[0][2]
         row = {'id': pid, 'verdict': verdict, 'primary_hit': phit, 'control_hit': chit,
-               'polarity': spec['polarity'], 'reason': ''}
+               'polarity': spec['polarity'], 'reason': '',
+               'reps': '%d/%d' % (len(pass_reps), len(ran_reps)) if ran_reps else '0/0',
+               'reps_requested': reps,
+               'rep_verdicts': [r[0] for r in per_rep]}
+        if len(ran_reps) > 1 and 0 < len(pass_reps) < len(ran_reps):
+            row['reason'] = 'FLAKY across reps (%s)' % ','.join(r[0] for r in per_rep)
         if verdict == FAILED_TO_RUN:
             # Diagnostic only — score_probe already decided the verdict above from exactly the
-            # same primary_text/control_text; this never changes it, only explains it.
+            # same texts; this never changes it, only explains it. Reported from rep 1.
             reasons = []
+            primary_text, control_text = per_rep[0][3], per_rep[0][4]
             if primary_text is None or primary_text == '':
                 reasons.append('primary: %s' % _failure_reason(base, 'primary'))
             if control_text is None or control_text == '':
@@ -366,11 +429,12 @@ def render_report_md(select_result, score_result, run_date):
     if score_result is not None:
         lines.append("## Run — model=%s threshold=%.2f" % (score_result['model'], score_result['threshold']))
         lines.append("")
-        lines.append("| Probe | Verdict | primary_hit | control_hit | polarity | Reason |")
-        lines.append("|---|---|---|---|---|---|")
+        lines.append("| Probe | Verdict | reps(pass/ran) | primary_hit | control_hit | polarity | Reason |")
+        lines.append("|---|---|---|---|---|---|---|")
         for r in score_result['rows']:
-            lines.append("| %s | %s | %s | %s | %s | %s |" % (
-                r['id'], r['verdict'], r.get('primary_hit'), r.get('control_hit'), r.get('polarity', ''),
+            lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
+                r['id'], r['verdict'], r.get('reps', '-'),
+                r.get('primary_hit'), r.get('control_hit'), r.get('polarity', ''),
                 _md_escape(r.get('reason', ''))))
         lines.append("")
         pr = score_result['pass_rate']
@@ -451,7 +515,8 @@ def _cmd_score(args):
     with open(args.select_json, encoding='utf-8') as f:
         select_result = json.load(f)
     ids_in_order = [line.strip() for line in open(args.ids_file, encoding='utf-8') if line.strip()]
-    score_result = score_run(live_rows, args.run_root, ids_in_order, args.threshold, args.model)
+    score_result = score_run(live_rows, args.run_root, ids_in_order, args.threshold, args.model,
+                             reps=getattr(args, 'reps', 1))
 
     print("── probe_live_eval score ──────────────────────────────────────────")
     for r in score_result['rows']:
@@ -501,6 +566,7 @@ def main():
     sc.add_argument('--model', required=True)
     sc.add_argument('--report-out')
     sc.add_argument('--run-date')
+    sc.add_argument('--reps', type=int, default=1)
 
     args = ap.parse_args()
     if args.cmd == 'select':

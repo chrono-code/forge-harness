@@ -5,7 +5,8 @@
 <p align="center">
   <a href="https://github.com/walkinglabs/awesome-harness-engineering#coding-agent-harnesses"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Harness Engineering"></a>
   <a href="https://github.com/VoltAgent/awesome-agent-skills#community-skills"><img src="https://img.shields.io/badge/listed_in-awesome--agent--skills-0ea5e9.svg" alt="Listed in awesome-agent-skills"></a>
-  <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
+  <a href="https://github.com/anthropics/claude-code"><img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code compatible — official Claude Code repository"></a>
+  <a href="https://chrono-meta.github.io/forge-harness/"><img src="https://img.shields.io/badge/whole_map-interactive-6366f1.svg" alt="FH whole map — interactive diagrams on GitHub Pages"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
   <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e.svg" alt="MIT License"></a>
@@ -54,6 +55,24 @@ npx --package @chrono-meta/fh-gate fh-gate          # インストール不要
 brew tap chrono-meta/forge-harness && brew install forge-harness   # あるいはこちら
 ```
 
+**GitHub Actions では** — 同じゲートを1つのステップとして、判定は型のあるまま:
+
+```yaml
+- uses: chrono-meta/forge-harness@v3.1.0
+  with:
+    files: ${{ steps.changed.outputs.files }}
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+このステップは `verdict`（PASS · PENDING · BLOCKED · ESCALATE · HARNESS_ERROR · ARG_ERROR ·
+DRY_RUN · UNKNOWN）と `reviewed` を出します。**`reviewed: false` は合格ではありません** —
+バックエンドが最後まで答えなかった場合、dry run、このラッパーが知らない終了コード、そのすべてが
+ここに落ち、既定ではいずれもステップを失敗させます。その既定こそが要点です: 走らなかった検査が
+グリーンに読めては絶対にいけません。もっと緩い方針が欲しければ `fail-on:` で変えられますが、
+何と引き換えにしているかは分かった上でどうぞ。
+
+
 **得られるもの**
 
 - 変更がマージされる**前に**判定が出ます。その判定は、この変更が**何を失ったか**を名指しします。
@@ -61,12 +80,22 @@ brew tap chrono-meta/forge-harness && brew install forge-harness   # あるい�
 - 判定は grep するテキストではなく、**型のある値**です: `PASS · PENDING · BLOCKED · ESCALATE`。
 - シェルが動く場所ならどこでも動きます。CI、pre-commit フック、別のコーディングエージェント。
   Claude Code は任意です。
+- **エージェントのコードだけでなく、あなたのコードも見ます。** diff を指し示せば、弱いところを
+  名指しします — 静かに PASS 側へ劣化していく判定、存在しない参照、漏れた秘密、根拠のない主張 —
+  マージの*前に*直して回し直せます。各 FH エンジンがどこに効くのか（ハーネスを作る · スキル/
+  エージェントを書く · コードレビュー · 不可逆な面のゲート · 文脈の連続性）、そしてモデルのティアと
+  かける手間で何が変わるのか: [`docs/USE_CASES.md`](docs/USE_CASES.md) ·
+  [`docs/model_tier_expectations.md`](docs/model_tier_expectations.md)。
+  これらのゲートが ISO/IEC の AI テスト規格・AI 品質規格（42119 · 29119-11 · 25059 · 42001）と
+  どう対応するかを、証拠へのポインタ付きの自己評価として:
+  [`docs/STANDARDS_ALIGNMENT.md`](docs/STANDARDS_ALIGNMENT.md)。
 
 ### ② ハーネス全体 — Claude Code の中で
 
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
+claude plugin install -s user fh-qp@forge-harness      # 任意: QP (Quality Platform) — セッションの Playwright / computer-use MCP を通して Web・デスクトップアプリを 計画→実行→回帰
 git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
 cd ~/projects/forge-harness && claude        # そのあと挨拶を一言: こんにちは · hi · 안녕 · 你好
 ```
@@ -83,7 +112,7 @@ cd ~/projects/forge-harness && claude        # そのあと挨拶を一言: こ�
 - どの検査を掛けるかを自分で選ばなくてよくなります。いま何をしようとしているか — 公開、削除、
   履歴の書き換え、PR — を読み取り、その場に合うゲートを名前で挙げます。①が覚えて打つコマンド
   一つなら、②は代わりに覚えておく層です。
-- **スキル40種 · エージェント8種**を普通の言葉で呼べます。プロジェクトを診断し、加速し、新しく配線します。
+- **スキル41種 · エージェント8種**を普通の言葉で呼べます。プロジェクトを診断し、加速し、新しく配線します。
 - `tracks/` が各セッションの学びを残すので、**2回目のセッションが1回目の止まった場所から始まります**。
   複利が付くのはここで、初日には判断できないのもここです。
 - 同じことを三度頼むと、答えるのをやめます。代わりに、その答えを出すハーネスを作って渡します。
@@ -191,10 +220,15 @@ cd ~/projects/forge-harness && claude        # そのあと挨拶を一言: こ�
 > ガバナンスも、それらをセッションをまたいで複利にする `tracks/` の記憶もです。
 >
 > 🟥 **バージョン番号は2つあり、測っているものが違います。** **パッケージのバージョン**（上部の npm
-> バッジ）はあなたが入れるものです。**アイデンティティ成熟度のリリース**（`identity-v0.5.0`、
+> バッジ）はあなたが入れるものです。**アイデンティティ成熟度のリリース**（`identity-v1.0.0`、
 > Releases ページ）はハーネスがどこまで来たかです — 5つの正体が緑でないうちは緑と言うことを拒むので、
 > 設計上 `0.x` です。二つは同じ物差しではなく、パッケージ番号が高いことは成熟ではありません:
 > [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md)。
+> 🟢 **2026-09-04 — 2つのカウンターが合流します。** `identity-v1.0.0`（正体がすべて 🟢）は
+> アイデンティティ系列の**最後**のタグであり、*Latest* バッジを付ける最初のタグです。これ以降、
+> リリースは**両方を1つの番号で**表します — 次はアイデンティティ 1.0 を載せるパッケージのメジャー
+> です — そしてリリースノートは英語で書き、韓国語の要約を添えます。上の段落は、すべてが緑では
+> なかった間になぜ系列を分けていたのかという理由として残します。いまのルールではなく、履歴です。
 
 ---
 
@@ -257,10 +291,20 @@ Claude Code ネイティブの**自動化層**（エージェント、フック�
 
 ## どう作られているか — 3段 · 4大 · 5つ · 6軸
 
-**3段工程 · 4大エンジン · 5つの正体 · 6軸検証。** 上の正体は表面です。その下の能力が**4大エンジン**
-（`judgment-circuit` · `ship-gate` · `context-continuity` · `external-grounding`）で、そのエンジンを
-鍛える順序が**3段工程** — ① 設計の*前に*判断回路を植える → ② 中間で並列脱相関 → ③ 6つの軸で焼き切る —
-です。速度は最後の矢印であって、4つめの箱ではありません。⚠️ **6軸は4つめの層ではありません** —
+**3段工程 · 4大エンジン · 5つの正体 · 6軸検証。** 上の正体は、工程とエンジンが噛み合うところに
+現れてくるものです — この5つは鍛えられ、等級が付き、安定したもので、それ以外の正体はどちらへ舵を
+切りどこまで押し込むかによって現れては引いていきます（運用者の定式化、2026-09-05）。**4大エンジン**
+（`judgment-circuit` · `ship-gate` · `context-continuity` · `external-grounding`）は FH らしい成果が
+すべてそこから出てくる中核であり、**3段工程** — ① 設計の*前に*判断回路を植える → ② 中間で並列脱相関
+→ ③ 6つの軸で焼き切る — は、エンジンを鍛えるときも含めて FH のあらゆる仕事が踏む順序です。速度は
+最後の矢印であって、4つめの箱ではありません。**全体地図** — FH とは何か、どう実装されているか
+（どのノードも実在するパス）、なぜ信頼できるのか（ゲート · レーン · 等級をファイルパス付きで）、
+何が運用者ローカルで何が汎用か — は1ページにまとまっています:
+[`docs/map/FH_MAP.md`](docs/map/FH_MAP.md)。その隣にインタラクティブな図が3枚あり、
+**[chrono-meta.github.io/forge-harness](https://chrono-meta.github.io/forge-harness/)** で公開されています。
+
+[![FH 全体地図 — 扉 → 3段工程 → 4大エンジン → 正体へと続く流れ（クリックでインタラクティブ版）](docs/map/fh_process.workflow.png)](https://chrono-meta.github.io/forge-harness/map/fh_process.workflow.html)
+⚠️ **6軸は4つめの層ではありません** —
 ③段階が*何でできているか*です。完全な正典と、なぜこれがきれいな積み木では*ない*のか:
 [`fh_three_layer_canon.md`](knowledge/shared/harness-core/fh_three_layer_canon.md) — 同じ三つを鍛冶屋の
 言葉（鍛え · 焼き入れ · 焼き戻し）で言い直したものは [`ETHOS.md`](docs/ETHOS.md#the-forge) にあります。
