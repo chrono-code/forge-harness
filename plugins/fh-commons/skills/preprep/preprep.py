@@ -774,7 +774,7 @@ def main():
     #    [[feedback_rule_misdescribes_its_own_machine]] · [[feedback_instrument_vs_target_and_budget]]
     _lanes = sorted(n[5:] for n in globals() if n.startswith('lane_') and callable(globals()[n]))
     _mods = sorted(m for m in ('lane_promise', 'lane_adjacent_dup', 'lane_progression',
-                                'lane_slide_relations', 'lane_geometry', 'lane_diagram')
+                                'lane_slide_relations', 'lane_geometry', 'lane_diagram', 'lane_slide_refs')
                    if os.path.exists(os.path.join(HERE, m + '.py')))
     # 🟥 2026-09-04 신설 — `--lane R1,R2,...` 로 **새 모듈 레인(R1-R5·P1/P3)만** 골라 끈다/켠다.
     #    L1~L11 은 아직 이 필터를 안 탄다(usage 줄의 --lane 은 그쪽엔 미배선인 채 남아 있다 —
@@ -856,6 +856,17 @@ def main():
         except Exception as _e:
             notes.append('R1-R5 slide-relations : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)'
                          % (type(_e).__name__, _e))
+    # L13 slide-refs — 「N p」 리터럴 장 번호 참조가 실재하는 장을 가리키나(2026-09-06 신설).
+    #   이웃 레인들은 «말로 가리키는 것»만 본다(L5/L8 화면 재사용·시각 지시 · R1~R5 접속어).
+    #   숫자 참조는 아무도 안 봤고, 장을 빼면 그 뒤가 통째로 당겨진다.
+    #   차단은 «범위 밖» 하나뿐 — 「그 번호가 맞는 장인가」는 의미 판단이라 안 본다.
+    try:
+        import lane_slide_refs
+        _f13, _n13 = lane_slide_refs.scan(cfg, root)
+        findings += _f13; notes += _n13
+    except Exception as _e:
+        notes.append('L13 slide-refs : 계기 미실행 — NOT_WIRED (%s: %s) (0 아님)'
+                     % (type(_e).__name__, _e))
     # L12 diagram — 타입 JSON 도해가 «지금 JSON» 에서 validate 를 거쳐 구워졌나(2026-09-05 신설).
     #   차단: 선언된 diagram_source 표면에 한해 지문·validate·해상도·viewBox 폭·여백을 본다.
     #   영수증 없는 PNG(손그림)는 UNMEASURED 노트로만 — 0 이 아니다.
