@@ -400,8 +400,8 @@ Claude Code 不会按任务复杂度自动选择模型 —— 这个要你设置
 | [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) | 如何贡献技能与模式 |
 | [`tracks/_contrib/`](tracks/_contrib/README.md) | **同意通道** —— 分享一个去标识化的工作会话；仓库在众多操作者之间复利累积 |
 
-> **FH 论文**：v1.0 方法论 · [Zenodo](https://zenodo.org/records/20397566)（DOI
-> 10.5281/zenodo.20397566）· cs.SE companion，已发表 ·
-> [Zenodo](https://zenodo.org/records/20680081)（DOI 10.5281/zenodo.20680081）· cs.AI companion
+> **FH 论文**：v1.0.1 方法论 · [Zenodo](https://zenodo.org/records/22542168)（DOI
+> 10.5281/zenodo.22542168）· cs.SE companion v1.1，已发表 ·
+> [Zenodo](https://zenodo.org/records/20740038)（DOI 10.5281/zenodo.20740038）· cs.AI companion
 > 筹备中。这些、独立的收敛性工作，以及每一项的注意事项：
 > [`docs/OUTPUT_EVIDENCE.md`](docs/OUTPUT_EVIDENCE.md)。

@@ -146,4 +146,4 @@ This is the N-fold synergy claim stated precisely. The controlled experiment des
 - `multi_model_sidecar_strategy.md` — orchestrator-swap experiment that generated this audit
 - `README.md §Architecture` — 2-layer design (methodology vs automation)
 - `AGENTS.md` — 6-agent registry (fact-checker added after this audit)
-- FH paper (Zenodo: 10.5281/zenodo.20397566) — harness-as-durable-layer thesis this positioning extends
+- FH paper (Zenodo: 10.5281/zenodo.20397565) — harness-as-durable-layer thesis this positioning extends

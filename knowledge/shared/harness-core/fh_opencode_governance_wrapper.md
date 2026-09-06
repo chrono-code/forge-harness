@@ -160,4 +160,4 @@ On session end, check `/tmp/fh-pending-governance.txt` and run the governance pa
 - `fh_ecosystem_positioning.md` — ecosystem context, synergy map, v2 paper connection
 - `multi_model_sidecar_strategy.md` — multi-model orchestration (sidecar pattern for adding Gemini/Codex review)
 - `tracks/_meta/fh_opencode_governance_experiment_2026_05_31.md` — full empirical record (local)
-- FH paper (Zenodo: 10.5281/zenodo.20397566) — harness-as-durable-layer thesis
+- FH paper (Zenodo: 10.5281/zenodo.20397565) — harness-as-durable-layer thesis

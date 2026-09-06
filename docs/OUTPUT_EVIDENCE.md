@@ -35,8 +35,8 @@
 
 | Artifact | Reference |
 |---|---|
-| Paper v1.0 — methodology | Zenodo DOI [`10.5281/zenodo.20397566`](https://zenodo.org/records/20397566) — 2-layer design, 6-axis framework, 4-agent orchestration, compounding loop, with empirical evidence. arXiv in review |
-| cs.SE companion — governance-gate methodology | **published** · Zenodo DOI [`10.5281/zenodo.20680081`](https://zenodo.org/records/20680081) (latest v1.1 `10.5281/zenodo.20740038` · CC-BY-4.0) · arXiv **submitted** (cs.SE). The moderation outcome is not tracked in this repo, so treat "submitted" as the last state this page can vouch for, not as current |
+| Paper v1.0.1 — methodology | Zenodo DOI [`10.5281/zenodo.22542168`](https://zenodo.org/records/22542168) (all versions: `10.5281/zenodo.20397565`) — 2-layer design, 6-axis framework, 4-agent orchestration, compounding loop, with empirical evidence. **arXiv: rejected at moderation (2026-09-06)**; v1.0.1 is the corrected version (11 of 17 reference entries in v1.0 did not match the works cited — see the erratum in the record). Do not read the rejection as an assessment of the methodology, and do not read v1.0.1 as re-reviewed: it has not been resubmitted |
+| cs.SE companion — governance-gate methodology | **published** · Zenodo DOI [`10.5281/zenodo.20740038`](https://zenodo.org/records/20740038) (v1.1; all versions `10.5281/zenodo.20680080` · CC-BY-4.0) · arXiv **submitted** (cs.SE). The moderation outcome is not tracked in this repo, so treat "submitted" as the last state this page can vouch for, not as current |
 | cs.AI companion — "Governance Dividend" | in preparation |
 | Package | npm [`@chrono-meta/fh-gate`](https://www.npmjs.com/package/@chrono-meta/fh-gate) — multi-backend governance gate (claude · codex · auto) |
 | Codex-compatible | `docs/codex-compat.md` — methodology layer runs model-agnostic. Marked **beta** there in the *validation-maturity* sense (external validation is still thin), **not** the *scope* sense: partial automation-layer support is the design, not an unfinished state |

@@ -84,7 +84,7 @@ Limitations of the userspace approach (why native support is needed):
 - Stop hook cannot invoke Claude recursively (verification triggers on next session, not immediately)
 - Checkpoint requires manual commit — no structured sub-goal output from Haiku
 
-**Paper reference**: forge-harness: A Meta-Harness Engineering Platform for Terminal-Native Claude Code Workflows. Zenodo DOI: 10.5281/zenodo.20397566. arXiv: [pending number].
+**Paper reference**: forge-harness: A Meta-Harness Engineering Platform for Terminal-Native Claude Code Workflows. Zenodo DOI: 10.5281/zenodo.20397565. arXiv: [pending number].
 
 ---
 
