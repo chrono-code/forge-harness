@@ -3071,6 +3071,15 @@ _acceptance_evidence_line() {   # $1 = marker path (비었거나 없으면 n/a)
   fi
   for f in crossfamily standpoint thirdparty oracle; do
     v=$(sed -n "s/^[[:space:]]*${f}:[[:space:]]*\([^[:space:]][^[:space:]]*\).*/\1/p" "$m" | head -1)
+    # 🟥 첫 실사용(이 훅의 첫 두-판정 커밋)이 즉시 잡은 것: 값이 `checked(확인한 것 = …)` 처럼
+    #    **괄호 안에 공백**을 담으면 첫 토큰이 `checked(확인한` 으로 잘려, 값도 아니고 문법도
+    #    깨져 보이는 문자열이 찍힌다. 반면 `panel(codex,gemini)` · `tier2(qasp)` 는 괄호가 값의
+    #    일부라 살려야 한다. 판별자는 **괄호가 닫혔는가** 하나뿐이다 — 안 닫혔으면 여는 괄호
+    #    앞까지가 값이다. (마커 defeater 에 «관측될 것»으로 적어 둔 그 줄이 그대로 발화했다.)
+    case "$v" in
+      *'('*')'*) : ;;                      # panel(codex,gemini) — 괄호가 값의 일부
+      *'('*)     v="${v%%(*}" ;;           # checked(확인한 … — 잘린 괄호는 값이 아니다
+    esac
     [ -n "$v" ] || v='(없음)'
     out="${out}${out:+ · }${f}=${v}"
   done
@@ -3090,7 +3099,7 @@ if [ "$FAILED" -eq 1 ]; then
 fi
 
 echo " ✅ ALL AXES PASSED — commit allowed"
-echo "    functional          : PASS (Axis 1 회귀 · 레인 · 매니페스트)"
+echo "    functional         : PASS (Axis 1 회귀 · 레인 · 매니페스트)"
 echo "    $(_acceptance_evidence_line "${MARKER:-}")"
 echo "    🟥 둘은 한 판정이 아니다 — 위는 «초록인가», 아래는 «무엇이 기록됐나»다."
 echo "       형식이 통과했다는 뜻이지 그 값이 참이라는 뜻이 아니다 (arXiv:2609.04167)."

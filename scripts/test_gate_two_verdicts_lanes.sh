@@ -78,6 +78,21 @@ lane L6-indented "  crossfamily: declined — 근거 있음" "crossfamily=declin
 lane L7-first-wins "crossfamily: UNKNOWN — 안 봤다
 crossfamily: panel(codex) — 나중 줄" "crossfamily=UNKNOWN"
 
+# L8 🟥 첫 실사용이 잡은 결함 — 괄호 «안»에 공백이 있으면 값이 잘려 문법도 깨진 문자열이 찍혔다
+#    (`thirdparty: checked(확인한 것 = …)` → `checked(확인한`). 판별자는 «괄호가 닫혔는가» 하나.
+lane L8-open-paren-trimmed "thirdparty: checked(확인한 것 = 초록 원문 대조)" "thirdparty=checked"
+# L9 반대편 — 닫힌 괄호는 값의 일부라 그대로 살아야 한다(L8 의 수리가 이걸 깨면 안 된다)
+lane L9-closed-paren-kept "crossfamily: panel(codex,gemini) — 2라운드" "crossfamily=panel(codex,gemini)"
+lane L9b-tier-paren-kept  "standpoint: tier2(qasp) — 명령과 출력" "standpoint=tier2(qasp)"
+
+# L8b 잘린 값이 «그대로» 새어나오지 않는지 직접 확인 (needle 부재를 단언)
+printf 'thirdparty: checked(확인한 것 = x)\n' > "$T/p.marker"
+if run "$T/p.marker" | grep -qF 'checked(확인한'; then
+  echo "  ❌ L8b 잘린 괄호 문자열이 아직 출력에 있다"; FAIL=1
+else
+  echo "  ✅ L8b 잘린 괄호 문자열은 출력에 없다"
+fi
+
 # ── 컨트롤 A (판별력): 값이 다르면 출력도 달라야 한다 ─────────────────────
 printf 'crossfamily: panel(codex) — x\n' > "$T/a.marker"
 printf 'crossfamily: DEGRADED_SINGLE_FAMILY — y\n' > "$T/b.marker"
