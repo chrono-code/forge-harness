@@ -138,9 +138,20 @@ if ! printf '%s' "$NORM" | grep -qE 'set -o pipefail|set -[a-zA-Z]*o[a-zA-Z]* pi
   # Branch (b)'s optional `([^|&]*;)?` prefix keeps `| (sort; tail -5); echo $?` caught — the
   # filter need not be the group's FIRST command, only its LAST — while the `;` requirement keeps
   # the filter at a statement start, so `| (echo cat); rc=$?` does not match through a bare word.
+  # 🟥 «바로 다음 문장» 으로 좁힌다 (2026-09-06, 운영자 실사용 신고 + known-pair 재현).
+  #   종전 꼬리는 `[;&].*\$\?` 라 파이프 뒤 **어디든** `$?` 가 있으면 잡았다 — 그게 **다른
+  #   명령의** `$?` 여도. 한 호출에 문장이 여럿인 실사용 커맨드는 거의 항상 걸린다.
+  #   실측 4팔: ①`out=$(c); rc=$?; echo "$out"|tail` 안 터짐(정상) ②`c|tail; echo $?` 터짐
+  #   (known-positive) ③표시전용 안 터짐 ④`out=$(a); rc=$?; echo "$out"|tail; b; echo $?`
+  #   **터짐 = 오탐**. ④의 `$?` 는 `b` 의 것이라 안 잡는 것이 옳다.
+  #   ⇒ 꼬리를 `[;&]&?[^;&|]*\$\?` 로 — 파이프라인 **직후 한 문장** 안에서만 읽는다.
+  #   `&?` 는 `cmd | tail && echo $?`(진짜 결함)를 살리기 위한 것이다.
+  #   이 좁힘의 재현율 손실은 사실상 0 이다: 사이에 명령이 끼면 `$?` 는 그 명령의 것이므로
+  #   원래 **잡으면 안 되는** 자리다. 훅 자기 주석이 «100% FP 는 정작 중요한 한 건을
+  #   무시하도록 훈련시킨다» 고 적었고, 운영자 신고가 정확히 그 신호였다.
   _F='(tail|head|cat|less|more)'
   if printf '%s' "$NORM" \
-     | grep -qE "\|&?[[:space:]]*(${_F}([[:space:]][^|;&]*)?|[({]([^|&]*;)?[[:space:]]*${_F}([[:space:]][^|;&()}]*)?[[:space:]]*;?[[:space:]]*[)}])[[:space:]]*[;&].*\\\$\?"; then
+     | grep -qE "\|&?[[:space:]]*(${_F}([[:space:]][^|;&]*)?|[({]([^|&]*;)?[[:space:]]*${_F}([[:space:]][^|;&()}]*)?[[:space:]]*;?[[:space:]]*[)}])[[:space:]]*[;&]&?[^;&|]*\\\$\?"; then
     add "R2 \$? after a display filter" \
         "\$? holds the filter's status (tail/head/cat almost always succeed), not the command's — a FAILED check reads as 0. Capture first: \`out=\$(cmd 2>&1); rc=\$?\` then print \"\$out\" | tail."
   fi
