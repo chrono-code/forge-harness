@@ -58,8 +58,23 @@ jobs:
       - name: publish (prepublishOnly 게이트 경유, provenance)
         run: npm publish --provenance --access public
       - name: verify on registry
+        # 🟥 왜 재시도가 필요한가 (2026-09-06, v3.1.0 실측): `npm publish` 가 성공한 직후
+        #    이 단계가 곧바로 조회했다가 **E404 «No match found for version 3.1.0»** 로 죽었다.
+        #    그런데 같은 시각 패키지는 실제로 올라가 있었다 — 1 분 뒤 로컬에서 조회하니
+        #    `latest: 3.1.0` 이었다. 즉 npm 의 읽기 복제본이 아직 전파 전이었고, 이 단계는
+        #    **eventually-consistent 한 상태를 대기 없이** 물었다.
+        #    발행은 성공인데 워크플로가 빨갛게 남는 것은 가장 나쁜 형태다 — 「발행 실패」와
+        #    「전파 지연」이 같은 얼굴이 되고, 그 게이트를 다음부터 아무도 안 읽는다.
+        #    ⚠️ 재시도가 «없는 것을 있다»고 만들지는 않는다: 마지막 시도까지 값이 안 맞으면
+        #    그대로 실패한다. 늘린 것은 **관측 창**이지 통과 조건이 아니다.
         run: |
           v=$(node -p "require('./package.json').version")
-          got=$(npm view @chrono-meta/fh-gate@"$v" version)
-          [ "$got" = "$v" ] || { echo "🟥 registry shows '$got' not '$v'"; exit 1; }
+          got=""
+          for i in 1 2 3 4 5 6; do
+            got=$(npm view @chrono-meta/fh-gate@"$v" version 2>/dev/null || true)
+            [ "$got" = "$v" ] && break
+            echo "  … attempt $i/6: registry has '${got:-<none>}', want '$v' — waiting 10s (read-replica lag)"
+            sleep 10
+          done
+          [ "$got" = "$v" ] || { echo "🟥 registry still shows '${got:-<none>}' not '$v' after 6 attempts (~60s)"; exit 1; }
           echo "✅ @chrono-meta/fh-gate@$v on registry"
