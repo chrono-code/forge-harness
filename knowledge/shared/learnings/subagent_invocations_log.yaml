@@ -3537,3 +3537,12 @@
   evidence: "논문 B DRAFT2 — 사례표 `memory/` 인용 13행 → **0**(🟥 내가 센 11 이 아니라 13 이었다: `tracks/**` 도 gitignored 라는 걸 에이전트가 `git ls-files --error-unmatch` + known-pair 로 잡았다) · 「few」 → **4/24** · 내부 모순 2건 자체 적발·수리. qasp PR #270 머지(fe95282), CI 6/6 — 🟥 그중 2건은 그 PR 이 만든 결함이고 거버너가 잡아 고쳤다(사유 문구가 CI 가드의 grep 대상 · 자동 탐색이 음성 컨트롤 무력화)"
   tokens_subagent: 700000
   notes: "🟥 사고 하나 — 에이전트가 DRAFT 1 을 제자리 편집으로 덮었고 회수 불가(파일·스냅샷·git 전부 0). **원인은 내 쪽**이다: 「이전 판 남겨라」를 임무문에 산문으로만 적고 발주 전에 커밋하지 않았다. 메모리 `feedback_commit_the_artifact_before_the_next_round` 신설 + DRAFT2 즉시 커밋으로 적용. 🟥 그리고 사이드카 주장 하나(row 29)를 거버너가 재현 못 해 라운드 3 으로 되돌렸다 — 이 논문이 다루는 주제가 바로 그것이라 «그럴듯한데 원 출처에 없는 것」을 실으면 논문이 자기를 반증한다"
+
+- date: 2026-09-07
+  agent: general-purpose ×2 (opus)
+  purpose: "논문 v1.2 개정(분석 → HTML 수술, 같은 에이전트 재개) · qasp #251 판정 경로 조사"
+  tier: opus
+  outcome: accepted
+  evidence: "논문: 복제 3건을 정확히 캐고 🟥 **v1.1 이 안 실은 가장 무거운 사실을 잡았다** — GT recall 이 세 복제 어디에서도 재계산되지 않았고, 논문의 중심 비교 주장이 거기 걸려 있다. 거버너가 독립 grep + 컨트롤(`recall`·`GT` 각 0회 vs `S-grade` 12 · `Cond` 8)로 재확인. 수술 후 검증 11항 전부 통과, 거버너 재검 7항 + 추가 6항 통과. qasp: 정본 먼저 읽고 «#251 은 버그가 아니라 스펙 개정»을 짚었고, lockstep 계약 사본 ~20곳 · 배치 전량 사망 3곳 · 33.6% 의 출처 부재를 전부 파일:줄로 냈다"
+  tokens_subagent: 520000
+  notes: "🟥 거버너가 잡은 오류 1건 — qasp 조사가 `web_regress.py:423` 의 `return \"PASS\"` 를 «레포 유일 fail-open» 으로 지목했는데 **틀렸다**. `_STATUS_MAP` 이 세 값만 만들고 그 밖은 두 진입점에서 raise 하며 SKIPPED 는 앞 분기가 먹으므로 소진적 else 다. 정적 패턴만 보고 **도달 가능성을 안 본** 부류. 그리고 내 계기도 한 번 틀렸다(`endswith(\"pass\")` 가 `not-pass` 를 삼켜 8.3% 오출력) — 같은 얼굴이라 PR 본문에 적었다. 두 에이전트 다 «확인 못 한 것»을 이름으로 나열했고 그게 검수를 값싸게 만들었다"

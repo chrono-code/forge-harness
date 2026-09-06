@@ -425,7 +425,7 @@ Claude Code 는 작업 복잡도로 모델을 자동 선택하지 않습니다. 
 | [`tracks/_contrib/`](tracks/_contrib/README.md) | **동의 레인** — 비식별화된 작업 세션 공유. 레포가 운영자들에 걸쳐 복리로 쌓임 |
 
 > **FH 논문**: v1.0.1 방법론 · [Zenodo](https://zenodo.org/records/22542168) (DOI
-> 10.5281/zenodo.22542168) · cs.SE companion v1.1, 게재됨 ·
-> [Zenodo](https://zenodo.org/records/20740038) (DOI 10.5281/zenodo.20740038) · cs.AI companion
+> 10.5281/zenodo.22542168) · cs.SE companion v1.2, 게재됨 ·
+> [Zenodo](https://zenodo.org/records/22558450) (DOI 10.5281/zenodo.22558450) · cs.AI companion
 > 준비 중. 이것들과 독립적인 수렴 연구, 그리고 각각의 주의사항:
 > [`docs/OUTPUT_EVIDENCE.md`](docs/OUTPUT_EVIDENCE.md).
