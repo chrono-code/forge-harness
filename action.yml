@@ -24,9 +24,16 @@ inputs:
     required: false
     default: ''
   level:
-    description: 'Review level passed through to the gate (e.g. standard, full).'
+    # 🟥 'quick' | 'full' ONLY. scripts/fh-gate.sh:275 rejects anything else with ARG_ERROR (11),
+    #    and ARG_ERROR is in fail-on's default set — so a wrong default here fails every step that
+    #    does not override it. This default was 'standard' in v3.1.0, which the gate has never
+    #    accepted: `uses: chrono-meta/forge-harness@v3.1.0` with no `level:` produced
+    #    "ERROR: gate level must be 'quick' or 'full' (got: standard)" and a red step. Measured on
+    #    the published 3.1.0 tarball, not read off the source. Pinned by
+    #    scripts/test_action_yml_lanes.sh (lane D1), which reads BOTH files and compares.
+    description: "Review level passed to the gate: 'quick' (default) or 'full'. No other value is accepted."
     required: false
-    default: 'standard'
+    default: 'quick'
   backend:
     description: 'AI backend: claude | codex | auto. Needs the matching credential in env.'
     required: false

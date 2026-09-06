@@ -28,6 +28,43 @@ chk(){ if [ "$1" = "0" ]; then ok "$2"; else no "$2"; fi; }
 
 # ── extract the real case block from the shipped file ────────────────────────────────────────
 MAP="$(awk '/^ *case "\$rc" in/{f=1} f{print} /^ *esac/{if(f){exit}}' "$A" | sed 's/^ *//')"
+
+# ── D. input defaults must be values the CLI accepts (2026-09-06) ────────────────────────────
+# WHY THIS EXISTS. The lanes above test the exit-code MAPPING and nothing else — the header says
+# so. Nobody was checking the other direction: that the values this action sends the CLI are
+# values the CLI takes. v3.1.0 shipped `level` defaulting to 'standard', which `fh-gate.sh` has
+# never accepted; it rejects with ARG_ERROR (11), and ARG_ERROR is in fail-on's own default set.
+# So `uses: chrono-meta/forge-harness@v3.1.0` with no `level:` failed the step, and the error
+# named an argument the user never set. Found by running the PUBLISHED tarball as a consumer
+# would, not by reading either file — which is why the standpoint arm is not optional.
+#
+# Both sides are extracted from the REAL files. A hard-coded expected value here would drift the
+# same way the default did, and this lane would stay green while the shipped file rotted.
+_ACTION_LEVEL_DEFAULT="$(awk '
+  /^  level:/            {inlvl=1; next}
+  inlvl && /^  [a-z-]+:/ {inlvl=0}
+  inlvl && /^ *default:/ {gsub(/^ *default: *|""|\x27/,""); print; exit}
+' "$A")"
+_GATE_SH="$ROOT/scripts/fh-gate.sh"
+if [ ! -f "$_GATE_SH" ]; then
+  no "D0 HARNESS — scripts/fh-gate.sh absent; cannot learn which levels the CLI accepts"
+else
+  # the validation line is the single source of truth for the accepted set
+  _ACCEPTED="$(grep -oE '"\$GATE_LEVEL" != "[a-z]+"' "$_GATE_SH" | grep -oE '"[a-z]+"$' | tr -d '"' | sort -u | tr '\n' ' ')"
+  [ -n "$_ACCEPTED" ] && ok "D0 extracted the CLI's accepted level set from fh-gate.sh: [$_ACCEPTED]" \
+                      || no "D0 could not extract an accepted-level set from fh-gate.sh (instrument dead — the check below would pass vacuously)"
+  case " $_ACCEPTED " in
+    *" $_ACTION_LEVEL_DEFAULT "*) ok "D1 action.yml level default ('$_ACTION_LEVEL_DEFAULT') is a value the CLI accepts" ;;
+    *) no "D1 action.yml level default ('$_ACTION_LEVEL_DEFAULT') is NOT in the CLI's accepted set [$_ACCEPTED] — every step that does not override level: will exit ARG_ERROR" ;;
+  esac
+  # control: the check must reject a value the CLI does not take. If this passes, D1 proves nothing.
+  case " $_ACCEPTED " in
+    *" standard "*) no "D2 control dead — 'standard' appears accepted, so D1 cannot discriminate" ;;
+    *) ok "D2 control — the same test rejects 'standard' (the value v3.1.0 shipped), so D1 discriminates" ;;
+  esac
+fi
+
+
 [ -n "$MAP" ] || { echo "❌ HARNESS: could not extract the case block from action.yml"; exit 10; }
 printf '%s' "$MAP" | grep -q 'esac' || { echo "❌ HARNESS: extracted block has no esac (truncated)"; exit 10; }
 
