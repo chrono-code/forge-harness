@@ -3517,3 +3517,13 @@
   evidence: "PR #264·265·266·268 전부 머지(main=01dafcd) · CI 6/6 × 4. cross-family 1차 A급 4건(3 수리 · 1 **반증** — needs_clarification 은 disposition 게이트가 이미 막는다) · 2차 S1+A4(전부 수리). 거버너 독립 되돌림 재검 4건 전부 적색 확인. 전체 스위트 1 failed/3996 passed(시간의존 픽스처 1, 기존)"
   tokens_subagent: 986241
   notes: "🟥 계기 확정 하나가 부수 수확: 「기존 실패 13건」은 코드가 아니라 venv 아티팩트였다(uv 3.11 위에 3.13 접목, pip 이 코드가 안 읽는 곳으로). 깨끗한 클론·라이브 트리 양팔 모두 1 failed. 세션마다 13/12/14/1 로 갈리던 원인. 🟥 그리고 codex 가 못 본 형제 경로(not-mapped 분기)를 거버너가 찾았다 — 사이드카는 지목자이지 판정자가 아니라는 계보 그대로"
+
+- date: 2026-09-06
+  agent: general-purpose ×8 (live-eval 진단 · archify U1 재현+PR · qasp 웹QA 레디 점검 · README ko/zh/ja · arXiv 반려 분석[자체 서브에이전트 1 재디스패치] · 논문 문체 감사 · 논문 인용 수정본 · qasp M①M③ 수리) + fh-meta:beginner ×1 (qasp 막별 산출물 콜드리드) + general-purpose ×1 (논문 B 초안) + codex sidecar ×2 (릴리스 델타 cross-family — 1차 stdin 대기로 타임아웃, 2차 성공)
+  invoked_by: FH governor session (Opus 5, 운영자 «오늘 야간 내가 요청한대로 자율주행 이어가줘 … 위임할게 5대정체성 4개 엔진 초록인만큼 잘 써가면서 일해줘»)
+  task: "3.1.0 릴리스 집행 · live-eval 보정 · qasp 웹QA 레디(다음 주 실사용) · arXiv 반려 원인 규명과 논문 재구성 · 랜딩 개편 · archify upstream 기여"
+  context_card: yes (건별 절대경로 · 정본 선독 · 커밋/푸시 경계 · 컨트롤 동반 요구 · 외부 PR 은 금지어휘 목록)
+  outcome: accepted
+  evidence: "릴리스 v3.1.0 npm 라이브(latest=3.1.0) + GitHub 릴리스 + PR #664 머지 · PR #665(verify 재시도) · gh-pages 랜딩 개편 발행(지도 91%→5.6%) · tt-a1i/archify#328 upstream 제출(스위트 1058/1030/0, zip 결정적 재빌드) · qasp PR #269 머지 · 논문 v1.0.1 수정본(인용 21/21 재검증, 원본 해시 불변). cross-family(codex) A급 1건 적발 — CHANGELOG L12 과대주장, 소스 재확인 후 수리, **자력 적발 0**"
+  tokens_subagent: 2100000
+  notes: "🟥 이 날의 최대 발견은 코드가 아니라 **논문**이다 — 반려된 v1.0 의 참고문헌 17건 중 11건이 어긋나 있었다(ID 는 실재, 제목·저자가 다른 논문 것, 한 건은 공간생물학). 그 논문 자신이 «존재 검사 → 출처 검사» 2단계를 방법론으로 제시하고 「허위율 0%」라 보고했다. **방법은 있었고 자기에게 안 돌렸다.** 대조군이 이례적으로 좋다: 같은 심사 창에서 제품명 0회인 자매 논문은 보류 해제. 🟥 부수 교훈 3건이 전부 계기 결함이다 — ① 내 인용 추출기가 References 대신 Changelog 를 긁었다 ② 레인 rc=1 인데 MV 줄만 필터해 보고 실패 3건을 놓쳤다 ③ archify 테스트를 잘못된 cwd 에서 돌려 rc=254 를 «실패»로 읽을 뻔했다. 셋 다 «출력을 좁혀 본 것»이 원인이다"

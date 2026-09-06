@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>forge-harness v1.0.1: Engineering Methods for Robust AI Collaboration Harnesses</title>
+<style>
+  @page { margin: 2cm; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 11pt; max-width: 820px; margin: 36px auto; padding: 0 28px; line-height: 1.55; color: #111; text-align: justify; hyphens: auto; -webkit-hyphens: auto; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,0.10); }
+  h1 { font-size: 16pt; text-align: center; margin-bottom: 4px; font-weight: bold; letter-spacing: 0.01em; }
+  .author { text-align: center; font-size: 10.5pt; margin: 6px 0 2px; color: #222; }
+  .affil { text-align: center; font-size: 9.5pt; color: #555; margin: 0; font-style: italic; }
+  h2 { font-size: 11.5pt; font-weight: bold; margin-top: 22px; margin-bottom: 6px; border-bottom: 1px solid #bbb; padding-bottom: 3px; letter-spacing: 0.01em; }
+  h3 { font-size: 10.5pt; font-weight: bold; margin-top: 14px; margin-bottom: 5px; }
+  h4 { font-size: 10.5pt; font-style: italic; font-weight: normal; margin-top: 10px; margin-bottom: 4px; }
+  p { margin: 6px 0 8px; }
+  .abstract { margin: 18px 36px; border-left: 3px solid #ccc; padding-left: 14px; }
+  .abstract-title { font-weight: bold; }
+  pre { background: #f8f8f8; padding: 10px 14px; font-size: 8.5pt; font-family: "Courier New", monospace; white-space: pre; overflow-x: auto; border: 1px solid #ddd; border-left: 3px solid #999; margin: 10px 0; line-height: 1.4; }
+  code { font-family: "Courier New", monospace; font-size: 9.5pt; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; margin: 14px 0; }
+  th { background: #f0f0f0; border: 1px solid #bbb; padding: 5px 9px; text-align: left; font-weight: bold; }
+  td { border: 1px solid #bbb; padding: 5px 9px; vertical-align: top; }
+  figure { margin: 20px 0; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+  figcaption { font-size: 9pt; font-style: italic; margin-top: 6px; color: #333; text-align: center; }
+  .contributions { margin-left: 20px; }
+  .contributions li { margin: 4px 0; }
+  blockquote { margin: 8px 28px; font-style: italic; border-left: 2px solid #ccc; padding-left: 10px; color: #444; }
+  .changelog { font-size: 9.5pt; }
+  a { color: #1155cc; }
+  hr.section-rule { border: none; border-top: 1px solid #ccc; margin: 18px 0 10px; }
+  .page-header { font-size: 8pt; color: #888; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 6px; letter-spacing: 0.04em; }
+  @media print { body { box-shadow: none; margin: 0; padding: 0 28px; max-width: 100%; } }
+</style>
+</head>
+<body>
+
+<h1>forge-harness: Engineering Methods for Robust AI Collaboration Harnesses</h1>
+<p class="author">권성진 (Kwon Sungjin)</p>
+<p class="affil">Independent Researcher &nbsp;·&nbsp; akaa1941@gmail.com</p>
+
+<div class="abstract">
+<p><span class="abstract-title">Abstract</span></p>
+<p>AI collaboration harnesses — structured environments of prompts, skills, agents, and memory files that orchestrate AI-assisted work — have become primary determinants of AI output quality. An architectural study of Claude Code reports that only about 1.6% of its codebase constitutes agent decision logic, the remaining 98.4% being operational harness infrastructure — permission gates, tool routing, context management, recovery logic [Liu et al., 2026]. Despite this, harness engineering lacks principled validation and evolution methods: harnesses are typically built and evaluated by the same practitioner, documentation drifts from implementation, phantom claims accumulate in AI-generated content, and session learnings are lost between working sessions.</p>
+<p>We present <strong>forge-harness</strong>, an open harness engineering toolkit that addresses these gaps through four complementary methods: (1) <strong>steel-quench</strong>, a multi-wave adversarial validation framework that separates attack from defense to systematically surface structural defects; (2) <strong>source-grounding-audit</strong>, a phantom claim detection method that demands file-path, commit-hash, or measured-value evidence for every factual claim in harness content; (3) <strong>harvest-loop</strong>, a session-to-harness self-evolution pipeline that transforms session learnings into validated skill upgrades without accumulating technical debt; and (4) <strong>sim-conductor</strong>, a pre-deployment simulation framework that validates harness transferability before non-owner adoption.</p>
+<p>Applied to forge-harness itself — a self-verification scenario — the four methods resolved 10 S/A-grade structural defects, detected 3 phantom capability claims, absorbed 5 external session contributions as validated skill upgrades, and confirmed multi-user autonomous operation across three independent deployments. The methodology independently converged on the same outer-loop architecture as harness-evolver [Christi, 2026] and Meta-Harness [Lee et al., 2026], validating the structural approach across independent implementations. forge-harness is available at <a href="https://github.com/chrono-meta/forge-harness">https://github.com/chrono-meta/forge-harness</a>.</p>
+</div>
+
+<div style="margin: 18px 0; border: 2px solid #a33; background: #fdf5f5; padding: 12px 18px; page-break-inside: avoid;">
+<p style="margin:0 0 6px; font-weight: bold; font-size: 11.5pt; color:#a33;">Erratum — v1.0.1 (2026-09-06)</p>
+<p style="margin:0 0 8px;">Version 1.0 of this paper contained <strong>systematically incorrect bibliographic metadata</strong>. Every arXiv identifier cited in v1.0 resolves to a real paper, but for eleven of them the recorded <em>title, authors, or institution did not belong to that identifier</em> — in one case the identifier belongs to a paper in an entirely different field. The errors were introduced during reference compilation and were not caught before publication. Every arXiv entry has now been re-verified against the arXiv API, and every load-bearing numeric claim re-checked against the cited paper’s own full text. Nothing below was corrected by substituting a different source for the same claim; where a claim could not be supported, the claim was narrowed or removed.</p>
+<p style="margin:0 0 4px; font-weight:bold;">Bibliographic corrections</p>
+<ul style="margin:2px 0 8px; font-size:10pt;">
+  <li><strong>arXiv:2604.14228</strong> — was: Chen, X. et al., "98.4% of Claude Code is Harness Infrastructure," VILA-Lab. Is: Liu, J. et al., "Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems."</li>
+  <li><strong>arXiv:2605.25665</strong> — was: Ning, X. et al., "Meta-Engineering Frameworks for AI Agent Harnesses: Two-Pass Validation and Four-Way Arbitration," UIUC. Is: Sengupta, S. et al., "Meta-Engineering Harnesses for AI-Native Software Production: A Contract-Driven Adversarial Verification Architecture with Early Deployment Report."</li>
+  <li><strong>arXiv:2605.26302</strong> — was: Liu, S. et al., "AgingBench: Measuring Harness Knowledge Degradation Across Sessions." Is: Zhu, J. et al., "Your Agents Are Aging Too: Agent Lifespan Engineering for Deployed Systems." (AgingBench is the benchmark introduced <em>within</em> that paper, not its title.)</li>
+  <li><strong>arXiv:2605.27575</strong> — was: Min, K. et al., "Agyn: Signal-Driven Harness Adaptation for Infrastructure-as-Code." Is: Benkovich, N. et al., "Agyn: An Open-Source Platform for AI Agents with Scalable On-Demand Execution, Agent Definition as a Code, and Zero-Trust Access."</li>
+  <li><strong>arXiv:2605.28065</strong> — was: Park, J. et al., "SpatialBench: Joint Evaluation of Model-Harness Pairs in Agent Performance." Is: Diks, I. et al., "Verifiable Benchmarking of Long-Horizon Spatial Biology" — <em>a spatial-biology benchmark, not a harness-engineering paper</em>. The claim attributed to it in v1.0 §2.1 ("harness quality dominates model selection") appears nowhere in that paper and has been removed; see below.</li>
+  <li><strong>arXiv:2605.23904</strong> — was: Zhang, X. et al., "SkillOpt: Skill Optimization via Selection-Split Validation and Rejected-Edit Feedback," Microsoft Research. Is: Yang, Y. et al., "SkillOpt: Executive Strategy for Self-Evolving Agent Skills."</li>
+  <li><strong>arXiv:2603.28052</strong> — was: "Stanford IRIS Lab. Meta-Harness: Automated Harness Optimization via Outer-Loop Execution." Is: Lee, Y. et al., "Meta-Harness: End-to-End Optimization of Model Harnesses." The "Stanford" attribution is unsourced and has been dropped throughout.</li>
+  <li><strong>arXiv:2604.25850</strong> — first author was: Wang, Y. Is: Lin, J. (title was correct).</li>
+  <li><strong>arXiv:2605.26112</strong> — was: Gu, S. <em>et al.</em>, "Scaling the Harness in Agentic AI." Is: Gu, S. (sole author), "From Model Scaling to System Scaling: Scaling the Harness in Agentic AI."</li>
+  <li><strong>arXiv:2605.18747</strong> — author field was the placeholder "[43 authors]"; the paper is by Ning, X. et al. (42 authors), and it is a survey rather than a study.</li>
+  <li><strong>arXiv:2604.21003</strong> — "Sylph.AI" was recorded in the author position; the authors are Seong, H. et al. Institution names have been removed from all author fields.</li>
+</ul>
+<p style="margin:0 0 4px; font-weight:bold;">Substantive corrections that follow from the above</p>
+<ul style="margin:2px 0 8px; font-size:10pt;">
+  <li><strong>The 98.4% figure in the Abstract and §2.1.</strong> The number is real and appears verbatim in arXiv:2604.14228 — but it means something narrower than v1.0 stated. It is a ratio of <em>codebase composition</em> ("only about 1.6% of Claude Code's codebase constitutes AI decision logic, with the remaining 98.4% being operational infrastructure"), reported by that paper as a <em>community estimate of the extracted source</em>. It is <strong>not</strong> a measurement of session or token content, and the claim that it came from an analysis of "10,000 Claude Code sessions" is unsupported — that phrase appears nowhere in the paper. Both statements have been rewritten.</li>
+  <li><strong>AHE's 11.8% / 33.7% figures (§2.1, §3.5, §4.6).</strong> Both numbers are real, but v1.0 described them as the share of regressions and fixes "correctly predicted in advance." They are <em>precision</em> values: cross-iteration regression-precision 11.8% (random baseline 5.6%) and fix-precision 33.7% (random baseline 6.5%). Restated accordingly.</li>
+  <li><strong>SpatialBench claim (§2.1) removed.</strong> Replaced with what arXiv:2605.28065 actually reports — benchmark results at the model-harness pair level in spatial biology, with the three leading configurations tied at 11.1%.</li>
+  <li><strong>Ptah's verifier axes (§4.6).</strong> v1.0 listed "protocol compliance"; arXiv:2605.29861 states factual grounding, citation fidelity, and cross-modal consistency. Corrected.</li>
+  <li><strong>Anthropic Dynamic Workflows (§3.4, §3.5, §4.6, §5.4).</strong> v1.0 described it as validated "in production" at "16 parallel agents," and used it to justify agent-composer's 6–16 Medium tier. Anthropic's announcement describes a <em>research preview</em> for Enterprise / Team / Max plans reporting "hundreds of parallel subagents in a single session"; it states no 16-agent figure. The external justification for the 16-agent tier boundary has been withdrawn and the boundary is now stated as a forge-harness design choice.</li>
+  <li><strong>SkillOpt and Sengupta et al. terminology.</strong> "Selection-split score" and "two-pass meta-detector" were v1.0 coinages, not the source papers' terms; replaced with "held-out validation score" and the papers' own descriptions.</li>
+  <li><strong>Missing arXiv identifiers added.</strong> Reflexion (2303.11366), Self-Refine (2303.17651), Maynez et al. (2005.00661) and Ji et al. (2202.03629) were cited without identifiers; all four are now fully specified and verified.</li>
+  <li><strong>Uncited references added.</strong> [Anthropic, 2026] and [chrono-meta, 2026] were cited in the body of v1.0 with no reference entry; both now have one.</li>
+</ul>
+<p style="margin:0; font-size:10pt;"><strong>Unchanged.</strong> No result reported in Sections 4.1–4.5 or Table 1 depends on the corrected references; those measurements are of forge-harness itself. The convergence count of eleven implementations is unchanged — all eleven exist; what was wrong was how four of them were named. Verification record: all 21 arXiv identifiers in this version were re-resolved through the arXiv API and their titles matched; the three load-bearing external numbers (98.4%, 11.8%/33.7%, "stale-but-confident") were located in the cited papers' full texts.</p>
+</div>
+
+<figure style="margin: 24px 0; text-align: center;">
+<svg width="720" height="185" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 8 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+  <text x="360" y="15" text-anchor="middle" font-size="11" font-family="Times New Roman,serif" font-weight="bold">Figure 1: forge-harness Four-Method Validation Pipeline</text>
+  <!-- Box 1: steel-quench -->
+  <rect x="10" y="26" width="160" height="88" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="90" y="45" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">steel-quench</text>
+  <text x="90" y="60" text-anchor="middle" font-size="9" font-family="Times New Roman,serif" fill="#555">F1: Self-referential</text>
+  <text x="90" y="74" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Adversarial validation</text>
+  <text x="90" y="88" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Wave 1→N convergence</text>
+  <text x="90" y="102" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">S/A/B severity grading</text>
+  <line x1="170" y1="70" x2="186" y2="70" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 2: source-grounding-audit -->
+  <rect x="187" y="26" width="160" height="88" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="267" y="45" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">source-grounding-audit</text>
+  <text x="267" y="60" text-anchor="middle" font-size="9" font-family="Times New Roman,serif" fill="#555">F2: Phantom claims</text>
+  <text x="267" y="74" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Claim → evidence</text>
+  <text x="267" y="88" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">File / commit / metric</text>
+  <text x="267" y="102" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">grounding required</text>
+  <line x1="347" y1="70" x2="363" y2="70" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 3: harvest-loop -->
+  <rect x="364" y="26" width="160" height="88" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="444" y="45" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">harvest-loop</text>
+  <text x="444" y="60" text-anchor="middle" font-size="9" font-family="Times New Roman,serif" fill="#555">F3: Lost learnings</text>
+  <text x="444" y="74" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Session → skill pipeline</text>
+  <text x="444" y="88" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Synthesizer gate</text>
+  <text x="444" y="102" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Edit-manifest prediction</text>
+  <line x1="524" y1="70" x2="540" y2="70" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Box 4: sim-conductor -->
+  <rect x="541" y="26" width="160" height="88" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="621" y="45" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">sim-conductor</text>
+  <text x="621" y="60" text-anchor="middle" font-size="9" font-family="Times New Roman,serif" fill="#555">F4: Unvalidated transfer</text>
+  <text x="621" y="74" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Multi-persona simulation</text>
+  <text x="621" y="88" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">≥80% reachability gate</text>
+  <text x="621" y="102" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">3–16 parallel agents</text>
+  <!-- VCS Gate -->
+  <rect x="80" y="128" width="560" height="30" fill="#efefef" stroke="#777" stroke-width="1" rx="3"/>
+  <text x="360" y="147" text-anchor="middle" font-size="9" font-family="Times New Roman,serif" font-style="italic">VCS-Layer Gate: git pre-commit hook blocks commit on harness assets until all applicable axes pass</text>
+  <!-- Dashed connectors -->
+  <line x1="10" y1="114" x2="10" y2="143" stroke="#aaa" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="10" y1="143" x2="80" y2="143" stroke="#aaa" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="701" y1="114" x2="701" y2="143" stroke="#aaa" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="701" y1="143" x2="640" y2="143" stroke="#aaa" stroke-width="1" stroke-dasharray="4,3"/>
+</svg>
+<figcaption>Figure 1: Each method addresses a distinct failure mode (F1–F4) and is independently applicable; the left-to-right arrangement reflects a typical end-to-end order, not a mandatory sequence. The VCS-layer gate (dashed enclosure) applies specifically to harness-asset commits.</figcaption>
+</figure>
+
+<h2>1. Introduction</h2>
+<p>AI collaboration harnesses have evolved from simple prompt templates into layered systems comprising memory files, skill libraries, agent dispatch protocols, domain knowledge bases, and behavioral rules. As these harnesses grow in complexity, four specific failure modes recur across practitioner deployments:</p>
+<p><strong>F1 — Self-referential validation</strong>: The practitioner who builds the harness also evaluates it. A harness that passes its own internal checks may harbor defects visible only to an adversarial evaluator. This is structurally analogous to the penetration-testing problem in software security.</p>
+<p><strong>F2 — Phantom claim accumulation</strong>: AI-generated harness content (skill documentation, capability descriptions, validation evidence) frequently references files, measurements, or capabilities that do not exist. These "phantom claims" pass informal review and accumulate silently, eroding the reliability of harness content over time.</p>
+<p><strong>F3 — Session learning loss</strong>: Valuable patterns discovered during working sessions — failure modes caught, successful approaches confirmed, defects identified — are rarely absorbed into the harness systematically. They exist in session transcripts and are lost when context resets.</p>
+<p><strong>F4 — Unvalidated transfer</strong>: A harness developed by one practitioner may exhibit silent failures when adopted by others — different vocabulary triggering skills, different mental models of skill boundaries, different baseline contexts. Pre-deployment validation of transferability is typically absent.</p>
+<p>We introduce forge-harness, a toolkit addressing each failure mode through a dedicated method. The paper is structured as follows: Section 2 reviews related work, Section 3 describes the four methods, Section 4 presents evaluation results, Section 5 discusses limitations and positioning, and Section 6 concludes.</p>
+<p>Our contributions are:</p>
+<ul class="contributions">
+  <li>Four complementary harness engineering methods addressing F1–F4 (Section 3)</li>
+  <li>The <strong>Sandboxed Adversary principle</strong>, explaining structural convergence of adversarial validation (Section 3.1)</li>
+  <li>The <strong>phantom claim taxonomy</strong>, classifying three categories of AI-generated false claims in harness content (Section 3.2)</li>
+  <li>The <strong>synthesizer gate</strong>, a cross-validation step preventing both over-addition and under-addition in harness evolution (Section 3.3)</li>
+  <li>Empirical application to forge-harness itself, with independent architectural convergence evidence across eleven implementations (Section 4)</li>
+</ul>
+
+<h2>2. Background and Related Work</h2>
+
+<h3>2.1 The Harness Infrastructure Problem</h3>
+<p>Liu et al. [arXiv:2604.14228] map the architecture of Claude Code from its publicly available source and report that its core is "a simple while-loop that calls the model, runs tools, and repeats," while "most of the code … lives in the systems around this loop" — a permission system, a five-layer compaction pipeline, four extensibility mechanisms, subagent orchestration, and session storage. They cite a community estimate that only about 1.6% of the codebase is agent decision logic, the remaining 98.4% being operational harness. Several concurrent works confirm this framing. "Code as Agent Harness" [arXiv:2605.18747] is a 42-author survey framing code as the operational substrate of agent harnesses across three layers: the harness interface, harness mechanisms (planning, memory, tool use), and scaling the harness to multi-agent settings. Seong et al. [arXiv:2604.21003] introduce a two-level self-evolving architecture in which a Harness Evolution Loop has an evaluator agent adversarially diagnose failures while an evolution agent rewrites the harness, and a Meta-Evolution Loop optimizes the evolution blueprint itself across tasks. Meta-Harness [arXiv:2603.28052] demonstrates an outer-loop system that searches over harness code, improving on a state-of-the-art context-management system by 7.7 points while using 4× fewer context tokens.</p>
+<p>Recent empirical work extends this foundation. Sengupta et al. [arXiv:2605.25665] present a contract-driven meta-engineering harness that compiles requirements into explicit contracts through two-pass contract compilation, routes work through role-specialized agents, applies independent and adversarial verification, and resolves disagreement through a four-way failure arbiter. Zhu et al. [arXiv:2605.26302] introduce AgingBench and organize agent aging into four mechanisms: compression aging, interference aging, revision aging, and maintenance aging — the first of which concerns an agent compressing its own interaction history. Benkovich et al. [arXiv:2605.27575] present Agyn, an open-source agent platform combining a signal-driven stateful serverless runtime with agent and harness definition supplied as infrastructure-as-code through a Terraform provider. Diks et al. [arXiv:2605.28065] report benchmark results at the model-harness pair level in a domain far outside harness engineering — long-horizon spatial biology — where the three leading configurations tie at 11.1%, each a distinct model-harness pairing rather than a distinct model; that harness identity is carried as a first-class evaluation variable in an unrelated field is itself a signal that the layer is treated as consequential. Yang et al. [arXiv:2605.23904] present SkillOpt, a text-space skill optimizer that accepts an edit only when it strictly improves a held-out validation score and retains rejected edits in a rejected-edit buffer — independently converging on the same skill-gate design as forge-harness's synthesizer gate. Gu [arXiv:2605.26112] identifies the "stale-but-confident" failure mode, in which a memory note that has silently become wrong — "the data loader is defined in <code>utils/loader.py</code>" after a refactor — still ranks highly under semantic search and reuse statistics — independently naming the problem that source-grounding-audit and memory-hygiene address. Lin et al. [arXiv:2604.25850] introduce AHE (Agentic Harness Engineering), which pairs every harness edit with a self-declared prediction, later verified against the next round’s task-level outcomes. A key empirical finding: across nine evaluation rounds AHE measured cross-iteration fix-precision of 33.7% against a 6.5% random baseline, but regression-precision of only 11.8% against a 5.6% baseline — the evolving agent targets fixes on evidence yet is close to blind to the regressions the same edit is about to cause, quantifying the blindspot that motivates forge-harness’s regression_guard and adversarial validation design.</p>
+
+<h3>2.2 Adversarial Testing and Hallucination Detection</h3>
+<p>Red-teaming [Perez et al., 2022] and constitutional AI [Bai et al., 2022] apply adversarial pressure to AI model outputs. Our work applies analogous pressure one layer up: to the harness infrastructure itself, not to model outputs. Hallucination detection in AI outputs [Maynez et al., 2020; Ji et al., 2023] focuses on factual grounding in generated text. source-grounding-audit extends this to harness content specifically, where phantom claims are particularly consequential because harness documentation is treated as ground truth by the orchestrating AI. Sengupta et al. [arXiv:2605.25665] pair attention-based verification with an independence-based second pass, so an initial result is confirmed by a check that does not share the first one’s vantage point — a two-pass shape steel-quench adopts in its Wave structure.</p>
+
+<h3>2.3 Self-Evolving Systems</h3>
+<p>Reflexion [Shinn et al., 2023] and Self-Refine [Madaan et al., 2023] enable agents to revise their own outputs through verbal feedback. harvest-loop applies analogous self-refinement at the harness level — not to individual agent outputs but to the persistent skill infrastructure across sessions. The key distinction is that harvest-loop targets cross-session knowledge accumulation rather than within-session output revision. Zhu et al. [arXiv:2605.26302] identify compression aging as a primary failure mode in cross-session knowledge systems — when context compresses, earlier learnings vanish from LLM memory. harvest-loop Step 0-a addresses this by requiring real-time completion logging during the session, preventing completed work from incorrectly reappearing in next-session priority lists.</p>
+
+<h3>2.4 Positioning vs. Automated Harness Optimization</h3>
+<p>harness-evolver [Christi, 2026] implements the Meta-Harness pattern in a 7-stage automated loop requiring LangSmith instrumentation and Python infrastructure, targeting automated optimization of harness code at benchmark scale. forge-harness targets a complementary layer: harness knowledge validation and evolution for practitioners who prioritize human-approved architectural gates and zero additional infrastructure. These are not competing approaches — automated code optimization (harness-evolver) and principled knowledge engineering (forge-harness) address different layers of the same problem.</p>
+
+<h3>2.5 Empirical Validation: Multi-Model Review Convergence</h3>
+<p>A central claim in harness engineering is that LLM outputs converge given similar inputs, and differentiation comes from the wrapper infrastructure — the harness layer — rather than from model selection alone. We tested this claim empirically through a controlled comparison of three frontier models (Opus 4.7, GPT-5.5, Sonnet 4.6) reviewing the same harness artifact.</p>
+<p><strong>Experimental Setup:</strong> We provided identical input — a hallucinate library skeleton (14 files) and four arXiv papers on harness meta-engineering — to three models in complete context isolation. Group A used gh copilot sidecar mode (external process) to invoke Opus 4.7 and GPT-5.5 independently. Group B used the Agent tool dispatch pattern within Claude Code to invoke Sonnet 4.6 three times independently. All models operated without access to the primary session context.</p>
+<p><strong>Results:</strong> The four S-grade improvement recommendations showed 100% consensus across all three models: (1) four-way Verdict enum (TP/FP/UNKNOWN/CONFLICT), (2) MetaDetector two-pass validation hook, (3) README/API misalignment removal, and (4) LICENSE + test suite inclusion. The models differed only in phrasing and secondary details (~10% variance). Context isolation level (external process vs. Agent subcontext) had no measurable effect on priority identification.</p>
+<p><strong>Implication:</strong> Given consistent input quality — in this case, complete skeleton code and targeted literature review — frontier LLMs converge on the same high-priority recommendations. The harness layer, not the model, determines output quality. This finding validates a core design principle: harness engineering efforts compound across model upgrades. When Opus 5 or GPT-6 releases, the accumulated harness patterns remain valid; only the underlying model swaps out. Model selection is interchangeable; prompt design and harness structure are not.</p>
+<p><strong>Environment-Dependent Value:</strong> This convergence finding applies when models are directly accessible. In corporate environments where Claude Code operates via Bedrock API with Sonnet-only access, gh copilot sidecar remains the sole path to Opus 4.7 reasoning for architectural decisions. In such constrained environments, sidecar mode remains S-grade; in unconstrained environments, it is optional for token distribution.</p>
+
+<h2>3. Methods</h2>
+
+<h3>3.1 steel-quench — Adversarial Validation (F1)</h3>
+<p>steel-quench addresses F1 (self-referential validation) through strict structural separation of attack and defense across convergence rounds.</p>
+<p><strong>Wave 1 — Devil Attack:</strong> An adversarial agent (devil) operates in isolation with access only to static harness files. It applies five mandatory attack angles: (1) existence justification — "why this structure?"; (2) documentation-code alignment — "do documented and actual behaviors match?"; (3) bus factor — "can operations continue without the primary maintainer?"; (4) platform obsolescence — "does the architecture survive ecosystem changes?"; (5) self-referential structure — "is there a closed circuit where the system evaluates itself?" Each finding is classified S (immediate blocker), A (required before deployment), or B (improvement recommended). Abstract critique without file-level citation is rejected.</p>
+<p><strong>Wave 2 — Defense:</strong> Defense draws on three principles: (1) external evidence precedence — living system history (deployment logs, external PRs, user adoption) that the isolated devil cannot observe; (2) implementation priority — a concrete fix is stronger evidence than a defensive argument; (3) explicit residual risk — unresolved defects are named and carried forward, not silently dropped.</p>
+<p><strong>The Sandboxed Adversary Principle:</strong> The fundamental asymmetry of steel-quench is that the devil operates in an information sandbox. It sees static artifacts; the defense can cite dynamic evidence — adoption rates, external contributor PRs, multi-project deployment history. As Waves deepen, the devil exhausts its structurally accessible attack surface. This is why the convergence criterion (zero new S-grade) is theoretically grounded: it marks the point at which the adversary's accessible attack space is exhausted, not merely a threshold chosen empirically.</p>
+<p><strong>Wave 3+ — Convergence:</strong> Convergence is declared when no new S-grade blockers appear. A/B-grade residual items are captured as named technical debt.</p>
+<p><strong>Wave 4 — Meta-Aware Adversary:</strong> An optional depth extension for high-stakes validation. The Wave 4 devil is explicitly told it is an AI with hallucination risk, context window limits, and tool dependencies — and is instructed to exploit these characteristics as attack vectors against five AI-specific angles: API single point of failure, context collapse, prompt injection exposure, hallucination-contaminated defense claims, and tool dependency lock-in.</p>
+<p><strong>Wave 5 — Post-Fix Verification (Regression Guard):</strong> After all S/A-grade defects are remediated, a final verification pass confirms no regressions were introduced during the fix cycle. Regression guard applies seven checks: (1) frontmatter consistency — required fields present and well-formed; (2) critical section presence — core functionality sections not deleted; (3) code block syntax — no broken fence markers; (4) keyword stability — primary skill triggers and identifiers preserved; (5) reference integrity — internal links remain valid; (6) line count direction — file shrinks only when decorative content is removed, not core functionality; (7) <strong class="new">merge-base auto-calculation</strong> — in <code>--pr</code> mode, the base commit is resolved automatically from <code>git merge-base</code> rather than requiring manual specification, eliminating false positives from stale base references. Findings are graded M (mandatory block), S (serious warning), R (recommended review). M &gt; 0 triggers immediate rollback; S &gt; 0 requires human review; 0 = deployment approved.</p>
+
+<h3>3.2 source-grounding-audit — Phantom Detection (F2)</h3>
+<p>source-grounding-audit addresses F2 (phantom claim accumulation) through mandatory evidence citation for factual claims in harness content.</p>
+<p><strong>Phantom Claim Taxonomy:</strong> We identify three categories of phantom claims in AI-generated harness content:</p>
+<ul>
+  <li><strong>File phantoms:</strong> A referenced file, function, or configuration value does not exist at the cited path. Generated harness documentation frequently asserts "see path/to/file.md for details" when no such file exists.</li>
+  <li><strong>Capability phantoms:</strong> A documented skill or agent behavior has never been implemented or verified in a cold-start execution. The SKILL.md describes behavior that was designed but never exercised.</li>
+  <li><strong>Measurement phantoms:</strong> A cited metric, benchmark result, or performance figure has no corresponding measurement artifact — no log file, no test output, no commit containing the measurement. The figure is LLM-reconstructed plausibility.</li>
+</ul>
+<p><strong>Detection Method:</strong> For each factual claim in harness content, source-grounding-audit applies a two-step check: (1) existence check — does the referenced artifact exist at the cited location? (2) origin check — is the claim derivable from a non-LLM source (file contents, commit history, external measurement)? Claims that fail either check are classified as phantom candidates and flagged for remediation or removal.</p>
+<p><strong>The Defense Evidence Standard:</strong> source-grounding-audit establishes an evidence standard for steel-quench Wave 2 specifically: defense claims must cite an original file path, a commit hash, or a measured value. "LLM-assessed" or "model-inferred" is explicitly not accepted as defense evidence. This prevents the hallucination contamination pattern (P7) in which Wave 2 defense arguments inherit the errors of the harness content they are defending.</p>
+<p><strong>Applied Protocol:</strong></p>
+<pre>For each SKILL.md claim of form "X achieves Y" or "Z exists at path P":
+  1. Verify Z at P (file existence check)
+  2. Verify X→Y causal link has a measurement artifact
+  3. Flag: GROUNDED (artifact exists) / PHANTOM (no artifact) / UNVERIFIABLE (external)
+  Phantom-rate threshold for deployment: &lt; 10% of claims</pre>
+
+<h3>3.3 harvest-loop — Self-Evolution Pipeline (F3)</h3>
+<p>harvest-loop addresses F3 (session learning loss) through a structured pipeline that transforms session artifacts into validated harness skill upgrades.</p>
+<p style="page-break-after: avoid; break-after: avoid;"><strong>Pipeline Architecture (Figure 2):</strong></p>
+<figure style="margin: 18px 0;">
+<svg width="720" height="622" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr2" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 8 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+  <text x="360" y="16" text-anchor="middle" font-size="11" font-family="Times New Roman,serif" font-weight="bold">Figure 2: harvest-loop Self-Evolution Pipeline</text>
+  <!-- Step 0-a -->
+  <rect x="160" y="26" width="400" height="48" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="360" y="44" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 0-a] Compression Loss Defense</text>
+  <text x="360" y="60" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Real-time completion log — prevent LLM memory loss on context compress</text>
+  <line x1="360" y1="74" x2="360" y2="84" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 0-b -->
+  <rect x="160" y="85" width="400" height="48" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="360" y="103" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 0-b] Cross-Check Gate</text>
+  <text x="360" y="119" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Remove completed items from next-session card before new priorities overwrite</text>
+  <line x1="360" y1="133" x2="360" y2="143" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 1 -->
+  <rect x="160" y="144" width="400" height="48" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="360" y="162" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 1] field-harvest</text>
+  <text x="360" y="178" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Scan session git diff + outputs → extract absorption candidates (≥3 required)</text>
+  <line x1="360" y1="192" x2="360" y2="202" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 2 -->
+  <rect x="160" y="203" width="400" height="60" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="360" y="221" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 2] contention-layer</text>
+  <text x="360" y="237" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Overlap ≥70% → enhance existing  ·  Gap → new skill  ·  Conflict → mediation</text>
+  <text x="360" y="252" text-anchor="middle" font-size="9" font-family="Times New Roman,serif" fill="#666">(skill conflicts treated as harness growth signals)</text>
+  <!-- Fork -->
+  <line x1="360" y1="263" x2="360" y2="277" stroke="#333" stroke-width="1.5"/>
+  <line x1="172" y1="277" x2="548" y2="277" stroke="#333" stroke-width="1.5"/>
+  <line x1="172" y1="277" x2="172" y2="287" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <line x1="548" y1="277" x2="548" y2="287" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 3a -->
+  <rect x="22" y="288" width="300" height="62" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="172" y="307" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 3a] challenger</text>
+  <text x="172" y="323" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Attack existing skills</text>
+  <text x="172" y="338" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">using session findings</text>
+  <!-- Step 3b -->
+  <rect x="398" y="288" width="300" height="62" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="548" y="307" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 3b] innovator</text>
+  <text x="548" y="323" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Propose new skills / enhancements</text>
+  <text x="548" y="338" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">with Done-When criteria (required)</text>
+  <!-- Merge -->
+  <line x1="172" y1="350" x2="172" y2="364" stroke="#333" stroke-width="1.5"/>
+  <line x1="548" y1="350" x2="548" y2="364" stroke="#333" stroke-width="1.5"/>
+  <line x1="172" y1="364" x2="548" y2="364" stroke="#333" stroke-width="1.5"/>
+  <line x1="360" y1="364" x2="360" y2="374" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 3.5 synthesizer gate -->
+  <rect x="100" y="375" width="520" height="66" fill="#efefef" stroke="#444" stroke-width="1.5" rx="2"/>
+  <text x="360" y="394" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 3.5] synthesizer gate  ←  key innovation</text>
+  <text x="360" y="411" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">S-grade attack + proposal → HIGH  ·  S-grade attack only → HIGH</text>
+  <text x="360" y="427" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">No attack + proposal → MED (defer)  ·  Attack invalidates premise → REJECT</text>
+  <line x1="360" y1="441" x2="360" y2="451" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 4 -->
+  <rect x="160" y="452" width="400" height="48" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="360" y="470" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 4] harness-doctor</text>
+  <text x="360" y="486" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">Check: Done-When exists? Overlap &lt;70%? No self-reference?</text>
+  <line x1="360" y1="500" x2="360" y2="510" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 5 -->
+  <rect x="160" y="511" width="400" height="48" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="360" y="529" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 5] verify-bidirectional</text>
+  <text x="360" y="545" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">If A references B, does B reference A? Bidirectional link check.</text>
+  <line x1="360" y1="559" x2="360" y2="569" stroke="#333" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <!-- Step 6 -->
+  <rect x="160" y="570" width="400" height="48" fill="#fafafa" stroke="#555" stroke-width="1.2" rx="2"/>
+  <text x="360" y="588" text-anchor="middle" font-size="10" font-family="Times New Roman,serif" font-weight="bold">[Step 6] Post-Fix Regression Guard</text>
+  <text x="360" y="604" text-anchor="middle" font-size="9" font-family="Times New Roman,serif">7-axis check → M&gt;0 BLOCK  ·  S&gt;0 REVIEW  ·  0 = PASS</text>
+</svg>
+<!-- Final gate below SVG so it flows naturally -->
+<p style="margin: 0; padding: 8px 20px; background: #efefef; border: 1px solid #aaa; border-radius: 3px; font-size: 10pt; font-style: italic; display: inline-block; min-width: 400px;">↓ &nbsp; User approval gate → implement approved upgrades or archive as signal</p>
+<figcaption>Figure 2: The harvest-loop pipeline transforms session artifacts into validated harness upgrades. The synthesizer gate (Step 3.5) cross-validates challenger attacks against innovator proposals before any skill is created or modified.</figcaption>
+</figure>
+<p><strong>The Synthesizer Gate:</strong> The critical innovation in harvest-loop is Step 3.5, which cross-validates challenger attack results against innovator proposals before any skill is created or modified. Without this gate, challenger and innovator operate in parallel but never converge — attacks may invalidate the premises of proposed enhancements without the proposer being aware. The synthesizer gate forces explicit resolution of this conflict, producing a ranked candidate list with structural justification for each grade assignment.</p>
+<p><strong>Contention as Signal:</strong> contention-layer treats skill conflicts not as problems to eliminate but as generative signals. When two existing skills conflict on handling the same scenario, this conflict marks an underspecified boundary — a candidate location for a new mediating skill. This converts the most common source of harness technical debt (overlapping skill coverage) into a harness growth mechanism.</p>
+<p><strong>Compression Aging Defense:</strong> Step 0-a addresses a specific failure mode in multi-session harness evolution: when LLM context compresses, completed work from the current session may vanish from memory. The next session's "starter card" (a next-priority checklist) can incorrectly retain items that were finished but never marked complete due to compression loss. Step 0-a requires real-time completion logging during the session — not retrospective LLM recall. Step 0-b cross-checks this log against the starter card before overwriting priorities, preventing completed items from reappearing as next-session blockers.</p>
+
+<h3>3.4 sim-conductor — Pre-Deployment Simulation (F4)</h3>
+<p>sim-conductor addresses F4 (unvalidated transfer) through structured simulation of non-owner harness adoption before cascade deployment.</p>
+<p><strong>Area A — External User Simulation:</strong> A cold-start external user persona is simulated: no author context, no shared vocabulary history, no access to session transcripts. The simulation attempts to: (1) trigger skills using natural vocabulary (not the author's trigger phrases); (2) reach expected outcomes via the documented workflow; (3) identify dead ends where harness vocabulary creates barriers for unfamiliar users. Personas are task-derived rather than fixed: sim-conductor selects the most relevant external perspectives for each artifact (e.g., security auditor for safety-critical skills, domain expert for specialized frameworks), sourcing them from installed plugins if available and falling back to built-in role directives otherwise — enabling scale from 3 personas (default) to 16 parallel agents. Anthropic’s Dynamic Workflows, released in research preview alongside Claude Opus 4.8, reports orchestration of hundreds of parallel subagents within a single session [Anthropic, 2026].</p>
+<p><strong>Area B — Internal Consistency Simulation:</strong> A simulation of consistent harness operation across a multi-session arc, verifying that memory files, skill trigger conditions, and agent dispatch rules remain self-consistent over time without human correction.</p>
+<p><strong>Cascade Gate:</strong> sim-conductor Area A must achieve ≥ 80% skill reachability via natural vocabulary before cascade deployment is approved. This prevents the common failure mode in which a harness works for its author and fails silently for the first adopter.</p>
+
+<h3>3.5 Addressing Identified Gaps: Three New Skill Domains</h3>
+<p>Post-v0.6 chain audit identified three additional failure modes not addressed by the original four methods. Each was formalized as a dedicated skill and merged into forge-harness in PRs #24–#26:</p>
+<p><strong>prompt-regression (PR #24) — Behavioral Regression Detection:</strong> SKILL.md modifications can inadvertently change skill behavior without triggering structural regressions detectable by regression_guard (which checks file structure, not semantic behavior). prompt-regression establishes golden input→output pairs for each skill and detects behavioral drift when skill descriptions change. This closes the gap between structural validity (regression_guard) and behavioral validity (prompt-regression).</p>
+<p><strong>mcp-circuit-breaker (PR #25) — MCP Tool Failure Guard:</strong> Agent workflows that depend on MCP tool calls can enter infinite retry loops when a tool fails persistently. mcp-circuit-breaker implements a circuit-state machine (CLOSED/OPEN/HALF-OPEN) that detects repeated failures and opens the circuit before cascading failures propagate through multi-step pipelines.</p>
+<p><strong>token-budget-gate (PR #26) — Pre-Task Cost Estimation:</strong> Large multi-agent tasks can exhaust token budgets mid-execution, producing partial results. token-budget-gate estimates token cost before task dispatch and blocks or resizes tasks that exceed threshold. This prevents the failure mode in which a task succeeds structurally but is abandoned due to budget exhaustion.</p>
+<p><strong>return-path-gate (PR #28) — Closed-Loop Skill Chain Formalization:</strong> Multi-skill workflows require explicit return paths: when a chain skill completes, where does control return? Without formal return-path contracts, chains terminate without propagating results back to the originating skill. return-path-gate formalizes the return-path arc as a first-class design primitive, documented in <code>knowledge/shared/harness-core/return_path_gate.md</code>.</p>
+<p>A second chain audit (PR #32) identified three further gaps, directly informed by the AHE, SkillOpt, and Scaling the Harness papers discovered during concurrent frontier search:</p>
+<p><strong>edit-manifest (PR #32) — Prediction-Verification Loop:</strong> AHE’s measured asymmetry — cross-iteration regression-precision of 11.8% against fix-precision of 33.7%, each measured over the same nine rounds — indicates that an evolving agent underestimates regression risk far more than it misjudges its fixes. edit-manifest addresses this by requiring every SKILL.md edit to declare a predicted impact; the next session's verify-bidirectional pass compares the prediction against the actual outcome. Rejected edits are retained as negative feedback in <code>rejected_edits_log.yaml</code>, instantiating SkillOpt's rejected-edit buffer pattern in the forge-harness context.</p>
+<p><strong>memory-hygiene (PR #32) — Stale-but-Confident Detection:</strong> Scaling the Harness names the "stale-but-confident" failure mode: once-validated memory content retains high retrieval ranking while silently becoming factually incorrect. memory-hygiene adds a <code>verified_at:</code> field to memory files and flags entries older than configurable thresholds for re-verification. This extends source-grounding-audit's claim-grounding check to the temporal dimension — a claim that was grounded when written may become phantom as the codebase evolves.</p>
+<p><strong>VCS-Layer Gate Enforcement (PR #32) — Prompt-to-Hook Migration:</strong> The 3-axis auto-gate (steel-quench → source-grounding-audit → regression_guard) was previously specified only in CLAUDE.md as an advisory rule. Adversarial analysis (Wave 2, Section 4.1) identified this as a structural weakness: prompt-level rules are advisory and can be bypassed in distracted sessions. PR #32 migrates gate enforcement to a git pre-commit hook (<code>templates/.git-hooks/pre-commit</code>), physically blocking commits on staged FH assets until all applicable axes pass. For axes requiring Claude skill invocation (steel-quench, source-grounding-audit), a marker file pattern bridges the gap: Claude writes a <code>.axes_passed_{branch}_{date}.marker</code> file after completing the skill, and the hook verifies marker file presence rather than attempting to invoke Claude directly. Script-executable axes (regression_guard.sh) run directly from the hook. This is a general pattern applicable to any multi-axis harness quality gate where some axes require LLM execution and some do not.</p>
+<p><strong>agent-composer (PR #33) — Multi-Agent Fan-out Orchestration:</strong> agent-composer is an orchestration layer, not a fifth validation method: it coordinates how the four methods (F1–F4) are dispatched at scale rather than addressing a distinct failure mode. As harness complexity scales, multi-agent dispatch becomes a primary coordination challenge. agent-composer formalizes three fan-out scale tiers: Small (2–5 agents, immediate dispatch without confirmation), Medium (6–16 agents, confirm scale before dispatch), and Large (17+ agents, worktree isolation mandatory with explicit user approval required). The 16-agent boundary is a forge-harness design choice reflecting the point at which worktree isolation becomes necessary in our own deployments; it is not an externally validated threshold. The tier structure provides a decision gate preventing both under-utilization of parallel capacity and uncontrolled fan-out that exhausts token budgets or produces partial results. Two operating modes: Base (Sonnet orchestrator and executors, default) and Amplified (Opus orchestrator + Sonnet executors, activated at full/max execution tier or when both cross-project scope and high-stakes factors are simultaneously detected).</p>
+
+<h2>4. Evaluation</h2>
+<p>We applied all four methods to forge-harness [chrono-meta, 2026], a meta-harness toolkit for Claude Code comprising <strong>30 skills</strong> (26 fh-meta, 4 fh-commons), 4 agents, and 2 plugin namespaces. Applying forge-harness methods to forge-harness itself constitutes a self-verification scenario (failure mode F1). We address this through external validation (Section 4.3).</p>
+
+<h3>4.1 steel-quench Results: Wave 1–3</h3>
+<p>The devil agent identified 10 findings:</p>
+<table>
+  <tr><th>Attack Angle</th><th>Grade</th><th>Finding</th></tr>
+  <tr><td>Documentation-code alignment</td><td>S</td><td>CI agent count used find -type d; agents are .md files → CI always reported 0 agents</td></tr>
+  <tr><td>Documentation-code alignment</td><td>S</td><td>README referenced ~/PycharmProjects/ (internal path) in 8 locations</td></tr>
+  <tr><td>Self-referential structure</td><td>S</td><td>plugin.json version pinned to 0.0.0 with no CI enforcement</td></tr>
+  <tr><td>Self-referential structure</td><td>S</td><td>README self-marketing claims without external citation</td></tr>
+  <tr><td>Bus factor</td><td>A</td><td>All skills authored by single contributor; no cold-start validation</td></tr>
+  <tr><td>Self-referential structure</td><td>A</td><td>Author placeholder your-name@example.com in published config</td></tr>
+  <tr><td>Self-referential structure</td><td>A</td><td>No engines.claudeCode compatibility field</td></tr>
+  <tr><td>Existence justification</td><td>A</td><td>29 skill activations with no explicit benefit-scaling justification</td></tr>
+  <tr><td>Platform obsolescence</td><td>B</td><td>No degradation path if Claude Code plugin API changes</td></tr>
+  <tr><td>Self-referential structure</td><td>B</td><td>Internal-only plugin referenced without external equivalent</td></tr>
+</table>
+<p>All 4 S-grade blockers were immediately remediated. All 4 A-grade items resolved within the same session. Wave 3: zero new S-grade blockers. Convergence achieved.</p>
+
+<h3>4.2 source-grounding-audit Results</h3>
+<p>Applying source-grounding-audit to forge-harness SKILL.md content identified 3 phantom capability claims:</p>
+<ul>
+  <li><strong>Capability phantom:</strong> sim-conductor Area B documented as fully operational; cold-start execution confirmed the multi-session arc simulation had never been exercised end-to-end.</li>
+  <li><strong>Measurement phantom:</strong> README claimed a specific token reduction figure without a corresponding measurement artifact. Claim removed; replaced with architectural description only.</li>
+  <li><strong>Capability phantom:</strong> verify-bidirectional described link-checking as automatic; inspection confirmed the check requires manual invocation per link pair.</li>
+</ul>
+<p>Phantom rate before audit: 3/47 documented claims (6.4%). After remediation: 0/44 (0%). Three claims removed rather than fabricating evidence.</p>
+
+<h3>4.3 harvest-loop Results</h3>
+<p>Five external pull requests (#1–#5) submitted during the evaluation session were processed through harvest-loop. The synthesizer gate produced the following grade assignments:</p>
+<table>
+  <tr><th>PR</th><th>Pattern</th><th>Synthesizer Grade</th><th>Outcome</th></tr>
+  <tr><td>#1</td><td>CI agent counting fix + path neutralization</td><td>HIGH</td><td>Immediate integration</td></tr>
+  <tr><td>#2</td><td>arXiv study ingestion → frontier digest absorption</td><td>HIGH</td><td>README external validation block</td></tr>
+  <tr><td>#3</td><td>Internal placeholder removal</td><td>MED</td><td>Applied; no skill upgrade generated</td></tr>
+  <tr><td>#4</td><td>harness-evolver cross-audit → sister asset protocol</td><td>HIGH</td><td>SKILL.md positioning section added</td></tr>
+  <tr><td>#5</td><td>Regression guard + worktree isolation + numeric scoring</td><td>HIGH</td><td>Three SKILL.md upgrades (v1.2)</td></tr>
+</table>
+<p>HIGH-grade patterns (4/5) resulted in immediate skill upgrades. The one MED-grade pattern (PR #3) produced a harness change without generating a reusable skill candidate, consistent with the synthesizer gate's "no devil validation → MED" classification.</p>
+
+<h3>4.4 sim-conductor Results</h3>
+<p>sim-conductor Area A was applied before cascade deployment (Section 4.5). The simulation identified two vocabulary barriers: (1) the skill trigger /steel-quench was reachable by the author's vocabulary but not by the natural phrasing "adversarial review" or "adversarial audit" used by simulated external users; (2) harvest-loop was not triggered by "session cleanup" or "wrap up" phrasing common among non-author practitioners.</p>
+<p>Both barriers were resolved by expanding trigger phrase lists before cascade deployment. Post-fix simulation: 26/26 skills (100%) reachable via natural vocabulary across 4 simulated external user profiles.</p>
+
+<h3>4.5 External Validation and Cascade Deployment</h3>
+<p>To address the self-referential validation concern (F1), external validation was conducted through an independent GitHub account operating on a separate network with a fresh repository clone and no shared session context. This account submitted five PRs independently, with one additional defect identified (CI agent counting bug) that primary-environment validation had missed — confirming that external perspective surfaces blind spots not accessible from within the primary environment.</p>
+<p>Beyond the evaluation environment, forge-harness was autonomously adopted by three additional practitioners across different projects. One practitioner applied steel-quench independently to a QA automation tool, identified two structural defects, and submitted corrections without author assistance. This non-owner autonomous operation — cascade deployment — constitutes observational validation that all four methods transfer without the originating author's presence.</p>
+<p><strong>Amplified-mode dogfooding.</strong> The session producing this paper operated in Amplified mode (Opus 4.8 orchestrator planning, Sonnet 4.6 executing). agent-composer's fan-out tier decision gate was applied in practice: the sim-conductor run dispatching 4 persona agents qualified as Small-tier (immediate dispatch, no confirmation required); the harvest-loop absorbing external PRs across 5 skill domains was confirmed as Medium-tier (scale confirmed before dispatch). The Amplified session confirmed that Base and Amplified modes share an identical validation contract — gate enforcement, phantom detection, and transfer simulation operate unchanged regardless of model tier. Brain/Hands decoupling (Opus plans, Sonnet executes) is designed to contain orchestration cost by reserving the higher-cost model for planning while delegating execution to a lower-cost model; we report this as a design property observed in the session, not a controlled cost measurement. This is consistent with the model-agnostic harness layer principle (Section 5.4).</p>
+
+<h3>4.6 Independent Architectural Convergence</h3>
+<p>Frontier search during and after the evaluation identified <strong>eleven independent implementations</strong> converging on the same harness engineering architecture. Cross-audit confirmed that all eleven independently converged on the same outer-loop: field observation → adversarial critique → synthesis → integration → verification.</p>
+<table style="table-layout: fixed; word-break: break-word; overflow-wrap: break-word;">
+  <colgroup>
+    <col style="width: 27%;"/>
+    <col style="width: 19%;"/>
+    <col style="width: 54%;"/>
+  </colgroup>
+  <tr><th>Implementation</th><th>arXiv / Source</th><th>Convergence Point</th></tr>
+  <tr><td>harness-evolver [Christi, 2026]</td><td>github.com/raphaelchristi/harness-evolver</td><td>7-stage outer-loop, adversarial evaluation</td></tr>
+  <tr><td>Meta-Harness [Lee et al., 2026]</td><td>arXiv:2603.28052</td><td>Outer-loop harness-code search, +7.7 pts at 4× fewer context tokens</td></tr>
+  <tr><td>SwarmHarness [Jose, 2026a]</td><td>arXiv:2605.28764</td><td>Skill-based task routing, decentralized harness nodes</td></tr>
+  <tr><td>HarnessAPI [Jose, 2026b]</td><td>arXiv:2605.22733</td><td>Skill-first framework, unified MCP tool orchestration</td></tr>
+  <tr><td>Harness-Bench [Yao et al., 2026]</td><td>arXiv:2605.27922</td><td>Empirical measurement of harness effects across models</td></tr>
+  <tr><td>SkillOpt [Yang et al., 2026]</td><td>arXiv:2605.23904</td><td>Held-out validation gate + rejected-edit buffer — convergent with synthesizer gate + harvest-loop</td></tr>
+  <tr><td>AHE [Lin et al., 2026]</td><td>arXiv:2604.25850</td><td>Per-edit prediction verified against the next round; 11.8% regression-precision blindspot — convergent with regression_guard + edit-manifest</td></tr>
+  <tr><td>Scaling the Harness [Gu, 2026]</td><td>arXiv:2605.26112</td><td>Stale-but-confident failure mode formalization — convergent with source-grounding-audit + memory-hygiene</td></tr>
+  <tr><td>forge-harness [this work]</td><td>10.5281/<wbr>zenodo.<wbr>20397566</td><td>Four-method validation + self-evolution pipeline + VCS-layer gate enforcement</td></tr>
+  <tr><td>Ptah [Zhang et al., 2026]</td><td>arXiv:2605.29861</td><td>A verifier agent as the harness’s acceptance function (factual grounding, citation fidelity, cross-modal consistency) — convergent with 3-axis auto-gate + sim-conductor multi-persona Area A</td></tr>
+  <tr><td>Anthropic Dynamic Workflow [Anthropic, 2026]</td><td>claude.com/claude-code</td><td>Hundreds of parallel subagents per session, orchestrated by a runtime-generated plan — convergent with agent-composer Wave architecture + fan-out scale tiers (research preview, Enterprise/Team/Max)</td></tr>
+</table>
+<p>Eleven independent implementations arriving at the same outer-loop structure through different paths validates the architecture as a structural property of the harness engineering problem. Three retroactive convergence points from v0.8 — SkillOpt's validation gate, AHE's change manifest, Scaling the Harness's stale-but-confident taxonomy — were not discovered until after the forge-harness implementations existed, each independently naming a failure mode forge-harness had already operationalized. Two new convergence points in v0.9 extend this pattern in a different dimension: Ptah (Zhang et al., 2026) independently formalizes stage-wise multi-agent verification structurally equivalent to forge-harness's 3-axis auto-gate; Anthropic’s Dynamic Workflows confirms parallel sub-agent orchestration at hundreds-of-subagents scale, though as a research preview rather than a generally available feature, paralleling agent-composer’s Wave architecture and fan-out scale tiers. SwarmHarness and HarnessAPI (Jose, 2026a; 2026b) both independently adopt "skill" as the primary routing primitive; Harness-Bench provides empirical measurement complementary to this work's structural validation focus.</p>
+
+<h3>4.7 Quantitative Results Summary</h3>
+<p>Table 1 consolidates all numeric evaluation results across Sections 4.1–4.6. Individual figures are distributed across method-specific subsections; this table makes the full measurement set visible in one location.</p>
+<table>
+  <tr><th>Metric</th><th>Result</th><th>Section</th></tr>
+  <tr><td>S-grade structural defects: found / resolved</td><td>4 / 4 (100%)</td><td>§4.1</td></tr>
+  <tr><td>A-grade structural defects: found / resolved</td><td>4 / 4 (100%)</td><td>§4.1</td></tr>
+  <tr><td>B-grade findings (non-blocking)</td><td>2</td><td>§4.1</td></tr>
+  <tr><td>Wave convergence: new S-grade at Wave 3</td><td>0 (convergence achieved)</td><td>§4.1</td></tr>
+  <tr><td>Phantom claim rate — pre-audit</td><td>6.4% (3 / 47 claims)</td><td>§4.2</td></tr>
+  <tr><td>Phantom claim rate — post-remediation</td><td>0% (0 / 44 claims)</td><td>§4.2</td></tr>
+  <tr><td>External PR HIGH-grade absorption rate</td><td>80% (4 / 5 PRs)</td><td>§4.3</td></tr>
+  <tr><td>Skill reachability — pre-simulation</td><td>2 vocabulary barriers identified</td><td>§4.4</td></tr>
+  <tr><td>Skill reachability — post-fix</td><td>100% (26 / 26 skills, 4 external personas)</td><td>§4.4</td></tr>
+  <tr><td>Multi-model S-grade recommendation consensus</td><td>100% (4 / 4 top recommendations, 3 frontier models)</td><td>§2.5</td></tr>
+  <tr><td>Independent architectural convergence</td><td>11 implementations</td><td>§4.6</td></tr>
+  <tr><td>Independent practitioner deployments confirmed</td><td>3</td><td>§4.5</td></tr>
+</table>
+<p>These metrics measure <em>validation quality</em>: defect detection rates, phantom elimination rates, skill reachability, and cross-implementation convergence. They are distinct from <em>task performance metrics</em> (benchmark score deltas, token efficiency ratios) used in performance optimization systems such as Meta-Harness [arXiv:2603.28052]. Section 5.4 addresses this distinction and its implications.</p>
+
+<h2>5. Discussion</h2>
+
+<h3>5.1 Limitations</h3>
+<p><strong>Single-project evaluation:</strong> All four methods are evaluated on forge-harness itself. While the self-verification scenario is methodologically challenging (addressed through external validation), results from a single project cannot establish generalizability. Multi-project controlled evaluation is required.</p>
+<p><strong>External validation independence:</strong> The "external" account used in Section 4.3 is operated by the same author as the primary account, from a different network and session context but not an independent practitioner. Truly independent external validation would require practitioners with no prior knowledge of forge-harness.</p>
+<p><strong>Phantom audit coverage:</strong> source-grounding-audit was applied to a subset of SKILL.md documentation. Full coverage of all 30 skills and 4 agents was not completed; the 6.4% phantom rate should be understood as a partial-coverage estimate.</p>
+<p><strong>Cascade deployment:</strong> Section 4.5 reports observational adoption. Effect sizes, error rates relative to baselines, and longitudinal stability have not been measured.</p>
+<p><strong>Wave 4 coverage:</strong> Meta-aware adversary mode (Section 3.1) is documented in the framework and applied in practitioner settings but Wave 4 results are not reported in this evaluation.</p>
+<p><strong>Human-in-the-loop ceiling:</strong> forge-harness intentionally preserves human approval gates at each pipeline stage. This means forge-harness cannot achieve the fully automated optimization performance demonstrated by harness-evolver. The human-in-the-loop design is a deliberate architectural choice — not a limitation — but practitioners requiring fully automated harness code search at benchmark scale should evaluate harness-evolver instead.</p>
+<p><strong>Methodology universality vs. implementation portability:</strong> The four methods described in this paper — adversarial validation (steel-quench), phantom detection (source-grounding-audit), session-to-harness evolution (harvest-loop), and transfer simulation (sim-conductor) — are platform-agnostic in principle. Each addresses a structural failure mode that arises in any AI collaboration harness regardless of underlying model or orchestration framework. The <em>implementation</em>, however, targets Claude Code's plugin and skill architecture specifically. Portability to other frameworks (LangGraph, DSPy, CrewAI, open-source model harnesses) has not been validated. Practitioners in non-Claude Code environments should treat the methods as applicable patterns and the implementation as a reference, not a drop-in toolkit.</p>
+<p><strong>Validation metrics vs. performance benchmarks:</strong> The metrics reported in this paper — phantom elimination rate, defect resolution rate, skill reachability, multi-model consensus — measure harness <em>quality properties</em>: correctness, consistency, and transferability. They do not measure task performance improvement (benchmark score delta, token efficiency ratio). Performance gains such as the "+7.7 points at 4× fewer context tokens" reported by Meta-Harness result from automated harness code optimization — a complementary goal. Section 5.4 addresses the relationship between validation quality and performance measurement and identifies controlled pre-conditioning measurement as the primary gap for future work.</p>
+
+<h3>5.2 When to Apply Each Method</h3>
+<table>
+  <tr><th>Situation</th><th>Recommended Method</th></tr>
+  <tr><td>Pre-deployment validation of a complex harness</td><td>steel-quench Wave 1–3</td></tr>
+  <tr><td>Harness content has grown through AI-generated documentation</td><td>source-grounding-audit</td></tr>
+  <tr><td>Working sessions generate repeated learnings that are not persisted</td><td>harvest-loop</td></tr>
+  <tr><td>First non-owner adoption is imminent</td><td>sim-conductor Area A</td></tr>
+  <tr><td>Post-Wave-3 high-stakes release (public listing, academic submission)</td><td>steel-quench Wave 4</td></tr>
+  <tr><td>SKILL.md modified; behavioral regression suspected</td><td>prompt-regression</td></tr>
+  <tr><td>MCP tool calls failing repeatedly in agent pipelines</td><td>mcp-circuit-breaker</td></tr>
+  <tr><td>Large multi-agent task risks token budget exhaustion</td><td>token-budget-gate</td></tr>
+</table>
+<p>The four core methods are complementary and designed to run in the order listed: structural defects (steel-quench) → phantom claims (source-grounding-audit) → knowledge evolution (harvest-loop) → transfer validation (sim-conductor). The three additional skills (prompt-regression, mcp-circuit-breaker, token-budget-gate) address runtime failure modes and are applied on-demand rather than sequentially.</p>
+
+<h3>5.3 The Harness Engineering Layer</h3>
+<p>The four methods in this paper operate at a layer distinct from both prompt engineering (individual instruction quality) and model evaluation (benchmark performance). They address the structural properties of the persistent environment around the AI — the rules, memory, and skills that persist across sessions and shape every interaction. As AI harnesses become the primary determinant of collaboration quality, engineering methods for this layer become correspondingly important. forge-harness is one contribution toward a more principled harness engineering practice.</p>
+
+<h3>5.4 Validation Quality as a Pre-Condition for Performance Optimization</h3>
+<p>Given the existence of established harness frameworks and meta-harness systems, a natural question is: what does forge-harness contribute that these systems do not already provide? This section addresses that question directly.</p>
+<p><strong>The pre-condition gap.</strong> Existing harness engineering work divides into two clusters: (1) <em>performance optimization systems</em> (Meta-Harness, harness-evolver) that measure and improve benchmark task performance through automated outer-loop iteration, and (2) <em>empirical measurement systems</em> (Harness-Bench) that quantify harness effects across model-harness pairs in controlled settings. Both clusters assume a harness whose documented behavior matches its actual behavior — that skill triggers work as described, that capability claims are grounded in executed code, and that the harness transfers reliably to non-author practitioners. These assumptions are structurally unverifiable by the systems themselves: an optimization loop cannot detect that its baseline harness contained phantom capability claims, because phantom claims are indistinguishable from real ones without external grounding evidence. forge-harness targets precisely this pre-condition gap.</p>
+<p><strong>Complementary positioning, not competition.</strong> A harness that passes forge-harness validation is not necessarily a high-performing harness — it is a harness whose stated properties are grounded in evidence, whose defects have been adversarially surfaced, and whose transfer behavior has been pre-simulated. This validated state is a more reliable baseline for performance optimization: improvements measured on a defect-free baseline can be attributed to the optimization, not to coincidental correction of silent defects during the optimization process.</p>
+<p><strong>The precondition chain.</strong> The relationship between the existing systems can be stated as a sequential chain: <em>structural validation (forge-harness) → known-good baseline → performance optimization (harness-evolver / Meta-Harness) → attributed performance gains → empirical cross-harness measurement (Harness-Bench)</em>. Skipping validation and proceeding directly to optimization risks measuring artifacts of defect correction rather than genuine performance improvements. The "+7.7 points at 4× fewer context tokens" result from Meta-Harness is a compelling headline; attributing that result to the optimization method rather than to coincidental defect correction requires a validated pre-optimization baseline.</p>
+<p><strong>When forge-harness is the right tool.</strong> forge-harness is most valuable when: (a) a harness has grown through AI-assisted content generation, where phantom claims accumulate silently; (b) first non-owner adoption is approaching, where vocabulary barriers and undocumented assumptions create silent transfer failures; (c) a harness has been modified frequently without systematic defect tracking; or (d) session learnings are being lost between working sessions. In each of these scenarios, the cost of undetected defects compounds over time and across adopters. Performance optimization applied to a defect-carrying harness amplifies both genuine improvements and artifact noise equally.</p>
+<p><strong>Model-agnostic harness layer.</strong> A further positioning dimension concerns model selection. Performance optimization systems optimize harness behavior conditional on specific model capabilities; forge-harness operates as a model-agnostic validation layer. The same four methods apply regardless of whether the underlying model is Sonnet 4.6 (base tier: orchestrator and executor both Sonnet) or Opus 4.8 (amplified tier: Opus orchestrator + Sonnet executors, with Dynamic Workflow enabling parallel sub-agent fan-out). The session producing this paper ran in amplified mode, yet the validation methods and gate enforcement patterns are unchanged from standard Sonnet-only operation. The harness layer — not the model — determines whether validation gates are enforced, whether phantom claims exist, and whether skills transfer to non-author practitioners. As model capabilities scale (Anthropic’s Dynamic Workflows reports hundreds of parallel subagents per session), the harness engineering challenge scales correspondingly: more agents create more opportunities for silent gate bypass and unvalidated transfer. forge-harness addresses this scaling challenge at the structural layer. The relationship is amplification, not substitution: Base mode (Sonnet) is sufficient for standard validation; Amplified mode (Opus + Sonnet) extends the same harness to larger fan-out scenarios without changing the validation contract. A practitioner constrained to Sonnet-only access receives the full validation benefit; a practitioner with Opus access receives the same validation benefit plus Dynamic Workflow-scale orchestration.</p>
+
+<h2>6. Conclusion</h2>
+<p>We presented forge-harness, a toolkit of four methods addressing the primary failure modes in AI collaboration harness engineering: steel-quench for adversarial structural validation, source-grounding-audit for phantom claim detection, harvest-loop for session-to-harness self-evolution, and sim-conductor for pre-deployment transfer validation. Applied to forge-harness itself, the methods resolved 10 structural defects, detected and removed 3 phantom claims (6.4% → 0% phantom rate), absorbed 5 external contributions as validated upgrades (80% HIGH-grade absorption), and confirmed 100% skill reachability across 4 simulated external personas — all within a single evaluation session. A consolidated quantitative summary appears in Table 1 (Section 4.7). Independent architectural convergence across <strong>eleven implementations</strong> (forge-harness, harness-evolver, Meta-Harness, SwarmHarness, HarnessAPI, Harness-Bench, SkillOpt, AHE, Scaling the Harness, Ptah, Anthropic Dynamic Workflows) validates the outer-loop structure as a robust solution pattern for harness engineering. Three retroactive convergence points (SkillOpt, AHE, Scaling the Harness) independently formalized failure modes forge-harness had already operationalized; two new convergence points (Ptah's verifier agent as a harness acceptance function, and Anthropic Dynamic Workflows' parallel sub-agent orchestration — the latter a research preview rather than a generally available feature) indicate the architecture holds at multi-agent scale. Multi-model convergence testing (Opus 4.7, GPT-5.5, Sonnet 4.6) confirms that given consistent input quality, frontier LLMs converge on the same high-priority recommendations.</p>
+<p>forge-harness occupies a distinct position in the harness engineering ecosystem: it addresses the pre-condition gap that performance optimization systems cannot self-verify. A harness passing forge-harness validation — zero phantom claims, adversarially-confirmed defect resolution, transfer-simulated skill reachability — provides a reliable baseline from which performance optimization can produce attributable results. The precondition chain (structural validation → known-good baseline → performance optimization → attributed gains) positions forge-harness as the entry point for principled harness engineering practice, not a competitor to performance optimization systems.</p>
+<p>The methods share a common design principle: each separates the roles of generator and evaluator that typically collapse in solo harness development. steel-quench separates attack from defense. source-grounding-audit separates claim from evidence. harvest-loop separates observation from absorption through the synthesizer gate. sim-conductor separates author perspective from adopter perspective. This separation is the structural mechanism by which the methods surface what informal self-evaluation cannot.</p>
+<p>Artifact availability: <a href="https://github.com/chrono-meta/forge-harness">https://github.com/chrono-meta/forge-harness</a></p>
+
+<h2>References</h2>
+<p style="font-size:9.5pt; color:#555; margin-bottom:10px;">Entries are keyed by author and year. Where the body cites a work by its arXiv identifier, that identifier appears in the corresponding entry below.</p>
+<p>[Liu et al., 2026] Liu, J. et al. "Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems." arXiv:2604.14228, 2026.</p>
+<p>[Ning et al., 2026] Ning, X. et al. "Code as Agent Harness." arXiv:2605.18747, 2026.</p>
+<p>[Seong et al., 2026] Seong, H. et al. "The Last Harness You'll Ever Build." arXiv:2604.21003, 2026.</p>
+<p>[Lee et al., 2026] Lee, Y. et al. "Meta-Harness: End-to-End Optimization of Model Harnesses." arXiv:2603.28052, 2026.</p>
+<p>[Sengupta et al., 2026] Sengupta, S. et al. "Meta-Engineering Harnesses for AI-Native Software Production: A Contract-Driven Adversarial Verification Architecture with Early Deployment Report." arXiv:2605.25665, 2026.</p>
+<p>[Zhu et al., 2026] Zhu, J. et al. "Your Agents Are Aging Too: Agent Lifespan Engineering for Deployed Systems." arXiv:2605.26302, 2026.</p>
+<p>[Benkovich et al., 2026] Benkovich, N. et al. "Agyn: An Open-Source Platform for AI Agents with Scalable On-Demand Execution, Agent Definition as a Code, and Zero-Trust Access." arXiv:2605.27575, 2026.</p>
+<p>[Diks et al., 2026] Diks, I. et al. "Verifiable Benchmarking of Long-Horizon Spatial Biology." arXiv:2605.28065, 2026.</p>
+<p>[Jose, 2026a] Jose, E. "SwarmHarness: Skill-Based Task Routing via Decentralized Incentive-Aligned AI Agent Networks." arXiv:2605.28764, 2026.</p>
+<p>[Jose, 2026b] Jose, E. "HarnessAPI: A Skill-First Framework for Unified Streaming APIs and MCP Tools." arXiv:2605.22733, 2026.</p>
+<p>[Yao et al., 2026] Yao, Y. et al. "Harness-Bench: Measuring Harness Effects across Models in Realistic Agent Workflows." arXiv:2605.27922, 2026.</p>
+<p>[Yang et al., 2026] Yang, Y. et al. "SkillOpt: Executive Strategy for Self-Evolving Agent Skills." arXiv:2605.23904, 2026.</p>
+<p>[Lin et al., 2026] Lin, J. et al. "Agentic Harness Engineering: Observability-Driven Automatic Evolution of Coding-Agent Harnesses." arXiv:2604.25850, 2026.</p>
+<p>[Gu, 2026] Gu, S. "From Model Scaling to System Scaling: Scaling the Harness in Agentic AI." arXiv:2605.26112, 2026.</p>
+<p>[Zhang et al., 2026] Zhang, C. et al. "Towards Verifiable Multimodal Deep Research: A Multi-Agent Harness for Interleaved Report Generation." arXiv:2605.29861, 2026.</p>
+<p>[Anthropic, 2026] Anthropic. "Introducing Claude Opus 4.8" (dynamic workflows, research preview for Claude Code Enterprise / Team / Max). <a href="https://www.anthropic.com/news/claude-opus-4-8">https://www.anthropic.com/news/claude-opus-4-8</a>, 28 May 2026.</p>
+<p>[Christi, 2026] Christi, R. harness-evolver. MIT License. <a href="https://github.com/raphaelchristi/harness-evolver">https://github.com/raphaelchristi/harness-evolver</a>, 2026.</p>
+<p>[chrono-meta, 2026] Kwon, S. forge-harness. <a href="https://github.com/chrono-meta/forge-harness">https://github.com/chrono-meta/forge-harness</a> · DOI 10.5281/zenodo.20397566, 2026.</p>
+<p>[Perez et al., 2022] Perez, E. et al. "Red Teaming Language Models with Language Models." arXiv:2202.03286, 2022.</p>
+<p>[Bai et al., 2022] Bai, Y. et al. "Constitutional AI: Harmlessness from AI Feedback." arXiv:2212.08073, 2022.</p>
+<p>[Maynez et al., 2020] Maynez, J. et al. "On Faithfulness and Factuality in Abstractive Summarization." ACL 2020. arXiv:2005.00661.</p>
+<p>[Ji et al., 2023] Ji, Z. et al. "Survey of Hallucination in Natural Language Generation." ACM Computing Surveys 55(12), 2023. arXiv:2202.03629.</p>
+<p>[Shinn et al., 2023] Shinn, N. et al. "Reflexion: Language Agents with Verbal Reinforcement Learning." NeurIPS 2023. arXiv:2303.11366.</p>
+<p>[Madaan et al., 2023] Madaan, A. et al. "Self-Refine: Iterative Refinement with Self-Feedback." NeurIPS 2023. arXiv:2303.17651.</p>
+
+<h2>Changelog</h2>
+<div class="changelog">
+<p><strong>v1.0.1 (2026-09-06) — corrective release:</strong></p>
+<ul>
+  <li>Fixed: References — 11 entries carried a title, author list, or institution that did not belong to the cited arXiv identifier; all re-verified against the arXiv API</li>
+  <li>Fixed: In-text author-year citations resynchronized to the corrected first authors (VILA-Lab→Liu, Ning→Sengupta, Liu→Zhu, Min→Benkovich, Park→Diks, Zhang→Yang, Wang→Lin, Gu et al.→Gu); "Stanford" dropped from Meta-Harness throughout</li>
+  <li>Fixed: Abstract + §2.1 — the 98.4% figure restated as a codebase-composition ratio reported as a community estimate, not a measurement of session content; the "10,000 sessions" claim removed as unsupported</li>
+  <li>Fixed: §2.1 / §3.5 / §4.6 — AHE's 11.8% and 33.7% restated as regression-precision and fix-precision, with their random baselines</li>
+  <li>Fixed: §2.1 — SpatialBench claim removed; arXiv:2605.28065 is a spatial-biology benchmark and does not make it</li>
+  <li>Fixed: §4.6 — Ptah verifier axes corrected to factual grounding / citation fidelity / cross-modal consistency</li>
+  <li>Fixed: §3.4 / §3.5 / §4.6 / §5.4 — Anthropic Dynamic Workflows described as a research preview reporting hundreds of parallel subagents; the "16 parallel agents validated in production" attribution withdrawn and the 6–16 tier boundary restated as a forge-harness design choice</li>
+  <li>Added: References — arXiv identifiers for Reflexion, Self-Refine, Maynez et al. and Ji et al.; reference entries for [Anthropic, 2026] and [chrono-meta, 2026], which v1.0 cited without listing</li>
+  <li>Added: Erratum block (post-abstract) itemizing every correction</li>
+  <li>Unchanged: all Section 4 measurements, Table 1, and the eleven-implementation convergence count</li>
+</ul>
+<p><strong>v1.0 (2026-05-30):</strong></p>
+<ul>
+  <li>Added: Figure 1 — pipeline architecture diagram (post-abstract) illustrating the four-method flow and VCS-layer gate</li>
+  <li>Added: Section 3.5 — agent-composer fan-out scale tiers (Small 2–5, Medium 6–16, Large 17+); Base / Amplified operating modes</li>
+  <li>Added: Section 4.5 — Amplified-mode dogfooding case: Opus 4.8 orchestrator + Sonnet 4.6 executors; fan-out tier gate applied in practice</li>
+  <li>Updated: GitHub URL chrono-code → chrono-meta throughout</li>
+</ul>
+<p><strong>v0.9 (2026-05-30):</strong></p>
+<ul>
+  <li>Added: Section 3.4 — sim-conductor task-adaptive persona selection (3-tier sourcing: installed plugins → built-in role directives → external fetch via plugin-recommender; scale 3–16 parallel agents)</li>
+  <li>Added: Section 4.6 — two new convergence points: Ptah (arXiv:2605.29861, stage-wise multi-agent verification) and Anthropic Dynamic Workflow (parallel sub-agent orchestration at scale); convergence count 9 → 11</li>
+  <li>Added: Section 5.4 — Model-agnostic harness layer paragraph; Base (Sonnet) + Amplified (Opus orchestrator + Sonnet executors) positioning</li>
+  <li>Updated: Section 4.7 Table 1 — independent architectural convergence 6 → 11 (correcting stale count)</li>
+  <li>Updated: Section 6 Conclusion — convergence count 9 → 11; new convergence points noted</li>
+  <li>Updated: References — added Ptah (arXiv:2605.29861)</li>
+</ul>
+<p><strong>v0.8 (2026-05-30):</strong></p>
+<ul>
+  <li>Added: Section 2.1 — three new related works: SkillOpt (arXiv:2605.23904, Microsoft), AHE (arXiv:2604.25850, Fudan), Scaling the Harness (arXiv:2605.26112, UC Berkeley)</li>
+  <li>Added: Section 3.5 — three gap skills from PR #32: edit-manifest (prediction-verification loop), memory-hygiene (stale-but-confident detection), VCS-Layer Gate Enforcement (git pre-commit hook + marker file pattern)</li>
+  <li>Added: Section 4.7 — Quantitative Results Summary (Table 1)</li>
+  <li>Added: Section 5.4 — Validation Quality as Pre-Condition for Performance Optimization; precondition chain formalized</li>
+  <li>Updated: Section 4 header — skill count 28 → 30 (26 fh-meta + 4 fh-commons)</li>
+  <li>Updated: Section 4.6 — convergence table 6 → 9 implementations (SkillOpt, AHE, Scaling the Harness); retroactive convergence framing added</li>
+  <li>Updated: Section 5.1 — two new limitation paragraphs (methodology universality; validation vs. performance metrics)</li>
+  <li>Updated: Section 6 Conclusion — convergence count 6 → 9; quantitative figures inline</li>
+  <li>Updated: References — SkillOpt, AHE, Scaling the Harness added (total 17 references)</li>
+</ul>
+<p><strong>v0.7 (2026-05-29):</strong></p>
+<ul>
+  <li>Added: Section 3.5 — Three New Skill Domains (prompt-regression, mcp-circuit-breaker, token-budget-gate, return-path-gate) — gap skills from PR #24–#28</li>
+  <li>Added: Section 4.6 — Extended convergence table from 3 → 6 independent implementations (SwarmHarness arXiv:2605.28764, HarnessAPI arXiv:2605.22733, Harness-Bench arXiv:2605.27922)</li>
+  <li>Added: References — SwarmHarness, HarnessAPI, Harness-Bench</li>
+  <li>Updated: Section 3.1 Wave 5 — 7th regression check (merge-base auto-calculation in --pr mode, PR #30)</li>
+  <li>Updated: Section 4 header — skill count 23 → 28 (24 fh-meta + 4 fh-commons)</li>
+  <li>Updated: harvest-loop pipeline — Step 10 now lists 7-axis check</li>
+  <li>Updated: Section 5.2 — added three new method rows (prompt-regression, mcp-circuit-breaker, token-budget-gate)</li>
+  <li>Updated: Section 6 Conclusion — convergence evidence updated to six implementations</li>
+  <li>Removed: Section 3.5 "Future Work: Harness Federation Sync" — superseded by agent-composer + context-bridge-dispatch; personal path mapping kept local-only</li>
+</ul>
+<p><strong>v0.6 (2026-05-28):</strong></p>
+<ul>
+  <li>Added: Section 2.5 — Empirical Validation: Multi-Model Review Convergence</li>
+  <li>Added: Section 3.1 Wave 5 — Post-Fix Verification (Regression Guard)</li>
+  <li>Added: harvest-loop Steps 0-a/0-b — Compression Loss Defense and Cross-Check Gate</li>
+  <li>Added: harvest-loop Step 10 — Post-Fix Regression Guard</li>
+  <li>Added: Section 3.5 — Future Work: Harness Federation Sync (preview, subsequently superseded)</li>
+  <li>Improved: Section 2.1 — Added four new arXiv references (2605.25665, 2605.26302, 2605.27575, 2605.28065)</li>
+  <li>Improved: Section 2.2 — Integrated Ning et al. two-pass meta-detector pattern</li>
+  <li>Improved: Section 2.3 — Integrated Liu et al. compression aging mechanism</li>
+  <li>Improved: Section 6 — Updated conclusion with multi-model convergence validation</li>
+</ul>
+<p>Draft v1.0 — 2026-05-30. Corrective release v1.0.1 — 2026-09-06.</p>
+</div>
+
+</body>
+</html>
