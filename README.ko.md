@@ -5,7 +5,8 @@
 <p align="center">
   <a href="https://github.com/walkinglabs/awesome-harness-engineering#coding-agent-harnesses"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Harness Engineering"></a>
   <a href="https://github.com/VoltAgent/awesome-agent-skills#community-skills"><img src="https://img.shields.io/badge/listed_in-awesome--agent--skills-0ea5e9.svg" alt="Listed in awesome-agent-skills"></a>
-  <img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code">
+  <a href="https://github.com/anthropics/claude-code"><img src="https://img.shields.io/badge/Claude_Code-compatible-a855f7.svg" alt="Claude Code compatible — official Claude Code repository"></a>
+  <a href="https://chrono-meta.github.io/forge-harness/"><img src="https://img.shields.io/badge/whole_map-interactive-6366f1.svg" alt="FH whole map — interactive diagrams on GitHub Pages"></a>
   <a href="https://www.npmjs.com/package/@chrono-meta/fh-gate"><img src="https://img.shields.io/npm/v/@chrono-meta/fh-gate.svg?color=cb3837" alt="npm"></a>
   <a href="https://github.com/chrono-meta/homebrew-forge-harness"><img src="https://img.shields.io/badge/homebrew-tap-FBB040.svg" alt="Homebrew tap"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e.svg" alt="MIT License"></a>
@@ -41,18 +42,45 @@ npx --package @chrono-meta/fh-gate fh-gate          # 설치할 것 없음
 brew tap chrono-meta/forge-harness && brew install forge-harness   # 또는 이쪽
 ```
 
+**GitHub Actions 에서** — 같은 게이트를 스텝 하나로, 판정은 타입을 유지한 채:
+
+```yaml
+- uses: chrono-meta/forge-harness@v3.1.0
+  with:
+    files: ${{ steps.changed.outputs.files }}
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+이 스텝은 `verdict`(PASS · PENDING · BLOCKED · ESCALATE · HARNESS_ERROR · ARG_ERROR · DRY_RUN ·
+UNKNOWN)와 `reviewed` 를 내놓습니다. **`reviewed: false` 는 통과가 아닙니다** — 백엔드가 끝내 답을
+주지 않은 경우, dry run, 이 래퍼가 모르는 종료 코드가 전부 여기로 떨어지고, 기본값에서는 전부 스텝을
+실패시킵니다. 그 기본값이 바로 요점입니다: 돌지 않은 검사가 초록으로 읽혀서는 절대 안 됩니다. 더
+느슨한 정책을 원하면 `fail-on:` 으로 바꾸되, 무엇과 바꾸는 것인지는 알고 하세요.
+
+
 **얻는 것**
 
 - 변경이 머지되기 **전에** 판정이 나오고, 그 판정은 이 변경이 **무엇을 잃었는지**를 이름으로
   말합니다. '뭔가 이상하다'가 아닙니다. 위 GIF가 실제 diff에 대한 그 판정입니다.
 - 판정은 grep 할 텍스트가 아니라 **타입이 있는 값**입니다: `PASS · PENDING · BLOCKED · ESCALATE`.
 - 셸이 도는 곳이면 어디서나 돕니다. CI, pre-commit 훅, 다른 코딩 에이전트. Claude Code는 선택입니다.
+- **에이전트의 코드만이 아니라, 당신이 쓴 코드도 봅니다.** diff 를 가리키면 약한 자리를 이름으로
+  말합니다 — 조용히 PASS 쪽으로 열화되는 판정, 존재하지 않는 참조, 새어 나간 비밀, 근거 없는 주장 —
+  그래서 머지 *전에* 고치고 다시 돌립니다. 각 FH 엔진이 어디에 걸리는지(하네스 짓기 · 스킬/에이전트
+  작성 · 코드 리뷰 · 비가역 표면 게이트 · 맥락 연속성), 그리고 모델 티어와 노력 수준에 따라 무엇이
+  달라지는지: [`docs/USE_CASES.md`](docs/USE_CASES.md) ·
+  [`docs/model_tier_expectations.md`](docs/model_tier_expectations.md).
+  이 게이트들이 ISO/IEC 의 AI 시험 · AI 품질 표준(42119 · 29119-11 · 25059 · 42001)과 어떻게
+  맞물리는지를, 증거 포인터를 붙인 자기평가로:
+  [`docs/STANDARDS_ALIGNMENT.md`](docs/STANDARDS_ALIGNMENT.md).
 
 ### ② 하네스 전체: Claude Code 안에서
 
 ```bash
 claude plugin marketplace add https://github.com/chrono-meta/forge-harness.git
 claude plugin install -s user fh-meta@forge-harness
+claude plugin install -s user fh-qp@forge-harness      # 선택: QP(Quality Platform) — 세션의 Playwright / computer-use MCP 로 웹·데스크톱 앱을 계획→실행→회귀
 git clone https://github.com/chrono-meta/forge-harness.git ~/projects/forge-harness
 cd ~/projects/forge-harness && claude        # 그다음 인사 한마디: 안녕 · hi · こんにちは · 你好
 ```
@@ -69,7 +97,7 @@ cd ~/projects/forge-harness && claude        # 그다음 인사 한마디: 안�
 - 어떤 검사를 걸지 고르지 않아도 됩니다. 지금 무엇을 하려는지 — 공개, 삭제, 이력 재작성, PR —
   를 읽고 그 자리에 맞는 게이트를 이름으로 불러 줍니다. ①이 기억해서 치는 명령 하나라면,
   ②는 대신 기억해 주는 층입니다.
-- **스킬 40종 · 에이전트 8종**을 평범한 말로 부릅니다. 프로젝트를 진단하고, 가속하고, 새로 배선합니다.
+- **스킬 41종 · 에이전트 8종**을 평범한 말로 부릅니다. 프로젝트를 진단하고, 가속하고, 새로 배선합니다.
 - `tracks/` 가 각 세션이 알아낸 것을 남겨서 **두 번째 세션이 첫 세션이 멈춘 자리에서 시작**합니다.
   복리가 붙는 곳이 여기이고, 첫날에는 판단할 수 없는 것도 여기입니다.
 - 같은 것을 세 번 부탁하면 답하기를 그만둡니다. 대신 그 답을 하는 하네스를 만들어 줍니다.
@@ -175,10 +203,15 @@ FH 의 보상은 **복리**이고 **2번째 세션부터** 드러납니다. 첫�
 > 걸쳐 복리로 만드는 `tracks/` 기억도.
 >
 > 🟥 **버전 번호가 둘이고, 서로 다른 것을 잽니다.** **패키지 버전**(위쪽 npm 배지)은 설치되는
-> 것이고, **정체성 성숙도 릴리스**(`identity-v0.5.0`, Releases 페이지)는 하네스가 어디까지
+> 것이고, **정체성 성숙도 릴리스**(`identity-v1.0.0`, Releases 페이지)는 하네스가 어디까지
 > 왔는지입니다. 후자가 `0.x` 인 것은 설계입니다 — 다섯 정체성이 다 초록이 아닌데 초록이라고
 > 부르기를 거부하기 때문입니다. 둘은 한 척도가 아니고, 패키지 번호가 높다고 성숙한 것이
 > 아닙니다: [`ship_readiness_gate.md`](knowledge/shared/harness-core/ship_readiness_gate.md).
+> 🟢 **2026-09-04 — 두 카운터가 합쳐집니다.** `identity-v1.0.0`(정체성 전부 🟢)은 정체성 트랙의
+> **마지막** 태그이자 *Latest* 배지를 다는 첫 태그입니다. 이후로 릴리스는 **둘을 한 번호로** 냅니다
+> — 다음은 정체성 1.0 을 실어 나르는 패키지 메이저입니다 — 그리고 릴리스 노트는 영문으로 쓰고
+> 한국어 요약을 붙입니다. 위 문단은 전부 초록이 아니던 동안 트랙을 왜 나눠 두었는지의 근거로
+> 남깁니다. 지금의 규칙이 아니라 이력입니다.
 
 ---
 
@@ -241,10 +274,18 @@ forge-harness/   ← 허브 (영속 두뇌)          Project A ──→ CLAUDE.
 
 ## 어떻게 만들어졌나 — 셋 · 넷 · 다섯 · 여섯
 
-**3단 공정 · 4대 엔진 · 5대 정체성 · 6축 검증.** 위의 정체성은 표면이고, **4대 엔진**
-(`judgment-circuit` · `ship-gate` · `context-continuity` · `external-grounding`)이 그 아래의
-능력이며, **3단 공정** — ① 설계 *전에* 판단 회로를 심고 → ② 중간은 병렬 탈상관 → ③ 마무리로 6축을
-태운다 — 이 그 엔진들을 벼리는 순서입니다. 속도는 맨 끝의 화살표지 네 번째 상자가 아닙니다.
+**3단 공정 · 4대 엔진 · 5대 정체성 · 6축 검증.** 위의 정체성은 공정과 엔진이 맞물리는 자리에서
+나타나는 것입니다 — 다섯은 단련되고 등급이 매겨진, 안정된 것들이고, 그 밖의 정체성은 어느 방향으로
+몰고 얼마나 밀어붙이느냐에 따라 나타났다 사라집니다(운영자 정식화, 2026-09-05). **4대 엔진**
+(`judgment-circuit` · `ship-gate` · `context-continuity` · `external-grounding`)은 FH 다운 산출이
+전부 거기서 나오는 코어이고, **3단 공정** — ① 설계 *전에* 판단 회로를 심고 → ② 중간은 병렬 탈상관 →
+③ 마무리로 6축을 태운다 — 은 엔진을 벼릴 때를 포함해 FH 의 모든 작업이 밟는 순서입니다. 속도는 맨
+끝의 화살표지 네 번째 상자가 아닙니다. **전체 지도** — FH 가 무엇인지, 어떻게 구현돼 있는지(모든
+노드가 실재하는 경로), 왜 믿을 만한지(게이트 · 레인 · 등급을 파일 경로와 함께), 무엇이 운영자
+로컬이고 무엇이 일반적인지 — 는 한 페이지에 있습니다: [`docs/map/FH_MAP.md`](docs/map/FH_MAP.md).
+그 옆에 인터랙티브 다이어그램 세 장이 있고, **[chrono-meta.github.io/forge-harness](https://chrono-meta.github.io/forge-harness/)** 에서 바로 볼 수 있습니다.
+
+[![FH 전체 지도 — 문 → 3단 공정 → 4대 엔진 → 정체성으로 이어지는 흐름(클릭하면 인터랙티브 버전)](docs/map/fh_process.workflow.png)](https://chrono-meta.github.io/forge-harness/map/fh_process.workflow.html)
 ⚠️ **6축은 네 번째 층이 아닙니다** — 3단 공정 *③단계가 무엇으로 이루어지는지*입니다. 전체 정본과,
 왜 이것이 의도적으로 깔끔한 스택이 *아닌지*:
 [`fh_three_layer_canon.md`](knowledge/shared/harness-core/fh_three_layer_canon.md) — 같은 셋을

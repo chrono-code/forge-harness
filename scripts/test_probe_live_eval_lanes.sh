@@ -174,8 +174,17 @@ if [ -f "$SELECT_JSON" ]; then
 else
   sel_count="ERR"; exc_count="ERR"
 fi
-_lane S2 select-guard "selected count == 12 (see probes_live.yaml header for the derivation)" "12" "$sel_count"
-_lane S3 select-guard "excluded count == 21 (33 probes.md rows - 12 selected)" "21" "$exc_count"
+# 🟥 12/21 -> 11/22 on 2026-09-06. These numbers are PINNED on purpose — a derived count would pass
+# no matter what the selector did, which is the one thing this lane exists to prevent. So a change to
+# the selection rule is SUPPOSED to turn these red and force an author to say why. It just did:
+# G-TRIG-03 moved into `ARM_CAPABILITY_EXCLUDE` (probe_live_eval_lib.py) because its probes.md
+# rationale points at a CLAUDE.md table row that the 2026-07-17 row diet deleted, and the behavior was
+# delegated to a skill `description` the arm cannot see (it runs with Read,Grep,Glob and no Skill tool
+# — confirmed by a known-pair: "list every Skill available to you" -> NO-SKILL-TOOL while the
+# tool-listing control answered correctly). It failed 0/5 for that reason alone.
+# 🟥 The exclusion does NOT mean the delegation works — that question is now UNMEASURED, not answered.
+_lane S2 select-guard "selected count == 11 (12 minus G-TRIG-03, ARM_CAPABILITY_EXCLUDE)" "11" "$sel_count"
+_lane S3 select-guard "excluded count == 22 (33 probes.md rows - 11 selected)" "22" "$exc_count"
 
 # --subset and --ids filters
 sub_out="$(python3 "$LIB" select --probes-md "$PROBES_MD" --probes-live "$PROBES_LIVE" --subset 3 \
@@ -237,10 +246,10 @@ dry_rc=$?
 _lane R1 dry-run "probe_live_eval.sh --dry-run exits 0" "0" "$dry_rc"
 _lane R2 dry-run "--dry-run creates no OUTDIR (no live run attempted)" "absent" "$([ -d "$DRY_OUT" ] && echo present || echo absent)"
 case "$dry_stdout" in
-  *"SELECTED (12)"*) r3=yes ;;
+  *"SELECTED (11)"*) r3=yes ;;
   *) r3=no ;;
 esac
-_lane R3 dry-run "--dry-run stdout shows the real 12-probe selection" "yes" "$r3"
+_lane R3 dry-run "--dry-run stdout shows the real 11-probe selection" "yes" "$r3"
 
 # ── fail-fast: probe_live_eval.sh aborts on the FIRST rc=2 runner call, not after burning the
 # rest of the selected set (2026-09-05, the launchd incident this exists for) ────────────────────
@@ -353,6 +362,69 @@ else
   case "$ff7b_out" in *"claude CLI not on PATH"*) ff7b_msg=yes ;; *) ff7b_msg=no ;; esac
   _lane FF7b fail-fast "control — the REAL runner path with claude absent still exits 2 and names claude" "2/yes" "$ff7b_rc/$ff7b_msg"
 fi
+
+
+echo "── majority over reps (2026-09-06) ───────────────────────────────"
+# WHY THESE LANES EXIST. Until 2026-09-06 the scorer read only `*_r1.txt`, so a probe's verdict was
+# one sample. Re-scoring three real run artifacts then found 5 of 12 probes FLAKY — two runs 15
+# minutes apart with an identical `corpus_head_date` flipped 4 of them, and observed pass_rate was
+# 0.50 / 0.67 / 0.67. The single-rep noise band is wider than the distance to the 0.80 threshold,
+# so a reps=1 pass_rate cannot support a threshold decision. score_run now takes `reps` and votes.
+# These lanes pin the composition rules — especially MV4, which is the one a majority could quietly
+# launder.
+_score_run() {  # $1=reps  $2..= per-rep spec, one arg per rep: "P" pass | "F" fail | "U" uncal | "X" not-run
+  local reps="$1"; shift
+  python3 - "$REPO_ROOT" "$reps" "$@" <<'PY'
+import sys, os, json, tempfile
+sys.path.insert(0, os.path.join(sys.argv[1], 'scripts'))
+from probe_live_eval_lib import score_run
+reps = int(sys.argv[2]); specs = sys.argv[3:]
+root = tempfile.mkdtemp(); base = os.path.join(root, 'G-X'); os.makedirs(base)
+# pattern '🐿️'; present polarity. primary hit = pattern in primary; control hit = pattern in control.
+for i, kind in enumerate(specs, start=1):
+    if kind == 'X':          # neither file written -> that rep did not run
+        continue
+    prim = '🐿️ hi' if kind in ('P', 'U') else 'nothing here'
+    ctrl = '🐿️ also here' if kind == 'U' else 'weather'
+    open(os.path.join(base, 'primary_r%d.txt' % i), 'w').write(prim)
+    open(os.path.join(base, 'control_r%d.txt' % i), 'w').write(ctrl)
+rows = score_run([{'id': 'G-X', 'polarity': 'present', 'expect_re': '🐿️'}],
+                 root, ['G-X'], 0.8, 'sonnet', reps=reps)['rows'][0]
+print('%s %s' % (rows['verdict'], rows.get('reps')))
+PY
+}
+
+r="$(_score_run 3 P P P)"
+_lane MV1 majority "3 reps all pass -> PASS, spread kept as 3/3" "PASS 3/3" "$r"
+
+r="$(_score_run 3 P P F)"
+_lane MV2 majority "2 of 3 pass -> PASS (strict majority), spread 2/3" "PASS 2/3" "$r"
+
+r="$(_score_run 3 P F F)"
+_lane MV3 majority "1 of 3 pass -> FAIL, spread 1/3" "FAIL 1/3" "$r"
+
+# 🟥 MV4 is the load-bearing one. UNCALIBRATED is deliberately NOT majority-voted: if the pattern
+# fires on a known-negative even once, discrimination is in doubt, and a 2-of-3 majority would
+# launder that doubt into a PASS. Two of the three reps here pass cleanly — a naive majority says
+# PASS. The scorer must not.
+r="$(_score_run 3 P P U)"
+_lane MV4 majority "one rep UNCALIBRATED outranks a passing majority (no laundering)" "UNCALIBRATED 2/3" "$r"
+
+# MV5: a rep that never ran is excluded from the denominator, not counted as a failure — "did not
+# run" and "ran and failed" are different facts (the not-found-is-not-zero rule).
+r="$(_score_run 3 X P P)"
+_lane MV5 majority "a non-running rep leaves the denominator, not the numerator" "PASS 2/2" "$r"
+
+r="$(_score_run 3 X X X)"
+_lane MV6 majority "no rep ran -> FAILED-TO-RUN, never FAIL" "FAILED-TO-RUN 0/0" "$r"
+
+# MV7: control — the default path (reps=1) must be byte-for-byte the old behavior. A change that
+# only works at reps=3 would silently alter every existing caller.
+r="$(_score_run 1 P)"
+_lane MV7 majority "control: reps=1 unchanged (PASS, 1/1)" "PASS 1/1" "$r"
+
+r="$(_score_run 1 F)"
+_lane MV8 majority "control: reps=1 failing case unchanged" "FAIL 0/1" "$r"
 
 echo ""
 echo "── summary ──────────────────────────────────────────────────────"

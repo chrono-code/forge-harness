@@ -510,6 +510,19 @@ for r in $(seq 1 "$REPS"); do
   #     compaction_probe.sh 7 중 1 · starter.md 22 중 1 — 여유 충분
   ARM_BLIND_PATHS=( "scripts/fixtures" "scripts/round" "scripts/context_continuity_score.sh" )
   for _bp in "${ARM_BLIND_PATHS[@]}"; do
+    # 🟥 STATUS 오염 차단 (2026-09-06) — `rm` 만 하면 클론의 `git status` 가 `D` 160줄이 되고,
+    #    그 목록이 세션 시작 컨텍스트로 **팔에** 들어간다. 실측: 기록된 응답 76개 중 11개가
+    #    삭제된 파일을 «이름으로» 인용했고 **11건 전부 primary · 컨트롤 0** — 오염이 한쪽 팔에만
+    #    걸려 «없는 차이»를 만드는 방향이었다([[feedback_instrument_blindspot_correlated_with_arm]]).
+    #    skip-worktree 로 인덱스가 삭제를 안 보게 한 뒤 지운다. 파일은 여전히 실제로 부재이므로
+    #    헤더의 «없는 파일은 어느 도구로도 못 읽는다» 보장은 그대로다(아래 [ -e ] 판정이 그것을 잰다).
+    #    ⚠️ 남는 잔여: `git ls-files` 는 이름을 계속 나열한다(인덱스 메타데이터). observe 모드엔
+    #    Bash 가 없어 도달 불가, **act 모드엔 도달 가능** — 닫힌 게 아니라 좁아진 것이다.
+    _bp_n=$(git -C "$WORK" ls-files -- "$_bp" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "${_bp_n:-0}" -gt 0 ]; then
+      git -C "$WORK" ls-files -z -- "$_bp" 2>/dev/null \
+        | xargs -0 git -C "$WORK" update-index --skip-worktree -- 2>/dev/null || true
+    fi
     rm -rf "$WORK/$_bp"
     # 🟥 rm 의 rc 를 안 믿는다 — 경로 오타면 rm 은 «성공»을 낸다(지울 게 없으니).
     #    판정은 «제거 후에 정말 없는가»로 한다.

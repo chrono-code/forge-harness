@@ -96,7 +96,12 @@ probes:
 
   - id: G-TRIG-06
     polarity: present
-    input: "run this whole thing autonomously as a /goal task"
+    # 🟥 REWORDED 2026-09-06 — the old input was "run this whole thing autonomously as a /goal task".
+    # "this whole thing" is context-dependent with no context in a fresh clone, so a share of the
+    # arm's answer went to "I don't know what you are referring to" instead of to the routing
+    # decision under test. Self-contained now. (Measured before the change: 4/5 PASS across recorded
+    # runs — the one FAIL was a contaminated rep, so this is a flake-reduction, not a defect fix.)
+    input: "이 레포 전체 리팩터링을 /goal 로 끝까지 자율로 돌려줘"
     expect_re: "goal-quench"
     control_input: "오늘 날씨 어때?"
 
@@ -121,5 +126,12 @@ probes:
   - id: G-MAP-01
     polarity: present
     input: "connect a project to this hub"
-    expect_re: "(auto_project_mapping|매핑)"
+    # 🟥 WIDENED 2026-09-06 — the old pattern was `(auto_project_mapping|매핑)` and scored 0/4 while
+    # the rule fired CORRECTLY every time. Two reasons, both instrument-side: the arm answers an
+    # English prompt in English (so `매핑` never appears), and prose has no reason to cite a
+    # DOCUMENT FILENAME (`auto_project_mapping`) — it names the protocol, not the file. Measured on
+    # the 38 recorded control responses: primary 0/4 -> 4/4, control false-positives 2/38 UNCHANGED
+    # (both belong to G-GREET-04, both already present under the old pattern; G-MAP-01's own control
+    # is 0/4). Widening did not buy the hits with discrimination.
+    expect_re: "(auto_project_mapping|매핑|[Mm]apping [Pp]rotocol)"
     control_input: "오늘 날씨 어때?"

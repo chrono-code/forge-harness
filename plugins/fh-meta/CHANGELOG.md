@@ -1,5 +1,47 @@
 # forge-harness (fh-meta) Changelog
 
+### [3.1.0] — 2026-09-06 — QP 플러그인 · `oracle:` 마커 채널 · preprep 도해 굽기 · FH 전체 지도 발행 · fh-gate GitHub Action
+
+### 왜 minor 인가
+CLAUDE.md §④-b — 새 자산(fh-qp 플러그인 · `oracle:` 채널 · preprep 도해) + 새 게이트 레인 다수 + 행동을 바꾸는 교리(3층 정본 개정). 🟡 **major 로 읽을 여지는 있었다**: fh-qp 는 «제품 QA» 라는 capability *class* 가 FH 에 처음 생긴 것(정책 ⓒ)이다. 다만 폴백 1차판 · 선택 설치 · 기존 게이트 무변경이라 minor 로 뒀다. 정체성 등급은 무변경(다섯 🟢 유지)이라 major ⓑ 사유도 없다.
+
+### 🟥 BREAKING (gate): 마커 `oracle:` 근사키 차단 (#642)
+**무엇이 이제 막히나**: `oracle_type:` · `Oracle:` · `oracle :` 처럼 «oracle 로 시작하는데 정확히 `oracle:` 이 아닌 줄」과, enum 6종 밖의 값. 종전엔 근사키가 조용히 무시돼 «오라클을 적었다고 믿는데 아무것도 안 적힌» 상태가 났다.
+**처방**: `oracle: <known-pair|metamorphic|back-to-back|a-b|human|none — 근거>` 한 줄로 고치거나, 줄을 지운다(**부재는 통과**한다 — 이 필드는 옵셔널이다).
+
+### 🟥 BREAKING (gate): preprep 레인 L12 diagram (#654)
+**무엇이 이제 막히나** — 도해 표면(`kind: diagram_source`)을 **선언한** 덱에서만, 그리고 아래 여덟 가지에서만 rc=1 이 난다: 선언된 PNG 가 디스크에 없다 · 영수증 파싱 실패 · JSON 지문이 영수증과 다르다(고치고 다시 안 구웠다) · showcase validate 통과 기록 없음 · PNG 헤더 읽기 실패 · PNG 폭이 하한 미만 · viewBox 폭이 상한 초과(글자 배율 미달) · 여백이 하한 미만. **도해 표면을 선언하지 않은 덱은 무영향.**
+🟥 **영수증이 «없는» 것은 차단이 아니다 — `UNMEASURED` 로 기록된다**(`lane_diagram.py:62` 가 `notes` 로 보내고 `preprep.py:903` 은 `findings` 가 있을 때만 rc=1). 손으로 넣은 그림은 이 레인이 «못 보는» 것이지 «틀렸다»가 아니고, 그 둘을 접지 않는 것이 이 레인의 설계다.
+**처방**: 위 여덟 중 하나에 걸렸으면 `diagram_from_json.py` 로 다시 굽거나 표면 선언을 지운다. `UNMEASURED` 는 고칠 것이 아니라 «안 쟀다」는 기록이다.
+⚠️ 이 문단의 초판은 「영수증 없는 그림은 차단」이라고 적었다 — 과대 주장이었고, 릴리스 전 cross-family 감사(codex)가 소스에서 잡았다. 자력 적발 0.
+
+### 새로 실리는 것
+- **fh-qp (QP · Quality Platform)** — qasp PAR 의 범용판. 도메인 상수 0, MCP 폴백 1차(Playwright 웹 · computer-use 데스크톱), typed capability 슬롯(미등록). 스킬 4 · `qp_tools.sh` · 레인 29 · 챔버 런 #18 EMIT. 선택 설치: `claude plugin install -s user fh-qp@forge-harness` (#653)
+- **fh-gate GitHub Action** — `action.yml`. typed exit 7값을 boolean 으로 접지 않는 매핑, 모르는 코드는 `UNKNOWN`(fail-closed), 출력 `reviewed` 로 «안 돌았다 ≠ 통과» 를 분리. `fail-on` 기본이 PASS·PENDING 만 통과. 레인 28. 사용례가 `uses: chrono-meta/forge-harness@v3.1.0` 을 가리키므로 **이 태그가 그 자산의 사용 조건**이다 (#658)
+- **마커 옵셔널 `oracle:` 채널** — TR 29119-11 오라클 유형 닫힌 enum 6, 훅은 형식만 검사. 레인 39 · 배선 W6 (#642)
+- **마커 옵셔널 `affected:` 채널** — 「이 변경이 건드리는 것 + 열린 질문」 한 줄. 자리표시자만 있는 값은 차단(제로 영향은 명제상 없다) (#624)
+- **preprep — «도해는 타입 JSON 에서 굽는다»** + 레인 L12 + 앵커 K1~K7. 첫 실사용 121장 덱 (#654). L13 슬라이드 참조 레인(장 번호 참조가 실제 장을 가리키는가) (#662)
+- **FH 전체 지도** — `docs/map/FH_MAP.md` 5층 + archify 인터랙티브 3장, GitHub Pages 로 발행: **https://chrono-meta.github.io/forge-harness/** (#644 #645 #647 #659)
+- **3층 정본 개정** — 3단 공정 = 모든 작업의 방법론 · 4대 엔진 = 출력이 나오는 코어 · 정체성 = 맞물려 나타나는 능력(5대 = 단련된 실물+등급) (#643)
+- **ISO/IEC AI 표준 crosswalk** — 42119-2/3.2/7/8 · TR 29119-11 · 25059 · 42001 Annex A · 5338 · 23894 · TS 8200 (#641) · `docs/STANDARDS_ALIGNMENT.md`
+- **live-eval** — `/prompt-regression` 의 라이브 짝(프로브 12 · 격리 클론 · 4값 채점 · launchd 템플릿) (#625), launchd PATH 에 `timeout(1)` 부재로 12/12 FAILED-TO-RUN 하던 것 수리 (#632)
+- **worktree_reclaim.sh** — 워크트리 제거 «전» gitignored `tracks/**` 회수(목록 파일 먼저 → 복사+검증, 제거는 사람) (#639)
+- **push-zone 게이트** — 비-소유 github.com 원격 push 를 pre-push 에서 차단 (#636) · **outbound query 가드** PreToolUse(WebSearch|WebFetch) (#637) · **residency 폐포 스캔**을 `crossfamily:` grounds 의 `residency=` 토큰으로 (#633)
+- **sim 러너 MCP 격리** — `--strict-mcp-config` 기본. 헤드리스 팔이 운영자 사용자 스코프 MCP 를 상속하던 것 차단 (#651)
+- **pipe_verdict_guard R3** — heredoc 뒤 «리다이렉션만 있는 줄»(zsh NULLCMD `cat` 이 stdin 파이프를 영원히 읽는 형태) 검출. «push 멈춤» 9건의 실제 원인이었다 (#618) · R2 오탐 수리 (#661)
+- 문서: 모델 등급 × 기대 역량 (#635) · `docs/USE_CASES.md` · 카드 규율의 역방향 상주화(«안 닫힌 것이 사라지면 유실») (#656)
+
+### 같이 고친 것
+- `directional_diff_gate.sh` `has_nul` 이중 정의 — 셀프테스트가 자기 사본만 재고 프로덕션 파손에 초록이던 결함 (#634)
+- 챔버 step 5 가 2026-08-17 교리 어휘(CURATED · NOT-APPLICABLE)를 받는다 — **18일간 러너가 교리를 거부하고 있었다** (#620)
+- 헤드리스 런에서 Skill 툴 무음 거부(`--allowedTools`) + 그 플래그가 variadic 이라 뒤따르는 프롬프트를 먹던 인자 순서 (#612 #631)
+- `fh_audit_check.zsh` 빈 허브에서 zsh 미매치 glob 오류 (#613)
+- (허브 오너 노트 · npm 미출하) `sync-to-be.sh` 목적지 가드 — 비-git 디렉토리·외부 레포 서브디렉토리 companion 은 rc=12 거부 (#646)
+
+### 알려진 한계 (이 릴리스 시점)
+- `docs/map/**` 는 `files[]` 밖이라 **npm 배포물에 안 실린다** — GitHub Pages 표면에만 있다.
+- live-eval 문턱 `0.80` 은 **보정 주간(~2026-09-11) 상수**다. rc 는 나오지만 판정에 쓰지 않는다.
+
 ### [3.0.0] — 2026-09-04 — 정체성 다섯 전부 🟢(identity 1.0 을 이 번호가 나른다) · 릴리스 트랙 통일 · 훅 사실 줄 · 게이트 무음 접힘 수리 · 6축 단련
 
 ### 왜 major 인가
@@ -7,7 +49,7 @@ CLAUDE.md §④-b major ⓑ — **정체성 다섯이 «전부» 🟢**(2026-09-
 운영자 결정(2026-09-04): `identity-v1.0.0` 은 정체성 트랙의 마지막 태그, **이후 한 번호** — 이 3.0.0 이 identity 1.0 을 같이 나른다. 🧭 접두 태그는 더 만들지 않는다. 등급의 정본은 여전히 `ship_readiness_gate.md` 의 셀이고 번호는 나르기만 한다.
 
 ### 🟥 BREAKING (gate): pre-commit [Pointers] 게이트가 워킹트리가 아니라 **인덱스**를 읽는다 (#602)
-**무엇이 이제 막히나**: `.md` 를 스테이징한 뒤 디스크에서 지우면(또는 더 고치면) 종전엔 `[ -f ] || continue` 로 Detail-pointer 검사가 통째로 빠졌다 — 깨진 `**Detail**: See §X` 포인터가 조용히 커밋됐다. 이제 `git show ":$f"` 로 스테이징된 바이트를 검사하고, 인덱스에서 못 읽으면 ❌ 로 막는다. **처방**: 스테이징한 것이 곧 커밋되는 것이다 — 디스크 파일을 믿지 마라. 레인 `scripts/test_precommit_pointer_index_lanes.sh`(일회용 클론) 가 옛 훅에선 정확히 P1 만 실패함을 보인다.
+**무엇이 이제 막히나**: `.md` 를 스테이징한 뒤 디스크에서 지우면(또는 더 고치면) 종전엔 `[ -f ] || continue` 로 Detail-pointer 검사가 통째로 빠졌다 — 깨진 Detail 포인터(`**Detail**` + `See <path> §X` 형태)가 조용히 커밋됐다. 이제 `git show ":$f"` 로 스테이징된 바이트를 검사하고, 인덱스에서 못 읽으면 ❌ 로 막는다. **처방**: 스테이징한 것이 곧 커밋되는 것이다 — 디스크 파일을 믿지 마라. 레인 `scripts/test_precommit_pointer_index_lanes.sh`(일회용 클론) 가 옛 훅에선 정확히 P1 만 실패함을 보인다.
 
 ### 🟥 BREAKING (gate): selfcheck 가 명시경로 게이트 인프라(bin/fh-gate·fh-run·fh-goal 등) 부재를 FAIL 로 센다 (#602)
 종전엔 glob 미매칭과 같은 `continue` 로 무음. glob 미매칭 스킵은 그대로. **처방**: 그 파일들이 없어졌으면 files[] 와 selfcheck 목록을 같이 고쳐라.

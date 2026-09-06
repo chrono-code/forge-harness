@@ -86,6 +86,14 @@ SIM_RUNNER="${FH_SIM_RUNNER_BIN:-$REPO_ROOT/scripts/sim_isolated_run.sh}"
 THRESHOLD="0.8"
 
 MODEL="sonnet"
+# ── reps — 프로브당 반복 횟수. 기본 1(종전 행동 그대로), 무인 런은 plist 에서 3 을 준다. ──
+# 🟥 왜 1 이 기본이면서 야간은 3 인가 (2026-09-06 실측): 유효 런 3 개를 재채점하니 12 프로브 중
+#   5 개가 flaky 였고, **같은 코퍼스·15분 간격**의 두 런에서 4 개가 뒤집혔다. 관측 pass_rate 는
+#   0.50 / 0.67 / 0.67 — 단일 rep 의 노이즈 폭이 문턱 0.80 까지의 거리보다 넓다. 즉 reps=1 짜리
+#   pass_rate 로는 문턱을 정할 수 없다. 채점은 과반이고, 분산은 리포트의 `reps(pass/ran)` 칸에
+#   그대로 남긴다(3/3 과 2/3 은 다른 사실이다).
+#   ⚠️ 비용: reps=3 이면 프로브당 `claude -p` 호출이 2 → 6 이다(12 프로브 = 24 → 72).
+REPS=1
 DRYRUN=0
 SUBSET=""
 IDS=""
@@ -96,12 +104,16 @@ while [ $# -gt 0 ]; do
     --subset)   SUBSET="${2:-}"; shift 2 ;;
     --ids)      IDS="${2:-}"; shift 2 ;;
     --model)    MODEL="${2:-sonnet}"; shift 2 ;;
+    --reps)     REPS="${2:-1}"; shift 2 ;;
     --dry-run)  DRYRUN=1; shift ;;
     --out)      OUTDIR="${2:-}"; shift 2 ;;
     --report-out) REPORT_OUT="${2:-}"; shift 2 ;;   # lanes/spot-checks MUST pass this — never the live path
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
+
+case "$REPS" in ''|*[!0-9]*) echo "FAIL: --reps must be a positive integer (got '$REPS')" >&2; exit 2 ;; esac
+[ "$REPS" -ge 1 ] || { echo "FAIL: --reps must be >= 1 (got '$REPS')" >&2; exit 2; }
 
 command -v python3 >/dev/null 2>&1 || { echo "FAIL: python3 required" >&2; exit 2; }
 [ -f "$PROBES_MD" ]   || { echo "FAIL: $PROBES_MD not found" >&2; exit 2; }
@@ -168,7 +180,7 @@ while IFS= read -r id; do
 
   echo ""
   echo "▶ $id — primary"
-  bash "$SIM_RUNNER" --arm primary --reps 1 --prompt "$input_text" \
+  bash "$SIM_RUNNER" --arm primary --reps "$REPS" --prompt "$input_text" \
        --mode observe --model "$MODEL" --out "$probe_out" \
        > "$probe_out/_runner_primary.log" 2>&1
   runner_rc=$?
@@ -189,7 +201,7 @@ while IFS= read -r id; do
   fi
 
   echo "▶ $id — control"
-  bash "$SIM_RUNNER" --arm control --reps 1 --prompt "$control_text" \
+  bash "$SIM_RUNNER" --arm control --reps "$REPS" --prompt "$control_text" \
        --mode observe --model "$MODEL" --out "$probe_out" \
        > "$probe_out/_runner_control.log" 2>&1
   runner_rc=$?
@@ -217,7 +229,8 @@ python3 "$LIB" score \
   --threshold "$THRESHOLD" \
   --model "$MODEL" \
   --report-out "$REPORT_PATH" \
-  --run-date "$RUN_DATE"
+  --run-date "$RUN_DATE" \
+  --reps "$REPS"
 score_rc=$?
 
 echo ""
