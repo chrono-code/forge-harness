@@ -26,13 +26,51 @@
   .q { display: block; color: var(--muted); margin-top: .2rem; font-size: .95rem; }
   footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .9rem; color: var(--muted); }
   .note { font-size: .92rem; color: var(--muted); }
+
+.lead2{color:#555;margin:.2rem 0 1rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:1rem 0 1.4rem}
+.card{display:block;border:1px solid #dcdcdc;border-radius:10px;padding:.7rem;text-decoration:none;color:inherit;background:#fff;transition:box-shadow .15s,border-color .15s}
+.card:hover{border-color:#6366f1;box-shadow:0 2px 12px rgba(99,102,241,.18)}
+.card img{width:100%;height:150px;object-fit:cover;object-position:top left;border-radius:6px;border:1px solid #eee;background:#fafafa;display:block}
+.card b{display:block;margin:.6rem 0 .25rem;font-size:.98rem}
+.card span{display:block;color:#555;font-size:.86rem;line-height:1.5}
+.sep{border:0;border-top:1px solid #e5e5e5;margin:2rem 0 1rem}
+@media (prefers-color-scheme:dark){
+  .card{background:#1b1b1b;border-color:#333}
+  .card img{border-color:#2a2a2a;background:#111}
+  .card span,.lead2{color:#aaa}
+  .sep{border-top-color:#333}
+}
 </style>
 </head>
 <body>
 
 <h1>forge-harness(FH)를 쓰면 무엇을 얻나</h1>
 <p class="lead">FH는 Claude Code 위에서 도는 메타 하네스입니다. 여기서 하네스란 한 프로젝트의 규칙, 게이트, 기억을 한 몸으로 묶은 것을 말합니다. FH는 짧은 의도를 규칙과 코드로 굳혀 산출물까지 만들고, 그 산출물을 다른 프로젝트에 하네스로 심습니다. 처음 온 분이 알고 싶은 것은 보통 둘입니다. 들어가면 손에 무엇이 남는가, 그리고 그 근거를 어디까지 믿어도 되는가. 아래는 그 순서입니다.</p>
-<h3>시작하는 법과 낱말 넷</h3>
+<h2 id="maps">지도 세 장 — 먼저 보고 시작하세요</h2>
+<p class="lead2">클릭하면 인터랙티브 그림이 열립니다. 설치도 서버도 필요 없습니다.</p>
+<div class="cards">
+  <a class="card" href="map/fh_process.workflow.html">
+    <img src="map/fh_process.workflow.png" alt="흐름 지도 — 문에서 손에 쥐는 것까지" loading="lazy">
+    <b>① 흐름 — 문에서 손에 쥐는 것까지</b>
+    <span>의도가 3단 공정과 4대 엔진을 거쳐 필드 하네스·PR·마커가 되는 길. 6축 범례와 문별 산출물이 카드로 붙어 있습니다.</span>
+  </a>
+  <a class="card" href="map/fh_assets.architecture.html">
+    <img src="map/fh_assets.architecture.png" alt="모듈 지도 — 어떤 파일이 그 일을 하나" loading="lazy">
+    <b>② 모듈 — 어떤 파일이 그 일을 하나</b>
+    <span>노드 37개가 전부 실재하는 경로입니다. 범용 코어와 운영자 로컬의 경계도 그 위에 그려져 있습니다.</span>
+  </a>
+  <a class="card" href="map/fh_trust.dataflow.html">
+    <img src="map/fh_trust.dataflow.png" alt="증거 지도 — 어디서 생겨 어디로 가나" loading="lazy">
+    <b>③ 증거 — 어디서 생겨 어디로 가나</b>
+    <span>변경에서 커밋 게이트·푸시 게이트·계기·등급까지. 마커 필드가 어느 표준 행에 대응하는지 카드로 붙어 있습니다.</span>
+  </a>
+</div>
+<p class="note">산문 정본은 <a href="https://github.com/chrono-meta/forge-harness/blob/main/docs/map/FH_MAP.md">docs/map/FH_MAP.md</a>입니다. 등급표는 <a href="https://github.com/chrono-meta/forge-harness/blob/main/knowledge/shared/harness-core/ship_readiness_gate.md">ship_readiness_gate.md</a> 한 곳에만 있고, 이 페이지는 등급을 싣지 않습니다.</p>
+<hr class="sep">
+<p class="note">아래는 지도가 그리는 것을 글로 풀어 쓴 것입니다 — 문별 산출물, 그 증거가 기대는 표준, 실제 사례 한 건.</p>
+
+<h2>시작하는 법과 낱말 넷</h2>
 <pre>git clone https://github.com/chrono-meta/forge-harness   # 규칙·정본·훅·스킬 전부 (Claude Code 안에서 쓸 때)
 npx --package @chrono-meta/fh-gate fh-gate                # 게이트만, Claude Code 없이</pre>
 <p>클론한 뒤 Claude Code 세션을 그 디렉터리에서 열고 "안녕"이라고 치면 아래 문 메뉴가 뜹니다. 설치 절차 전체는 <a href="https://github.com/chrono-meta/forge-harness/blob/main/docs/USER_GUIDE.md">USER_GUIDE.md</a>에 있습니다.</p>
@@ -93,14 +131,6 @@ npx --package @chrono-meta/fh-gate fh-gate                # 게이트만, Claude
 
 <h2>4. 정리</h2>
 <p>첫 질문으로 돌아가면, FH를 쓰면 문에 따라 매핑된 트랙, 하네스 스캐폴드, 진단 목록, PR과 마커가 남습니다. 그 근거는 마커 필드가 표준 조항과 같은 질문을 다루고 훅이 형식을 닫는 데까지입니다. 값이 참인지는 다른 모델 계열과 사람이 읽습니다. 사람 몫은 승인, 취향, 되돌리기 어려운 결정입니다.</p>
-
-<h2>5. 지도 세 장</h2>
-<ul class="maps">
-  <li><a href="map/fh_process.workflow.html">① 흐름: 문에서 손에 쥐는 것까지</a><span class="q">의도가 세 단계 공정(성공 정의를 먼저 심고, 병렬로 갈라 검증하고, 여섯 축으로 태운다)과 네 엔진을 거쳐 필드 하네스, PR, 마커가 되는 길. 여섯 축의 범례와 문별 산출물이 카드로 붙어 있습니다.</span></li>
-  <li><a href="map/fh_assets.architecture.html">② 모듈: 어떤 파일이 그 일을 하나</a><span class="q">노드 37개가 전부 실재하는 경로. 범용 코어와 운영자 로컬의 경계.</span></li>
-  <li><a href="map/fh_trust.dataflow.html">③ 증거: 어디서 생겨 어디로 가나</a><span class="q">변경에서 커밋 게이트, 푸시 게이트, 계기, 등급까지. 마커 필드가 어느 표준 행에 대응하는지 카드로.</span></li>
-</ul>
-<p class="note">산문 정본은 <a href="https://github.com/chrono-meta/forge-harness/blob/main/docs/map/FH_MAP.md">docs/map/FH_MAP.md</a>입니다. 등급표는 <a href="https://github.com/chrono-meta/forge-harness/blob/main/knowledge/shared/harness-core/ship_readiness_gate.md">ship_readiness_gate.md</a> 한 곳에만 있고 이 페이지는 등급을 싣지 않습니다.</p>
 
 <footer>
   <p>그림은 typed JSON을 <a href="https://github.com/tt-a1i/archify">archify</a>(MIT, 로컬 렌더러)로 검증하고 렌더했습니다. <a href="https://github.com/chrono-meta/forge-harness">Repository</a> · <a href="https://github.com/chrono-meta/forge-harness/blob/main/README.md">README</a> · <a href="https://github.com/chrono-meta/forge-harness/blob/main/docs/USER_GUIDE.md">User guide</a></p>
