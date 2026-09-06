@@ -623,6 +623,8 @@ for _pair in \
   "templates/.git-hooks/pre-commit|scripts/test_marker_soul_tenet_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_affected_lanes.sh" \
   "templates/.git-hooks/pre-commit|scripts/test_marker_oracle_lanes.sh" \
+  `# ── 판정을 둘로 (2026-09-06, SWE-Gate 답습): 합성 «PASS» 가 acceptance-evidence 를 가리지 않는가 ──` \
+  "templates/.git-hooks/pre-commit|scripts/test_gate_two_verdicts_lanes.sh" \
   `# ── fh-qp (QP) — chamber run #18 EMIT 2026-09-05: qp_tools.sh known-pair + residency lanes ──` \
   "plugins/fh-qp/scripts/qp_tools.sh|scripts/test_fh_qp_lanes.sh" \
   "plugins/fh-commons/skills/preprep/diagram_from_json.py|scripts/test_preprep_diagram_lanes.sh" \
