@@ -3507,3 +3507,13 @@
   evidence: "parity b-nodeps 40/40 (zero deps, 1,068 LOC) · a-ajv 38/40 · c-table 38/40 (single fixture: throw-first vs collect-all reference policy) · copy-scan 0 hits on all three (planted-file control 73 hits) · fail-before 3/3 · 2/3 (fixture shadowing) · 3/3 · judge re-ran all 120 rows and reproduced the verifier numbers · reps=1 per arm. Tokens: 1,770,716 (resume) + 1,008,983 (pre-limit partial) · wall 30.6 + 21.7 min · builds preserved under expedition/recon-build/"
   tokens_subagent: 2779699
   notes: "first measured number for the operator's «코드 층 역공학 재구성» capability question — contract layer only; geometry/router/SVG not attempted (named). Chamber archify-recon verdict left to the operator (HITL); governor proposes CURATED (net-new = the measurement protocol, not a product)"
+
+- date: 2026-09-06
+  agent: general-purpose ×4 (qasp 조사 · oracle_type 배선 · 웹 백그라운드 동치 조사 · 오라클 스텝 배선 · PlaywrightAdapter 생명주기) + codex sidecar ×2 (cross-family 감사 2라운드)
+  invoked_by: FH governor session (Opus 5, 운영자 «qasp는 더 갈 부분있다면 그것도 시켜줘» → «모두 ㄱㄱ» → «검토 잘하고 머지»)
+  task: "qasp 다음 슬라이스 조사 → oracle_type 생산자 배선 · 2막 오라클 스텝/back verb 배선 · PlaywrightAdapter background/resume 첫 실 능력 · 각 건 cross-family(codex) 감사"
+  context_card: yes (레포 절대경로 · 정본 선독 지시 · 커밋 규율 · push/PR 금지 · 되돌림 컨트롤 요구)
+  outcome: accepted
+  evidence: "PR #264·265·266·268 전부 머지(main=01dafcd) · CI 6/6 × 4. cross-family 1차 A급 4건(3 수리 · 1 **반증** — needs_clarification 은 disposition 게이트가 이미 막는다) · 2차 S1+A4(전부 수리). 거버너 독립 되돌림 재검 4건 전부 적색 확인. 전체 스위트 1 failed/3996 passed(시간의존 픽스처 1, 기존)"
+  tokens_subagent: 986241
+  notes: "🟥 계기 확정 하나가 부수 수확: 「기존 실패 13건」은 코드가 아니라 venv 아티팩트였다(uv 3.11 위에 3.13 접목, pip 이 코드가 안 읽는 곳으로). 깨끗한 클론·라이브 트리 양팔 모두 1 failed. 세션마다 13/12/14/1 로 갈리던 원인. 🟥 그리고 codex 가 못 본 형제 경로(not-mapped 분기)를 거버너가 찾았다 — 사이드카는 지목자이지 판정자가 아니라는 계보 그대로"
