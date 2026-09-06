@@ -317,6 +317,7 @@
     "plugins/fh-qp/scripts",
     "plugins/fh-qp/fixtures",
     "scripts/test_fh_qp_lanes.sh",
-    "scripts/test_preprep_diagram_lanes.sh"
+    "scripts/test_preprep_diagram_lanes.sh",
+    "scripts/test_action_yml_lanes.sh"
   ]
 }

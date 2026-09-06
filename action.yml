@@ -1,0 +1,116 @@
+# fh-gate — GitHub Action wrapper around the shipped CLI (@chrono-meta/fh-gate).
+#
+# 🟥 WHY THIS FILE IS MOSTLY A MAPPING TABLE: the gate's whole point is a *typed* verdict.
+# `scripts/fh-gate.sh` documents seven exit codes and they do not collapse into
+# success/failure without losing the thing the gate exists to carry:
+#   0 PASS · 1 PENDING(B) · 2 BLOCKED(A) · 3 ESCALATE(human) · 10 HARNESS_ERROR
+#   · 11 ARG_ERROR · 12 DRY_RUN(prompt emitted, NO review performed)
+# Two of those are traps a naive wrapper walks into:
+#   · 12 is deliberately outside the verdict range — «a check that did not run must never be
+#     readable as PASS». A wrapper that treats "non-zero = fail, zero = pass" is fine here, but
+#     one that adds `continue-on-error` and reads the step as green is not.
+#   · an UNKNOWN exit code (a future version adding one) must land on HARNESS_ERROR, never on
+#     PASS. That is the fail-closed default below, and `scripts/test_action_yml_lanes.sh` pins it.
+name: 'fh-gate — typed AI code-review verdict'
+description: 'Run forge-harness fh-gate on a diff and get a typed verdict (PASS · PENDING · BLOCKED · ESCALATE · HARNESS_ERROR) as a step output, fail-closed by default.'
+author: 'chrono-meta'
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  files:
+    description: 'Space-separated files to review. Empty = the gate derives them itself from the working tree.'
+    required: false
+    default: ''
+  level:
+    description: 'Review level passed through to the gate (e.g. standard, full).'
+    required: false
+    default: 'standard'
+  backend:
+    description: 'AI backend: claude | codex | auto. Needs the matching credential in env.'
+    required: false
+    default: 'claude'
+  model:
+    description: 'Model override. Empty = the backend default.'
+    required: false
+    default: ''
+  timeout:
+    description: 'Seconds before the backend is killed. A timeout is a HARNESS_ERROR, not a pass.'
+    required: false
+    default: '120'
+  dry-run:
+    description: 'true = emit the prompt and do NOT review (exit 12). Never reported as PASS.'
+    required: false
+    default: 'false'
+  fail-on:
+    description: 'Comma-separated verdicts that fail the step. Default is fail-closed: everything except PASS and PENDING.'
+    required: false
+    default: 'BLOCKED,ESCALATE,HARNESS_ERROR,ARG_ERROR,DRY_RUN,UNKNOWN'
+  version:
+    description: 'npm version spec of @chrono-meta/fh-gate to run (default: latest).'
+    required: false
+    default: 'latest'
+  working-directory:
+    description: 'Directory to run the gate in.'
+    required: false
+    default: '.'
+
+outputs:
+  verdict:
+    description: 'PASS | PENDING | BLOCKED | ESCALATE | HARNESS_ERROR | ARG_ERROR | DRY_RUN | UNKNOWN'
+    value: ${{ steps.gate.outputs.verdict }}
+  exit-code:
+    description: "The gate's raw exit code, unmapped."
+    value: ${{ steps.gate.outputs.exit_code }}
+  reviewed:
+    description: "true only when a review actually ran (PASS · PENDING · BLOCKED · ESCALATE). false for DRY_RUN, HARNESS_ERROR, ARG_ERROR, UNKNOWN — «did not run» is never «passed»."
+    value: ${{ steps.gate.outputs.reviewed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: gate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        FH_BACKEND: ${{ inputs.backend }}
+        FH_MODEL: ${{ inputs.model }}
+        FH_TIMEOUT: ${{ inputs.timeout }}
+        FH_CALLER: github-action
+      run: |
+        set -uo pipefail   # NOT -e: a non-zero exit is the payload, not a crash
+        [ "${{ inputs.dry-run }}" = "true" ] && export FH_DRY_RUN=1
+        rc=0
+        npx --yes --package "@chrono-meta/fh-gate@${{ inputs.version }}" fh-gate "${{ inputs.files }}" "${{ inputs.level }}" github-action || rc=$?
+        # ── the mapping table. UNKNOWN is fail-closed on purpose (see header). ──
+        case "$rc" in
+          0)  verdict=PASS;          reviewed=true  ;;
+          1)  verdict=PENDING;       reviewed=true  ;;
+          2)  verdict=BLOCKED;       reviewed=true  ;;
+          3)  verdict=ESCALATE;      reviewed=true  ;;
+          10) verdict=HARNESS_ERROR; reviewed=false ;;
+          11) verdict=ARG_ERROR;     reviewed=false ;;
+          12) verdict=DRY_RUN;       reviewed=false ;;
+          *)  verdict=UNKNOWN;       reviewed=false ;;
+        esac
+        {
+          echo "verdict=$verdict"
+          echo "exit_code=$rc"
+          echo "reviewed=$reviewed"
+        } >> "$GITHUB_OUTPUT"
+        echo "fh-gate: exit $rc → $verdict (reviewed=$reviewed)"
+        {
+          echo "### fh-gate — \`$verdict\`"
+          echo ""
+          echo "| field | value |"
+          echo "|---|---|"
+          echo "| verdict | \`$verdict\` |"
+          echo "| exit code | \`$rc\` |"
+          echo "| a review actually ran | \`$reviewed\` |"
+          [ "$reviewed" = "false" ] && echo "" && echo "> 🟥 No review ran. This is **not** a pass — see the exit-code contract in the action's README."
+        } >> "$GITHUB_STEP_SUMMARY"
+        case ",${{ inputs.fail-on }}," in
+          *",$verdict,"*) echo "::error title=fh-gate::verdict $verdict is in fail-on"; exit 1 ;;
+        esac
+        exit 0
