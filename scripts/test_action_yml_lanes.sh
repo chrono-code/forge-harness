@@ -62,6 +62,32 @@ else
     *" standard "*) no "D2 control dead — 'standard' appears accepted, so D1 cannot discriminate" ;;
     *) ok "D2 control — the same test rejects 'standard' (the value v3.1.0 shipped), so D1 discriminates" ;;
   esac
+
+  # D3/D4 — the SAME check for `backend`, because closing the instance and leaving the class open
+  # is how this defect comes back wearing a different input's name. `backend` is the other
+  # enum-shaped input the action forwards; `model` (free-form, empty = backend default) and
+  # `timeout` (numeric, matches the gate's own 120) have no closed set to drift against, so they
+  # are deliberately not lanes — an assertion with nothing to assert is decoration.
+  _ACTION_BACKEND_DEFAULT="$(awk '
+    /^  backend:/           {inb=1; next}
+    inb && /^  [a-z-]+:/    {inb=0}
+    inb && /^ *default:/    {gsub(/^ *default: *|""|\x27/,""); print; exit}
+  ' "$A")"
+  _ACCEPTED_BE="$(grep -oE "must be '[a-z]+', '[a-z]+', '[a-z]+', or '[a-z]+'" "$_GATE_SH" \
+                   | grep -oE "'[a-z]+'" | tr -d "'" | sort -u | tr '\n' ' ')"
+  if [ -z "$_ACCEPTED_BE" ]; then
+    no "D3 could not extract the accepted backend set from fh-gate.sh (instrument dead — D4 would pass vacuously)"
+  else
+    ok "D3 extracted the CLI's accepted backend set: [$_ACCEPTED_BE]"
+    case " $_ACCEPTED_BE " in
+      *" $_ACTION_BACKEND_DEFAULT "*) ok "D4 action.yml backend default ('$_ACTION_BACKEND_DEFAULT') is a value the CLI accepts" ;;
+      *) no "D4 action.yml backend default ('$_ACTION_BACKEND_DEFAULT') is NOT in [$_ACCEPTED_BE]" ;;
+    esac
+    case " $_ACCEPTED_BE " in
+      *" anthropic "*) no "D5 control dead — a non-existent backend appears accepted" ;;
+      *) ok "D5 control — the same test rejects 'anthropic' (a plausible-but-wrong value), so D4 discriminates" ;;
+    esac
+  fi
 fi
 
 
