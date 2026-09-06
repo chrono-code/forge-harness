@@ -56,6 +56,22 @@ expect "R2 tail then \$?"                  HIT   'bash gate.sh | tail -20; echo 
 expect "R2 head then \$?"                  HIT   'make test | head -40; rc=$?'
 expect "R2 cat then \$?"                   HIT   'run.sh | cat; if [ $? -ne 0 ]; then echo bad; fi'
 
+echo "-- R2 «바로 다음 문장» 좁힘 (2026-09-06, 운영자 실사용 신고) --"
+# 🟥 종전 꼬리 `[;&].*\$\?` 는 파이프 뒤 **어디든** `$?` 가 있으면 잡았다 — 그게 다른
+#   명령의 것이어도. 한 호출에 문장이 여럿인 실사용 커맨드는 거의 항상 걸렸고, 그건
+#   «100% FP 는 정작 중요한 한 건을 무시하도록 훈련시킨다» 는 이 훅 자신의 경고 그대로다.
+expect "R2 좁힘: 사이에 다른 명령이 끼면 그 \$? 는 그 명령의 것" CLEAN \
+       'out=$(a 2>&1); rc=$?; echo "$out" | tail -1; b; echo $?'
+expect "R2 좁힘: 두 문장 뒤의 \$? 도 아니다"                    CLEAN \
+       'pytest | tail -2; echo done; echo $?'
+expect "R2 좁힘: 파이프 앞에서 잡은 rc 는 원래 정상"             CLEAN \
+       'out=$(pytest 2>&1); rc=$?; echo "$out" | tail -2 | head -1; echo "rc=$rc"'
+# 짝 — 좁히다가 진짜 결함을 죽이면 그게 과교정이다
+expect "R2 좁힘 짝: 직후 문장의 \$? 는 여전히 잡는다"           HIT \
+       'pytest 2>&1 | tail -2; echo "rc=$?"'
+expect "R2 좁힘 짝: && 로 이어진 직후 읽기도 잡는다"             HIT \
+       'make test | head -5 && echo $?'
+
 echo "-- R2 false-positive lanes: the 7 shapes this repo actually ships --"
 # Every one of these was hand-verified on 2026-07-31 as CORRECT: the final stage IS the command
 # whose status is wanted. A detector that flags these is noise, and noise trains dismissal.
