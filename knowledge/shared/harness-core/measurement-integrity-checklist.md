@@ -198,6 +198,26 @@ Mechanization Boundary — 이 칸도 **존재만** 요구한다: 파일럿 횟�
 2. **Hand-verify one sample before publishing.** Open the single case the instrument is *most* confident
    about and confirm by eye. Do this **before** the number enters a report.
 
+### 외부 근거 — 이 규율은 우리 도그푸드에만 얹혀 있지 않다 (2026-09-06 추가)
+
+🟢 **published known-pair, 외부 그룹, 우리 사건과 무관하게**: `arXiv:2609.03267` —
+*Refusing the Impossible: A Taxonomy and Benchmark for Code Hallucination in Large Language Models*
+(Dasu, Kundu, Tan · 2026-09-03 · `cs.SE`). 그들은 «모델이 불가능한 요구에 코드를 지어낸다」는
+헤드라인(불가능 프롬프트에서 **약 60%** 가 근거 없는 코드, **27%** 만 거절)을 **내기 전에**
+계기가 아는 답을 가르는지부터 보였다: **91 개의 짝지은 «풀 수 있는» 컨트롤**에서 오거부
+**0%**, 그리고 두 단계 판정 프로토콜을 사람 라벨과 대조해 **82% 일치, κ=0.73**. (초록에서 직접
+확인 — 이 문단은 digest 요약이 아니라 원문 인용이다.)
+
+**왜 여기 적나**: 위 §The rule 의 1번(known-pair)·2번(사람이 한 건 확인)이 이 저장소 안에서는
+**전부 자체 사건**(77건→3건 붕괴 등)으로만 근거를 갖고 있었다 — 규율이 옳다는 주장의 유일한
+증인이 그 규율을 쓴 우리 자신이었다는 뜻이고, 그건 이 문서가 다른 자리에서 금지하는 형태다.
+이 논문은 **같은 절차를 밟은 외부의 공개 사례**라 그 자기참조를 끊는다.
+
+⚠️ **이식되는 것은 계기 설계이지 숫자가 아니다.** 60%/27%/κ=0.73 은 12개 open-weight 모델의
+코드 환각 벤치마크 수치이지 하네스에 대한 측정이 아니다. FH 가 인용하는 것은 «헤드라인을 내기
+전에 아는 답으로 계기를 갈랐다»는 **순서**뿐이다. 우리 수치에 대한 근거로 쓰면 그 자체가
+이 문서 §계기 보정이 금지하는 «남의 숫자 수입»이다.
+
 **Publish-order asymmetry (why step 2 is not optional):** verification is cheap *before* publication and
 expensive *after*. A number written into a report, a session card, and a signal file must then be
 corrected in **all three**, and every downstream reader who already consumed it is not recalled.

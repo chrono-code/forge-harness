@@ -140,6 +140,7 @@
     "scripts/test_marker_soul_check_lanes.sh",
     "scripts/test_marker_affected_lanes.sh",
     "scripts/test_marker_oracle_lanes.sh",
+    "scripts/test_gate_two_verdicts_lanes.sh",
     "scripts/test_heavy_classifier_lanes.sh",
     "scripts/residency_admission_check.sh",
     "scripts/test_residency_admission_lanes.sh",

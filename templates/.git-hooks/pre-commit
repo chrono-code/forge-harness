@@ -3052,6 +3052,41 @@ else
   echo "  ⚠️  상주 유입 게이트 미설치 (scripts/residency_admission_check.sh) — skipped, not passed"
 fi
 
+# ── 수용-근거 한 줄 (보고 전용 — 절대 안 막는다) ────────────────────────────
+# WHY (2026-09-06, digest 답습 · arXiv:2609.04167 SWE-Gate): 그 논문은 «기능 테스트 통과»와
+# «리뷰 제약 충족»을 **따로** 채점하라고 처방한다 — 실측에서 기능 테스트를 통과한 수리 644 건 중
+# **221 건(34%)** 이 실제 PR 리뷰 코멘트에서 뽑은 제약을 어겼다. 한 숫자로 합치면 그 34% 가 안 보인다.
+# FH 도 같은 형태였다: 이 훅은 Axis 1(회귀)·레인·매니페스트가 통과하면 «ALL AXES PASSED» 라는
+# **합성 판정 하나**를 찍었고, 그동안 마커의 `crossfamily: DEGRADED_PANEL_UNUSED` 같은 값은
+# 출력 어디에도 안 나왔다. 통과는 통과인데 «무엇이 기록됐나»는 안 보이는 것이다.
+# 그래서 판정을 둘로 찍는다 — 위는 «초록인가», 아래는 «무엇이 기록됐나».
+# 🟥 §Mechanization Boundary: 이건 **채널**이다. 기록의 속성(어떤 값이 적혔나)만 찍고,
+#    그 값이 참인지는 판정하지 않으며 아무것도 막지 않는다. 차단은 기존 다리들이 그대로 한다.
+# Anchor: scripts/test_gate_two_verdicts_lanes.sh
+_acceptance_evidence_line() {   # $1 = marker path (비었거나 없으면 n/a)
+  local m="${1:-}" f v out=""
+  if [ -z "$m" ] || [ ! -f "$m" ]; then
+    printf 'acceptance-evidence: n/a (경량 게이트 — 이 경로는 마커를 읽지 않는다)\n'
+    return 0
+  fi
+  for f in crossfamily standpoint thirdparty oracle; do
+    v=$(sed -n "s/^[[:space:]]*${f}:[[:space:]]*\([^[:space:]][^[:space:]]*\).*/\1/p" "$m" | head -1)
+    # 🟥 첫 실사용(이 훅의 첫 두-판정 커밋)이 즉시 잡은 것: 값이 `checked(확인한 것 = …)` 처럼
+    #    **괄호 안에 공백**을 담으면 첫 토큰이 `checked(확인한` 으로 잘려, 값도 아니고 문법도
+    #    깨져 보이는 문자열이 찍힌다. 반면 `panel(codex,gemini)` · `tier2(qasp)` 는 괄호가 값의
+    #    일부라 살려야 한다. 판별자는 **괄호가 닫혔는가** 하나뿐이다 — 안 닫혔으면 여는 괄호
+    #    앞까지가 값이다. (마커 defeater 에 «관측될 것»으로 적어 둔 그 줄이 그대로 발화했다.)
+    case "$v" in
+      *'('*')'*) : ;;                      # panel(codex,gemini) — 괄호가 값의 일부
+      *'('*)     v="${v%%(*}" ;;           # checked(확인한 … — 잘린 괄호는 값이 아니다
+    esac
+    [ -n "$v" ] || v='(없음)'
+    out="${out}${out:+ · }${f}=${v}"
+  done
+  printf 'acceptance-evidence: %s\n' "$out"
+}
+
+
 # ── Verdict ───────────────────────────────────────────────────────────────────
 echo ""
 echo "══════════════════════════════════════════════"
@@ -3064,6 +3099,10 @@ if [ "$FAILED" -eq 1 ]; then
 fi
 
 echo " ✅ ALL AXES PASSED — commit allowed"
+echo "    functional         : PASS (Axis 1 회귀 · 레인 · 매니페스트)"
+echo "    $(_acceptance_evidence_line "${MARKER:-}")"
+echo "    🟥 둘은 한 판정이 아니다 — 위는 «초록인가», 아래는 «무엇이 기록됐나»다."
+echo "       형식이 통과했다는 뜻이지 그 값이 참이라는 뜻이 아니다 (arXiv:2609.04167)."
 echo "══════════════════════════════════════════════"
 echo ""
 exit 0
