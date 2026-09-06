@@ -412,8 +412,8 @@ and the phrase that triggers it:
 | [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) | How to contribute skills and patterns |
 | [`tracks/_contrib/`](tracks/_contrib/README.md) | **Consent lane** — share a de-identified work session; the repo compounds across operators |
 
-> **FH papers**: v1.0 methodology · [Zenodo](https://zenodo.org/records/20397566) (DOI
-> 10.5281/zenodo.20397566) · cs.SE companion, published ·
-> [Zenodo](https://zenodo.org/records/20680081) (DOI 10.5281/zenodo.20680081) · cs.AI companion in
+> **FH papers**: v1.0.1 methodology · [Zenodo](https://zenodo.org/records/22542168) (DOI
+> 10.5281/zenodo.22542168) · cs.SE companion v1.1, published ·
+> [Zenodo](https://zenodo.org/records/20740038) (DOI 10.5281/zenodo.20740038) · cs.AI companion in
 > preparation. Those, the independent convergent work, and the caveats on each:
 > [`docs/OUTPUT_EVIDENCE.md`](docs/OUTPUT_EVIDENCE.md).

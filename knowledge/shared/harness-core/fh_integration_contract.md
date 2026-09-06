@@ -344,4 +344,4 @@ The bridge layer (v1.0) will implement these. This contract is the specification
 - `fh_ecosystem_positioning.md` — ecosystem context + synergy map + v2 paper connection
 - `tracks/_meta/` — governance logs written here on each gate run
 - `multi_model_sidecar_strategy.md` — multi-model orchestration (related pattern)
-- FH paper (Zenodo: 10.5281/zenodo.20397566) — harness-as-durable-layer thesis this contract operationalizes
+- FH paper (Zenodo: 10.5281/zenodo.20397565) — harness-as-durable-layer thesis this contract operationalizes
