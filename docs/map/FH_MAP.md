@@ -8,7 +8,7 @@
 **30초 요약**: FH(forge-harness)는 **사람의 의도를 기계로 벼리는 메타하네스**다 — 의도를 AI 가 따르는 규칙이나 모델이 필요 없는 코드로 굳히고,
 그 산출(스킬·게이트·하네스)을 다른 프로젝트에 낳는다. 모든 작업은 **3단 공정**(성공 정의 먼저 → 병렬 탈상관 → 6축 태우기)을 밟고, 출력은
 **4대 엔진**에서 나오며, 사람은 **5대 정체성**(클러스터 · 인큐베이터 · 게이트 · 답습 · 증폭자)으로 그것을 만난다. 믿을 만한 이유는 **막는 것이
-산문이 아니라 파일**이기 때문이다 — **설치된 pre-commit/pre-push 경로에서는** FH 자산을 고친 커밋이 4축 마커 없이 못 들어가고, 원격 삭제·force push 가 못 나간다. 🟥 한정: 둘은 **클라이언트 훅**이라 `--no-verify` 로 우회되고, 마커는 gitignored 라 CI 가 못 보며, 서버측 floor 는 «main 은 PR 전용 + `validate` 체크 하나» 뿐이다(③ 정직 표기). 발행(npm publish · 공개 전환)은 별도 게이트다(`prepublishOnly` 스캔 + Pre-Publish 절차). 훅·스크립트를 재는 레인 스위트(테스트 묶음) **104 개**는 전부 러너에 배선돼 있다(선언 면제 1 포함)(산식은 ② 계기 표). FH 자체는 Claude Code 위에서 돌고, LLM 없이 도는 것은 그 산출 중 코드·훅 층이다.
+산문이 아니라 파일**이기 때문이다 — **설치된 pre-commit/pre-push 경로에서는** FH 자산을 고친 커밋이 4축 마커 없이 못 들어가고, 원격 삭제·force push 가 못 나간다. 🟥 한정: 둘은 **클라이언트 훅**이라 `--no-verify` 로 우회되고, 마커는 gitignored 라 CI 가 못 보며, 서버측 floor 는 «main 은 PR 전용 + `validate` 체크 하나» 뿐이다(③ 정직 표기). 발행(npm publish · 공개 전환)은 별도 게이트다(`prepublishOnly` 스캔 + Pre-Publish 절차). 훅·스크립트를 재는 레인 스위트(테스트 묶음) **108 개**는 전부 러너에 배선돼 있다(선언 면제 1 포함)(산식은 ② 계기 표). FH 자체는 Claude Code 위에서 돌고, LLM 없이 도는 것은 그 산출 중 코드·훅 층이다.
 소비자가 받는 것은 **레포 클론 또는 npm 패키지**(둘 다 스킬·훅·정본을 담는다)이고, 세션 기록 · 로컬 바인딩 · 무인 잡은 **운영자 로컬**이라 없다. 상세는 ④ · 시작 명령은 ①-끝.
 
 **용어 20개** (이 문서에서만 쓰는 뜻):
@@ -23,7 +23,7 @@
 | **4축 마커** | FH 자산을 고친 커밋에 붙는 증거 파일 — 어느 축을 돌렸고 컨트롤이 살았는지, 성공 정의가 무엇이었는지. 설치된 pre-commit 경로에서는 없으면 커밋이 막힌다(클라이언트 훅). 검증 6축과는 **다른** 4(회귀·적대·팬텀·매니페스트) |
 | **fail-closed** | 확신이 없으면 «통과» 가 아니라 «멈춤» 쪽으로 떨어지는 설계. 비가역 표면(발행·삭제·히스토리 재작성)은 전부 이 방향 |
 | **미실행 ≠ 0** | 못 잰 것을 0 으로 적지 않는 규율. `UNMEASURED` · `FAILED-TO-RUN` · «안 쟀다» 는 실패가 아니라 정직한 공백이다 |
-| **레인 / 레인 스위트** | 레인 = 한 검사(known-positive 와 known-negative 짝을 실행해 초록/빨강을 내는 것). 스위트 = 레인을 담은 `scripts/test_*.sh` 한 파일. «104 스위트» 는 러너가 아는 파일 수(`scripts/test_*.sh` 102 + 다른 경로 2)이고 레인 수는 그 안에서 더 많다 |
+| **레인 / 레인 스위트** | 레인 = 한 검사(known-positive 와 known-negative 짝을 실행해 초록/빨강을 내는 것). 스위트 = 레인을 담은 `scripts/test_*.sh` 한 파일. «108 스위트» 는 러너가 아는 파일 수(`scripts/test_*.sh` 106 + 다른 경로 2)이고 레인 수는 그 안에서 더 많다 |
 | **계열 · 입장** | 계열 = 모델 가족(Claude · Codex/GPT · Gemini). 입장 = 리뷰어가 «어느 레포의 규칙을 정본으로 읽나» — 내 레포에서 남의 하네스를 짐작하는 것과 그 하네스의 레포에서 직접 돌리는 것은 다른 입장이다 |
 | **정본 · 문 · 계기** | 정본 = 그 사실이 «여기 하나에만» 사는 파일(사본이 둘이면 하나가 낡는다). 문 = 인사 뒤 뜨는 메뉴 ①~④·🔧·📖. 계기(instrument) = 무엇을 재는 스크립트 — 레인 · sim · 프로브 · 되돌림 |
 | **챔버 · 원장** | 챔버 = 새 하네스/스킬 후보를 격리해 낳을지 죽일지 판정하는 인큐베이션 런. 원장(ledger) = 그 런의 결과를 한 줄씩 적는 파일(EMIT 낳음 · KILL 죽임 · CURATED 선행자료만 · NOT-APPLICABLE) |
@@ -45,7 +45,7 @@
 2. Claude Code 밖에서는 **`fh-gate` CLI 하나**만 쓴다 — 어떤 코딩 에이전트의 산출물에도 후단 게이트로 붙고, Codex 백엔드와 두 계열 UNION 모드가 있다(`bin/fh-gate.js` · `docs/codex-compat.md`).
 3. 어떤 작업이든 **3단 공정**을 밟는다. ① **영혼(심지)** — 무엇이 성공이고 무엇은 절대 안 하는지를 설계 *앞에* 적는다(마커 `soul:` 줄이 의무). ② **병렬 탈상관 가속** — 사각 위험에 맞춰 계열(ⓐ)·입장(ⓑ)을 갈라 병렬로 돌린다. ③ **6축 태우기** — 실패 모드에 맞는 축만 골라 태운다(`knowledge/shared/harness-core/fh_three_layer_canon.md`).
 4. 출력은 **4대 엔진**에서 나온다 — `judgment-circuit` · `ship-gate` · `context-continuity` · `external-grounding`(`ship_readiness_gate.md` §The four engines).
-5. 사람은 그것을 **정체성**으로 만난다. **5대**는 각자 실물(②층 표 = 경로)과 등급(정본 `ship_readiness_gate.md`, ③층에서 인용)을 가진 안정 정체성이고, 그 외는 결합에 따라 나타났다 사라지는 면모다. Ⓑ 프로젝트 부스터는 여섯 번째가 아니라 다른 층(다른 하네스의 자체 개발을 FH 기계가 가속하는 것).
+5. 사람은 그것을 **정체성**으로 만난다. 그림 아래 레인에 **다섯이 이름으로 올라와 있다** — ① 하네스 클러스터(남의 하네스·스킬을 부른다) · ② 프로젝트 인큐베이터(챔버가 낳거나 죽인다) · ③ 거버넌스 게이트(훅이 물리적으로 막는다) · ④ 프런티어 답습(책장 → 도서관 순으로) · ⑤ 증폭자(의도 → 근거 붙은 산출). 🟥 **왼쪽에서 오른쪽은 순서가 아니다** — 다섯은 늘 켜져 있고 방향에 따라 나타난다(그림의 점선 프레임이 그렇게 적는다). 각자 실물(②층 표 = 경로)과 등급(정본 `ship_readiness_gate.md`, ③층에서 인용)을 가진 안정 정체성이고, 그 외는 결합에 따라 나타났다 사라지는 면모다. Ⓑ 프로젝트 부스터는 여섯 번째가 아니라 다른 층(다른 하네스의 자체 개발을 FH 기계가 가속하는 것)이라 그림에는 없고 카드에만 있다. 여섯 행 전부 🟢 이고(2026-09-04), 등급은 자기평가다.
 6. 받는 것은 문에 따라 다르다 — **필드 하네스**(문 ②③: `.claude/` 스캐폴드 · 게이트 훅 · 세션 규칙 · `tracks/{project}` 트랙 — 하네스화 §6 또는 챔버 EMIT) · **PR/스킬/판정**(🔧 · `fh-gate` exit code) · **4축 마커**(FH 자산 변경마다) + **세션 카드**(`tracks/**`, gitignored — 다음 세션이 이어받는다). 그림에는 «받는 것 — 문별» 뷰(문마다 손에 쥐는 실물 한 줄, 정본 `docs/USE_CASES.md` · `docs/USER_GUIDE.md` · `auto_project_mapping.md §6`)와 «사람이 서는 자리» 뷰(승인 · 취향 · 비가역 결정 · 디스패치 리스 동의 — 기계는 그 앞까지 닫고 판단은 남긴다)가 있고, ③ 6축 노드에는 범례 카드(축 · 리뷰어가 받는 것 · 무엇이 틀린 경우 — 정본 `fh_three_layer_canon.md §1-a-2`)가 붙어 있다. 2026-09-05 운영자 질문 두 건(«6축이 어떻게 구성되나» · «하네스를 만드는 결과물은 어디인가»)이 이 개정의 출처다.
 7. 🟥 **6축은 네 번째 층이 아니다** — 3단 공정 ③단의 내용물이다. 그리고 이 저장소 안에서 «4» 는 셋이다(4축 게이트 · 4대 엔진 · 옛 4축 검증) — 인용 전 어느 4인지 확인한다.
 
@@ -105,7 +105,7 @@
 
 | 계기 | 경로 | 2026-09-05 실측 |
 |---|---|---|
-| 레인 스위트 러너 | `scripts/selfcheck.sh` · `scripts/lane_runner_check.sh` | `lane_runner_check.sh` → **104 suites — 104 wired · 1 exempt · 0 declared debt**(rc=0, 이 브랜치 2026-09-05 — #642 의 oracle 레인과 이 지도의 경로 레인이 들어간 뒤). 산식 하나: 러너가 아는 suite = `scripts/test_*.sh` **102 파일** + 다른 경로의 스위트 2 = 104. 그중 1 은 EXEMPT(비용·라이브 CLI 때문에 자동 실행 금지로 **선언**한 것)이고 러너는 선언된 것도 «wired」 로 센다 → wired 104 = 실제 호출 103 + 선언 면제 1 · debt 0 |
+| 레인 스위트 러너 | `scripts/selfcheck.sh` · `scripts/lane_runner_check.sh` | `lane_runner_check.sh` → **108 suites — 108 wired · 1 exempt · 0 declared debt**(rc=0, main 2026-09-06 — #653 QP · #654 preprep · #658 Action · 이 개정의 지도 후처리 레인이 들어간 뒤). 산식 하나: 러너가 아는 suite = `scripts/test_*.sh` **106 파일** + 다른 경로의 스위트 2 = 108. 그중 1 은 EXEMPT(비용·라이브 CLI 때문에 자동 실행 금지로 **선언**한 것)이고 러너는 선언된 것도 «wired」 로 센다 → wired 108 = 실제 호출 107 + 선언 면제 1 · debt 0 |
 | 격리 sim | `scripts/sim_isolated_run.sh` | 일회용 클론 · 플로어 티어 `claude -p` · ARM/CTRL · 머신 부작용 스냅샷(관측 모드는 읽기 전용) |
 | 야간 live-eval | `scripts/probe_live_eval.sh` · `.claude/regression/probes_live.yaml` | 라이브 프로브 **12**(golden 33행 중 기계 규칙으로 선별) · 각 프로브 = ARM + CTRL 두 호출 |
 | 되돌림 프로브 | `scripts/revert_probe.sh` | 파일 하나를 baseline 으로 되돌리고 **그 레인만** 빨개지는지 — 한 파일 = 한 뮤턴트, 일반화 금지가 헤더에 적혀 있다 |
@@ -126,7 +126,7 @@
 | **4축 마커 커밋 게이트** | FH 자산을 «검증했다고 말만 하고» 커밋하는 것 | `templates/.git-hooks/pre-commit` `validate_marker_floor` + `validate_*_leg` 12(soul · axes-run · crossfamily · standpoint · thirdparty · defeater · affected …) | 설치된 pre-commit 경로에서 마커 부재·공허 → **커밋 차단**(화면에 어느 파일에 무엇을 쓰라고 찍힌다) · 클라이언트 훅이라 `--no-verify` 우회 가능 · 마커는 gitignored 라 CI 미검증. 레인 `scripts/test_marker_*_lanes.sh` 9 스위트 · 🟡 정직 표기: 훅은 값의 **형식**(닫힌 enum · 비공허 근거)을 검증하고 **진위**는 못 본다 — `CLAUDE.md` §자기 대조 |
 | **파괴 연산 푸시 게이트** | 원격 브랜치 삭제 · force push · main 직접 푸시가 «잊고» 나가는 것 | `templates/.git-hooks/pre-push`(**클라이언트 훅** — `--no-verify` 로 우회된다) — 참조별 판정을 훅 안에서 계산, 분류 불가도 차단 | 설치된 경로에서 통과는 명시·로그되는 `DESTRUCTIVE_OP_OK=1` · `MAIN_PUSH_OK=1` 만. 레인 `scripts/test_prepush_destructive_lanes.sh`. **서버측 floor 는 `main` PR 전용(`enforce_admins`) + `validate` 필수 체크 하나** — 브랜치 삭제·force 는 서버가 안 막는다. 발행(npm · 공개 전환)은 이 행이 아니라 다음 행 + Pre-Publish 절차 |
 | **사설 토큰 스캔** | 운영자 실명 · 조직 자산명 · 홈 경로가 공개 파일에 실리는 것 | pre-commit 기밀 스캔(staged 추가 줄) · pre-push 재검(푸시 범위 커밋의 추가 줄, `pre-push:429-448`) · `scripts/public_surface_scan_files.sh`(`prepublishOnly`, 발행 파일셋 **전수** — 유일한 파일셋 스캔) · `scripts/residency_closure_scan.py` | 설치된 훅 경로에서 HIGH/MED 차단 · `PUBLIC_SURFACE_OK=1` 로만 통과(로그). 범위 = **동봉 기본 패턴 + 설정된 조직 패턴**(gitignored, 없으면 기본 패턴만 돌고 경고). 이 문서와 JSON 3장 = residency **CLEAN — 그 패턴 범위 안의 스크리닝**(2026-09-05), «보내도 안전» 이 아니다 |
-| **레인 스위트** | 훅·스크립트가 «있다» 로 끝나는 것 — 아무도 실행 안 하는 레인은 산문이다 | `scripts/selfcheck.sh` · `scripts/lane_runner_check.sh`(러너 없는 스위트를 센다) | **104 스위트 · 104 배선(선언 면제 1 포함) · 0 debt**(rc=0). CI `validate` 잡이 selfcheck 를 돌리고 `main` 의 **유일한 필수 체크**다 |
+| **레인 스위트** | 훅·스크립트가 «있다» 로 끝나는 것 — 아무도 실행 안 하는 레인은 산문이다 | `scripts/selfcheck.sh` · `scripts/lane_runner_check.sh`(러너 없는 스위트를 센다) | **108 스위트 · 108 배선(선언 면제 1 포함) · 0 debt**(rc=0). CI `validate` 잡이 selfcheck 를 돌리고 `main` 의 **유일한 필수 체크**다 |
 | **격리 sim · 첫 실사용(ⓔ)** | «읽으면 맞다» 로 규칙 변경을 끝내는 것 | `scripts/sim_isolated_run.sh` — 일회용 클론 · 플로어 티어 · ARM/CTRL 한 변수 · reps≥3 바 | 헤더가 실패한 첫 런(라이브 레포 sim 이 launchd 를 등록한 사고, 2026-08-29)을 적고 격리 범위와 **못 막는 것**을 갈라 적는다 |
 | **야간 live-eval** | 규칙이 «남아 있는데 발화가 멈춘» 드리프트 | `scripts/probe_live_eval.sh` · `probes_live.yaml`(12) · `scripts/com.forge-harness.live-eval.plist` | 0 바이트 응답 = **FAILED-TO-RUN, 분모 제외**. 같은 날 두 런을 갈라 적는다 — ⓐ 2026-09-05 02:30 **launchd 예약 런** = 프로브 0 실행(launchd PATH 환경) → `NO-PROBES-RAN` 으로 남았고 «통과» 로 접히지 않았다 · ⓑ 같은 날 낮 **수동 로컬 런**(sonnet) = 12/12 실행, PASS 8 · FAIL 4(문턱 미집행) |
 | **되돌림 프로브(ⓕ)** | 앵커가 장식인 것 — 지워도 초록 | `scripts/revert_probe.sh` · 각 레인의 fail-before 규약 | 이 문서의 레인도 그렇게 검증했다: 노드 경로 하나를 가짜로 바꾸면 `L2 … missing: 1 of 37` 로 빨개짐(아래 §재생성) |
@@ -151,7 +151,7 @@
 | 무엇 | 근거 |
 |---|---|
 | 스킬 41 · 에이전트 8 · 두 플러그인 | `plugins/` · `.claude-plugin/marketplace.json` |
-| 훅 둘 + 레인 스위트 104(선언 면제 1 포함) + selfcheck | `templates/.git-hooks` · `scripts/` — `package.json files[]` 259 항목 안 |
+| 훅 둘 + 레인 스위트 108(선언 면제 1 포함) + selfcheck | `templates/.git-hooks` · `scripts/` — `package.json files[]` 259 항목 안 |
 | 정본 44 + 가이드 · 표준 정렬 · 티어 기대표 | `knowledge/shared/harness-core` · `docs/` |
 | `fh-gate` CLI(Claude · Codex · cross 백엔드) | `bin/` · `docs/codex-compat.md` |
 | 격리 sim · live-eval 러너 · 되돌림 프로브 · 챔버 러너 | `scripts/sim_isolated_run.sh` · `probe_live_eval.sh` · `revert_probe.sh` · `chamber_run.sh` |
@@ -227,7 +227,7 @@
 ## 이 문서가 답하지 않는 것 (정직하게)
 
 - **도입 비용 · 시간 절감 · 결함 검출률 수치** — 안 쟀다. 여기 없는 수치는 0 이 아니다. 속도·규모 표(커밋 수 · PR 수)는 `docs/OUTPUT_EVIDENCE.md` 에 날짜와 함께 있고 그 문서가 «velocity, not maturity» 라고 스스로 적는다.
-- **104 스위트가 «많다» 의 비교 기준** — 없다. 절대 수가 아니라 «어떤 레인이 무엇을 막나»(③ 표) 로 읽어야 한다.
+- **108 스위트가 «많다» 의 비교 기준** — 없다. 절대 수가 아니라 «어떤 레인이 무엇을 막나»(③ 표) 로 읽어야 한다.
 - **다른 조직이 갈아 끼우는 데 드는 공수** — 안 쟀다. ④ 표는 *어디를* 바꾸는지까지만 답한다.
 - **훅이 켜져 있는가** — 소비자 클론에서 `core.hooksPath` 설정 여부는 이 문서가 모른다. 미설정이면 ③ 표의 차단 문장은 성립하지 않는다.
 - **설치 절차 전체** — ①-끝 «시작하기» 는 첫 명령까지만 답한다. 절차는 `README.md` §Pick one · `docs/USER_GUIDE.md`.
@@ -257,11 +257,35 @@ node $A validate architecture docs/map/fh_assets.architecture.json  --quality sh
 node $A validate dataflow     docs/map/fh_trust.dataflow.json       --quality showcase --json
 node $A deliver  workflow     docs/map/fh_process.workflow.json     docs/map/fh_process.workflow.html --quality showcase --json
 # (architecture · dataflow 도 같은 꼴)
-# SVG = HTML 안의 유일한 <svg> 블록 + 뷰어 <style> 을 심은 정적 벡터(다크 테마 기본값으로 렌더된다)
-# PNG = `node $A visual-check <html>` 이 실제 Chrome 으로 찍은 2048×1320 라이트 스크린샷(뷰어 크롬 포함) — 사이드카(*.visual-check.*)는 절대경로를 품으므로 커밋하지 않고 지운다
+
+# 🟥 deliver 다음이 «끝»이 아니다 — 후처리가 의무다(폭 하한 + SVG 재생성). 안 돌리면 옛 폭으로 발행된다
+python3 scripts/map_postprocess.py docs/map/*.html      # rc=3 이면 렌더러 드리프트 — 멈추고 리터럴을 확인해라
+
+# PNG = 로컬 서버 + Chrome 헤드리스 라이트 스크린샷(뷰어 크롬 포함). 창 높이는 그 페이지 scrollHeight 에 맞춘다
+#       (2048×1320 고정이던 옛 방식은 폭 하한을 올린 뒤 아래쪽 카드가 잘린다 — 잘린 그림을 문서에 싣지 않는다)
+(cd docs/map && python3 -m http.server 8777 &) ; CH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+"$CH" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+  --window-size=2048,1420 --screenshot=docs/map/fh_process.workflow.png http://127.0.0.1:8777/fh_process.workflow.html
+#   (dataflow 는 2048×1360 · architecture 는 2048×1320)
+
 bash scripts/test_fh_map_paths_lanes.sh          # 노드 경로 전수 test -e (부재 0 이어야 초록)
+bash scripts/test_map_postprocess_lanes.sh       # 후처리 계약 9 레인 (L9 = 발행본이 실제로 패치됐나)
 ```
 
 - 렌더러는 **코드를 외부로 보내지 않는다** — `bin/archify.mjs` 에 네트워크 import 0, 렌더러 전체에서 네트워크 import 는 `renderers/shared/brand-marks.mjs`(명시적 `brands capture <url>` 만)와 `scripts/check-update.mjs`(고정 매니페스트 URL, 위 환경변수로 차단) 둘뿐(2026-09-05 grep 실측, v2.17.0-dev.1).
 - 뷰어의 고정 UI(검색 · 범례 · Export 버튼)는 영어다 — 렌더러가 한국어 UI 를 지원하지 않아 `meta.locale` 을 비웠다. 본문(노드 · 카드)은 한국어다.
-- 렌더러 `visual-check`(실제 Chrome 4 뷰포트 컨테인먼트) 결과: ② architecture · ③ dataflow **pass** · ① workflow 는 1440×900 에서 **세로 60px 초과**(4 레인 최소 높이 668 이 렌더러 하한이라 못 줄였다; 2048×1320 은 pass). 그 상태로 둔다 — 스크롤 한 번이고, 뷰어 폭 모델과 validate 폭 모델이 다른 것은 같은 날 별도 지도 작업에서도 관측된 렌더러 쪽 결함 후보다.
+- **폭 하한을 왜 손댔나 (2026-09-06, 운영자 «화면을 좀더 와이드하게 써도될것같아»)** — 뷰어는 «스크롤 없이 한 화면에 담기»를 목표로 폭을 줄이는데, 세로 예산이 모자라면 상수 하한 `MIN_READER_WIDTH = 960` 에서 바닥을 친다. 실측(1728×950)에서 ① 은 **960px** 였고 화면의 44% 가 여백이었다. 🟥 그런데 **그 희생이 산 것이 없다** — 같은 상태에서 이미 세로로 넘쳐 스크롤 중이었다(scrollH 1219 > 950). 그래서 하한을 «화면 비례»(`min(1440, max(960, innerWidth×0.80))`)로 바꾸는 후처리를 넣었다.
+- **ARM / CTRL 실측 — 같은 커밋의 패치 전 HTML 을 컨트롤로 두고 한 변수만 바꿨다** (iframe 1440×900 · 2048×1320, 2026-09-06):
+
+  | 뷰포트 | 그림 | 폭 전 → 후 | 세로 초과 전 → 후 |
+  |---|---|---|---|
+  | 1440×900 | ① workflow | 960 → **1152** | 277 → **261** |
+  | 1440×900 | ③ dataflow | 960 → **1152** | 192 → **190** |
+  | 1440×900 | ② architecture | 1008 → **1152** | 0 → **45** |
+  | 2048×1320 | ① workflow | 1101 → **1440** | 0 → **89** |
+  | 2048×1320 | ③ dataflow | 1336 → **1440** | 0 → **32** |
+  | 2048×1320 | ② architecture | 1739 → 1739 (변화 없음) | 0 → 0 |
+
+  세 장 중 두 장은 **넓어지면서 스크롤이 오히려 줄었다**(카드가 넓어져 덜 접힌다). 새로 생긴 초과는 ② 1440 에서 45px, 큰 뷰포트에서 32~89px 다 — 넓이를 사고 스크롤 몇 십 px 을 낸 거래이고, 그 방향은 운영자 요청 그대로다.
+- **그 대가로 `visual-check` 는 이제 fail 이다** — 컨테인먼트 진단이 ① 4→6 · ③ 4→6 · ② 0→4 로 늘었다(패치 전 ② 만 pass 였다). 이 fail 은 **의도된 거래이지 회귀가 아니다** — 다만 «pass 였다» 로 적어두면 다음 사람이 되돌릴 테니 숫자로 남긴다. 캔버스 자체의 readability(`validate --quality showcase`)는 **세 장 다 pass** 로 유지된다.
+- **캔버스 폭에는 렌더러가 정한 천장이 있다** — `composition/desktop-readability` 는 1440px 데스크톱에서 컨테이너를 930px 로 가정하고 본문 글자가 6px 아래로 내려가면 막는다. 세부 글자 크기 상한이 8px 이므로 **viewBox 폭 ≤ 930×8/6 = 1240** 이 사실상의 상한이다(① 은 1137 → **1238** 로 그 천장까지 올렸고, ③ 은 글자 상한이 7px 이라 1080 이 이미 천장이라 캔버스를 못 넓혔다 — 그래서 ③ 의 개선은 전부 폭 하한 쪽에서 왔다).
