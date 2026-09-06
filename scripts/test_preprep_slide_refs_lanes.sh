@@ -15,30 +15,59 @@ cd "$(dirname "$0")/.." || exit 10
 LANE=plugins/fh-commons/skills/preprep/lane_slide_refs.py
 [ -f "$LANE" ] || { echo "ⓘ $LANE absent — subject missing (NOT a pass)"; exit 2; }
 command -v python3 >/dev/null 2>&1 || { echo "ⓘ python3 absent — setup broke"; exit 10; }
-python3 -c 'import pptx' 2>/dev/null || { echo "ⓘ python-pptx absent — setup broke (NOT a pass)"; exit 10; }
 T=$(mktemp -d) || exit 10; trap 'rm -rf "$T"' EXIT
+# 🟥 파이썬 바이트코드 캐시를 지우고 시작한다. 되돌림 프로브에서 실측했다(2026-09-06):
+#    판별자를 뮤턴트로 바꿨다가 원본을 복원했는데 **스테일 __pycache__ 가 뮤턴트를 계속
+#    먹여** 「복원했는데도 적색」이 나왔다. 반대 방향이 더 위험하다 — 뮤턴트를 넣었는데
+#    캐시가 원본을 먹이면 «되돌려도 초록» 이 되어 **앵커가 죽은 것을 못 본다**.
+rm -rf plugins/fh-commons/skills/preprep/__pycache__
 PASS=0; FAIL=0
 ok(){ echo "  ✅ $1"; PASS=$((PASS+1)); }
 ng(){ echo "  ❌ $1"; FAIL=$((FAIL+1)); }
 
 RUN=$T/run.py
 cat > "$RUN" <<'PY'
-import sys, os
+import sys, os, types
 sys.path.insert(0, 'plugins/fh-commons/skills/preprep')
-from pptx import Presentation
-from pptx.util import Inches, Pt
+
+# 🟥 python-pptx 를 **의존하지 않는다**. 이 스위트는 «분류» 를 재는 것이고, 그 입력은
+#    「장 → 화면 텍스트 · 노트」라는 **작은 오리 타입**이 전부다(lane 의 _texts/
+#    section_numbers 가 읽는 표면). 실물 라이브러리를 요구하면 러너에 없을 때
+#    HARNESS ERROR(exit 10)로 죽고 — 그건 «측정 못 했다»라 옳은 방향이지만, 그 대가로
+#    **CI 에서 이 레인이 영영 안 돌게** 된다. 안 도는 앵커는 앵커가 아니다.
+#    ⇒ `sys.modules['pptx']` 에 스텁을 심어 lane 의 `from pptx import Presentation`
+#      경로까지 **그대로 통과시킨다** — scan() 의 경로 해소·노트 읽기가 다 덮인다.
+class _Run:
+    def __init__(self, t): self.text = t
+class _Para:
+    def __init__(self, t): self.runs = [_Run(t)]
+class _TF:
+    def __init__(self, t): self.paragraphs = [_Para(t)]; self.text = t
+class _Shape:
+    def __init__(self, t): self.has_text_frame = True; self.text_frame = _TF(t)
+class _Notes:
+    def __init__(self, t): self.notes_text_frame = _TF(t)
+class _Slide:
+    def __init__(self, scr, note):
+        self.shapes = [_Shape(x) for x in scr]
+        self.has_notes_slide = True
+        self.notes_slide = _Notes(note)
+class _Prs:
+    def __init__(self, spec): self.slides = [_Slide(a, b) for a, b in spec]
+
+_SPEC = {}
+def _Presentation(path):
+    key = os.path.normpath(path)
+    if key not in _SPEC:
+        raise FileNotFoundError(key)          # 실물 없음 경로도 lane 이 UNMEASURED 로 낸다
+    return _Prs(_SPEC[key])
+_fake = types.ModuleType('pptx'); _fake.Presentation = _Presentation
+sys.modules['pptx'] = _fake
 
 def build(path, slides):
     """slides = [(화면 줄들, 대본)] — 화면 줄은 각각 별도 텍스트 상자."""
-    prs = Presentation()
-    blank = prs.slide_layouts[6]
-    for scr, note in slides:
-        s = prs.slides.add_slide(blank)
-        for j, line in enumerate(scr):
-            tb = s.shapes.add_textbox(Inches(0.5), Inches(0.5 + j*0.6), Inches(8), Inches(0.5))
-            tb.text_frame.paragraphs[0].add_run().text = line
-        s.notes_slide.notes_text_frame.text = note
-    prs.save(path)
+    _SPEC[os.path.normpath(path)] = slides
+    open(path, 'w').close()                   # os.path.exists 게이트를 실제로 지나가게
 
 def scan(path, mutate=None):
     import importlib, lane_slide_refs as L
