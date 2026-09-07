@@ -127,6 +127,32 @@ the grep — an agent under merge pressure can under-trigger by treating a chang
 That residual is the reason the gate is reinforced by the always-on Autonomous-Initiative trigger
 row + the operator's proactive framing, not by the grep alone.
 
+**Registration is not a precondition (operator decision 2026-09-08).** «Field surface» above was
+read as «a mapped project's surface», and a session handed an unmapped gate file answered *"적용
+대상이 아닙니다"* and reviewed it bare — 0 degrade scan, 0 cross-family — missing a GHSA-grade
+network-exposure defect. The blind spot this gate guards is a property of the *reviewer's family*,
+not of the file's owner, so ownership cannot switch it off. Scope, narrowed so it does not become
+«every review is a gate»: ⓐ the ask is a **merge / landing verdict** (not an explanation or a style
+question) · ⓑ the file is **gate-shaped by `scripts/gate_shape_scan.sh`** — a closed, word-bounded
+verdict-identifier list (allow/deny/permit/approve·approval/verdict/permission/auth family incl.
+authorize·authorization·authenticat*; `author`/`allowance` excluded), a bind/listen exposure, or an
+irreversible-op call; comment-led lines skipped (`* ` and `-- ` only when followed by space, so
+`*allow = 1` and a continued `--force` line are code); binary → `UNSCANNABLE`, and exit 3 dominates
+any hit (never a silent miss). The classifier is the scope test; it is **not** the FH-owned
+exclusion — that is caller-side (the 4-axis gate already covers FH paths). The task's own naming of the file as gate / auth / exposure
+code is a manual escalation on top of the classifier, not a substitute for it. Known-negative: a
+utility with none of those is out of scope; `reject(` is deliberately not a verdict token (Promise
+API collision, measured — named residual). ⓒ **FH-owned assets are excluded** — they carry the
+4-axis gate; this gate is for field code, and «field» means *not FH*, not *mapped*. **Record surface
+for an unmapped file**: no marker directory exists for it, so the session writes
+`tracks/_meta/field_gate_review_<YYYY-MM-DD>_<slug>.md` — file · verdict · `crossfamily:` verbatim
+from the enum · degrade-scan result · regression test *landed* or *owed* — and the review reply
+links it. An **owed** regression test keeps the verdict `NOT-CONVERGED` until it lands and runs;
+the gate's convergence sub-condition is unchanged. **Pilot evidence (below bar)**: floor tier,
+blind, one variable — before 0/1 fired · after 2/3 on the first draft; a calibrated `>=3`-per-arm
+rerun on the final wording is owed. Resident summary: `CLAUDE.md
+§Field-Harness Load-Bearing Change Gate`.
+
 **Residency** — sanitize company code (redact vendor/domain literals) before any external-family
 dispatch; domain data never leaves. **Autonomy** — autonomous once the operator has consented in
 the UAP (`tracks/_meta/user_adaptation_profile.md`, defined in `knowledge/shared/rules/operational_adaptation.md`),

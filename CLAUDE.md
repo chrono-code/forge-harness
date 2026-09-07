@@ -591,7 +591,31 @@ optimistic reading and miss it.**
 **Trigger (per changed file — grep-assisted, salience-dependent, no field hook)**: an AI-authored
 change to a **verdict/gate enum or exit code** (PASS/FAIL/BLOCK/allow/deny), an **irreversible-op**
 path (publish/delete/history-rewrite), or a **safety invariant** (floor, verdict-binding, a
-pre-push/pre-commit hook). Grep the diff for verdict-enum returns / gate exits / safety-marked
+pre-push/pre-commit hook). 🟥 **Registration is not a precondition** (operator decision
+2026-09-08). When the session is asked for a **merge / landing verdict** on a file that is gate code,
+this gate applies **whether or not** the file's project is mapped, tracked, or in a repo this hub
+knows. Two narrowings keep that from becoming «every review is a gate»: ⓐ the ask must be a
+**verdict on landing** (merge / ship / approve — a read-only explanation or a refactor question is
+not one) · ⓑ «gate code» is decided by **`bash scripts/gate_shape_scan.sh <file>`** — word-bounded
+verdict identifiers (a **closed** list — allow/deny/permit/approve·approval/verdict/permission/
+auth·authn·authz·authorize·authorization·authenticat*·auth_x; `author` and `allowance` do not match;
+uppercase `PASS|FAIL|BLOCK`), a bind/listen exposure, or an irreversible-op call; comment-led lines
+skipped; binary → `UNSCANNABLE`, and **exit 3 dominates a hit** — never a silent miss (known-pair
+lane `scripts/test_gate_shape_scan_lanes.sh`, 9 lanes incl. a revert probe).
+The task *naming* the file as gate/auth/exposure code is a **manual escalation on top**, not part
+of the classifier — a prompt is not a property of the file. ⓒ **FH-owned assets are excluded** —
+they already carry the 4-axis gate; this gate is for *field* code, mapped or not. Record surface for
+an unmapped file: `tracks/_meta/field_gate_review_<YYYY-MM-DD>_<slug>.md` (file · verdict ·
+`crossfamily:` verbatim from the enum · degrade-scan result · regression test landed-or-owed), and
+the reply links it. An **owed** regression test keeps the verdict `NOT-CONVERGED`; it does not
+converge on a promise. 🟥 **Pilot evidence, below bar** (floor tier, blind, one variable — this
+paragraph injected): **before 0/1** — the session answered *"FH 자산도 매핑된 필드 하네스도 아니라서
+… 적용 대상이 아닙니다"* and reviewed bare; **after 2/3** ran the gate (one named
+`DEGRADED_SINGLE_FAMILY`, one ran the degrade scan and attempted cross-family recruit). The before
+arm is `reps=1`, and the after arm ran the *first* draft, not this text — a calibrated `>=3`-per-arm
+rerun on this wording is owed before the number supports anything beyond «the direction moved».
+Registration was never the reason this gate exists; the degrade-direction blind spot is, and it
+does not check who owns the file. Grep the diff for verdict-enum returns / gate exits / safety-marked
 functions — strong-advisory trigger, so under-trigger is a named residual, not an airtight claim.
 
 **Gate (before merge, not after)**: ① **degrade-direction lint**
@@ -961,7 +985,7 @@ Proposal format: `"I see [X]. Want me to run /[skill] to [one-line description]?
 | "memory feels bloated", "clean up memory", "memory too large", "memory hygiene" | `/memory-hygiene` |
 | **사람이 읽을 산출물이 나가기 직전** — README·가이드·리포트·장표·PR 본문 등 «독자가 여는» 것 (proactive; 코드가 옳아도 걸린다 — 이 행이 잡는 건 정확성이 아니라 **가독성**이다) | **독자로서 한 번 읽어라** — 첫 8줄에 결론이 있나 · 본문이 고정 템플릿에 덮이지 않나 · 마지막 인상이 무엇인가. 렌즈는 이미 있다: `/sim-conductor` A-1(`beginner` cold-read) 또는 직접 렌더해서 읽기. 🟥 **정적 검사는 「없는 것」을 잡고 「안 읽히는 것」은 못 잡는다** — 실측 2건이 독립 수렴했다(qasp 축: 지적 12건 중 스캐너 적발 0 · gstack 3자대면: 배포된 리포트 본문 3줄 vs 고정 템플릿 21줄). pre-commit 이 같은 상기를 advisory 로 낸다(차단 아님) |
 | "ready to PR", "about to push", "merge this", "PR 올려줘", FH asset changed in session | 4-axis auto-gate (see above — runs automatically, no proposal needed) |
-| **field verdict/gate/safety/irreversible code changed** in a mapped project (function returning a verdict enum / gate exit code / safety-invariant · publish/delete/history path) — **proactive, before merge** | **Field-Harness Load-Bearing Change Gate** (see above → degrade-lint → cross-family review → converge; same rigor as FH assets, applied to field code) |
+| **field verdict/gate/safety/irreversible code changed** in a mapped project **— or a merge/landing verdict asked on any gate-shaped file, mapped or not** (function returning a verdict enum / gate exit code / safety-invariant · access-control / approval / auth / exposure boundary · publish/delete/history path; «gate-shaped» = the mechanical identifier test in §Field-Harness Load-Bearing Change Gate, not a feel) — **proactive, before merge** | **Field-Harness Load-Bearing Change Gate** (see above → degrade-lint → cross-family review → converge; same rigor as FH assets, applied to field code) |
 | **a diff (yours or an unattended pipeline's) alters another harness's actual behavior, gate outcome, or interaction contract** — building automation that opens PRs autonomously, touching a synced/shared-body surface, or any change whose effect crosses a harness boundary (not merely a file-class match — most self-improvement is `not-applicable` here, which is the expected common case) — **proactive, before push, never as a post-PR comment** | **Standpoint axis** (`knowledge/shared/harness-core/field_verdict_crossfamily_gate.md §7` — orthogonal to `crossfamily:`; run the diff from the TARGET harness's own repo/standpoint via `tier2`/`tier2b`/`tier3`, or record `not-applicable`/`DEGRADED_*` on the closed enum. Missed once in-session while building `scripts/frontier_digest_autopilot.sh` 2026-08-15 — mis-routed to `fh-meta:hub-cc-pr-reviewer` (same-repo self-consistency, a different lens) before the operator caught it; this row exists so the next session connects the trigger without two rounds of correction.) |
 | **"진단해줘", "개선해줘", "diagnose this", "improve this harness", "check this project", "audit this project"** — said while working **in a mapped project** (not a single-file ask) | **Field-Harness Diagnostic** (see §Field-Harness Diagnostic above → compose existing checks into one ranked M/S/R list → HITL approval per item, nothing auto-fixed) |
 | **"새 프로젝트", "하네스 작성해줘", "이 프로젝트 가속화", "harness-ify this", "accelerate this project"** — an onboarding/acceleration door (returning-menu ①②③) | **Onboarding / Acceleration Autopilot** (see §Onboarding / Acceleration Autopilot above → Phase 0 auto-discover + branch → innovator-centered recommend → ranked install plan → HITL per item, non-overwriting; "끝까지 자율로" → full-autonomy under /goal-quench gate) |

@@ -433,6 +433,24 @@ else
   fail=1
 fi
 
+# gate-shape classifier — the mechanical half of the unmapped-file trigger of the Field-Harness
+# Load-Bearing Change Gate (2026-09-08). A classifier of scope, not a verdict; its lane holds the
+# known-pair (exposure/verdict positives · util/comment negatives · Promise reject( FP anchor).
+if [ ! -f scripts/gate_shape_scan.sh ]; then
+  _absent_subject_verdict "gate-shape lanes" "scripts/gate_shape_scan.sh" || fail=1
+elif [ -f scripts/test_gate_shape_scan_lanes.sh ]; then
+  # direct dispatch of the subject's own selftest (caller surface for the ratchet), then the lane
+  if ! bash scripts/gate_shape_scan.sh --selftest >/dev/null 2>&1; then
+    echo "FAIL  gate-shape selftest: known-pair calibration failed"; fail=1
+  fi
+  if ! bash scripts/test_gate_shape_scan_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  gate-shape lanes: gate_shape_scan.sh present but its anchor is missing"
+  fail=1
+fi
+
 # package-coverage — a shipped doc must not point at a file the tarball omits. Distinct from the
 # ref-path check below: that one asks "does this path exist at all", this one asks "does the
 # CONSUMER get it". Measured 2026-07-28: 35 paths existed, were named by a shipped doc, and were
