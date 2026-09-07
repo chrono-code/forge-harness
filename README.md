@@ -416,7 +416,8 @@ and the phrase that triggers it:
 | [`tracks/_contrib/`](tracks/_contrib/README.md) | **Consent lane** — share a de-identified work session; the repo compounds across operators |
 
 > **FH papers**: v1.0.1 methodology · [Zenodo](https://zenodo.org/records/22542168) (DOI
-> 10.5281/zenodo.22542168) · cs.SE companion v1.2, published ·
-> [Zenodo](https://zenodo.org/records/22558450) (DOI 10.5281/zenodo.22558450) · cs.AI companion in
+> 10.5281/zenodo.22542168) · cs.SE companion v1.2.1, preprint ·
+> [Zenodo](https://zenodo.org/records/22635721) (DOI 10.5281/zenodo.22635721) ·
+> [arXiv:2609.04218](https://arxiv.org/abs/2609.04218) (arXiv shows v1 as of 2026-09-07) · cs.AI companion in
 > preparation. Those, the independent convergent work, and the caveats on each:
 > [`docs/OUTPUT_EVIDENCE.md`](docs/OUTPUT_EVIDENCE.md).
