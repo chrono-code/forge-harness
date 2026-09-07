@@ -173,6 +173,32 @@ destroys live state without anyone noticing. This is why the loss class is calle
 
 ---
 
+### Scholarly deposit (Zenodo / DOI / arXiv) — measured 2026-09-07, why Step 1b exists
+
+Two things happened on the same day, on the same record (`10.5281/zenodo.22542168`, v1.0.1):
+
+1. **Form ≠ server.** The rich-text description and the companion-DOI related identifier were visible
+   in the deposit form and **absent** from `/api/records/<id>/draft`. The editor had not flushed its
+   state to the server. Nothing in the Pre-Publish gate covered this surface; a hand API read caught it
+   minutes before Publish.
+2. **The machine fields outlive the PDF.** v1.0.1 is a *corrective* release: its body fixes eleven
+   misattributed references. Its Zenodo `references` field still carried **all eleven** pre-correction
+   attributions — the exact strings the release existed to retract — because the PDF was replaced and
+   the metadata was not. `references` / `related identifiers` are what DataCite and citation graphs
+   consume; the PDF is what a human opens. Fixed by editing the record (22 → 24 entries, verified
+   server-side, DOI unchanged).
+
+Consequences that became the four Step 1b items: read the draft through the **service's** API (Zenodo
+InvenioRDM `/api/records/<id>/draft`, legacy `/api/deposit/depositions/<id>`, figshare
+`/v2/account/articles/<id>`), compare against the text you pasted (string vs JSON), md5 the file, and
+on a corrective release diff the machine fields too. The post-publish read is a **detector**, not a
+gate — a wrong field there is fixed by a new corrective version, never silently.
+
+Salience check (same day, floor tier, blind, reps 3, one variable — the edited text injected into a
+clean clone via `--setup`): before 0–1/3 → after 3/3 on all four items. ⚠️ The first sim run was void:
+`sim_isolated_run.sh` clones **HEAD**, so uncommitted edits were absent from every arm — it measured
+the pre-change tree. Recorded so the next author injects the working tree instead of trusting the clone.
+
 ## §Pre-Publish-Hook-Coverage
 
 **Hook coverage — three distinct actions** (refined 2026-06-17 for (a)/(b); (c) added 2026-06-27):
