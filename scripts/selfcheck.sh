@@ -418,6 +418,21 @@ else
   fail=1
 fi
 
+# doc-claim triad (bridge ①) — a doc that says «A uses B» where A never executes B.
+# Subject = scripts/doc_claim_triad_scan.py (review surface, not a verdict). Wired in the same
+# commit that created its lane, because lane_runner_check.sh rejects an undeclared unwired suite —
+# and adding it to DEBT instead would be the regrowth that file exists to stop.
+if [ ! -f scripts/doc_claim_triad_scan.py ]; then
+  _absent_subject_verdict "doc-claim triad lanes" "scripts/doc_claim_triad_scan.py" || fail=1
+elif [ -f scripts/test_doc_claim_triad_lanes.sh ]; then
+  if ! bash scripts/test_doc_claim_triad_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  doc-claim triad lanes: doc_claim_triad_scan.py present but its anchor is missing"
+  fail=1
+fi
+
 # package-coverage — a shipped doc must not point at a file the tarball omits. Distinct from the
 # ref-path check below: that one asks "does this path exist at all", this one asks "does the
 # CONSUMER get it". Measured 2026-07-28: 35 paths existed, were named by a shipped doc, and were
