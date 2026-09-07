@@ -801,7 +801,13 @@ before any scrub. So the audit must fire **pre-publish**, not after.
 **When this gate fires** — *before* any action that makes a repo/package **publicly visible for the
 first time**, especially one **derived from internal/company assets** (operator-IP that originated in a
 private harness): `gh repo create --public`, `gh repo edit --visibility public`, a first push to a new
-public remote, `npm publish`, `twine upload`, a private→public visibility flip.
+public remote, `npm publish`, `twine upload`, a private→public visibility flip, **and a scholarly
+deposit** — Zenodo / figshare / OSF publish, a DOI mint or new version, an arXiv `submit` / `replace`:
+**any action that mints or alters a persistent public identifier**, first-time or not. 🟥 **What the
+form shows is not what the server received** — check the deposit's draft **API**, the file **md5**, and
+the **machine-readable fields** (references · related identifiers · dates) separately from the body:
+`templates/PRE-PUBLISH-CHECKLIST.md` **Step 1b** (four items, un-hookable surface — prose is the floor;
+measured case: `claude_md_gate_details.md §Pre-Publish-Hook-Coverage`).
 
 **Required before the public action** (all must be non-LEAK/non-FAIL) — this gate is the **umbrella that
 invokes them**, not a competitor; when publish intent is detected, fire *this* gate (it then runs the chain),
@@ -938,7 +944,7 @@ Proposal format: `"I see [X]. Want me to run /[skill] to [one-line description]?
 | "connect a project", "map this project", "link to hub" | `auto_project_mapping.md` (mapping) |
 | "harness-ify this project", "full harness setup", "프로젝트 하네스화", "promote to full harness" | `auto_project_mapping.md §6` (Full-Harness Mode) |
 | "check install", "verify setup", "confirm install", "install-doctor" | `/install-doctor` |
-| "publish", "make public", "make this repo public", "go public", "gh repo create --public", "flip to public", "first public push", "publish the package", "npm publish", "twine upload", **opening/updating a PR or pushing content to the public hub** (esp. company-origin) (publish intent — **proactive**, fire *before* the action; adding content to an already-public repo IS publishing that content) | **Pre-Publish Surface Gate** (see above → `/public-surface-audit` + `/marketplace-gate` Check 5 must PASS first). The commit-time half is now **hook-enforced** (mechanical confidentiality scan — see Pre-Publish Gate §Hook coverage (b)), so this proactive trigger is the salience layer over a mechanical floor. |
+| "publish", "make public", "make this repo public", "go public", "gh repo create --public", "flip to public", "first public push", "publish the package", "npm publish", "twine upload", **"zenodo", "figshare", "OSF", "DOI", "DOI mint / 발급", "new version" under a concept DOI, "arXiv submit / replace / 제출", "예치", "deposit"** (scholarly deposit — the deposit's *metadata* is the surface, not only its PDF), **opening/updating a PR or pushing content to the public hub** (esp. company-origin) (publish intent — **proactive**, fire *before* the action; adding content to an already-public repo IS publishing that content) | **Pre-Publish Surface Gate** (see above → `/public-surface-audit` + `/marketplace-gate` Check 5 must PASS first). The commit-time half is now **hook-enforced** (mechanical confidentiality scan — see Pre-Publish Gate §Hook coverage (b)), so this proactive trigger is the salience layer over a mechanical floor. |
 | "delete the branch", "브랜치 삭제", "브랜치 정리", "clean up branches", "force-push", "rewrite history", "지워도 돼?" (destructive intent — **proactive**, fire *before* the action) | **Destructive-Op Gate** (see above → enumerate → recover → destroy; `templates/predelete_check.sh`) |
 | **"새 기능 검증해줘", "test this feature", "이 TC 확인해줘" — verifying the user's PRODUCT/feature (not FH itself)** | **Route to the mapped field harness first** (Cross-Project Skill Bus / registry) — the field harness owns product verification. The harness-verification rows in this table (`verify-bidirectional` · `prompt-regression` · `sim-conductor` · `pipeline-conductor`) verify the *harness*, and must not shadow a product-verification ask (a field project's *harness assets* — its skills/rules — still use those FH verification rows) |
 | "지난주에 뭐 했지", "what did we do last week", "예전에 이거 한 적 있나" (recall intent) | **CATALOG-first recall** — read `CATALOG.md`, identify candidates by tag/date, then open only those files. Never scan session files one by one |

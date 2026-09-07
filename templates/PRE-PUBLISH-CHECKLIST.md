@@ -24,6 +24,8 @@ Any first-time public action:
 - `gh repo edit --visibility public` (private → public flip)
 - first `git push` to a **new public remote**
 - `npm publish` · `python -m build && twine upload dist/*` · any registry publish
+- **scholarly deposit** — Zenodo / figshare / OSF publish, DOI mint, new version under a concept DOI,
+  arXiv `submit` / `replace`. A DOI outlives an npm version; its machine fields outlive the PDF.
 
 ## Step 0 — Cheap mechanical pre-flags (10 seconds)
 
@@ -63,6 +65,33 @@ git ls-files | grep -iE '<internal-acronym>'
   code-security pass on a repo that ships no code; grep the file list, don't assert "docs-only".)
 - **Generated artifacts count.** An exported HTML/PDF carrying a username is a real public-surface leak —
   fix = regenerate from a sanitized source, not hand-edit.
+
+## Step 1b — Scholarly deposit only (Zenodo / DOI / arXiv): the form is not the server
+
+Run **after** filling the form and **before** pressing Publish. Every line is an API read, not a screen read.
+
+- [ ] Read the draft through the **service's draft-read API** — Zenodo (InvenioRDM) `/api/records/<id>/draft`,
+      Zenodo legacy `/api/deposit/depositions/<id>`, figshare `/v2/account/articles/<id>`, OSF its node/preprint
+      endpoint — and compare `description`, `creators`, `license`, `keywords` against **the text you pasted
+      into the form** (keep that text in a file; the comparison is string-vs-JSON, not screen-vs-screen).
+      (measured 2026-09-07: description + companion DOI were in the form and **absent from the server** —
+      the rich-text editor had not flushed)
+- [ ] File **md5** equals the local artifact (size alone is not identity)
+- [ ] **Corrective release?** Then the correction must land in the machine fields too — `references`,
+      `related identifiers`, `dates` — not only in the PDF body (measured: a corrective PDF shipped
+      with all eleven wrong attributions still in `references`)
+- [ ] **After** Publish (a detector, not a gate — the record is already public): read the public
+      record API once; `updated` ≥ the wall-clock time you pressed Publish, the fields above still present,
+      file checksum unchanged. On a **moderated** service (OSF preprints, arXiv) a pending/announce state
+      is expected, not a failure. If a field is wrong here, the remedy is a **new corrective version**
+      (never silent) — this line cannot un-publish anything, which is why the three lines above run first.
+
+**Completion**: Step 0 + Step 1 + **Step 1b** (when the surface is a scholarly deposit) — 1b is not
+optional on that surface.
+
+**Why no hook here**: the deposit lives on another service; nothing in this repo runs at that boundary.
+This list is the floor. A `zenodo_draft_check.sh` that diffs draft-vs-form is the first thing to build
+on the *second* real demand — 2026-09-07 was the first.
 
 ## Step 2 — If LEAK: scrub on a PRIVATE copy, then publish
 
