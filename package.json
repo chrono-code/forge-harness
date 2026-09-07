@@ -134,6 +134,8 @@
     "scripts/test_marker_crossfamily_lanes.sh",
     "scripts/residency_closure_scan.py",
     "scripts/test_residency_closure_lanes.sh",
+    "scripts/doc_claim_triad_scan.py",
+    "scripts/test_doc_claim_triad_lanes.sh",
     "scripts/test_marker_standpoint_lanes.sh",
     "scripts/test_marker_thirdparty_lanes.sh",
     "scripts/test_marker_axes_run_lanes.sh",
