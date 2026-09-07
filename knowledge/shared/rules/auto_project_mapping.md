@@ -66,7 +66,7 @@ Mapping complete: N projects
 
 Basic mapping (steps 1–5) registers a project *lightly* (tracks/ + a starter CLAUDE.md + hub link). **Full-Harness Mode adds the project-local harness assets** — identity ① (Control Tower) propagating harness structure to a connected project; the *how* is executed via the Core Axis.
 
-**Scope**: target *mapped* projects only. For FH-self setup / acceleration baseline (zshrc, sentinels, the FH self-gate) use `/install-wizard` — do **not** run §6 on the FH hub itself. **Prerequisite**: the project is already mapped (steps 1–5); §6 is strictly additive. This mode is also the **emit terminus of a chamber run** — a simulate-first incubation that holds routes here on emit (`harness_incubator_doctrine.md §3` Minimal execution skeleton ⑤).
+**Scope**: target *mapped* projects only. (Mapping scopes *installation* of harness assets — it is **not** the precondition for FH's review gates: the Field-Harness Load-Bearing Change Gate fires on a merge verdict for any gate-shaped file, mapped or not — `field_verdict_crossfamily_gate.md §Registration is not a precondition`, 2026-09-08.) For FH-self setup / acceleration baseline (zshrc, sentinels, the FH self-gate) use `/install-wizard` — do **not** run §6 on the FH hub itself. **Prerequisite**: the project is already mapped (steps 1–5); §6 is strictly additive. This mode is also the **emit terminus of a chamber run** — a simulate-first incubation that holds routes here on emit (`harness_incubator_doctrine.md §3` Minimal execution skeleton ⑤).
 
 **Triggers**: "harness-ify this project", "full harness setup", "프로젝트 하네스화", "promote to full harness", or an opt-in prompt offered right after a basic mapping (*"Promote {project} to a full harness now?"*).
 
