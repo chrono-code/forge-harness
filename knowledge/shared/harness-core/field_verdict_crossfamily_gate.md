@@ -59,6 +59,24 @@ discipline still applies: sidecar findings are **candidates**, not terminal; the
 source-grounds each (does the real pipeline reach it? does an existing mechanical anchor mitigate
 it?) before acting — mechanical anchor over agreement.
 
+### External anchor (added 2026-09-07)
+
+- **[arXiv 2607.04528 — "Measuring Harness-Induced Belief Divergence in Multi-Step LLM Agents"](https://arxiv.org/abs/2607.04528)**
+  (Yi · Song, Jul 2026 — abstract content confirmed via WebSearch synthesis this session; direct
+  `arxiv.org` fetch was egress-blocked, consistent with every Frontier Digest run this week, so this
+  is WebSearch-corroborated, not PDF-span-verified). Holding task, environment, and base model fixed,
+  the paper shows that **harness-interface configuration alone** — which actions are visible, how
+  repairs are compressed, which branches are verification-masked, which evidence is logged — shifts
+  an agent's multi-step beliefs about progress/risk/recoverability, and the divergence **grows with
+  step count** rather than staying constant.
+  **Relevance**: an external, mechanism-level account for *why* the "shared optimistic prior" above
+  is a real causal effect and not merely an assumed one — a reviewer that shares the author's
+  harness/context construction (same family, same session shape) inherits a correlated belief
+  trajectory through the mechanism this paper measures; a differently-constructed (cross-family)
+  reviewer does not share that construction and so does not inherit the same trajectory. The paper's
+  own claim is about harness-interface variation, not model-family variation per se — cited here as
+  mechanism support for the decorrelation argument above, not as a direct restatement of it.
+
 ## 4. The gate (before merge, not after)
 
 1. **Degrade-direction lint** — `scripts/degrade_direction_scan.sh` (portable copy:
