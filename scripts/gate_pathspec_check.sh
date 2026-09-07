@@ -230,6 +230,7 @@ else
     'CLAUDE.md|CLAUDE\.md' \
     'AGENTS.md|AGENTS\.md' \
     'scripts/**/*.sh|scripts/\*\*/\*\.sh' \
+    'scripts/**/*.py|scripts/\*\*/\*\.py' \
     'agent definitions (plugins/*/agents)|plugins/\*/agents/' \
     'agent definitions (.claude/agents)|\.claude/agents/'
   do

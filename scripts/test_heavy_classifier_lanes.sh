@@ -105,13 +105,17 @@ check carveout  "README.zh-CN.md"            "🟥 5-char locale forms too — c
 check uncovered ".claude/registry/README.md" "🟥 STILL UNCOVERED — in files[] but not root; named, not closed"
 check uncovered "package.json"               "files[] / version changes are unclassified"  # portability-noqa: "package.json" is a string literal fed to classify()'s regex test, never opened from disk — a ported repo without this exact file still exercises the same classifier logic
 check uncovered ".github/workflows/validate.yml" "🟥 CI definition — changing what CI runs is unclassified"
-check uncovered "scripts/memory_link_check.py"   "🟥 .py is not .sh — shipped python is unclassified"
+check heavy     "scripts/memory_link_check.py"   "🟢 .py joined .sh on 2026-09-07 — was pinned `uncovered` here (7 shipped python files outside the gate)"
+check heavy     "scripts/doc_claim_triad_scan.py" ".py — the file whose gate-less commit exposed the blind spot"
+check heavy     "scripts/adapters/peer_resolve.py" ".py in a subdirectory — the regex is ^scripts/.*, not ^scripts/[^/]*"
 
 echo "  ── controls (the classifier discriminates, it does not just fire) ──"
 # known-negative: a path that resembles a HEAVY one but must not match. This is the arm that
 # separates "the classifier works" from "the classifier fires on everything" — without it, a
 # regex of `.` would pass every HEAVY row above.
 check uncovered "notes/scripts/foo.sh.txt"   "control — .sh.txt is not a shell script (\$-anchored)"
+check uncovered "scripts/notes.txt"           "control — a non-executable under scripts/ must NOT become heavy with the .py widening"
+check uncovered "scripts/data.pyc"            "control — .pyc is not .py (\$-anchored, alternation closed)"
 check uncovered "notes/skills-overview.md"   "control — 'skills' in a path is not a skill spec"
 # ⚠️ this control was first written as `docs/design/skills-overview.md`, which the lane
 #    correctly classified `carveout` (`^docs/.*\.md$`). The FIXTURE was wrong, not the
