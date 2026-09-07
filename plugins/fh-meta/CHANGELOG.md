@@ -1,5 +1,17 @@
 # forge-harness (fh-meta) Changelog
 
+### [Unreleased] — 4축 게이트가 `scripts/*.py` 를 본다
+
+**BREAKING (gate):** `scripts/**/*.py` 가 이제 HEAVY 다 — 마커 없는 파이썬 단독 커밋이 막힌다.
+처방 = `.sh` 와 동일: Axes 2–3 마커 + edit_manifest 항목.
+🟥 **소비자 install 도 같다** — 설치된 훅은 «그 레포의» `scripts/**/*.py` 전부를 HEAVY 로 본다.
+FH 와 무관한 파이썬 변경도 업그레이드 뒤엔 마커 없이 커밋이 막힌다. 그게 싫으면 `.sh` 와 같은
+자리에서 같은 방법으로 좁혀라(훅 정규식 한 줄).
+그 전까지 **출하되는 파이썬 8개**(측정 시점 7 + 3.1.4 이후 `doc_claim_triad_scan.py` —
+`residency_closure_scan.py` · `memory_link_check.py` · `probe_live_eval_lib.py` 등)가 게이트를
+한 번도 안 탔다. 훅 정규식 `^scripts/.*\.sh$` → `^scripts/.*\.(sh|py)$`. 레인
+`test_heavy_classifier_lanes.sh` 가 이 구멍을 `uncovered` 로 **핀해 두고** 있었다 — 뒤집었다.
+
 ### [3.1.4] — 2026-09-07 — 논문이 arXiv 에 걸렸고, 「published」는 과대주장이었다
 
 3.1.3 과 **같은 사유**다: 소비자가 받는 문서가 더 이상 참이 아니게 됐다.

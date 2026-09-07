@@ -213,10 +213,11 @@ fi
 # dlp-filter.sh, …) — the gate's OWN tooling. Leaving it ungated was a gate-locality
 # seam: the engine that enforces the 4-axis could itself ship unverified. Gated broadly,
 # not by an allowlist, so a NEW gate script cannot silently slip in ungated (the drift
-# that would re-open the seam). Scope is `scripts/*.sh` BY CONVENTION (all current gate
-# engines are .sh under scripts/): a governance script with another extension (.py) or
-# placed elsewhere (bin/) is NOT auto-caught and must be hand-gated — broaden this term
-# if that changes. Axis 1 (regression_guard) skips non-markdown, so the live effect on a
+# that would re-open the seam). Scope is `scripts/**/*.{sh,py}` (2026-09-07: `.py` joined
+# — a 252-line python instrument landed with no marker while 7 shipped python files sat
+# outside this term the whole time; the heavy-classifier lane had it PINNED as `uncovered`).
+# A governance script with yet another extension or placed elsewhere (bin/) is still NOT
+# auto-caught and must be hand-gated — broaden this term if that changes. Axis 1 (regression_guard) skips non-markdown, so the live effect on a
 # script is Axes 2-3 (adversarial design + phantom), NOT behavioral regression — that is
 # covered downstream (selfcheck.sh / count_check.sh at publish), not by this commit gate.
 # seam #3 (2026-06-27): agent definitions (plugins/*/agents/*.md, .claude/agents/*.md) are
@@ -242,7 +243,7 @@ fi
 #    «no FH asset staged» 로 빠져 4축 게이트를 통째로 건너뛰었다. tenet 을 바꾸는 것은
 #    이 레포에서 가장 하중 큰 편집 중 하나다 — LIGHT 는커녕 CARVEOUT 도 아니다.
 HEAVY=$(echo "$STAGED" \
-  | grep -E "(SKILL(_detail)?\.md|^plugins/[^/]+/skills/[^/]+/.*\.md$|\.claude/rules/|^knowledge/shared/rules/|templates/|CLAUDE\.md|^scripts/.*\.sh$|^plugins/[^/]+/agents/.*\.md$|^\.claude/agents/.*\.md$|^\.claude/soul_tenets\.txt$)" || true)
+  | grep -E "(SKILL(_detail)?\.md|^plugins/[^/]+/skills/[^/]+/.*\.md$|\.claude/rules/|^knowledge/shared/rules/|templates/|CLAUDE\.md|^scripts/.*\.(sh|py)$|^plugins/[^/]+/agents/.*\.md$|^\.claude/agents/.*\.md$|^\.claude/soul_tenets\.txt$)" || true)
 
 # Carve-out candidates: knowledge/ docs, docs/*.md, AGENTS.md. Heavy only if substantive.
 CARVEOUT=$(echo "$STAGED" \
