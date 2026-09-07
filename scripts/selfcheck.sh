@@ -439,6 +439,10 @@ fi
 if [ ! -f scripts/gate_shape_scan.sh ]; then
   _absent_subject_verdict "gate-shape lanes" "scripts/gate_shape_scan.sh" || fail=1
 elif [ -f scripts/test_gate_shape_scan_lanes.sh ]; then
+  # direct dispatch of the subject's own selftest (caller surface for the ratchet), then the lane
+  if ! bash scripts/gate_shape_scan.sh --selftest >/dev/null 2>&1; then
+    echo "FAIL  gate-shape selftest: known-pair calibration failed"; fail=1
+  fi
   if ! bash scripts/test_gate_shape_scan_lanes.sh; then
     fail=1
   fi

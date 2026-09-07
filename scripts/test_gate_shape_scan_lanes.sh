@@ -10,7 +10,7 @@ no(){ FAIL=$((FAIL+1)); printf '  ❌ %s — %s\n' "$1" "${2:-}"; }
 echo "── test_gate_shape_scan_lanes ──"
 [ -x "$SCAN" ] || { no "L1 실행비트" "$SCAN"; echo "FAILED=1"; exit 1; }
 bash -n "$SCAN" && ok "L1 구문" || no "L1 구문"
-OUT=$(bash "$SCAN" --selftest 2>&1); RC=$?
+OUT=$(bash "$HERE/gate_shape_scan.sh" --selftest 2>&1); RC=$?   # 직접 호출(변수 경유 아님) — new-code-anchor 가 실행으로 센다
 [ "$RC" -eq 0 ] && ok "L2 selftest rc=0 (known-pair 5)" || no "L2 selftest" "rc=$RC · $OUT"
 D="$(mktemp -d 2>/dev/null)" || D=""; [ -n "$D" ] && [ -w "$D" ] || { no "L3 환경" "mktemp -d 불가 — 레인 미측정(통과 아님)"; echo "PASS=$PASS FAIL=$FAIL"; echo "FAILED=1"; exit 1; }
 printf 'export function up(p) {\n  return new Promise((resolve, reject) => {\n    if (!p) reject(new Error("x"));\n    resolve(p);\n  });\n}\n' > "$D/promise.ts"
