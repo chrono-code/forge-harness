@@ -49,7 +49,7 @@ def resolve(root: str, p: str) -> str | None:
     return hits[0] if len(hits) == 1 else None
 
 # 실행 증거: 인터프리터 뒤 또는 명령 위치. 주석줄과 grep 패턴 안은 제외.
-def executes(src_path: str, target_base: str) -> Tuple[str, str]:
+def executes(src_path: str, target_base: str, target_path: str = "") -> Tuple[str, str]:
     """→ (verdict, evidence)  verdict ∈ EXECUTES | MENTIONS-ONLY | ABSENT"""
     try:
         lines = open(src_path, encoding="utf-8", errors="replace").read().split("\n")
@@ -63,8 +63,11 @@ def executes(src_path: str, target_base: str) -> Tuple[str, str]:
     stem_re = re.compile(re.escape(stem) + r'[)\\]*' + re.escape(os.path.splitext(target_base)[1]))
     exec_re = re.compile(r'(?:^|[;&|(]|\$\()\s*(?:(?:bash|sh|source|\.|python3?|node|exec|zsh)\s+)?'
                          r'[^\n#]{0,120}?' + esc)
+    # 🟥 전체 경로가 줄에 있으면 그걸 우선한다 (cross-family codex [A]).
+    #    basename 만 보면 다른 디렉터리의 동명 파일 실행을 B 실행으로 오인한다.
     for i, ln in enumerate(lines, 1):
-        if target_base not in ln and not stem_re.search(ln):
+        has_full = bool(target_path) and target_path in ln
+        if not has_full and target_base not in ln and not stem_re.search(ln):
             continue
         mention = mention or f"{i}: {ln.strip()[:110]}"
         stripped = ln.lstrip()
@@ -74,6 +77,10 @@ def executes(src_path: str, target_base: str) -> Tuple[str, str]:
         if re.search(r'\b(?:grep|rg|egrep|fgrep|ag)\b[^\n]{0,80}' + esc, ln):
             continue
         # 인터프리터 호출 또는 명령 위치
+        # 🟥 출력 구문 안의 인터프리터 호출은 실행이 아니다 (cross-family codex [A]).
+        #    `echo "bash target.sh"` 는 실행처럼 «보이지만» 아무것도 안 돌린다.
+        if re.search(r'\b(?:echo|printf|cat|sed|awk)\b[^\n]{0,40}' + esc, ln):
+            continue
         if re.search(r'(?:bash|sh|zsh|source|python3?|node|exec)\s+["\']?[^"\']{0,120}' + esc, ln):
             return ("EXECUTES", f"{i}: {ln.strip()[:110]}")
         if exec_re.search(ln) and not re.search(r'(?:echo|printf|cat)\s', ln):
@@ -93,6 +100,17 @@ def executes(src_path: str, target_base: str) -> Tuple[str, str]:
 #   사이에 실질 낱말이 최소 1개 있어야 관계 주장 후보다.
 _SEP_ONLY = re.compile(r'^[\s`\'"*·,;|/()\[\]{}<>&+~\-—–:.]*$')
 
+# 🟥 접속사만 남은 사이 = 여전히 나열이다 (cross-family codex 2026-09-07 [B] · 레인 L3 가 빨개져서 확인).
+#    실측: `A · B` `A, B` `"A" "B"` 는 이미 걸렀는데 **`A and B` · `A plus B` 는 통과했다.**
+#    실물 사례 — CATALOG.md:137 `Anchors: X (pre-commit) and Y (pre-push)`.
+#
+# 🟥 **명명된 대가: 이 목록은 언어 의존이다.** 이 파일의 나머지는 구조 술어라 어느 레포에나
+#    같은 잣대인데, 이 한 줄만 «영어·한국어 접속사»를 안다. 남의 레포에 돌릴 때 그 언어의
+#    접속사가 목록에 없으면 **그쪽 나열이 주장으로 세어진다**(= 그쪽 주장 수가 부풀려진다).
+#    측정에 쓸 때 편향 방향: 영어 접속사는 덮으므로 **영어 레포는 더 엄격하게** 걸러진다 —
+#    즉 octo 쪽 후보가 줄고 FH 쪽 분모가 상대적으로 커 보이는 방향이다(우리에게 불리한 쪽).
+_CONNECTORS = {"and", "plus", "or", "및", "와", "과", "그리고", "vs", "versus", "&"}
+
 def asserts_relation(line: str, a: str, b: str) -> bool:
     ia, ib = line.find(a), line.find(b)
     if ia < 0 or ib < 0:
@@ -103,7 +121,13 @@ def asserts_relation(line: str, a: str, b: str) -> bool:
     between = line[lo:hi]
     if len(between) > 200:
         return False
-    return not _SEP_ONLY.match(between)
+    if _SEP_ONLY.match(between):
+        return False
+    # 구분자를 걷어낸 나머지가 접속사뿐이면 그것도 나열이다
+    words = [w for w in re.split(r'[^\w가-힣&]+', between) if w]
+    if words and all(w.lower() in _CONNECTORS for w in words):
+        return False
+    return True
 
 def scan(root: str) -> Dict:
     root = os.path.abspath(root)
@@ -130,6 +154,10 @@ def scan(root: str) -> Dict:
     #    같은 두 경로로 반대 방향을 뜻한다. 그래서 **무순서 쌍**으로 접고, 어느 한쪽이라도
     #    실행하면 EXECUTES 다. 이 접기를 안 하면 참인 주장 절반이 MENTIONS-ONLY 로 나온다
     #    (실측: CLAUDE.md:1422 session_close_check ↔ pre-push).
+    # 🟥 명명된 대가 (cross-family codex 2026-09-07 [S]): 이 접기 때문에 **방향이 실제로 반대인
+    #    거짓 주장은 통과한다.** 고치지 않는다 — 방향은 산문에서 안 읽히고, 그걸 읽으려는 시도가
+    #    이 계기가 세 번 뚫린 이유다. 이 계기는 오탐을 줄이는 쪽을 택하고, 방향 오류는
+    #    **사람/에이전트 판단에 남긴다**. 리뷰 표면이지 판정이 아니라는 계약과 일관된다.
     seen = set(); results = []
     for doc, ln, a, b, text in claims:
         key = (doc, ln, *sorted((a, b)))
@@ -140,8 +168,8 @@ def scan(root: str) -> Dict:
         if ap is None or bp is None:
             miss = "A-MISSING" if ap is None else "B-MISSING"
             results.append(dict(doc=doc, line=ln, a=a, b=b, verdict=miss, ev="", text=text)); continue
-        v1, e1 = executes(ap, os.path.basename(b))
-        v2, e2 = executes(bp, os.path.basename(a))
+        v1, e1 = executes(ap, os.path.basename(b), b)
+        v2, e2 = executes(bp, os.path.basename(a), a)
         if v1 == "EXECUTES":
             results.append(dict(doc=doc, line=ln, a=a, b=b, verdict="EXECUTES", ev=f"{a}: {e1}", text=text))
         elif v2 == "EXECUTES":
@@ -196,6 +224,11 @@ def selftest(root: str) -> int:
         ap = resolve(root, a)
         if ap is None:
             print(f"  FAIL  {a} 를 못 찾음 — 보정 불가"); bad += 1; continue
+        # 🟥 B 의 실재도 본다 (cross-family codex, 2026-09-07 [S]).
+        #    안 보면 대상이 삭제·이동돼도 «A 가 이름을 언급»한다는 이유로 보정이 통과한다.
+        #    known-pair 가 조용히 낡는 자리다.
+        if resolve(root, b) is None:
+            print(f"  FAIL  {b} 가 실재하지 않는다 — known-pair 가 낡았다"); bad += 1; continue
         got, ev = executes(ap, os.path.basename(b))
         ok = got == want
         bad += 0 if ok else 1
