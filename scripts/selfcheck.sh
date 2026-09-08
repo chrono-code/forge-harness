@@ -433,6 +433,22 @@ else
   fail=1
 fi
 
+# typed-finding pipeline — fleet (multi-family, parallel) + reject stage (cross-family verdict, code
+# drops false positives). Subject = scripts/finding_fleet.sh + scripts/finding_verify.py.
+if [ ! -f scripts/finding_verify.py ]; then
+  _absent_subject_verdict "finding pipeline lanes" "scripts/finding_verify.py" || fail=1
+elif [ -f scripts/test_finding_pipeline_lanes.sh ]; then
+  if ! bash scripts/finding_fleet.sh --selftest >/dev/null 2>&1; then
+    echo "FAIL  finding fleet selftest: known-pair calibration failed"; fail=1
+  fi
+  if ! bash scripts/test_finding_pipeline_lanes.sh; then
+    fail=1
+  fi
+else
+  echo "FAIL  finding pipeline lanes: scripts present but their anchor is missing"
+  fail=1
+fi
+
 # gate-shape classifier — the mechanical half of the unmapped-file trigger of the Field-Harness
 # Load-Bearing Change Gate (2026-09-08). A classifier of scope, not a verdict; its lane holds the
 # known-pair (exposure/verdict positives · util/comment negatives · Promise reject( FP anchor).
