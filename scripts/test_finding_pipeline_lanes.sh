@@ -40,8 +40,8 @@ EOS
 chmod +x "$D/v_ok.sh"
 python3 "$HERE/finding_verify.py" "$D/f.jsonl" --out "$D/o1" --verifier "sh $D/v_ok.sh" --family beta >"$D/s1" 2>&1; RC=$?   # 리터럴 경로 — new-code-anchor 가 «실행» 으로 센다
 C=$(wc -l < "$D/o1/confirmed.jsonl" | tr -d ' '); DR=$(wc -l < "$D/o1/dropped.jsonl" | tr -d ' ')
-{ [ "$RC" -eq 0 ] && [ "$C" = 1 ] && [ "$DR" = 1 ] && grep -q '"id": "a2"' "$D/o1/dropped.jsonl"; } \
-  && ok "L4 거부 단계: false-positive 를 «코드가» 지운다 (confirmed 1 / dropped 1)" \
+{ [ "$RC" -eq 4 ] && [ "$C" = 1 ] && [ "$DR" = 1 ] && grep -q '"id": "a2"' "$D/o1/dropped.jsonl"; } \
+  && ok "L4 거부 단계: false-positive 를 «코드가» 지운다 (confirmed 1 / dropped 1 / rc=4 = 미감사)" \
   || no "L4 거부 단계" "rc=$RC confirmed=$C dropped=$DR"
 
 # 🟥 degrade: no verifier must NOT drop anything, must mark UNVERIFIED, must not exit 0
@@ -73,6 +73,40 @@ printf '{"id":"x1","file":"x.py"}\n' > "$D/bad.jsonl"
 python3 "$VERIFY" "$D/bad.jsonl" --out "$D/o5" --verifier "sh $D/v_ok.sh" --family beta >"$D/s5" 2>&1; RC=$?
 { [ "$RC" -ne 0 ] && grep -q "missing required field" "$D/s5"; } \
   && ok "L8 스키마 위반은 «조용히 건너뛰기» 가 아니라 오류" || no "L8 스키마" "rc=$RC · $(cat "$D/s5")"
+
+# ── drop-side lanes: a deletion stage that is never checked can improve precision by deleting ──────
+cat > "$D/a_wrong.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo '{"id":"a2","verdict":"wrong-drop","why":"the code does do this at line 9"}'
+EOS
+cat > "$D/a_right.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo '{"id":"a2","verdict":"correct-drop","why":"confirmed the code does not do this"}'
+EOS
+chmod +x "$D/a_wrong.sh" "$D/a_right.sh"
+
+# L10 — drops with no auditor must not read as a completed run
+python3 "$VERIFY" "$D/f.jsonl" --out "$D/oA" --verifier "sh $D/v_ok.sh" --family beta >"$D/sA" 2>&1; RC=$?
+{ [ "$RC" -eq 4 ] && grep -q 'drop_audit=UNAUDITED' "$D/sA" && grep -q '^DROPS ' "$D/sA"; }   && ok "L10 드롭이 있는데 감사가 없으면 rc=4 · DROPS 줄이 무조건 찍힌다 (지워서 정밀해지는 것을 못 숨긴다)"   || no "L10 미감사" "rc=$RC · $(cat "$D/sA")"
+
+# L11 — an auditor that calls the drop wrong REINSTATES the finding; it is not advisory
+python3 "$VERIFY" "$D/f.jsonl" --out "$D/oB" --verifier "sh $D/v_ok.sh" --family beta   --audit-verifier "sh $D/a_wrong.sh" --audit-family gamma >"$D/sB" 2>&1; RC=$?
+C=$(wc -l < "$D/oB/confirmed.jsonl" | tr -d ' '); DR=$(wc -l < "$D/oB/dropped.jsonl" | tr -d ' ')
+{ [ "$C" = 2 ] && [ "$DR" = 0 ] && grep -q 'wrong_drops=1' "$D/sB" && grep -q '"reinstated": true' "$D/oB/confirmed.jsonl"; }   && ok "L11 «잘못 지웠다» 판정은 되돌린다 (confirmed 2 · dropped 0 · wrong_drops=1)"   || no "L11 복권" "rc=$RC confirmed=$C dropped=$DR · $(cat "$D/sB")"
+
+# L12 — a correct drop stays dropped, and the run is AUDITED
+python3 "$VERIFY" "$D/f.jsonl" --out "$D/oC" --verifier "sh $D/v_ok.sh" --family beta   --audit-verifier "sh $D/a_right.sh" --audit-family gamma >"$D/sC" 2>&1; RC=$?
+{ [ "$RC" -eq 0 ] && grep -q 'drop_audit=AUDITED' "$D/sC" && grep -q 'wrong_drops=0' "$D/sC"   && [ "$(wc -l < "$D/oC/dropped.jsonl" | tr -d ' ')" = 1 ]; }   && ok "L12 옳은 드롭은 남고 run 은 AUDITED·rc=0" || no "L12 정상 감사" "rc=$RC · $(cat "$D/sC")"
+
+# L13 — the family that made the drop may not audit it
+python3 "$VERIFY" "$D/f.jsonl" --out "$D/oD" --verifier "sh $D/v_ok.sh" --family beta   --audit-verifier "sh $D/a_wrong.sh" --audit-family beta >"$D/sD" 2>&1; RC=$?
+{ [ "$RC" -eq 4 ] && grep -q 'drop_audit=UNAUDITED' "$D/sD" && grep -q 'refused' "$D/sD"; }   && ok "L13 드롭을 한 계열은 그 드롭을 감사 못 한다 (거부 + UNAUDITED)" || no "L13 자기감사 차단" "rc=$RC · $(cat "$D/sD")"
+
+# L14 — producer auditing its own reinstated claim is allowed but recorded as an appeal
+python3 "$VERIFY" "$D/f.jsonl" --out "$D/oE" --verifier "sh $D/v_ok.sh" --family beta   --audit-verifier "sh $D/a_wrong.sh" --audit-family alpha >"$D/sE" 2>&1
+grep -q '"audit_role": "appeal"' "$D/oE/confirmed.jsonl"   && ok "L14 생산자가 자기 주장을 복권시키면 «appeal» 로 기록된다 (숨기지 않는다)"   || no "L14 appeal 기록" "$(cat "$D/sE")"
 
 # L9 revert probe — remove the never-self-verify guard and L7 must go red
 MUT="$D/verify_mut.py"

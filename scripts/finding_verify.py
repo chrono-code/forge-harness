@@ -19,11 +19,24 @@ DEGRADE DIRECTION. A review surface is reversible, so an unreachable verifier do
 not be silent either: with no verifier every finding is stamped `unverified`, NOTHING is dropped, the
 status is UNVERIFIED and the exit code says so. An unverified run must never read as a clean one.
 
+THE DROP SIDE IS MEASURED TOO, OR THE RUN SAYS IT WAS NOT. A stage that deletes claims improves any
+precision number for free: delete enough and nothing wrong survives. So the error rate of the SURVIVORS
+is not a result on its own — it is only meaningful beside the error rate of the DELETIONS. Measured on
+this pipeline's first real use, 2026-09-08: the verifier dropped a claim that the project's own earlier
+record grades a real A-tier defect. One drop, one wrong. That is why `--audit-verifier` exists and why
+the summary line carries `drop_audit=UNAUDITED` in bold terms when drops happened and nobody checked
+them. The auditor must not be the family that made the drop; when it is the family that PRODUCED the
+finding, that is an appeal by an interested party and is recorded as `audit_role=appeal`, not hidden.
+
 INPUT   JSONL, one finding per line:
         {"id","file","line","severity","category","title","detail","confidence","producer_family"}
         `id` and `title` are required; the rest are optional and pass through untouched.
         When `producer_family` is present and equals the verifier's family, that finding is stamped
         `unverified` rather than judged -- see the note above VERDICTS.
+AUDITOR   Optional, and required for the drop-side number to exist. Same protocol as the verifier, but
+        it receives only the DROPPED findings and answers {"id","verdict":"correct-drop|wrong-drop|
+        uncertain","why"}. A `wrong-drop` finding is moved back into confirmed.jsonl with
+        `reinstated: true` -- the audit is not advisory, it reverses the deletion.
 VERIFIER  A command that reads the findings JSONL on stdin and writes JSONL verdicts on stdout:
         {"id","verdict":"confirmed|false-positive|needs-debate","why"}
         Set it with --verifier or FH_VERIFY_CMD. Run it as a DIFFERENT model family than the author;
@@ -31,13 +44,14 @@ VERIFIER  A command that reads the findings JSONL on stdin and writes JSONL verd
 OUTPUT  <out>/confirmed.jsonl  survivors (confirmed + needs-debate, the latter flagged)
         <out>/dropped.jsonl    false positives, with the verifier's reason -- never silent
         stdout                 one summary line, machine-readable
-EXIT    0 verified, >=1 finding survives · 1 verified, nothing survives · 3 UNVERIFIED (degraded)
-        2 usage or schema error
+EXIT    0 verified and (no drops, or drops audited) with >=1 survivor · 1 same but nothing survives
+        3 UNVERIFIED (degraded) · 4 drops happened and were never audited · 2 usage or schema error
 """
 import argparse, json, os, subprocess, sys
 
 REQUIRED = ("id", "title")
 VERDICTS = ("confirmed", "false-positive", "needs-debate")
+AUDIT_VERDICTS = ("correct-drop", "wrong-drop", "uncertain")
 
 # A finding is never verified by the family that produced it. That is the one property of the record
 # this file enforces on its own: same-family review shares the author's blind spot, so a verdict from
@@ -66,8 +80,12 @@ def read_findings(path):
     return out
 
 
-def run_verifier(cmd, findings):
-    """Returns (verdicts_by_id, error_or_None). Any failure degrades; it never raises."""
+def run_verifier(cmd, findings, allowed=VERDICTS):
+    """Returns (verdicts_by_id, error_or_None). Any failure degrades; it never raises.
+
+    `allowed` is the verdict vocabulary. The audit pass speaks a different one, and a verdict outside
+    the expected set is dropped rather than coerced -- a stage that silently reinterprets an unknown
+    label is how an unanswered question becomes an answer."""
     payload = "\n".join(json.dumps(f, ensure_ascii=False) for f in findings) + "\n"
     try:
         p = subprocess.run(cmd, shell=True, input=payload, capture_output=True,
@@ -85,7 +103,7 @@ def run_verifier(cmd, findings):
             d = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if d.get("id") and d.get("verdict") in VERDICTS:
+        if d.get("id") and d.get("verdict") in allowed:
             got[d["id"]] = d
     if not got:
         return {}, "verifier returned no parseable verdict"
@@ -100,6 +118,10 @@ def main():
                     help="shell command; findings JSONL on stdin, verdict JSONL on stdout")
     ap.add_argument("--family", default=os.environ.get("FH_VERIFY_FAMILY", "unstated"),
                     help="model family of the verifier, recorded verbatim and never checked")
+    ap.add_argument("--audit-verifier", default=os.environ.get("FH_AUDIT_CMD", ""),
+                    help="command that re-checks the DROPPED findings; without it the run is UNAUDITED")
+    ap.add_argument("--audit-family", default=os.environ.get("FH_AUDIT_FAMILY", "unstated"),
+                    help="model family of the auditor; must differ from the verifier's")
     a = ap.parse_args()
 
     findings = read_findings(a.findings)
@@ -134,6 +156,43 @@ def main():
                 debate += 1
             confirmed.append(f)
 
+    # ── drop audit ────────────────────────────────────────────────────────────────────────────────
+    # Nothing here judges whether a drop was right; it routes the question to a party that did not make
+    # the drop, and moves a reversed drop back. The refusal to report a bare precision number when this
+    # did not run is the mechanized part.
+    audited = wrong_drops = reinstated = 0
+    audit_status = "UNAUDITED"
+    audit_note = ""
+    if dropped and a.audit_verifier.strip():
+        if a.audit_family == a.family:
+            audit_note = ("auditor is the family that made the drop (%s) -- refused; a deletion is not "
+                          "checked by the party that made it" % a.family)
+        else:
+            av, aerr = run_verifier(a.audit_verifier, dropped, AUDIT_VERDICTS)
+            if aerr:
+                audit_note = "auditor did not answer: " + aerr
+            else:
+                kept = []
+                for d in dropped:
+                    r = av.get(d["id"])
+                    if r is None:
+                        kept.append(dict(d, drop_verdict="unaudited"))
+                        continue
+                    audited += 1
+                    role = "appeal" if d.get("producer_family") == a.audit_family else "independent"
+                    d = dict(d, drop_verdict=r["verdict"], drop_why=r.get("why", ""),
+                             audit_family=a.audit_family, audit_role=role)
+                    if r["verdict"] == "wrong-drop":
+                        wrong_drops += 1
+                        reinstated += 1
+                        confirmed.append(dict(d, reinstated=True))
+                    else:
+                        kept.append(d)
+                dropped = kept
+                audit_status = "AUDITED"
+    elif not dropped:
+        audit_status = "NO-DROPS"
+
     for name, rows in (("confirmed.jsonl", confirmed), ("dropped.jsonl", dropped)):
         with open(os.path.join(a.out, name), "w", encoding="utf-8") as fh:
             for r in rows:
@@ -143,8 +202,16 @@ def main():
     print("FINDINGS in={} confirmed={} dropped={} debate={} unverified={} family={} status={}{}".format(
         len(findings), len(confirmed) - unverified, len(dropped), debate, unverified,
         a.family, status, "" if not err else " reason=" + err.replace("\n", " ")))
+    # 🟥 The drop line is unconditional. A survivor-side number without it is a precision claim made by
+    # deleting, and this pipeline does not let a reader compute one without seeing whether the
+    # deletions were checked.
+    print("DROPS dropped={} audited={} wrong_drops={} reinstated={} auditor={} drop_audit={}{}".format(
+        len(dropped), audited, wrong_drops, reinstated, a.audit_family, audit_status,
+        "" if not audit_note else " reason=" + audit_note.replace("\n", " ")))
     if unverified:
         return 3
+    if audit_status == "UNAUDITED":
+        return 4                      # drops happened and nobody checked them: not a completed run
     return 0 if confirmed else 1
 
 
