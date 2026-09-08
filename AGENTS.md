@@ -120,6 +120,12 @@ Because non-Claude runtimes do not auto-load Claude path rules, apply these rule
    require instrument suspicion.
 6. **Irreversible intent:** before publish, delete, or history rewrite, read and apply the
    Pre-Publish or Destructive-Op gate in `CLAUDE.md`. `pre-push` is only the git-side backstop.
+   **An automated verdict never clears an irreversible gate on its own, whatever its measured error
+   rate.** Surface class decides, not the number: a wrong finding on a review surface costs a reader
+   a minute, while on publish/delete/rewrite the wrong call is the whole loss. So improving a verdict
+   engine's score is not a route to promoting it onto an irreversible surface — the terminal step
+   stays a human or an explicit logged override. This matters here because a non-Claude runtime
+   reading this file is itself often the verdict engine in question.
 7. **Self-contrast on asset touch:** the trigger for the three-layer self-contrast (process ·
    engines · identities) is *touching an FH/PMH asset*, not being asked. Pick verification axes by
    failure mode — running all six every time is not the rule. Record, in the existing Axes 2–3
