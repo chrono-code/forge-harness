@@ -189,7 +189,18 @@ def main():
                     else:
                         kept.append(d)
                 dropped = kept
-                audit_status = "AUDITED"
+                # 🟥 AUDITED must mean EVERY drop was answered. Setting it unconditionally let an
+                # auditor that answered one unrelated id produce `audited=0 drop_audit=AUDITED` and
+                # exit 0 — the deletions went unchecked while the record said they were checked.
+                # (cross-family review 2026-09-09, reproduced; an EMPTY audit already returned 4, so
+                # the hole was specifically the PARTIAL answer.) A partial audit is not an audit.
+                unanswered = sum(1 for d in dropped if d.get("drop_verdict") == "unaudited")
+                if unanswered:
+                    audit_status = "PARTIAL"
+                    audit_note = ("auditor answered %d of %d drops; %d unanswered — a partial audit "
+                                  "is not an audit" % (audited, audited + unanswered, unanswered))
+                else:
+                    audit_status = "AUDITED"
     elif not dropped:
         audit_status = "NO-DROPS"
 
@@ -210,7 +221,7 @@ def main():
         "" if not audit_note else " reason=" + audit_note.replace("\n", " ")))
     if unverified:
         return 3
-    if audit_status == "UNAUDITED":
+    if audit_status in ("UNAUDITED", "PARTIAL"):
         return 4                      # drops happened and nobody checked them: not a completed run
     return 0 if confirmed else 1
 

@@ -43,9 +43,12 @@ EOF
 PROMPT_HEAD='You are one reviewer in a parallel fleet. Review the file below for defects in your assigned area.
 
 Output ONLY JSON Lines, one object per finding, nothing else — no prose, no code fences:
-{"title":"<short claim>","file":"<name>","line":<int>,"severity":"S|A|B","category":"<one word>","detail":"<what goes wrong and when>","confidence":<0.0-1.0>}
+{"title":"<short claim>","file":"<name>","line":<int>,"severity":"S|A|B","category":"<one word>","detail":"<what goes wrong and when>","defeater":"<what would be OBSERVED if this claim were wrong>","confidence":<0.0-1.0>}
 
 S = exploitable or fail-open. A = real but non-blocking. B = minor.
+`defeater` is required and must name something observable — a value, an output, a code path that
+would be reached — not "if I misread it". A claim whose own falsification condition cannot be stated
+is a claim you are not yet entitled to make.
 Report only defects you can point to a specific line for. If you find none, output nothing.
 
 Your assigned area: '
