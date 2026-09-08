@@ -797,6 +797,19 @@ when the surface genuinely lacks its target (e.g. the code-security pass is N/A 
 list ships no source/executable file — **grep the file list, don't assert "docs-only"**).
 *Applicable-but-tooling-down* is never not-applicable.
 
+**Surface class sets the error budget, not only the degrade direction** (operator decision 2026-09-08).
+The same automated verdict engine is usable on one surface and not on another, and the discriminator is
+what a wrong verdict costs. Measured that day across five review arms on the same eight cases: claim
+error rates ran **2.7 % – 13.6 %**, and every one of them is usable *on a review surface*, because a
+wrong finding costs a reader a minute. On publish · delete · history-rewrite there is no "costs a
+minute": the wrong call is the whole loss. 🟥 **So an automated verdict never clears an irreversible
+gate on its own, however good its measured rate** — it feeds a fail-closed gate whose terminal step
+stays a human or an explicit logged override. The corollary is the one that actually bites: **do not
+promote a verdict engine to an irreversible surface by improving its number.** The number is not the
+property that changes between the two surfaces. A precision figure also improves for free whenever the
+pipeline can *delete* claims, so on any surface it is meaningless beside the error rate of the
+deletions (`scripts/finding_verify.py` refuses to complete a run whose drops were never audited).
+
 A gate guarding an irreversible boundary that silently proceeds when its tooling is down is **fail-open**
 — by this floor's definition, not a gate. (The same reflex already ships piecewise — `mcp_tool_gating
 §unlisted → ask (fail-closed)`, corpus-grounding's fail-closed-no-generator — this section names the
