@@ -38,7 +38,7 @@ echo '{"id":"a1","verdict":"confirmed","why":"holds against source"}'
 echo '{"id":"a2","verdict":"false-positive","why":"code does not do this"}'
 EOS
 chmod +x "$D/v_ok.sh"
-python3 "$VERIFY" "$D/f.jsonl" --out "$D/o1" --verifier "sh $D/v_ok.sh" --family beta >"$D/s1" 2>&1; RC=$?
+python3 "$HERE/finding_verify.py" "$D/f.jsonl" --out "$D/o1" --verifier "sh $D/v_ok.sh" --family beta >"$D/s1" 2>&1; RC=$?   # 리터럴 경로 — new-code-anchor 가 «실행» 으로 센다
 C=$(wc -l < "$D/o1/confirmed.jsonl" | tr -d ' '); DR=$(wc -l < "$D/o1/dropped.jsonl" | tr -d ' ')
 { [ "$RC" -eq 0 ] && [ "$C" = 1 ] && [ "$DR" = 1 ] && grep -q '"id": "a2"' "$D/o1/dropped.jsonl"; } \
   && ok "L4 거부 단계: false-positive 를 «코드가» 지운다 (confirmed 1 / dropped 1)" \
