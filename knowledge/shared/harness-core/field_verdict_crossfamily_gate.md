@@ -148,9 +148,11 @@ for an unmapped file**: no marker directory exists for it, so the session writes
 `tracks/_meta/field_gate_review_<YYYY-MM-DD>_<slug>.md` — file · verdict · `crossfamily:` verbatim
 from the enum · degrade-scan result · regression test *landed* or *owed* — and the review reply
 links it. An **owed** regression test keeps the verdict `NOT-CONVERGED` until it lands and runs;
-the gate's convergence sub-condition is unchanged. **Pilot evidence (below bar)**: floor tier,
-blind, one variable — before 0/1 fired · after 2/3 on the first draft; a calibrated `>=3`-per-arm
-rerun on the final wording is owed. Resident summary: `CLAUDE.md
+the gate's convergence sub-condition is unchanged. **Pilot evidence (below bar, cue-dependent)**: floor tier,
+blind, one variable — before 0/1 fired · after 2/3 on the first draft, **both with a prompt cue
+«follow your installed review procedure»**; without the cue, **0/51** the same day (17 unmapped
+gate-shaped files × 3). The gate is salience-only and the salience needs a cue — a mechanical
+reminder channel is the open item (`tracks/_meta/fh_signal_2026-09-08_gate-needs-cue.md`). Resident summary: `CLAUDE.md
 §Field-Harness Load-Bearing Change Gate`.
 
 **Residency** — sanitize company code (redact vendor/domain literals) before any external-family

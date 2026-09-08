@@ -608,12 +608,13 @@ they already carry the 4-axis gate; this gate is for *field* code, mapped or not
 an unmapped file: `tracks/_meta/field_gate_review_<YYYY-MM-DD>_<slug>.md` (file · verdict ·
 `crossfamily:` verbatim from the enum · degrade-scan result · regression test landed-or-owed), and
 the reply links it. An **owed** regression test keeps the verdict `NOT-CONVERGED`; it does not
-converge on a promise. 🟥 **Pilot evidence, below bar** (floor tier, blind, one variable — this
-paragraph injected): **before 0/1** — the session answered *"FH 자산도 매핑된 필드 하네스도 아니라서
-… 적용 대상이 아닙니다"* and reviewed bare; **after 2/3** ran the gate (one named
-`DEGRADED_SINGLE_FAMILY`, one ran the degrade scan and attempted cross-family recruit). The before
-arm is `reps=1`, and the after arm ran the *first* draft, not this text — a calibrated `>=3`-per-arm
-rerun on this wording is owed before the number supports anything beyond «the direction moved».
+converge on a promise. 🟥 **Pilot evidence, below bar, and CUE-DEPENDENT** (floor tier, blind, one
+variable — this paragraph injected): **before 0/1** — *"FH 자산도 매핑된 필드 하네스도 아니라서 …
+적용 대상이 아닙니다"*, reviewed bare; **after 2/3** ran the gate. Both arms' prompt ended with *"네가
+설치된 리뷰 절차가 있으면 그것을 따라라"*. 🟥 **Without that cue the gate fired 0/51** (same day, 17
+unmapped gate-shaped files × 3, same doctrine in the clone, task sentence only). So this paragraph is
+muscle, not skeleton: a session must be *reminded* to run its own procedure, and no hook supplies the
+reminder yet (`fh_signal_2026-09-08_gate-needs-cue.md`). Do not cite 2/3 without the cue condition.
 Registration was never the reason this gate exists; the degrade-direction blind spot is, and it
 does not check who owns the file. Grep the diff for verdict-enum returns / gate exits / safety-marked
 functions — strong-advisory trigger, so under-trigger is a named residual, not an airtight claim.
