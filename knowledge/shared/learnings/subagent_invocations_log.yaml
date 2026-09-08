@@ -3548,3 +3548,22 @@
   dispatch_count_measured: 131  # session_close_check ④-e 집계. 위 2 엔트리는 «클래스 통합»이고
                                 # 총 스폰 수는 131 이다 — 「2건」만 보면 과소 계상으로 읽힌다
   notes: "🟥 거버너가 잡은 오류 1건 — qasp 조사가 `web_regress.py:423` 의 `return \"PASS\"` 를 «레포 유일 fail-open» 으로 지목했는데 **틀렸다**. `_STATUS_MAP` 이 세 값만 만들고 그 밖은 두 진입점에서 raise 하며 SKIPPED 는 앞 분기가 먹으므로 소진적 else 다. 정적 패턴만 보고 **도달 가능성을 안 본** 부류. 그리고 내 계기도 한 번 틀렸다(`endswith(\"pass\")` 가 `not-pass` 를 삼켜 8.3% 오출력) — 같은 얼굴이라 PR 본문에 적었다. 두 에이전트 다 «확인 못 한 것»을 이름으로 나열했고 그게 검수를 값싸게 만들었다"
+
+- date: 2026-09-08
+  agent: codex(gpt-5.6 → gpt-6-astra) · 사이드카 adversarial/verifier
+  purpose: "① 게이트 트리거 넓힘 교리 5R 수렴 ② 논문 v1.2.2 §6.7 6R 수렴(SHIP 판정) ③ recall 재검증 45런 조건 블라인드 채점 ④ B-1 5팔 채점(축①③ keyed · 축② unkeyed) ⑤ typed-finding 파이프라인의 검증기·감사기"
+  outcome: accepted
+  evidence: "①에서 «기계 테스트라 적었는데 기계가 없다» 를 잡아 gate_shape_scan.sh 가 그 커밋에 들어왔다(자력 0). ②에서 S findings 를 4라운드 연속 냈고 마지막까지 남긴 것이 제목의 «Evidence» 한 줄 — 운영자가 그 처방을 «정체성 소실»로 정정해 «a Test of» 로 착지. ③은 known-pair 보정 통과(양성 HIT/HIT · 음성 MISS/MISS) 후 45런 채점. ⑤에서 자기 산출(codex)을 검증할 때 채널 규칙이 실사용에서 발동"
+  tokens_subagent: UNMEASURED
+  dispatch_count_measured: 39  # session_close_check ④-e 집계. 아래 gemini 포함 총계이고
+                               # 이 엔트리는 «클래스 통합» 이다 — 2건만 보면 과소 계상으로 읽힌다
+  notes: "🟥 codex 가 한 번 틀렸다 — §6.7 분모를 5×3×8=120 으로 읽어 S 로 올렸는데 실제는 항목이 아티팩트에 묶여 있어 24 가 맞다. 표현이 모호했던 것은 사실이라 문구를 고쳤고 «산술은 늘 맞았다» 를 R6 프롬프트에 명시했다. 거버너가 잡은 자기 오류 2건: 「0% 는 채점자 산물」(기록이 반증) · 「참 주장이 지워졌다」(소스 확인 후 철회)"
+
+- date: 2026-09-08
+  agent: agy(gemini-3.8-flash-high) · fleet member + verifier
+  purpose: "typed-finding fleet 의 security 역할 · 반대 방향 검증 패스 · octo 파이프라인의 Gemini 라운드 복구용 shim"
+  outcome: accepted
+  evidence: "Art4 에서 4건 산출, 그중 셋이 2026-06-02 GT 와 일치하는 실물(allow_session→allow_always L49 · deny_always L26 · UI 주입 L83). 검증 패스에서 codex 산출 1건을 false-positive 로 드롭했고, 그 드롭은 감사(codex)에서 correct-drop 으로 확인됐다"
+  tokens_subagent: UNMEASURED
+  dispatch_count_measured: 위 엔트리에 통합
+  notes: "🟥 배선 함정 둘: `-p` 가 variadic 이라 `--model` 을 프롬프트로 먹었고(오류 메시지가 친절해 즉시 잡힘), 기본 print-timeout 이 6KB 프롬프트에 부족해 rc=1. 둘 다 «조용한 0» 이 될 수 있었는데 fleet 이 멤버 rc 를 기록해서 보였다. gemini CLI 자체는 개인 계정에서 deprecated(IneligibleTierError) — agy 가 유일 경로"
