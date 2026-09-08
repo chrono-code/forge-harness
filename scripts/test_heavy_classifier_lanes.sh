@@ -7,8 +7,14 @@
 # louder symptom. Nothing was watching the watcher: measured 2026-08-20, `scripts/test_*.sh` files
 # testing this classifier = **0**, while 12 test files touch the hook for other reasons.
 #
-# Absorbed from a sibling harness (pmh-dev, 2026-08-08) rather than invented here. The load-bearing
-# idea is the extraction below, not the fixture list.
+# Provenance arc (sibling harness pmh-dev → FH, recorded both ways per the shared-layer canon rule):
+# this lane started TWO-WAY in pmh-dev (2026-08-08), was absorbed into FH, and FH extended the
+# classifier to FOUR-WAY (HEAVY · CARVEOUT · LIGHT · uncovered). The load-bearing idea is the
+# extraction below, not the fixture list. pmh-dev's own «#32 seam» rows were NOT re-imported
+# (2026-09-08, sibling-harvest review): each maps onto a class already pinned here — seam 1 (scripts/*.sh)
+# → `scripts/selfcheck.sh` · seam 2 (SKILL_detail.md) → goal-quench row · seam 3 (agent .md) →
+# challenger/local rows · seam 4 (sibling md in a skill dir) → `assets/note.md` row. Re-pinning the
+# same class under a sibling's issue number would be a decorative row, not a new anchor.
 #
 # 🟥 FH's classifier is FOUR-WAY, not two-way like the sibling's. The port is not a copy:
 #     HEAVY     → full gate
@@ -105,7 +111,7 @@ check carveout  "README.zh-CN.md"            "🟥 5-char locale forms too — c
 check uncovered ".claude/registry/README.md" "🟥 STILL UNCOVERED — in files[] but not root; named, not closed"
 check uncovered "package.json"               "files[] / version changes are unclassified"  # portability-noqa: "package.json" is a string literal fed to classify()'s regex test, never opened from disk — a ported repo without this exact file still exercises the same classifier logic
 check uncovered ".github/workflows/validate.yml" "🟥 CI definition — changing what CI runs is unclassified"
-check heavy     "scripts/memory_link_check.py"   "🟢 .py joined .sh on 2026-09-07 — was pinned `uncovered` here (7 shipped python files outside the gate)"
+check heavy     "scripts/memory_link_check.py"   "🟢 .py joined .sh on 2026-09-07 — was pinned «uncovered» here (7 shipped python files outside the gate)"
 check heavy     "scripts/doc_claim_triad_scan.py" ".py — the file whose gate-less commit exposed the blind spot"
 check heavy     "scripts/adapters/peer_resolve.py" ".py in a subdirectory — the regex is ^scripts/.*, not ^scripts/[^/]*"
 
