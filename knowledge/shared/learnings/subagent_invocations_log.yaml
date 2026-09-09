@@ -3567,3 +3567,11 @@
   tokens_subagent: UNMEASURED
   dispatch_count_measured: 위 엔트리에 통합
   notes: "🟥 배선 함정 둘: `-p` 가 variadic 이라 `--model` 을 프롬프트로 먹었고(오류 메시지가 친절해 즉시 잡힘), 기본 print-timeout 이 6KB 프롬프트에 부족해 rc=1. 둘 다 «조용한 0» 이 될 수 있었는데 fleet 이 멤버 rc 를 기록해서 보였다. gemini CLI 자체는 개인 계정에서 deprecated(IneligibleTierError) — agy 가 유일 경로"
+- date: 2026-09-09
+  agent: fh-meta:persona-innovator
+  mode: F
+  context: "Mode D — 야간 자율주행. 거버넌스 엔지니어링 프레임(다음 arXiv) + ≤1% 오류율을 향한 갭 스캔. 운영자가 「이노베이터 활용」을 명시 요청"
+  dispatched_by: governor
+  outcome: accepted
+  evidence: "① 델타 진술 + 제목 3 + thesis 2, 각각 defeater 동반 ② 외부 선행 11건(URL 열어 확인) + 미확인 4건 라벨 분리 ③ FH 결손 6건(G-1~G-6, 전부 기계화 가능). 🟥 G-4(finding_verify.py 의 자기검증 가드가 옵셔널 필드에 걸린 fail-open)는 내가 소스 확인 + 알려진 쌍 재현 후 **이 릴리스에서 닫았다**(PR #694). 사이드카 원 주장은 배선 경로도 뚫린다는 함의였는데 파이프라인이 라우팅을 거부하므로 좁혀서 채택 — 사이드카 발견은 «증거 후보» 이지 판정이 아니라는 규율대로"
+  residual: "🟥 자기보고 잔여를 스스로 6항 적어 왔다(EU AI Act 미열람 · preprint 자기보고 수치 · 우리 표의 커버리지 불일치). 그 정직성 자체가 채택 근거의 일부. 외부 인용은 **아직 재검증 안 함** — 논문에 싣기 전에 URL 을 내가 직접 연다"
