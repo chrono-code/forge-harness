@@ -427,6 +427,6 @@ Claude Code 는 작업 복잡도로 모델을 자동 선택하지 않습니다. 
 > **FH 논문**: v1.0.1 방법론 · [Zenodo](https://zenodo.org/records/22542168) (DOI
 > 10.5281/zenodo.22542168) · cs.SE companion v1.2.1, 프리프린트 공개 ·
 > [Zenodo](https://zenodo.org/records/22635721) (DOI 10.5281/zenodo.22635721) ·
-> [arXiv:2609.04218](https://arxiv.org/abs/2609.04218) (2026-09-07 기준 arXiv 는 v1) · cs.AI companion
+> [arXiv:2609.04218](https://arxiv.org/abs/2609.04218) (v2 는 2026-09-09 등재 — §6.7 신설 · 제목의 주장 등급강등. Zenodo 는 2026-09-08 기준 v1.2.1 이라 두 예치가 갈린다) · cs.AI companion
 > 준비 중. 이것들과 독립적인 수렴 연구, 그리고 각각의 주의사항:
 > [`docs/OUTPUT_EVIDENCE.md`](docs/OUTPUT_EVIDENCE.md).
