@@ -355,6 +355,67 @@ else
   chmod 644 "$UNR" 2>/dev/null
 fi
 
+# ══ 보안 회귀 앵커 (cross-family security review 2026-09-09) ═══════════════════════════════════
+# 🟥 각 레인은 «지금 안전한가»가 아니라 «그 구멍을 되돌리면 빨개지나»를 잰다.
+#    되돌림 방법은 각 주석에 적어 뒀다.
+
+# L31 (S1) — 출력 디렉터리 «이름»에 든 $(...) 가 실행되면 안 된다 (fleet 의 eval 경로)
+#    되돌림: finding_fleet.sh 의 q_pf/q_codex/q_agy 결박을 빼고 raw 치환으로 되돌리면 빨개진다
+SENT="$D/S1_EXECUTED"
+EVILOUT="$D/out\$(touch $SENT)"
+printf 'x = 1\n' > "$D/s1.py"
+printf 'codex|logic|%s\n' "sh $D/m_codex.sh" > "$D/fleetS1.tbl"
+FH_CODEX_BIN=/bin/true bash "$HERE/finding_fleet.sh" "$D/s1.py" --out "$EVILOUT" --fleet "$D/fleetS1.tbl" >/dev/null 2>&1
+[ ! -e "$SENT" ] \
+  && ok "L31 (S1) 출력 경로의 \$(...) 가 실행되지 않는다 (eval 치환 결박)" \
+  || no "L31 (S1) eval 주입" "출력 디렉터리 이름의 명령이 실행됐다"
+
+# L32 (S2) — 검증기는 «셸 문자열»이 아니라 argv 로 넘어간다
+#    되돌림: finding_pipeline.sh 를 --verifier 문자열 형태로 되돌리면 빨개진다.
+#    🟥 왜 문자열이 위험한지: shell=True 는 /bin/sh 이고, bash %q 의 $'...' 는 dash 에서 안 통한다.
+#       macOS 는 /bin/sh 가 bash 계열이라 «실행해도» 이 축이 안 보인다 — 그래서 형태를 단언한다.
+{ /usr/bin/grep -q -- '--verifier-argv' "$PIPE" && /usr/bin/grep -q -- '--audit-verifier-argv' "$PIPE" \
+  && ! /usr/bin/grep -qE '^\s*--verifier "bash ' "$PIPE"; } \
+  && ok "L32 (S2) 파이프라인이 argv 형태로 넘긴다 (셸이 경로를 파싱하지 않는다)" \
+  || no "L32 (S2) argv 형태" "문자열 --verifier 로 되돌아갔다 — dash 에서 인용이 깨진다"
+
+# L32b (S2) — finding_verify.py 가 리스트를 받으면 shell 없이 실행한다
+/usr/bin/grep -q 'shell = isinstance(cmd, str)' "$VERIFY" \
+  && ok "L32b (S2) verify 는 리스트=argv · 문자열=셸 로 갈라 실행한다" \
+  || no "L32b (S2) shell 분기" "shell=True 고정으로 되돌아갔다"
+
+# L33 (S5) — 타깃이 심링크면 «내용이 외부로 나가므로» 거부해야 한다
+printf 'SECRET=abc\n' > "$D/outside_secret.txt"
+ln -sf "$D/outside_secret.txt" "$D/link_target.py"
+bash "$VERIFIER" --family codex --target "$D/link_target.py" < /dev/null >/dev/null 2>&1; RC=$?
+[ "$RC" -eq 2 ] && ok "L33 (S5) verifier: 심링크 타깃 거부 → rc=2 (외부 비밀 업로드 차단)" || no "L33 (S5) 심링크 타깃" "rc=$RC"
+bash "$HERE/finding_fleet.sh" "$D/link_target.py" --out "$D/o33" >/dev/null 2>&1; RC=$?
+[ "$RC" -eq 2 ] && ok "L33b (S5) fleet: 심링크 타깃 거부 → rc=2" || no "L33b (S5) fleet 심링크" "rc=$RC"
+
+# L34 (S4) — 출력물이 심링크면 «남의 파일 truncate» 이므로 쓰기 전에 거부
+printf 'DO NOT TRUNCATE\n' > "$D/victim.conf"
+mkdir -p "$D/o34"; ln -sf "$D/victim.conf" "$D/o34/confirmed.jsonl"
+printf 'x = 1\n' > "$D/s4.py"
+bash "$PIPE" "$D/s4.py" --out "$D/o34" --fleet "$D/fleet.tbl" >/dev/null 2>&1; RC=$?
+{ [ "$RC" -eq 2 ] && /usr/bin/grep -q "DO NOT TRUNCATE" "$D/victim.conf"; } \
+  && ok "L34 (S4) 출력 심링크 거부 → rc=2 · 바깥 파일 온전" \
+  || no "L34 (S4) 출력 심링크" "rc=$RC victim=$(head -c 20 "$D/victim.conf")"
+
+# L35 (A7) — 프롬프트 파일은 소스 전문을 담는다. 다른 계정이 읽으면 안 된다
+printf 'x = 1\n' > "$D/s7.py"
+FH_CODEX_BIN=/bin/true bash "$HERE/finding_fleet.sh" "$D/s7.py" --out "$D/o35" --fleet "$D/fleetS1.tbl" >/dev/null 2>&1
+PF=$(ls "$D/o35"/prompt_*.txt 2>/dev/null | head -1)
+if [ -n "$PF" ]; then
+  MODE=$(/usr/bin/stat -f "%OLp" "$PF" 2>/dev/null || /usr/bin/stat -c "%a" "$PF" 2>/dev/null)
+  case "$MODE" in *[04]|*[04][04]) OTHERS_R=1;; *) OTHERS_R=0;; esac
+  # 마지막 자리(others)가 4 이상이면 읽힌다
+  LAST=${MODE#${MODE%?}}
+  [ "$LAST" -lt 4 ] && ok "L35 (A7) 프롬프트 파일이 others 에게 안 읽힌다 (mode=$MODE)" \
+                    || no "L35 (A7) 프롬프트 권한" "mode=$MODE — 소스 전문이 더 넓게 읽힌다"
+else
+  no "L35 (A7) 프롬프트 권한" "프롬프트 파일이 안 생겼다 — 미측정(통과 아님)"
+fi
+
 /bin/rm -rf "$D"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ] && { echo "FAILED=0"; exit 0; } || { echo "FAILED=1"; exit 1; }

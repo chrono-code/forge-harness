@@ -44,8 +44,24 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$TARGET" ] && [ -f "$TARGET" ] && [ -r "$TARGET" ] \
   || { echo "finding_pipeline: target must be a readable file" >&2; exit 2; }
+# 🟥 타깃이 심링크면 체크아웃 «밖»을 가리킬 수 있고, 그 내용은 외부 모델로 전송된다.
+#    리뷰하려던 것은 레포 코드인데 나가는 것은 남의 비밀이 된다 — residency 위반이다.
+#    강행이 필요하면 실제 파일 경로를 직접 주면 된다(그 판단은 사람이 한다).
+if [ -L "$TARGET" ]; then
+  echo "finding_pipeline: target is a symlink — refusing (it may point outside the checkout, and the content is SENT to an external model)" >&2
+  exit 2
+fi
 [ -n "$OUT" ] || usage
+# 🟥 출력물은 프롬프트와 소스를 담는다 — 권한을 좁혀서 만든다(umask 022 면 0644 로 남는다).
+umask 077
 mkdir -p "$OUT" || { echo "finding_pipeline: cannot create --out" >&2; exit 2; }
+# 🟥 미리 깔린 심링크를 따라가면 «출력»이 남의 파일 truncate 가 된다. 리다이렉션도 open() 도
+#    심링크를 따라간다 — 그래서 쓰기 «전»에 거부한다(cross-family review 2026-09-09).
+for _p in "$OUT" "$OUT/fleet" "$OUT/confirmed.jsonl" "$OUT/dropped.jsonl" "$OUT/splits.txt" "$OUT/families.txt"; do
+  if [ -L "$_p" ]; then
+    echo "finding_pipeline: refusing to write through a symlink: $_p" >&2; exit 2
+  fi
+done
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FLEET_SH="$HERE/finding_fleet.sh"; VERIFY_PY="$HERE/finding_verify.py"; VERIFIER_SH="$HERE/finding_verifier.sh"
@@ -53,13 +69,16 @@ for f in "$FLEET_SH" "$VERIFY_PY" "$VERIFIER_SH"; do
   [ -f "$f" ] || { echo "finding_pipeline: missing $f — skipped, NOT passed" >&2; exit 3; }
 done
 
-# 🟥 Everything below that lands inside a --verifier string is executed by `subprocess.run(shell=True)`
-# in finding_verify.py. Outer double quotes make it ONE python argument; they do NOT quote it for that
-# shell. A target path with a space split into two arguments, and one with shell metacharacters ran
-# them — an injected trailing command could print forged verdicts and exit 0. Quote for the receiving
-# shell, not for this one.
-Q_TARGET="$(printf '%q' "$TARGET")"
-Q_VERIFIER="$(printf '%q' "$VERIFIER_SH")"
+# 🟥 NO SHELL IN THIS PATH. An earlier version built a command STRING and quoted the interpolated
+# path with bash's `printf %q`. That was not enough, and the reason matters: finding_verify.py ran
+# the string with `shell=True`, i.e. `/bin/sh`, while `%q` emits **bash-only** `$'...'` quoting for a
+# path containing a newline. On the many Linux systems where `/bin/sh` is dash, that quoting comes
+# apart and a crafted filename executes a second command. 🟥 macOS CANNOT SEE THIS — its /bin/sh is
+# bash-derived, so the local run is green while the shipped package is not (cross-family review
+# 2026-09-09, reproduced on dash). The fix is not better escaping; it is handing argv, never a string.
+argv_json() {  # each argument becomes one JSON string — no shell ever parses these
+  ARGV_PY="$*" /usr/bin/python3 -c 'import json,os,sys; print(json.dumps(sys.argv[1:]))' "$@"
+}
 
 # ── 1. fleet ──────────────────────────────────────────────────────────────────────────────────────
 # A reused --out is not a fresh run: finding_fleet.sh concatenates EVERY part_*.jsonl it finds, so a
@@ -152,12 +171,12 @@ for l in open(sys.argv[1],encoding="utf-8"):
 
   AUDARGS=()
   if [ -n "$AUD" ]; then
-    AUDARGS=(--audit-verifier "bash $Q_VERIFIER --family $AUD --target $Q_TARGET --audit" --audit-family "$AUD")
+    AUDARGS=(--audit-verifier-argv "$(argv_json bash "$VERIFIER_SH" --family "$AUD" --target "$TARGET" --audit)" --audit-family "$AUD")
   else
     echo "  ⚠️  split producer=$PROD — no supported auditor; any drop will come back UNAUDITED" >&2
   fi
   /usr/bin/python3 "$VERIFY_PY" "$SD/in.jsonl" --out "$SD" \
-    --verifier "bash $Q_VERIFIER --family $VER --target $Q_TARGET" --family "$VER" \
+    --verifier-argv "$(argv_json bash "$VERIFIER_SH" --family "$VER" --target "$TARGET")" --family "$VER" \
     ${AUDARGS[@]+"${AUDARGS[@]}"} > "$SD/summary.txt" 2>"$SD/err.txt"
   RC=$?
   note_rc "$RC"

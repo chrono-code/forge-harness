@@ -41,6 +41,15 @@ done
 # header above says must never happen. Test readability, and check the read itself below.
 [ -n "$TARGET" ] && [ -f "$TARGET" ] && [ -r "$TARGET" ] \
   || { echo "finding_verifier: --target must name a readable file" >&2; exit 2; }
+# 🟥 심링크 거부 — 이 파일의 내용은 «외부 모델로 전송»된다. 체크아웃 안의 링크가 바깥
+#    자격증명을 가리키면, 리뷰하려던 코드 대신 그 비밀이 프롬프트가 된다(residency 위반).
+#    cross-family security review 2026-09-09.
+if [ -L "$TARGET" ]; then
+  echo "finding_verifier: --target is a symlink — refusing (content is SENT to an external model)" >&2
+  exit 2
+fi
+# 프롬프트 파일은 소스 전문을 담는다 — 0644 로 남기지 않는다.
+umask 077
 
 WORK="$(mktemp -d 2>/dev/null)" || { echo "finding_verifier: mktemp failed" >&2; exit 3; }
 cleanup() { [ -n "$KEEP" ] && cp "$WORK"/* "$KEEP"/ 2>/dev/null; rm -rf "$WORK"; }

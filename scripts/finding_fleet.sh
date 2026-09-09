@@ -55,10 +55,21 @@ Your assigned area: '
 
 run_member() { # $1=family $2=role $3=command $4=target $5=outdir
   local fam="$1" role="$2" cmd="$3" tgt="$4" out="$5"
-  cmd="${cmd//CODEX_BIN/$CODEX}"; cmd="${cmd//AGY_BIN/$AGY}"
+  # 🟥 치환값은 eval 되는 문자열 «안»으로 들어간다. 결박하지 않으면 «출력 디렉터리 이름»만으로도
+  #    명령이 실행된다 — cross-family security review 2026-09-09 가 무해한 printf 로 실증했다.
+  #    여기는 bash `eval` 이므로 `printf %q` 가 옳은 도구다(shell=True 로 /bin/sh 에 넘기는
+  #    finding_pipeline.sh 와는 사정이 다르다 — 거기서는 %q 가 dash 에서 깨져서 argv 로 갔다).
+  local q_codex q_agy q_pf
+  q_codex="$(printf '%q' "$CODEX")"; q_agy="$(printf '%q' "$AGY")"
+  cmd="${cmd//CODEX_BIN/$q_codex}"; cmd="${cmd//AGY_BIN/$q_agy}"
   local raw="$out/raw_${fam}_${role}.txt" pf="$out/prompt_${fam}_${role}.txt"
+  # 🟥 심링크를 통해 쓰면 남의 파일을 덮는다. 그리고 타깃이 심링크면 그 «내용»이 외부로 나간다.
+  for _p in "$raw" "$pf" "$out/err_${fam}_${role}.txt" "$out/part_${fam}_${role}.jsonl"; do
+    [ -L "$_p" ] && { echo "finding_fleet: refusing to write through a symlink: $_p" >&2; return 1; }
+  done
   { printf '%s%s\n\n===== FILE: %s =====\n' "$PROMPT_HEAD" "$role" "$(basename "$tgt")"; cat "$tgt"; } > "$pf"
-  cmd="${cmd//PROMPT_FILE/$pf}"
+  q_pf="$(printf '%q' "$pf")"
+  cmd="${cmd//PROMPT_FILE/$q_pf}"
   eval "$cmd" < "$pf" > "$raw" 2>"$out/err_${fam}_${role}.txt"
   local rc=$?
   FAM="$fam" ROLE="$role" RC="$rc" /usr/bin/python3 - "$raw" "$out/part_${fam}_${role}.jsonl" <<'PY'
@@ -141,6 +152,12 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -f "$TARGET" ] || { echo "no such file: $TARGET" >&2; exit 2; }
+# 🟥 이 파일의 «내용»은 외부 모델로 전송된다. 심링크면 체크아웃 밖 자격증명을 가리킬 수 있고,
+#    그러면 리뷰 대상 대신 그 비밀이 프롬프트가 된다 (residency 위반, cross-family 2026-09-09).
+[ -L "$TARGET" ] && { echo "finding_fleet: target is a symlink — refusing (content is SENT to an external model)" >&2; exit 2; }
+[ -r "$TARGET" ] || { echo "finding_fleet: target is not readable: $TARGET" >&2; exit 2; }
+# 프롬프트 파일은 소스 전문을 담는다 — umask 022 면 0644 로 남아 다른 계정이 읽는다.
+umask 077
 [ -n "$OUT" ] || { echo "--out is required" >&2; exit 2; }
 mkdir -p "$OUT"
 if [ -n "$FLEET" ]; then cp "$FLEET" "$OUT/fleet.txt"; else default_fleet > "$OUT/fleet.txt"; fi
