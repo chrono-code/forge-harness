@@ -124,6 +124,237 @@ python3 "$MUT" "$D/f.jsonl" --out "$D/o6" --verifier "sh $D/v_ok.sh" --family al
   && ok "L9 되돌림: 가드를 지우면 자기 계열이 자기 것을 지운다 (레인이 실물을 잰다)" \
   || no "L9 되돌림" "가드를 지워도 드롭 0 — L7 은 장식이다"
 
+# ══ 접착 코드 레인 (2026-09-09) — finding_verifier.sh (G1) · finding_pipeline.sh (G2) · defeater (G6) ══
+# 🟥 이 레인들이 지키는 것도 «방향»이다. 래퍼가 답을 못 받았는데 0 을 돌려주면 verify 는 그것을
+#    «판정 없음 → unverified» 가 아니라 «빈 판정»으로 삼키고, 파이프라인은 초록으로 끝난다.
+VERIFIER="$HERE/finding_verifier.sh"; PIPE="$HERE/finding_pipeline.sh"
+if [ ! -f "$VERIFIER" ] || [ ! -f "$PIPE" ]; then
+  no "L15 접착 코드 실재" "finding_verifier.sh / finding_pipeline.sh 부재 — skipped, NOT passed"
+else
+bash -n "$VERIFIER" && ok "L15a verifier 구문" || no "L15a verifier 구문"
+bash -n "$PIPE"     && ok "L15b pipeline 구문" || no "L15b pipeline 구문"
+
+printf 'x = 1\n' > "$D/tgt.py"
+
+# 가짜 CLI — 배너/펜스로 감싸고, enum 밖 verdict 를 하나 섞는다
+cat > "$D/fake_ok.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo "== banner the model likes to print =="
+echo '```json'
+echo '{"id":"a1","verdict":"confirmed","why":"line 3 does this"}'
+echo '{"id":"a2","verdict":"probably-fine","why":"out of enum"}'
+echo '{"id":"a2","verdict":"false-positive","why":"line 9 says otherwise"}'
+echo '```'
+EOS
+chmod +x "$D/fake_ok.sh"
+cat > "$D/fake_mute.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo "I looked at the file but will not answer in JSON."
+EOS
+chmod +x "$D/fake_mute.sh"
+
+# L16 — 배너/펜스를 견디고, enum 밖 verdict 는 «강제 변환» 이 아니라 «드롭» 이다
+V16=$(FH_CODEX_BIN="$D/fake_ok.sh" bash "$VERIFIER" --family codex --target "$D/tgt.py" < "$D/f.jsonl" 2>/dev/null); RC=$?
+N16=$(printf '%s\n' "$V16" | grep -c '^{')
+{ [ "$RC" -eq 0 ] && [ "$N16" = 2 ] && printf '%s' "$V16" | grep -q '"verdict": "false-positive"' \
+  && ! printf '%s' "$V16" | grep -q 'probably-fine'; } \
+  && ok "L16 래퍼: 배너/펜스 견딤 · enum 밖 verdict 드롭 (2건만 통과)" \
+  || no "L16 래퍼 파싱" "rc=$RC n=$N16 · $V16"
+
+# L17 — 빈 입력은 «물어본 게 없다» 이므로 rc=0 · 출력 0 (CLI 를 부르지도 않는다)
+V17=$(FH_CODEX_BIN="$D/fake_ok.sh" bash "$VERIFIER" --family codex --target "$D/tgt.py" < /dev/null 2>/dev/null); RC=$?
+{ [ "$RC" -eq 0 ] && [ -z "$V17" ]; } && ok "L17 빈 입력 → rc=0 · 출력 0" || no "L17 빈 입력" "rc=$RC out=$V17"
+
+# L18 🟥 degrade 방향의 핵심 — 답을 «못 받은» 것은 rc=3 이지 rc=0 이 아니다
+V18=$(FH_CODEX_BIN="$D/fake_mute.sh" bash "$VERIFIER" --family codex --target "$D/tgt.py" < "$D/f.jsonl" 2>/dev/null); RC=$?
+{ [ "$RC" -eq 3 ] && [ -z "$V18" ]; } \
+  && ok "L18 파싱 가능한 판정 0 → rc=3 (침묵을 «통과» 로 접지 않는다)" || no "L18 무응답 degrade" "rc=$RC out=$V18"
+
+# L19 — 사용법 가드: --target 없으면 rc=2, 모르는 계열이면 rc=2
+bash "$VERIFIER" --family codex < /dev/null >/dev/null 2>&1; [ $? -eq 2 ] \
+  && ok "L19a --target 부재 → rc=2" || no "L19a --target 가드"
+echo '{"id":"a1","title":"t"}' | bash "$VERIFIER" --family nosuch --target "$D/tgt.py" >/dev/null 2>&1; [ $? -eq 2 ] \
+  && ok "L19b 모르는 계열 → rc=2" || no "L19b 계열 가드"
+
+# ── L20~L22 드라이버 ────────────────────────────────────────────────────────────────────────────
+# 두 계열이 각각 한 건씩 내는 가짜 fleet. 그래야 «두 갈래 분할» 이 실제로 갈린다.
+cat > "$D/m_codex.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo '{"title":"codex claim","file":"tgt.py","line":1,"severity":"A","defeater":"line 1 would differ"}'
+EOS
+cat > "$D/m_gem.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo '{"title":"gemini claim","file":"tgt.py","line":1,"severity":"S","defeater":"no such call site"}'
+EOS
+chmod +x "$D/m_codex.sh" "$D/m_gem.sh"
+printf 'codex|logic|%s\ngemini|security|%s\n' "sh $D/m_codex.sh" "sh $D/m_gem.sh" > "$D/fleet.tbl"
+
+# 두 계열 모두 «상대편 것은 confirmed» 라고 답하는 가짜 검증기
+# 🟥 이 가짜 CLI 는 stdin «과» 인자를 «둘 다» 읽어야 한다 — finding_verifier.sh 의 codex 갈래는
+#    프롬프트를 stdin 으로, gemini 갈래는 `-p` 인자로 준다. stdin 만 읽는 픽스처를 쓰면 gemini
+#    갈래가 «답을 못 받았다»(rc=3)로 떨어지고, 그건 코드 결함처럼 보이지만 죽은 컨트롤이다.
+#    (실측 2026-09-09: 이 레인의 첫 판이 정확히 그렇게 L20 을 거짓 적색으로 만들었다.)
+cat > "$D/fake_conf.sh" <<'EOS'
+#!/bin/sh
+IN=$(cat)
+[ -n "$IN" ] || IN="$*"
+printf '%s\n' "$IN" | tr ',' '\n' | sed -n 's/.*"id": *"\([^"]*\)".*/{"id":"\1","verdict":"confirmed","why":"checked"}/p'
+EOS
+chmod +x "$D/fake_conf.sh"
+
+P20=$(FH_CODEX_BIN="$D/fake_conf.sh" FH_AGY_BIN="$D/fake_conf.sh" \
+      bash "$PIPE" "$D/tgt.py" --out "$D/pipe20" --fleet "$D/fleet.tbl" 2>"$D/pipe20.err"); RC=$?
+SUM=$(printf '%s\n' "$P20" | grep '^PIPELINE ')
+{ [ "$RC" -eq 0 ] && printf '%s' "$SUM" | grep -q 'confirmed=2' && printf '%s' "$SUM" | grep -q 'unverified=0'; } \
+  && ok "L20 드라이버: 두 계열 분할로 «양쪽 다» 판정된다 (unverified=0)" \
+  || no "L20 두 갈래 분할" "rc=$RC · $SUM · $(tail -3 "$D/pipe20.err")"
+
+# L21 🟥 한 계열만 있으면 그 findings 는 교차검증이 구조적으로 불가 — 초록이 아니라 rc=3
+printf 'codex|logic|%s\n' "sh $D/m_codex.sh" > "$D/fleet1.tbl"
+FH_CODEX_BIN="$D/fake_conf.sh" bash "$PIPE" "$D/tgt.py" --out "$D/pipe21" --fleet "$D/fleet1.tbl" \
+  >"$D/p21" 2>"$D/p21.err"; RC=$?
+{ [ "$RC" -eq 3 ] && grep -q 'cannot be cross-verified' "$D/p21.err"; } \
+  && ok "L21 단일 계열 fleet → rc=3 (같은 계열 자기검증으로 «통과» 시키지 않는다)" \
+  || no "L21 단일 계열 degrade" "rc=$RC · $(cat "$D/p21.err")"
+
+# L22 — fleet 이 아무것도 못 내면 UNREVIEWED(rc=3) 이지 clean 이 아니다
+cat > "$D/m_none.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+EOS
+chmod +x "$D/m_none.sh"
+printf 'codex|logic|%s\ngemini|security|%s\n' "sh $D/m_none.sh" "sh $D/m_none.sh" > "$D/fleet0.tbl"
+bash "$PIPE" "$D/tgt.py" --out "$D/pipe22" --fleet "$D/fleet0.tbl" >"$D/p22" 2>&1; RC=$?
+{ [ "$RC" -eq 3 ] && grep -q 'UNREVIEWED' "$D/p22"; } \
+  && ok "L22 findings 0 → UNREVIEWED rc=3 (빈 목록은 clean 이 아니다)" || no "L22 UNREVIEWED" "rc=$RC · $(cat "$D/p22")"
+
+# L23 되돌림 프로브 — pick_verifier 가 «생산자와 다른 계열» 을 고르는 줄을 죽이면 L20 이 빨개져야 한다
+# 🟥 뮤턴트는 «의존 파일 옆에» 두어야 한다. finding_pipeline.sh 는 자기 위치에서 fleet/verify/
+#    verifier 를 찾으므로, 뮤턴트만 임시 디렉터리에 두면 프로브는 «가드가 죽었나» 가 아니라
+#    «파일이 없나» 를 잰다 — 빨간색이 나오지만 이유가 다르다(실측 2026-09-09, 이 레인의 첫 판).
+MUTD="$D/mut"; mkdir -p "$MUTD"
+cp "$HERE/finding_fleet.sh" "$HERE/finding_verify.py" "$HERE/finding_verifier.sh" "$MUTD/"
+MUTP="$MUTD/finding_pipeline.sh"
+/usr/bin/python3 - "$PIPE" "$MUTP" <<'PY'
+import sys
+src, dst = sys.argv[1], sys.argv[2]
+s = open(src, encoding="utf-8").read()
+key = '  while IFS= read -r f; do [ -n "$f" ] && [ "$f" != "$p" ] && supported "$f" && { echo "$f"; return; }; done < "$OUT/families.txt"'
+assert key in s, "pick_verifier body moved — the revert probe is pinned to a line that no longer exists"
+s = s.replace(key, '  echo "$p"')   # 자기 계열을 검증기로 고른다
+open(dst, "w", encoding="utf-8").write(s)
+PY
+FH_CODEX_BIN="$D/fake_conf.sh" FH_AGY_BIN="$D/fake_conf.sh" \
+  bash "$MUTP" "$D/tgt.py" --out "$D/pipe23" --fleet "$D/fleet.tbl" >"$D/p23" 2>&1
+M23=$(grep '^PIPELINE ' "$D/p23" | grep -c 'unverified=2')
+[ "$M23" = 1 ] \
+  && ok "L23 되돌림: 검증기를 자기 계열로 바꾸면 전부 unverified 로 떨어진다 (L20 은 장식이 아니다)" \
+  || no "L23 되돌림" "뮤턴트인데 unverified=2 가 안 나왔다 — L20 이 실물을 안 잰다 · $(grep '^PIPELINE ' "$D/p23")"
+
+# L24 — G6: fleet 프롬프트가 defeater 를 «요구» 하는가 (축③ 을 잴 수 있는 최소 조건)
+{ grep -q '"defeater"' "$FLEET" && grep -q 'defeater. is required' "$FLEET"; } \
+  && ok "L24 fleet 스키마에 defeater 요구 (축③ 측정 가능)" || no "L24 defeater 스키마"
+fi
+
+# ══ cross-family 라운드 1 이 연 구멍들의 회귀 앵커 (codex, 2026-09-09) ══════════════════════════
+# 🟥 각 레인은 «수리가 됐나」가 아니라 «그 구멍이 다시 열리면 빨개지나」를 잰다.
+run_bounded() { # $1=초 · 나머지=명령. 되돌림이 무한루프를 되살려도 스위트가 안 멈추게.
+  local secs="$1"; shift
+  "$@" & local pid=$!
+  ( sleep "$secs"; kill -9 "$pid" 2>/dev/null ) & local wd=$!
+  wait "$pid" 2>/dev/null; local rc=$?
+  kill -9 "$wd" 2>/dev/null; wait "$wd" 2>/dev/null
+  return "$rc"
+}
+
+# 계열마다 다르게 답하는 가짜 CLI — codex 산출은 기각, gemini 산출은 인정, 감사는 correct-drop
+cat > "$D/fake_smart.sh" <<'EOS'
+#!/bin/sh
+IN=$(cat)
+[ -n "$IN" ] || IN="$*"
+case "$IN" in *"correct-drop"*) MODE=audit ;; *) MODE=verify ;; esac
+printf '%s\n' "$IN" | tr ',' '\n' | sed -n 's/.*"id": *"\([^"]*\)".*/\1/p' | sort -u | while read -r id; do
+  if [ "$MODE" = audit ]; then
+    echo "{\"id\":\"$id\",\"verdict\":\"correct-drop\",\"why\":\"line 1 checked\"}"
+  else
+    case "$id" in
+      codex-*)  echo "{\"id\":\"$id\",\"verdict\":\"false-positive\",\"why\":\"line 1 says otherwise\"}" ;;
+      *)        echo "{\"id\":\"$id\",\"verdict\":\"confirmed\",\"why\":\"line 1 holds\"}" ;;
+    esac
+  fi
+done
+EOS
+chmod +x "$D/fake_smart.sh"
+
+# L25 🟥 부분 감사는 감사가 아니다 — 무관한 id 하나만 답한 감사자가 «AUDITED · rc=0» 을 만들었다
+cat > "$D/a_partial.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo '{"id":"nonexistent-id","verdict":"correct-drop","why":"unrelated"}'
+EOS
+chmod +x "$D/a_partial.sh"
+python3 "$VERIFY" "$D/f.jsonl" --out "$D/oP" --verifier "sh $D/v_ok.sh" --family beta \
+  --audit-verifier "sh $D/a_partial.sh" --audit-family gamma >"$D/sP" 2>&1; RC=$?
+{ [ "$RC" -eq 4 ] && grep -q 'drop_audit=PARTIAL' "$D/sP" && grep -q 'audited=0' "$D/sP"; } \
+  && ok "L25 부분 감사 → PARTIAL · rc=4 (무관한 id 하나로 «감사했다» 가 안 된다)" \
+  || no "L25 부분 감사" "rc=$RC · $(cat "$D/sP")"
+
+# L26 🟥 주입 — 타깃 경로에 공백과 셸 메타문자가 있어도 «명령으로 실행되지 않는다»
+TGD="$D/inj"; mkdir -p "$TGD"
+# 🟥 파일명에 «/» 를 못 넣으므로 주입 페이로드는 상대 경로로 두고, 러너를 그 디렉터리에서 돌린다.
+# (첫 판은 절대경로를 파일명에 박아 픽스처가 생성조차 안 됐다 — 죽은 계기였다.)
+BADNAME='a b;touch PWNED.py'
+( cd "$TGD" && printf 'x = 1\n' > "$BADNAME" ) 2>/dev/null
+if [ -f "$TGD/$BADNAME" ]; then
+  printf 'codex|logic|%s\ngemini|security|%s\n' "sh $D/m_codex.sh" "sh $D/m_gem.sh" > "$D/fleetI.tbl"
+  ( cd "$TGD" && FH_CODEX_BIN="$D/fake_smart.sh" FH_AGY_BIN="$D/fake_smart.sh" \
+      bash "$PIPE" "$BADNAME" --out "$D/pipeI" --fleet "$D/fleetI.tbl" ) >"$D/pI" 2>&1
+  RCI=$?
+  # 두 가지를 «같이» 본다: ⓐ 주입이 실행되지 않았나 ⓑ 공백 있는 경로로도 실제로 완주하나
+  #    (ⓑ 없이 ⓐ 만 보면 «아예 안 돌아서 안전한» 것과 구별이 안 된다 — 죽은 컨트롤)
+  { [ ! -e "$TGD/PWNED.py" ] && [ "$RCI" -eq 0 ] && grep -q 'confirmed=' "$D/pI"; } \
+    && ok "L26 주입: 메타문자·공백 타깃이 «인자」로만 전달되고, 그러고도 완주한다" \
+    || no "L26 주입" "PWNED=$([ -e "$TGD/PWNED.py" ] && echo 생성됨 || echo 없음) rc=$RCI · $(grep '^PIPELINE' "$D/pI" || tail -2 "$D/pI")"
+else
+  no "L26 주입" "픽스처 생성 실패 — 미측정(통과 아님)"
+fi
+
+# L27 🟥 값 없는 플래그는 «멈춤」이 아니라 rc=2 (첫 판은 무한루프였다)
+run_bounded 8 bash "$VERIFIER" --family; RC=$?
+[ "$RC" -eq 2 ] && ok "L27a verifier: 값 없는 --family → rc=2 (무한루프 아님)" || no "L27a 트레일링 플래그" "rc=$RC (137 이면 워치독이 죽인 것 = 여전히 멈춘다)"
+run_bounded 8 bash "$PIPE" "$D/tgt.py" --out; RC=$?
+[ "$RC" -eq 2 ] && ok "L27b pipeline: 값 없는 --out → rc=2" || no "L27b 트레일링 플래그" "rc=$RC"
+
+# L28 🟥 종료코드는 «심각도 숫자」가 아니라 «종류» — 생존자가 있는데 rc=1 이 나오면 안 된다
+printf 'codex|logic|%s\ngemini|security|%s\n' "sh $D/m_codex.sh" "sh $D/m_gem.sh" > "$D/fleetT.tbl"
+FH_CODEX_BIN="$D/fake_smart.sh" FH_AGY_BIN="$D/fake_smart.sh" \
+  bash "$PIPE" "$D/tgt.py" --out "$D/pipeT" --fleet "$D/fleetT.tbl" >"$D/pT" 2>&1; RC=$?
+SUMT=$(grep '^PIPELINE ' "$D/pT")
+{ [ "$RC" -eq 0 ] && printf '%s' "$SUMT" | grep -q 'confirmed=1' && printf '%s' "$SUMT" | grep -q 'dropped=1'; } \
+  && ok "L28 한 split 이 «생존 0»(rc=1) 이어도 다른 split 의 생존자가 있으면 전체 rc=0" \
+  || no "L28 종료코드 종류" "rc=$RC · $SUMT · $(tail -3 "$D/pT")"
+
+# L29 🟥 --out 재사용이 «지난 런의 계열」을 수입하면 안 된다 (단일 계열이 교차검증된 것처럼 보인다)
+printf 'codex|logic|%s\n' "sh $D/m_codex.sh" > "$D/fleetS.tbl"
+FH_CODEX_BIN="$D/fake_smart.sh" bash "$PIPE" "$D/tgt.py" --out "$D/pipeT" --fleet "$D/fleetS.tbl" >"$D/pS" 2>&1; RC=$?
+{ [ "$RC" -eq 3 ] && ! grep -q 'gemini' "$D/pipeT/families.txt"; } \
+  && ok "L29 --out 재사용: 지난 런의 part_*.jsonl 을 수입하지 않는다 (단일 계열 → rc=3)" \
+  || no "L29 stale --out" "rc=$RC families=$(cat "$D/pipeT/families.txt" 2>/dev/null | tr '\n' ',')"
+
+# L30 — 읽을 수 없는 타깃은 «타입은 파일」이어도 rc=2 (모델이 소스 없이 판정하지 않게)
+UNR="$D/unreadable.py"; printf 'x=1\n' > "$UNR"; chmod 000 "$UNR" 2>/dev/null
+if [ -r "$UNR" ]; then
+  no "L30 읽기불가 타깃" "chmod 000 이 안 먹었다(root?) — 미측정, 통과 아님"
+else
+  echo '{"id":"a1","title":"t"}' | bash "$VERIFIER" --family codex --target "$UNR" >/dev/null 2>&1; RC=$?
+  [ "$RC" -eq 2 ] && ok "L30 읽기불가 타깃 → rc=2 (-f 는 타입만 본다)" || no "L30 읽기불가 타깃" "rc=$RC"
+  chmod 644 "$UNR" 2>/dev/null
+fi
+
 /bin/rm -rf "$D"
 echo "PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ] && { echo "FAILED=0"; exit 0; } || { echo "FAILED=1"; exit 1; }
