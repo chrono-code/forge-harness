@@ -52,10 +52,14 @@ scan_one() { # $1=file → prints hits, returns 0 hit / 1 none / 3 unscannable
   e=$(printf '%s\n' "$body" | /usr/bin/grep -E "$EXPOSURE_RE" || true)
   r=$(printf '%s\n' "$body" | /usr/bin/grep -E "$IRREV_RE" || true)
   hits=0
-  [ -n "$v" ]  && { hits=1; printf '%s\n' "$v"  | /usr/bin/cut -c1-140 | /usr/bin/sed "s|^|VERDICT   $f:|"; }
-  [ -n "$v2" ] && { hits=1; printf '%s\n' "$v2" | /usr/bin/cut -c1-140 | /usr/bin/sed "s|^|VERDICT   $f:|"; }
-  [ -n "$e" ]  && { hits=1; printf '%s\n' "$e"  | /usr/bin/cut -c1-140 | /usr/bin/sed "s|^|EXPOSURE  $f:|"; }
-  [ -n "$r" ]  && { hits=1; printf '%s\n' "$r"  | /usr/bin/cut -c1-140 | /usr/bin/sed "s|^|IRREV     $f:|"; }
+  # 🟥 파일명을 sed 프로그램에 넣지 않는다. `s|^|... $f:|` 는 파일명 안의 `|` 로 구분자를 벗어나고,
+  #    거기에 `r <path>` 를 이어 붙이면 임의 파일 내용이 스캔 출력에 실리고 `w` 는 덮어쓴다
+  #    (cross-family security review 2026-09-09, 무해한 프로브로 추가 파일 읽기 실증).
+  #    awk 의 ENVIRON 은 값을 «프로그램»이 아니라 «데이터»로 받으므로 이 통로가 닫힌다.
+  [ -n "$v" ] && { hits=1; printf '%s\n' "$v" | /usr/bin/cut -c1-140 | FH_LABEL="VERDICT   $f:" /usr/bin/awk '{print ENVIRON["FH_LABEL"] $0}'; }
+  [ -n "$v2" ] && { hits=1; printf '%s\n' "$v2" | /usr/bin/cut -c1-140 | FH_LABEL="VERDICT   $f:" /usr/bin/awk '{print ENVIRON["FH_LABEL"] $0}'; }
+  [ -n "$e" ] && { hits=1; printf '%s\n' "$e" | /usr/bin/cut -c1-140 | FH_LABEL="EXPOSURE  $f:" /usr/bin/awk '{print ENVIRON["FH_LABEL"] $0}'; }
+  [ -n "$r" ] && { hits=1; printf '%s\n' "$r" | /usr/bin/cut -c1-140 | FH_LABEL="IRREV     $f:" /usr/bin/awk '{print ENVIRON["FH_LABEL"] $0}'; }
   [ "$hits" -gt 0 ] && return 0 || return 1
 }
 

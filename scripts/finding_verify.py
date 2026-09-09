@@ -87,8 +87,20 @@ def run_verifier(cmd, findings, allowed=VERDICTS):
     the expected set is dropped rather than coerced -- a stage that silently reinterprets an unknown
     label is how an unanswered question becomes an answer."""
     payload = "\n".join(json.dumps(f, ensure_ascii=False) for f in findings) + "\n"
+    # 🟥 A LIST MEANS argv; A STRING MEANS A SHELL. The caller decides, and the shipped caller
+    # (finding_pipeline.sh) now hands a list, so no shell parses our paths.
+    #
+    # Why this branch exists (cross-family security review, 2026-09-09, reproduced on dash):
+    # the string form is executed with `shell=True`, i.e. by `/bin/sh`. Quoting the interpolated
+    # path with bash's `printf %q` is NOT enough, because %q emits bash-only `$'...'` for a path
+    # containing a newline, and `/bin/sh` on most Linux distributions is **dash**, which does not
+    # understand that syntax -- the quoting comes apart and a crafted filename executes a second
+    # command. macOS cannot observe this at all: its /bin/sh is bash-derived, so a local run is
+    # green while the shipped npm package is not. The fix is not better escaping; it is not
+    # handing a shell the string in the first place.
+    shell = isinstance(cmd, str)
     try:
-        p = subprocess.run(cmd, shell=True, input=payload, capture_output=True,
+        p = subprocess.run(cmd, shell=shell, input=payload, capture_output=True,
                            text=True, timeout=int(os.environ.get("FH_VERIFY_TIMEOUT", "600")))
     except Exception as e:                                   # noqa: BLE001 - degrade on anything
         return {}, f"verifier did not run: {e}"
@@ -114,6 +126,11 @@ def main():
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("findings", help="JSONL file, or - for stdin")
     ap.add_argument("--out", required=True, help="directory for confirmed.jsonl / dropped.jsonl")
+    ap.add_argument("--verifier-argv", default=None,
+                    help="JSON array form of --verifier. Executed as argv (no shell), which is the "
+                         "only form immune to path-shaped injection. Wins over --verifier.")
+    ap.add_argument("--audit-verifier-argv", default=None,
+                    help="JSON array form of --audit-verifier. Same reason.")
     ap.add_argument("--verifier", default=os.environ.get("FH_VERIFY_CMD", ""),
                     help="shell command; findings JSONL on stdin, verdict JSONL on stdout")
     ap.add_argument("--family", default=os.environ.get("FH_VERIFY_FAMILY", "unstated"),
@@ -124,10 +141,29 @@ def main():
                     help="model family of the auditor; must differ from the verifier's")
     a = ap.parse_args()
 
+    # argv 형태가 있으면 그것이 실행 형태다 — 문자열은 셸을 타므로 후순위다.
+    def _as_argv(raw, label):
+        if not raw:
+            return None
+        try:
+            v = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise SystemExit("%s must be a JSON array: %s" % (label, e))
+        if not (isinstance(v, list) and v and all(isinstance(x, str) for x in v)):
+            raise SystemExit("%s must be a non-empty JSON array of strings" % label)
+        return v
+
+    a.verifier = _as_argv(a.verifier_argv, "--verifier-argv") or a.verifier
+    a.audit_verifier = _as_argv(a.audit_verifier_argv, "--audit-verifier-argv") or a.audit_verifier
+
+    # 문자열이든 리스트든 «비어 있나»를 같은 방법으로 묻는다 — 리스트에 .strip() 은 없다.
+    def _configured(cmd):
+        return bool(cmd) if isinstance(cmd, list) else bool(str(cmd or "").strip())
+
     findings = read_findings(a.findings)
     os.makedirs(a.out, exist_ok=True)
 
-    if not a.verifier.strip():
+    if not _configured(a.verifier):
         verdicts, err = {}, "no verifier configured (--verifier / FH_VERIFY_CMD)"
     else:
         verdicts, err = run_verifier(a.verifier, findings)
@@ -163,7 +199,7 @@ def main():
     audited = wrong_drops = reinstated = 0
     audit_status = "UNAUDITED"
     audit_note = ""
-    if dropped and a.audit_verifier.strip():
+    if dropped and _configured(a.audit_verifier):
         if a.audit_family == a.family:
             audit_note = ("auditor is the family that made the drop (%s) -- refused; a deletion is not "
                           "checked by the party that made it" % a.family)

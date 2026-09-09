@@ -40,12 +40,30 @@ def walk(root: str, exts=None) -> List[str]:
                 out.append(os.path.join(dp, fn))
     return out
 
+def _inside(root: str, path: str) -> bool:
+    """path 가 root 안에 «실제로» 있나 — 심링크까지 풀어서 판정한다.
+
+    🟥 이 함수가 없으면 «문서가 부르는 경로»가 스캔 루트를 벗어난다. 이 스캐너는 대상 파일의
+    매칭 줄을 증거로 «출력»하므로, `../private/deploy.sh` 한 줄이면 그 파일의 자격증명이 든 줄이
+    리포트에 실린다. 그리고 이 스캐너는 신뢰할 수 없는 문서를 읽는 것이 일이다.
+    (cross-family security review 2026-09-09 — 루트 밖 읽기와 스니펫 반환을 프로브로 실증했다.)
+    """
+    try:
+        r = os.path.realpath(root)
+        c = os.path.realpath(path)
+    except OSError:
+        return False
+    return c == r or c.startswith(r + os.sep)
+
+
 def resolve(root: str, p: str) -> str | None:
+    # `..` 를 담은 참조는 «해석하기 전에» 거절한다 — 해석 후 판정은 심링크 한 겹에 뚫린다.
     cand = os.path.join(root, p)
-    if os.path.isfile(cand):
+    if os.path.isfile(cand) and not os.path.islink(cand) and _inside(root, cand):
         return cand
     base = os.path.basename(p)
-    hits = [f for f in walk(root) if os.path.basename(f) == base]
+    hits = [f for f in walk(root)
+            if os.path.basename(f) == base and not os.path.islink(f) and _inside(root, f)]
     return hits[0] if len(hits) == 1 else None
 
 # 실행 증거: 인터프리터 뒤 또는 명령 위치. 주석줄과 grep 패턴 안은 제외.
