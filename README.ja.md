@@ -439,6 +439,6 @@ Claude Code は作業の複雑さでモデルを自動選択しません — こ
 > **FH 論文**: v1.0.1 方法論 · [Zenodo](https://zenodo.org/records/22542168) (DOI
 > 10.5281/zenodo.22542168) · cs.SE companion v1.2.1、プレプリント公開 ·
 > [Zenodo](https://zenodo.org/records/22635721) (DOI 10.5281/zenodo.22635721) ·
-> [arXiv:2609.04218](https://arxiv.org/abs/2609.04218) (2026-09-07 時点で arXiv は v1) · cs.AI companion は
+> [arXiv:2609.04218](https://arxiv.org/abs/2609.04218) (v2 は 2026-09-09 公開 — §6.7 を追加し、タイトルの主張を格下げ。Zenodo は 2026-09-08 時点で v1.2.1 のため両者は一致しない) · cs.AI companion は
 > 準備中。これら、独立した収束的研究、そしてそれぞれの但し書き:
 > [`docs/OUTPUT_EVIDENCE.md`](docs/OUTPUT_EVIDENCE.md)。
