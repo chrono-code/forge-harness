@@ -1,6 +1,6 @@
 # forge-harness (fh-meta) Changelog
 
-### [Unreleased] — 4축 게이트가 `scripts/*.py` 를 본다
+### [3.2.0] — 2026-09-09 — 판정 파이프라인이 실제로 돌고, 축에 이름이 붙었다
 
 **BREAKING (gate):** `scripts/**/*.py` 가 이제 HEAVY 다 — 마커 없는 파이썬 단독 커밋이 막힌다.
 처방 = `.sh` 와 동일: Axes 2–3 마커 + edit_manifest 항목.
@@ -11,6 +11,63 @@ FH 와 무관한 파이썬 변경도 업그레이드 뒤엔 마커 없이 커밋
 `residency_closure_scan.py` · `memory_link_check.py` · `probe_live_eval_lib.py` 등)가 게이트를
 한 번도 안 탔다. 훅 정규식 `^scripts/.*\.sh$` → `^scripts/.*\.(sh|py)$`. 레인
 `test_heavy_classifier_lanes.sh` 가 이 구멍을 `uncovered` 로 **핀해 두고** 있었다 — 뒤집었다.
+
+**① typed-finding 파이프라인이 배선됐다 (#686 → #690).** #686 이 fleet 과 verify 를 남겼는데
+**둘을 잇는 것이 없었다** — `finding_verify.py` 의 `--verifier` 계약을 만족하는 명령이 레인 안의
+하드코딩 스텁뿐이라, 실물 findings 에는 항상 `status=UNVERIFIED (rc=3)` 로만 돌았다.
+새 자산 둘: `scripts/finding_verifier.sh`(검증기/감사기 래퍼 — `--target` 필수, 소스가 프롬프트에
+도달했는지 호출 전 확인) · `scripts/finding_pipeline.sh`(드라이버).
+🟥 **두 갈래 «분할»이 이 배선의 하중선이다** — verify 는 자기 계열 산출을 판정하지 않고
+`unverified` 로 스탬프하는데 그 unverified 는 **생존자로 센다**. 한 번만 돌리면 절반이 판정 안 된 채
+초록이 된다. 그래서 producer 별로 갈라 서로를 판정시킨다.
+**명명된 잔여**: 계열이 둘뿐이면 드롭 감사자가 항상 생산자(`audit_role: appeal`)다 — 두 계열 런의
+`AUDITED` 를 «독립 감사»로 읽지 마라.
+
+**② 부분 감사 fail-open 수리 (소비자 영향 있음).** 3.1.4 까지의 `finding_verify.py` 는 감사자가
+**무관한 id 하나만** 답해도 `audited=0 drop_audit=AUDITED rc=0` 을 냈다(빈 감사는 이미 4를 냈으므로
+구멍은 «부분» 쪽이었다). 이제 `PARTIAL` 상태 + **rc=4** 다 — **부분 감사는 감사가 아니다.**
+⚠️ 종전에 rc=0 이던 실행이 rc=4 가 될 수 있다. 의도된 조임이다.
+
+**②-b 「생산자 미상」이 「검증됨」으로 통과하던 구멍 (소비자 영향 있음).** `finding_verify.py` 가
+스스로 «이 파일이 강제하는 유일한 속성» 이라 선언한 **자기검증 금지**가 **옵셔널 필드에 걸려**
+있었다: `producer_family` 를 빼면 검사가 통째로 건너뛰고, 같은 계열이 자기 발견을 승인하면서
+`status=VERIFIED rc=0` 이 나왔다. **알려진 쌍으로 재현했다** — 같은 표·같은 검증자, 필드 유무만
+다르게: 있으면 `unverified=1 rc=3`, 없으면 `confirmed=1 rc=0`.
+🟥 배선된 경로는 안 뚫렸다(`finding_pipeline.sh` 가 라우팅을 거부하고 `finding_fleet.sh` 는 항상
+찍는다) — 그러나 이 스크립트는 자기 CLI 를 출하하고 손으로 만든 표는 지원되는 입력이다.
+이제 **부재 = `unverified`** 다. 부재는 «검증자가 저자가 아님»을 증명하지 못하므로, 자기검증과
+같은 처분을 받는다.
+**BREAKING (gate):** `producer_family` 없는 표를 `finding_verify.py` 에 직접 넣던 실행은 이제
+rc=3(UNVERIFIED) 이다 — 처방 = 표에 `producer_family` 를 실어라(fleet 은 이미 싣는다).
+레인 40 → **43**: L36(부재→차단) · L37(동일 계열→차단) · L38(**다른 계열→정상 통과**, 과차단
+아님을 박는다) + L9 되돌림 프로브를 새 가드에 재고정하고 «앵커가 움직였다» 와 «앵커가 장식이다»
+를 **다른 메시지로** 가른다(초판은 둘을 한 문장으로 냈고, 오늘 실제로 첫째가 나는데 둘째라고
+말했다).
+
+**③ fleet 스키마에 `defeater` 요구.** 없으면 리뷰 비교의 «반증 조건» 축이 구조적으로 측정 불가다.
+첫 실사용에서 실제 모델이 3/3 비공허·관측가능한 값을 채웠다.
+
+**④ 정체성 — Core Axis 에 목적 축 (#691).** 하네스 엔지니어링(수단) 옆에 **거버넌스
+엔지니어링(목적)** 을 명명한다: *수치를 목표로 움직이되, 그 수치가 게이트를 열지는 않는다.*
+슬로건이 아니라 실측이 있다 — 같은 8케이스에 다섯 리뷰 갈래가 **2.7 %–13.6 %** 주장 오류율을 냈고,
+**전부 리뷰 표면에서는 쓸 만하고 전부 비가역 표면에서는 못 쓴다.** 넣기 전에 플로어 티어 4팔로 쟀다
+(도달성 ARM 3/3 · CTRL 0/3 · 비회귀 양쪽 3/3 거부, 반증 조건 미발동).
+정본 `knowledge/shared/harness-core/governance_engineering_definition.md`.
+
+**⑤ 진입점 동기화 (#689).** `AGENTS.md` 항목 6 이 CLAUDE.md 로 **위임만** 하고 있었다 —
+CLAUDE.md 를 안 싣는 런타임에는 그 규율이 전달되지 않는데, 하필 그 런타임 자신이 판정 엔진인
+경우가 많다. 오류예산 교리를 그 자리에 실었다.
+
+**⑥ 발행 기록 갱신 (#692).** arXiv **v2 가 2026-09-09 등재**됐다(내용 v1.2.2 · §6.7 신설 ·
+제목 `Evidence` → `a Test of` · 초록 결론 → 가설). **그리고 같은 날 Zenodo v1.2.2 를 발행해
+갈라졌던 두 예치를 맞췄다** — DOI `10.5281/zenodo.22674575`, 기계 필드로 `isIdenticalTo
+arXiv:2609.04218`. 🟥 **확인은 폼이 아니라 발행 «후» 레코드 API 로 했다** — 저자·라이선스·키워드·
+초록·파일 md5·버전 총수를 발행 후와 메타데이터 편집 후 각각 재독했고 전부 불변이었다.
+#692 가 출하한 문서들은 «갈렸다» 상태를 적고 있었으므로 이 릴리스에서 5개 파일을 함께 갱신한다
+(README ×4 · `docs/OUTPUT_EVIDENCE.md`).
+
+**⑦ 새 게이트 자산** — `gate_shape_scan.sh`(#683, 매핑 안 된 판정 코드에도 게이트 발화) ·
+`doc_claim_triad_scan.py` · 대응 레인 3종.
 
 ### [3.1.4] — 2026-09-07 — 논문이 arXiv 에 걸렸고, 「published」는 과대주장이었다
 

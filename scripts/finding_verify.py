@@ -178,7 +178,24 @@ def main():
             unverified += 1
             confirmed.append(f)
             continue
-        if f.get("producer_family") and f["producer_family"] == a.family:
+        prod = f.get("producer_family")
+        # 🟥 ABSENT is not CLEAN. This guard is the one property this file claims to enforce, and
+        # until 2026-09-09 it hung on an OPTIONAL field: omit `producer_family` and the check was
+        # skipped entirely, so a family verified its own findings and the run reported
+        # `status=VERIFIED rc=0`. Reproduced with a known pair — same table, same verifier, the
+        # field the only difference: with it `unverified=1 rc=3`, without it `confirmed=1 rc=0`.
+        # A missing producer cannot PROVE the verifier is not the author, so the fail-closed
+        # answer is the same one an actual self-verification gets: `unverified`, never a silent
+        # pass. (The wired path never reached this — `finding_pipeline.sh` refuses to route a
+        # table with no usable `producer_family` (exit 3) and `finding_fleet.sh` always stamps it
+        # — but this script ships its own CLI, and a hand-built table is a supported entry point.)
+        if not prod:
+            f = dict(f, verdict="unverified", verify_note="finding declares no producer_family; "
+                     f"cannot establish that the verifier ({a.family}) is not its author")
+            unverified += 1
+            confirmed.append(f)
+            continue
+        if prod == a.family:
             f = dict(f, verdict="unverified", verify_note="verifier is the producing family "
                      f"({a.family}); a finding is not verified by its own author")
             unverified += 1

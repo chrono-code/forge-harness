@@ -110,19 +110,26 @@ grep -q '"audit_role": "appeal"' "$D/oE/confirmed.jsonl"   && ok "L14 생산자�
 
 # L9 revert probe — remove the never-self-verify guard and L7 must go red
 MUT="$D/verify_mut.py"
-python3 - "$VERIFY" "$MUT" <<'PY'
+# 🟥 «앵커가 움직였다» 와 «앵커가 장식이다» 는 다른 사건인데 초판은 둘을 같은 메시지로 냈다.
+#    2026-09-09 에 실제로 첫째가 났고(가드가 두 갈래로 갈리며 줄이 바뀜) 출력은 둘째라고 말했다.
+MUTERR=$(python3 - "$VERIFY" "$MUT" 2>&1 <<'PY'
 import sys
 src, dst = sys.argv[1], sys.argv[2]
 s = open(src, encoding="utf-8").read()
-key = '        if f.get("producer_family") and f["producer_family"] == a.family:'
-assert key in s, "guard line not found — the revert probe is pinned to a line that moved"
+key = '        if prod == a.family:'
+assert key in s, "ANCHOR-MOVED: the same-family guard this probe pins to is not in the file"
 s = s.replace(key, '        if False:')
 open(dst, "w", encoding="utf-8").write(s)
 PY
+); MUTRC=$?
+if [ "$MUTRC" -ne 0 ] || [ ! -s "$MUT" ]; then
+  no "L9 되돌림 (뮤턴트 생성 실패)" "$(printf '%s' "$MUTERR" | tail -1) — 앵커가 «움직인» 것이지 «장식» 이 아니다"
+else
 python3 "$MUT" "$D/f.jsonl" --out "$D/o6" --verifier "sh $D/v_ok.sh" --family alpha >"$D/s6" 2>&1
 { [ "$(wc -l < "$D/o6/dropped.jsonl" | tr -d ' ')" = 1 ]; } \
   && ok "L9 되돌림: 가드를 지우면 자기 계열이 자기 것을 지운다 (레인이 실물을 잰다)" \
   || no "L9 되돌림" "가드를 지워도 드롭 0 — L7 은 장식이다"
+fi
 
 # ══ 접착 코드 레인 (2026-09-09) — finding_verifier.sh (G1) · finding_pipeline.sh (G2) · defeater (G6) ══
 # 🟥 이 레인들이 지키는 것도 «방향»이다. 래퍼가 답을 못 받았는데 0 을 돌려주면 verify 는 그것을
@@ -415,6 +422,37 @@ if [ -n "$PF" ]; then
 else
   no "L35 (A7) 프롬프트 권한" "프롬프트 파일이 안 생겼다 — 미측정(통과 아님)"
 fi
+
+# ── L36~L38 «생산자 미상» 은 깨끗함이 아니다 (2026-09-09) ───────────────────────
+# 🟥 이 파일이 스스로 «강제하는 유일한 속성» 이라 선언한 자기검증 금지가 OPTIONAL 필드에
+#    걸려 있었다: producer_family 를 빼면 검사가 통째로 건너뛰고 같은 계열이 자기 발견을
+#    승인하며 status=VERIFIED rc=0 이 나왔다. 세 팔로 박는다 — 세 번째(다른 계열 → 정상
+#    통과)가 없으면 «그냥 다 막아버린 픽스» 와 구분되지 않는다.
+cat > "$D/v_yes.sh" <<'EOS'
+#!/bin/sh
+cat >/dev/null
+echo '{"id":"z1","verdict":"confirmed","why":"stub"}'
+EOS
+chmod +x "$D/v_yes.sh"
+_pf_run() { # $1 = jsonl 한 줄, $2 = 이름 → "rc|status"
+  printf '%s\n' "$1" > "$D/pf_$2.jsonl"
+  local o rc
+  o=$(python3 "$HERE/finding_verify.py" "$D/pf_$2.jsonl" --out "$D/pf_o_$2" \
+        --verifier "sh $D/v_yes.sh" --family beta 2>&1); rc=$?
+  printf '%s|%s' "$rc" "$(printf '%s' "$o" | sed -n 's/.*status=\([A-Z-]*\).*/\1/p' | head -1)"
+}
+R36=$(_pf_run '{"id":"z1","title":"t"}' absent)
+[ "$R36" = "3|UNVERIFIED" ] \
+  && ok "L36 producer_family 부재 → unverified·rc=3 (부재는 «검증됨» 이 아니다)" \
+  || no "L36 부재 fail-closed" "got=$R36 want=3|UNVERIFIED"
+R37=$(_pf_run '{"id":"z1","title":"t","producer_family":"beta"}' same)
+[ "$R37" = "3|UNVERIFIED" ] \
+  && ok "L37 producer_family == 검증자 계열 → unverified·rc=3 (자기 저작 승인 금지)" \
+  || no "L37 동일 계열 차단" "got=$R37 want=3|UNVERIFIED"
+R38=$(_pf_run '{"id":"z1","title":"t","producer_family":"gamma"}' diff)
+[ "$R38" = "0|VERIFIED" ] \
+  && ok "L38 producer_family != 검증자 계열 → 정상 통과 (과차단 아님)" \
+  || no "L38 과차단 없음" "got=$R38 want=0|VERIFIED"
 
 /bin/rm -rf "$D"
 echo "PASS=$PASS FAIL=$FAIL"
